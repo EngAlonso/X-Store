@@ -131,7 +131,7 @@ function AuthPage({ kind }: { kind: 'in' | 'up' }) {
   if (kind === 'up') return <Redirect to="/sign-in"/>;
   const bootstrapRequired = status.data?.bootstrapRequired === true;
   const founderSetupRequired = status.data?.founderSetupRequired === true;
-  return <div dir="rtl" className="auth-screen">
+  return <div dir="rtl" className="auth-screen auth-refined">
     <div className="auth-brand"><Logo/><p>مساحة عملك تبدأ من هنا.</p><div className="auth-note"><img src={`${basePath}/x-store-mark.png`}/><span>تجربة عمل هادئة<br/>وموثوقة كل يوم.</span></div></div>
     <div className="auth-widget"><section className="auth-card">
       {status.isLoading

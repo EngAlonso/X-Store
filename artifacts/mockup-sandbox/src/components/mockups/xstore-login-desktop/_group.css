@@ -1,0 +1,325 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+:root {
+  --button-outline: rgba(0, 0, 0, 0.1);
+  --badge-outline: rgba(0, 0, 0, 0.05);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(0, 0, 0, 0.03);
+  --elevate-2: rgba(0, 0, 0, 0.08);
+  --background: 210 17% 98%;
+  --foreground: 210 11% 15%;
+  --border: 210 14% 90%;
+  --card: 0 0% 100%;
+  --card-foreground: 210 11% 15%;
+  --card-border: 210 14% 91%;
+  --sidebar: 143 73% 16%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-border: 143 45% 25%;
+  --sidebar-primary: 143 62% 38%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 143 48% 23%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-ring: 143 62% 50%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 210 11% 15%;
+  --popover-border: 210 14% 90%;
+  --primary: 143 73% 16%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 140 10% 94%;
+  --secondary-foreground: 210 11% 20%;
+  --muted: 210 14% 95%;
+  --muted-foreground: 210 9% 44%;
+  --accent: 140 32% 92%;
+  --accent-foreground: 143 73% 16%;
+  --destructive: 354 70% 54%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 210 14% 87%;
+  --ring: 143 73% 16%;
+  --chart-1: 143 73% 16%;
+  --chart-2: 145 63% 43%;
+  --chart-3: 43 96% 53%;
+  --chart-4: 210 9% 44%;
+  --chart-5: 354 70% 54%;
+  --app-font-sans: 'IBM Plex Sans Arabic', 'DM Sans', sans-serif;
+  --app-font-serif: Georgia, serif;
+  --app-font-mono: 'DM Sans', monospace;
+  --radius: 0.5rem;
+  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-sm:
+    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
+    0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow:
+    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
+    0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-md:
+    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
+    0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-lg:
+    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
+    0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-xl:
+    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
+    0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --button-outline: rgba(255, 255, 255, 0.1);
+  --badge-outline: rgba(255, 255, 255, 0.05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255, 255, 255, 0.04);
+  --elevate-2: rgba(255, 255, 255, 0.09);
+  --background: 210 17% 98%;
+  --foreground: 210 11% 15%;
+  --border: 210 14% 90%;
+  --card: 0 0% 100%;
+  --card-foreground: 210 11% 15%;
+  --card-border: 210 14% 91%;
+  --sidebar: 143 73% 16%;
+  --sidebar-foreground: 0 0% 100%;
+  --sidebar-border: 143 45% 25%;
+  --sidebar-primary: 143 62% 38%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 143 48% 23%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-ring: 143 62% 50%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 210 11% 15%;
+  --popover-border: 210 14% 90%;
+  --primary: 143 73% 16%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 140 10% 94%;
+  --secondary-foreground: 210 11% 20%;
+  --muted: 210 14% 95%;
+  --muted-foreground: 210 9% 44%;
+  --accent: 140 32% 92%;
+  --accent-foreground: 143 73% 16%;
+  --destructive: 354 70% 54%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 210 14% 87%;
+  --ring: 143 73% 16%;
+  --chart-1: 143 73% 16%;
+  --chart-2: 145 63% 43%;
+  --chart-3: 43 96% 53%;
+  --chart-4: 210 9% 44%;
+  --chart-5: 354 70% 54%;
+  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-sm:
+    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
+    0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow:
+    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
+    0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-md:
+    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
+    0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-lg:
+    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
+    0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-xl:
+    0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0),
+    0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0);
+  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0);
+}
+
+.xstore-auth-mockup {
+  min-height: 100dvh;
+  color: #212529;
+  background: #f8f9fa;
+  font-family: 'IBM Plex Sans Arabic', 'DM Sans', sans-serif;
+}
+
+.xstore-auth-mockup *,
+.xstore-auth-mockup *::before,
+.xstore-auth-mockup *::after {
+  box-sizing: border-box;
+}
+
+.xstore-auth-mockup .auth-screen {
+  min-height: 100dvh;
+  background: #f8f9fa;
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  align-items: center;
+  gap: 30px;
+  padding: 50px max(7vw, 28px);
+}
+
+.xstore-auth-mockup .auth-brand {
+  min-height: 540px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.xstore-auth-mockup .brand {
+  display: flex;
+  direction: ltr;
+  align-items: center;
+  gap: 9px;
+  color: #0b4619;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  text-decoration: none;
+}
+
+.xstore-auth-mockup .brand img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.xstore-auth-mockup .brand small {
+  direction: rtl;
+  margin-left: 5px;
+  color: #7a8780;
+  font-family: 'IBM Plex Sans Arabic', sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.xstore-auth-mockup .auth-brand > p {
+  margin-top: 14px;
+  color: #718078;
+}
+
+.xstore-auth-mockup .auth-note {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-top: 55px;
+  color: #52725a;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.xstore-auth-mockup .auth-note img {
+  width: 45px;
+  height: 45px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.xstore-auth-mockup .auth-widget {
+  display: flex;
+  justify-content: center;
+}
+
+.xstore-auth-mockup .auth-card {
+  width: min(100%, 490px);
+  padding: 29px;
+  border: 1px solid #e6ece7;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 18px 54px #15251a12;
+}
+
+.xstore-auth-mockup .auth-card-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  margin-bottom: 23px;
+}
+
+.xstore-auth-mockup .auth-icon {
+  width: 43px;
+  height: 43px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: #edf5ee;
+  color: #28643a;
+}
+
+.xstore-auth-mockup .auth-card-heading h1 {
+  margin: 0;
+  color: #22372a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.xstore-auth-mockup .auth-card-heading p {
+  margin: 6px 0 0;
+  color: #758178;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.xstore-auth-mockup .auth-form {
+  display: grid;
+  gap: 15px;
+}
+
+.xstore-auth-mockup .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #56645a;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.xstore-auth-mockup .field input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 13px;
+  border: 1px solid #dfe6e0;
+  border-radius: 9px;
+  background: #fff;
+  color: #263a2c;
+  font: inherit;
+  font-size: 13px;
+}
+
+.xstore-auth-mockup .field input[type='tel'] {
+  direction: ltr;
+  text-align: right;
+}
+
+.xstore-auth-mockup .field input::placeholder {
+  color: #a4aca6;
+}
+
+.xstore-auth-mockup .auth-submit {
+  width: 100%;
+  min-height: 45px;
+  margin-top: 2px;
+  border: 0;
+  border-radius: 9px;
+  background: #0b4619;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.xstore-auth-mockup .role-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 12px;
+  border: 1px solid #dfeadf;
+  border-radius: 9px;
+  background: #f5f9f4;
+  color: #58745e;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.xstore-auth-mockup .auth-contact-empty {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #edf0ed;
+  color: #859087;
+  text-align: center;
+  font-size: 10px;
+}
