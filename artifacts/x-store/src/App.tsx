@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { ClerkProvider, SignIn, useAuth, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
@@ -9,7 +12,7 @@ import {
   getListXStoreHeldSalesQueryKey, getListXStoreProductsQueryKey,
   getListXStoreSalesQueryKey, getListXStoreTeamQueryKey, getListXStoreTenantsQueryKey,
   getListXStoreSubscriptionPaymentsQueryKey,
-  logoutXStore, useAddXStoreTeamMember, useBootstrapXStorePlatformAdmin, useCreateXStoreExchange, useCreateXStoreProduct, useCreateXStoreReturn,
+  logoutXStore, useAddXStoreTeamMember, useBootstrapXStorePlatformAdmin, useCreateInitialPlatformOwner, useCreateXStoreExchange, useCreateXStoreProduct, useCreateXStoreReturn,
   useCreateXStoreSubscriptionPayment, useCreateXStoreTenant, useGetXStoreDashboard, useGetXStoreSession, useHoldXStoreSale,
   useGetXStoreAuthStatus, useGetXStoreContactSettings, useLoginXStoreWithPhone,
   useListXStoreAuditLogs, useListXStoreHeldSales, useListXStoreProducts, useListXStoreSales,
@@ -19,6 +22,7 @@ import {
 import type { Product, Tenant, Sale } from '@workspace/api-client-react';
 import { Route, Switch, Redirect, Link, useLocation, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
@@ -64,8 +68,18 @@ const appearance = {
 const fmt = (n: number) => new Intl.NumberFormat('ar-SA', { maximumFractionDigits: 2 }).format(n);
 const money = (n: number) => `${fmt(n)} ر.س`;
 const dateLabel = (d?: string | null) => d ? new Intl.DateTimeFormat('ar-SA', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(d)) : '—';
-const roleNames: Record<string, string> = { platform_admin: 'مدير المنصة', tenant_admin: 'مالك المتجر', cashier: 'أمين الصندوق', warehouse_manager: 'مدير المخزون', accountant: 'محاسب' };
+const roleNames: Record<string, string> = { platform_admin: 'مالك المنصة', tenant_admin: 'مالك المتجر', cashier: 'أمين الصندوق', warehouse_manager: 'مدير المخزون', accountant: 'محاسب' };
 const statusNames: Record<string, string> = { active: 'نشط', trial: 'تجريبي', suspended: 'موقوف', completed: 'مكتملة', partially_returned: 'مستردة جزئياً', returned: 'مستردة', monthly: 'شهري', half_yearly: 'نصف سنوي', annual: 'سنوي', lifetime: 'مدى الحياة' };
+const founderSetupSchema = z.object({
+  name: z.string().trim().min(2, 'اكتب اسم المؤسس').max(100, 'الاسم طويل جدًا'),
+  phone: z.string().min(8, 'أدخل رقم هاتف صحيحًا').max(20, 'رقم الهاتف طويل جدًا'),
+  password: z.string().min(10, 'كلمة المرور يجب أن تكون 10 أحرف على الأقل').max(128, 'كلمة المرور طويلة جدًا'),
+  confirmPassword: z.string(),
+}).refine((values) => values.password === values.confirmPassword, {
+  message: 'كلمتا المرور غير متطابقتين',
+  path: ['confirmPassword'],
+});
+type FounderSetupValues = z.infer<typeof founderSetupSchema>;
 const nav = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard, roles: ['all'] },
   { href: '/tenants', label: 'المتاجر', icon: Store, roles: ['platform_admin'] },
@@ -116,18 +130,25 @@ function AuthPage({ kind }: { kind: 'in' | 'up' }) {
   const [showLegacy, setShowLegacy] = useState(false);
   if (kind === 'up') return <Redirect to="/sign-in"/>;
   const bootstrapRequired = status.data?.bootstrapRequired === true;
+  const founderSetupRequired = status.data?.founderSetupRequired === true;
   return <div dir="rtl" className="auth-screen">
     <div className="auth-brand"><Logo/><p>مساحة عملك تبدأ من هنا.</p><div className="auth-note"><img src={`${basePath}/x-store-mark.png`}/><span>تجربة عمل هادئة<br/>وموثوقة كل يوم.</span></div></div>
     <div className="auth-widget"><section className="auth-card">
-      {bootstrapRequired && isSignedIn
-        ? <PlatformBootstrapForm/>
-        : <PhoneLoginForm bootstrapRequired={bootstrapRequired}/>}
-      {bootstrapRequired && !isSignedIn && <div className="legacy-bootstrap">
+      {status.isLoading
+        ? <div className="auth-status-state" role="status">جارٍ التحقق من إعداد المنصة…</div>
+        : status.isError
+          ? <div className="auth-status-state" role="alert"><span>تعذر التحقق من إعداد حساب المالك.</span><button className="button button-quiet button-small" type="button" onClick={() => void status.refetch()} data-testid="button-retry-auth-status">إعادة المحاولة</button></div>
+          : founderSetupRequired
+            ? <FounderSetupForm/>
+            : bootstrapRequired && isSignedIn
+              ? <PlatformBootstrapForm/>
+              : <PhoneLoginForm bootstrapRequired={bootstrapRequired}/>}
+      {status.data && bootstrapRequired && !founderSetupRequired && !isSignedIn && <div className="legacy-bootstrap">
         {showLegacy
           ? <><div className="role-hint"><ShieldCheck size={17}/><span>استخدم حساب مدير المنصة الحالي مرة واحدة لتحويله إلى دخول الهاتف وكلمة المرور.</span></div><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} appearance={{...appearance,elements:{...appearance.elements,footerAction:'hidden'}}}/><button className="text-link" type="button" onClick={()=>setShowLegacy(false)}>إخفاء تسجيل الدخول القديم</button></>
           : <button className="button button-quiet" type="button" onClick={()=>setShowLegacy(true)}>إعداد دخول مدير المنصة لأول مرة</button>}
       </div>}
-      <ContactMethods status={status.data}/>
+      {status.data && <ContactMethods status={status.data}/>}
     </section></div>
   </div>;
 }
@@ -179,6 +200,52 @@ function PlatformBootstrapForm() {
       <div className="role-hint"><ShieldCheck size={16}/><span>بعد الحفظ، يصبح هذا الحساب هو وسيلة الدخول لجميع الحسابات، ويتوقف تسجيل الدخول القديم.</span></div>
       <button className="button button-primary auth-submit" disabled={bootstrap.isPending}>{bootstrap.isPending?'جارٍ إعداد الحساب…':'حفظ بيانات الدخول'}</button>
     </form>
+  </>;
+}
+function FounderSetupForm() {
+  const createOwner = useCreateInitialPlatformOwner();
+  const qc = useQueryClient();
+  const [, setLocation] = useLocation();
+  const form = useForm<FounderSetupValues>({
+    resolver: zodResolver(founderSetupSchema),
+    defaultValues: { name: '', phone: '', password: '', confirmPassword: '' },
+  });
+  function submit(values: FounderSetupValues) {
+    createOwner.mutate(
+      { data: { name: values.name, phone: values.phone, password: values.password } },
+      {
+        onSuccess: (user) => {
+          qc.setQueryData(getGetXStoreSessionQueryKey(), user);
+          void qc.invalidateQueries({ queryKey: getGetXStoreAuthStatusQueryKey() });
+          setLocation('/dashboard');
+        },
+        onError: () => {
+          void qc.invalidateQueries({ queryKey: getGetXStoreAuthStatusQueryKey() });
+        },
+      },
+    );
+  }
+  return <>
+    <div className="auth-card-heading"><span className="auth-icon"><ShieldCheck size={20}/></span><div><h1>إعداد حساب المؤسس</h1><p>أنشئ الحساب الأول، وسيصبح مالك المنصة.</p></div></div>
+    <Form {...form}>
+      <form className="auth-form" onSubmit={form.handleSubmit(submit)} noValidate>
+        <FormField control={form.control} name="name" render={({ field }) => <FormItem className="field">
+          <FormLabel>اسم المؤسس</FormLabel><FormControl><input {...field} autoComplete="name" maxLength={100} data-testid="input-founder-name" disabled={createOwner.isPending}/></FormControl><FormMessage/>
+        </FormItem>}/>
+        <FormField control={form.control} name="phone" render={({ field }) => <FormItem className="field">
+          <FormLabel>رقم الهاتف</FormLabel><FormControl><input {...field} type="tel" autoComplete="tel" minLength={8} maxLength={20} placeholder="مثال: ‎+20 10 1234 5678" data-testid="input-founder-phone" disabled={createOwner.isPending}/></FormControl><FormMessage/>
+        </FormItem>}/>
+        <FormField control={form.control} name="password" render={({ field }) => <FormItem className="field">
+          <FormLabel>كلمة المرور</FormLabel><FormControl><input {...field} type="password" autoComplete="new-password" minLength={10} maxLength={128} placeholder="10 أحرف على الأقل" data-testid="input-founder-password" disabled={createOwner.isPending}/></FormControl><FormMessage/>
+        </FormItem>}/>
+        <FormField control={form.control} name="confirmPassword" render={({ field }) => <FormItem className="field">
+          <FormLabel>تأكيد كلمة المرور</FormLabel><FormControl><input {...field} type="password" autoComplete="new-password" minLength={10} maxLength={128} data-testid="input-founder-confirm-password" disabled={createOwner.isPending}/></FormControl><FormMessage/>
+        </FormItem>}/>
+        {createOwner.isError && <div className="form-error" role="alert">{apiErrorMessage(createOwner.error, 'تعذر إنشاء حساب المالك. حاول مرة أخرى.')}</div>}
+        <div className="role-hint"><ShieldCheck size={16}/><span>الإعداد لمرة واحدة. أول شخص يكمل الحفظ يصبح مالك المنصة، وبعدها يختفي هذا النموذج.</span></div>
+        <button className="button button-primary auth-submit" type="submit" disabled={createOwner.isPending}>{createOwner.isPending ? 'جارٍ إنشاء حساب المالك…' : 'إنشاء حساب المالك'}</button>
+      </form>
+    </Form>
   </>;
 }
 function ContactMethods({status}:{status?:{supportPhone:string|null;supportWhatsapp:string|null;supportEmail:string|null}}) {

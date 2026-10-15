@@ -39,6 +39,7 @@ export interface SessionUser {
 
 export interface AuthStatus {
   bootstrapRequired: boolean;
+  founderSetupRequired: boolean;
   /** @nullable */
   supportPhone: string | null;
   /** @nullable */
@@ -55,6 +56,24 @@ export interface PhoneLoginInput {
   phone: string;
   /**
      * @minLength 1
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface FounderAccountInput {
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  name: string;
+  /**
+     * @minLength 8
+     * @maxLength 20
+     */
+  phone: string;
+  /**
+     * @minLength 10
      * @maxLength 128
      */
   password: string;

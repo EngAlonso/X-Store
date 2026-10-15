@@ -38,6 +38,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AuthStatus"
+  /xstore/auth/founder:
+    post:
+      operationId: createInitialPlatformOwner
+      tags: [xstore]
+      summary: Create the first platform owner during initial setup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FounderAccountInput"
+      responses:
+        "200":
+          description: Newly created platform owner session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: A platform owner account has already been created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "429":
+          description: Too many founder setup attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /xstore/auth/login:
     post:
       operationId: loginXStoreWithPhone
@@ -752,16 +784,24 @@ components:
       type: object
       properties:
         bootstrapRequired: { type: boolean }
+        founderSetupRequired: { type: boolean }
         supportPhone: { type: ["string", "null"] }
         supportWhatsapp: { type: ["string", "null"] }
         supportEmail: { type: ["string", "null"], format: email }
-      required: [bootstrapRequired, supportPhone, supportWhatsapp, supportEmail]
+      required: [bootstrapRequired, founderSetupRequired, supportPhone, supportWhatsapp, supportEmail]
     PhoneLoginInput:
       type: object
       properties:
         phone: { type: string, minLength: 8, maxLength: 20 }
         password: { type: string, minLength: 1, maxLength: 128 }
       required: [phone, password]
+    FounderAccountInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        phone: { type: string, minLength: 8, maxLength: 20 }
+        password: { type: string, minLength: 10, maxLength: 128 }
+      required: [name, phone, password]
     AdminBootstrapInput:
       type: object
       properties:

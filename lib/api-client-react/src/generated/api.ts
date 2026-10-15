@@ -31,6 +31,7 @@ import type {
   ExchangeInput,
   ExchangeResult,
   ForbiddenResponse,
+  FounderAccountInput,
   GetXStoreProfitLossReportParams,
   HealthStatus,
   HeldSale,
@@ -241,6 +242,94 @@ export function useGetXStoreAuthStatus<TData = Awaited<ReturnType<typeof getXSto
 
 
 
+
+export const getCreateInitialPlatformOwnerUrl = () => {
+
+
+
+
+  return `/api/xstore/auth/founder`
+}
+
+/**
+ * @summary Create the first platform owner during initial setup
+ */
+export const createInitialPlatformOwner = async (founderAccountInput: FounderAccountInput, options?: Parameters<typeof customFetch>[1]): Promise<SessionUser> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SessionUser>(getCreateInitialPlatformOwnerUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(founderAccountInput)
+  }
+);}
+
+
+
+
+
+export const getCreateInitialPlatformOwnerMutationKey = () => ['createInitialPlatformOwner'] as const;
+
+export const getCreateInitialPlatformOwnerMutationOptions = <TError = ErrorType<BadRequestResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createInitialPlatformOwner>>, TError,CreateInitialPlatformOwnerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createInitialPlatformOwner>>, TError,CreateInitialPlatformOwnerMutationVariables, TContext> => {
+
+const mutationKey = getCreateInitialPlatformOwnerMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createInitialPlatformOwner>>, CreateInitialPlatformOwnerMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createInitialPlatformOwner(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateInitialPlatformOwnerMutationResult = NonNullable<Awaited<ReturnType<typeof createInitialPlatformOwner>>>
+    export type CreateInitialPlatformOwnerMutationBody = BodyType<FounderAccountInput>
+    export type CreateInitialPlatformOwnerMutationError = ErrorType<BadRequestResponse | ApiError>
+    export type CreateInitialPlatformOwnerMutationVariables = {data: BodyType<FounderAccountInput>}
+
+    /**
+ * @summary Create the first platform owner during initial setup
+ */
+export const useCreateInitialPlatformOwner = <TError = ErrorType<BadRequestResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createInitialPlatformOwner>>, TError,CreateInitialPlatformOwnerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createInitialPlatformOwner>>,
+        TError,
+        CreateInitialPlatformOwnerMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateInitialPlatformOwnerMutationOptions(options));
+    }
 
 export const getLoginXStoreWithPhoneUrl = () => {
 

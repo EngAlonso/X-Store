@@ -16,6 +16,7 @@ import { Router, type IRouter, type Request } from "express";
 import {
   BootstrapXStorePlatformAdminBody,
   BootstrapXStorePlatformAdminResponse,
+  CreateInitialPlatformOwnerBody,
   AddXStoreTeamMemberBody,
   AddXStoreTeamMemberResponse,
   CheckoutXStoreSaleBody,
@@ -314,18 +315,14 @@ function requireTenant(
 router.get("/xstore/auth/status", async (_req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
   const [platformAdmin] = await db
-    .select({ id: xstoreUsers.id })
+    .select({ id: xstoreUsers.id, passwordHash: xstoreUsers.passwordHash })
     .from(xstoreUsers)
-    .where(
-      and(
-        eq(xstoreUsers.role, "platform_admin"),
-        isNotNull(xstoreUsers.passwordHash),
-      ),
-    )
+    .where(eq(xstoreUsers.role, "platform_admin"))
     .limit(1);
   res.json(
     GetXStoreAuthStatusResponse.parse({
-      bootstrapRequired: !platformAdmin,
+      bootstrapRequired: !!platformAdmin && !platformAdmin.passwordHash,
+      founderSetupRequired: !platformAdmin,
       ...(await contactSettingsDto()),
     }),
   );
@@ -386,6 +383,119 @@ router.post("/xstore/auth/logout", async (req, res): Promise<void> => {
   }
   clearSessionCookie(res);
   res.status(204).end();
+});
+
+router.post("/xstore/auth/founder", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  const parsed = CreateInitialPlatformOwnerBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const name = parsed.data.name.trim();
+  if (name.length < 2) {
+    res.status(400).json({ error: "Enter the founder's name." });
+    return;
+  }
+
+  let phone: string;
+  try {
+    phone = normalizePhone(parsed.data.phone);
+  } catch {
+    res.status(400).json({ error: "Enter a valid phone number." });
+    return;
+  }
+  if (rateLimitLogin(req, phone)) {
+    res.status(429).json({
+      error: "Too many setup attempts. Wait a few minutes and try again.",
+    });
+    return;
+  }
+
+  const passwordHash = await hashPassword(parsed.data.password);
+  let result:
+    | { kind: "configured" }
+    | { kind: "phone_taken" }
+    | { kind: "success"; user: typeof xstoreUsers.$inferSelect };
+  try {
+    result = await db.transaction(async (tx) => {
+      // Only one first-run request can claim the platform owner role.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext('xstore-owner-bootstrap'))`,
+      );
+      const [existingAdmin] = await tx
+        .select({ id: xstoreUsers.id })
+        .from(xstoreUsers)
+        .where(eq(xstoreUsers.role, "platform_admin"))
+        .limit(1);
+      if (existingAdmin) return { kind: "configured" as const };
+
+      const [phoneOwner] = await tx
+        .select({ id: xstoreUsers.id })
+        .from(xstoreUsers)
+        .where(eq(xstoreUsers.phone, phone))
+        .limit(1);
+      if (phoneOwner) return { kind: "phone_taken" as const };
+
+      const [user] = await tx
+        .insert(xstoreUsers)
+        .values({
+          name,
+          phone,
+          passwordHash,
+          role: "platform_admin",
+          clerkUserId: null,
+          email: null,
+          tenantId: null,
+        })
+        .returning();
+      return user
+        ? { kind: "success" as const, user }
+        : { kind: "configured" as const };
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      res.status(409).json({ error: "This phone number already belongs to an account." });
+      return;
+    }
+    throw error;
+  }
+
+  if (result.kind === "configured") {
+    res.status(409).json({ error: "The platform owner account is already set up." });
+    return;
+  }
+  if (result.kind === "phone_taken") {
+    res.status(409).json({ error: "This phone number already belongs to an account." });
+    return;
+  }
+
+  clearLoginLimit(req, phone);
+  try {
+    await audit(
+      result.user,
+      "auth.platform_owner_created",
+      null,
+      "user",
+      result.user.id,
+      "The initial platform owner completed one-time account setup.",
+    );
+  } catch (error) {
+    req.log.error(
+      { error, userId: result.user.id },
+      "Unable to record the initial platform owner audit event",
+    );
+  }
+  setSessionCookie(
+    res,
+    createSessionToken(result.user.id, result.user.sessionVersion),
+  );
+  res.json(
+    BootstrapXStorePlatformAdminResponse.parse(
+      await sessionUserDto(result.user),
+    ),
+  );
 });
 
 router.use("/xstore", requireXStoreUser);

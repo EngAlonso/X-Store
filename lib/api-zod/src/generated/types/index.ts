@@ -18,6 +18,7 @@ export * from './exchangeInput';
 export * from './exchangeInputPaymentMethod';
 export * from './exchangeResult';
 export * from './forbiddenResponse';
+export * from './founderAccountInput';
 export * from './getXStoreProfitLossReportParams';
 export * from './healthStatus';
 export * from './heldSale';

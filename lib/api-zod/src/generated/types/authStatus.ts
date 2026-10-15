@@ -8,6 +8,7 @@
 
 export interface AuthStatus {
   bootstrapRequired: boolean;
+  founderSetupRequired: boolean;
   /** @nullable */
   supportPhone: string | null;
   /** @nullable */

@@ -22,9 +22,41 @@ export const HealthCheckResponse = zod.object({
  */
 export const GetXStoreAuthStatusResponse = zod.object({
   "bootstrapRequired": zod.boolean(),
+  "founderSetupRequired": zod.boolean(),
   "supportPhone": zod.string().nullable(),
   "supportWhatsapp": zod.string().nullable(),
   "supportEmail": zod.string().email().nullable()
+})
+
+
+/**
+ * @summary Create the first platform owner during initial setup
+ */
+export const createInitialPlatformOwnerBodyNameMin = 2;
+export const createInitialPlatformOwnerBodyNameMax = 100;
+
+export const createInitialPlatformOwnerBodyPhoneMin = 8;
+export const createInitialPlatformOwnerBodyPhoneMax = 20;
+
+export const createInitialPlatformOwnerBodyPasswordMin = 10;
+export const createInitialPlatformOwnerBodyPasswordMax = 128;
+
+
+
+export const CreateInitialPlatformOwnerBody = zod.object({
+  "name": zod.string().min(createInitialPlatformOwnerBodyNameMin).max(createInitialPlatformOwnerBodyNameMax),
+  "phone": zod.string().min(createInitialPlatformOwnerBodyPhoneMin).max(createInitialPlatformOwnerBodyPhoneMax),
+  "password": zod.string().min(createInitialPlatformOwnerBodyPasswordMin).max(createInitialPlatformOwnerBodyPasswordMax)
+})
+
+export const CreateInitialPlatformOwnerResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string().email().nullable(),
+  "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
+  "tenantId": zod.string().nullable(),
+  "tenantName": zod.string().nullable()
 })
 
 
