@@ -577,6 +577,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { 
 .auth-contact-list>a { min-width:0;display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #edf1ed;border-radius:8px;color:#2c6940;text-decoration:none; }
 .auth-contact-list>a span { margin-right:auto;color:#4d5a50;direction:ltr;text-align:left;overflow-wrap:anywhere; }
 .auth-contact-empty { margin-top:20px;padding-top:15px;border-top:1px solid #edf0ed;color:#859087;text-align:center;font-size:10px; }
+.contact-modal-intro { margin:0;color:#748178;font-size:12px;line-height:1.8; }
+.contact-modal-state { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding:13px;border:1px solid #edf1ed;border-radius:9px;color:#748178;font-size:12px; }
+.contact-modal-state[role="alert"] { color:#9f3942;background:#fff8f8; }
 .settings-card { max-width:780px; }
 .settings-form { max-width:650px; }
 .settings-success { grid-column:1/-1;display:flex;align-items:center;gap:8px;color:#2d7140;font-size:11px; }

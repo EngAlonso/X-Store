@@ -84,8 +84,13 @@ function Logo({ compact = false }: { compact?: boolean }) {
 }
 function Home() {
   const [, go] = useLocation();
-  return <main dir="rtl" className="landing">
-    <header className="landing-nav"><Logo /><div className="landing-actions"><Link href="/sign-in" className="button button-quiet">تسجيل الدخول</Link><Link href="/sign-in" className="button button-primary">دخول الحساب <ArrowUpLeft size={16}/></Link></div></header>
+  const [showContact, setShowContact] = useState(false);
+  const contact = useGetXStoreAuthStatus({
+    query: { enabled: showContact, queryKey: getGetXStoreAuthStatusQueryKey() },
+  });
+  return <>
+  <main dir="rtl" className="landing">
+    <header className="landing-nav"><Logo /><div className="landing-actions"><button type="button" onClick={() => setShowContact(true)} className="button button-quiet" data-testid="button-contact-us">اتصل بنا</button><Link href="/sign-in" className="button button-primary">دخول الحساب <ArrowUpLeft size={16}/></Link></div></header>
     <section className="landing-hero">
       <div className="hero-copy"><div className="eyebrow"><span className="live-dot"/> إدارة واضحة. يوم عمل أهدأ.</div><h1>كل متجرك،<br/><em>في مكان واحد.</em></h1><p>نقطة بيع سريعة ومخزون مرتب وتقارير موثوقة — أدوات يومية تساعد أصحاب المتاجر وفرقهم على العمل بثقة.</p><div className="hero-ctas"><button onClick={() => go('/sign-in')} className="button button-primary button-large" data-testid="button-start">دخول إلى حسابك <ChevronLeft size={18}/></button><button onClick={() => go('/sign-in')} className="text-link" data-testid="button-login">تحتاج حساباً؟ تواصل مع إدارة المنصة</button></div><div className="hero-proof"><span><CircleCheck size={16}/> إعداد بسيط</span><span><ShieldCheck size={16}/> بياناتك بأمان</span><span><Clock3 size={16}/> جاهز لليوم</span></div></div>
       <div className="hero-visual"><div className="dashboard-window"><div className="window-top"><span className="window-brand"><img src={`${basePath}/x-store-mark.png`}/> X-Store</span><span className="window-date">الأربعاء، ١٤ مايو</span><span className="window-avatar">م</span></div><div className="window-body" dir="rtl"><div className="window-greeting">مرحباً، متجر النخبة <span>صباح الخير</span></div><div className="mock-stats"><div><small>مبيعات اليوم</small><b>٤٬٨٢٠ <i>ر.س</i></b><span className="positive">↑ ١٢٪ عن أمس</span></div><div><small>الطلبات</small><b>٣٨</b><span>اليوم</span></div></div><div className="mock-chart"><div className="chart-title"><b>حركة المبيعات</b><span>آخر ٧ أيام</span></div><div className="bars">{[34,50,42,67,56,83,62,91,68,78,56,72,46,65].map((h,i)=><span key={i} style={{height:`${h}%`}} className={i===7?'bar-hot':''}/>)}</div><div className="chart-days"><span>السبت</span><span>الإثنين</span><span>الأربعاء</span><span>الجمعة</span></div></div><div className="mock-bottom"><span><i className="mini-stock"/> مخزون منخفض</span><b>٥ منتجات تحتاج متابعة</b><ChevronLeft size={14}/></div></div></div><div className="hero-float"><span className="float-check"><CircleCheck size={16}/></span><div><b>عملية بيع ناجحة</b><small>فاتورة X-2048 · منذ لحظات</small></div><strong>٢٤٥ ر.س</strong></div><div className="hero-orbit orbit-one"/><div className="hero-orbit orbit-two"/></div>
@@ -94,7 +99,16 @@ function Home() {
     <section className="feature-section"><div className="section-heading"><div className="eyebrow">أدوات يومية، بدون تعقيد</div><h2>تركيز على ما يحتاجه<br/>متجرك فعلاً.</h2><p>واجهة عربية مريحة وسير عمل مترابط يقلل الخطوات ويترك لك مساحة للاهتمام بعملائك.</p></div><div className="feature-grid"><article className="feature feature-large"><span className="feature-icon"><ShoppingCart size={21}/></span><div><h3>بيع أسرع عند الصندوق</h3><p>ابحث أو امسح الباركود، أضف الخصم واختر طريقة الدفع. شاشة واضحة تبقى سهلة القراءة طوال الوردية.</p><span className="feature-foot">نقطة بيع سريعة <ArrowUpLeft size={15}/></span></div><div className="feature-receipt"><div className="receipt-head">X-Store <span>فاتورة</span></div><div className="receipt-line">قميص قطني <b>١٢٠ ر.س</b></div><div className="receipt-line">حزام جلدي <b>٨٥ ر.س</b></div><div className="receipt-total">الإجمالي <b>٢٠٥ ر.س</b></div><span className="receipt-mark">تم الدفع</span></div></article><article className="feature"><span className="feature-icon feature-icon-gold"><Boxes size={21}/></span><h3>مخزون يعرف تفاصيله</h3><p>تابع المقاسات والألوان والكميات وتواريخ الصلاحية من قائمة واحدة.</p><div className="stock-preview"><span><i/> حذاء رياضي · ٣ ألوان</span><b>١٨ قطعة</b></div></article><article className="feature"><span className="feature-icon feature-icon-red"><Activity size={21}/></span><h3>صورة صادقة عن الأداء</h3><p>اطّلع على المبيعات والاشتراكات ونشاط المتجر حسب صلاحيتك.</p><div className="mini-metrics"><span>المبيعات <b>١٢٨</b></span><span>متاجر نشطة <b>٢٤</b></span></div></article></div></section>
     <section className="landing-quote"><div className="quote-mark">“</div><blockquote>عندما تكون الأرقام واضحة،<br/>تكون قرارات اليوم أسهل.</blockquote><span>صُمم لأصحاب المتاجر الذين يديرون التفاصيل كل يوم.</span><div className="quote-seal"><img src={`${basePath}/x-store-mark.png`} alt=""/></div></section>
     <footer className="landing-footer"><Logo compact/><span>إدارة أوضح. متجر أقوى.</span><Link href="/sign-in">تسجيل الدخول <ArrowUpLeft size={15}/></Link></footer>
-  </main>;
+  </main>
+  {showContact&&<Modal title="اتصل بنا" close={()=>setShowContact(false)}>
+    <p className="contact-modal-intro">تواصل مع إدارة المنصة من خلال إحدى الوسائل التالية.</p>
+    {contact.isLoading
+      ? <div className="contact-modal-state" role="status">جارٍ تحميل معلومات التواصل…</div>
+      : contact.isError
+        ? <div className="contact-modal-state" role="alert"><span>تعذر تحميل معلومات التواصل.</span><button className="button button-quiet button-small" type="button" onClick={()=>void contact.refetch()} data-testid="button-retry-contact">إعادة المحاولة</button></div>
+        : <ContactMethods status={contact.data}/>}
+  </Modal>}
+  </>;
 }
 function AuthPage({ kind }: { kind: 'in' | 'up' }) {
   const status = useGetXStoreAuthStatus();
@@ -173,7 +187,7 @@ function ContactMethods({status}:{status?:{supportPhone:string|null;supportWhats
     status?.supportWhatsapp&&{icon:MessageCircle,label:'واتساب',href:`https://wa.me/${status.supportWhatsapp.replace(/\D/g,'')}`,value:status.supportWhatsapp},
     status?.supportEmail&&{icon:Mail,label:'البريد',href:`mailto:${status.supportEmail}`,value:status.supportEmail},
   ].filter(Boolean) as {icon:typeof Phone;label:string;href:string;value:string}[];
-  if(!methods.length)return <div className="auth-contact-empty">تُدار الحسابات بواسطة إدارة المنصة.</div>;
+  if(!methods.length)return <div className="auth-contact-empty">لم تُضف إدارة المنصة معلومات التواصل بعد.</div>;
   return <div className="auth-contact-list"><span>تحتاج مساعدة؟ تواصل مع إدارة المنصة</span>{methods.map(item=><a key={item.label} href={item.href} target={item.label==='واتساب'?'_blank':undefined} rel={item.label==='واتساب'?'noreferrer':undefined}><item.icon size={15}/><b>{item.label}</b><span>{item.value}</span></a>)}</div>;
 }
 function apiErrorMessage(error:unknown,fallback:string):string {
@@ -361,10 +375,10 @@ function PlatformSettingsPage() {
       supportPhone:values.supportPhone.trim()||null,
       supportWhatsapp:values.supportWhatsapp.trim()||null,
       supportEmail:values.supportEmail.trim().toLowerCase()||null,
-    }},{onSuccess:()=>setNotice('تم تحديث معلومات التواصل التي تظهر في صفحة الدخول.')});
+    }},{onSuccess:()=>setNotice('تم تحديث معلومات التواصل التي تظهر للزوار.')});
   }
-  return <><PageTitle eyebrow="إعدادات المنصة" title="معلومات التواصل" desc="تظهر هذه البيانات للزوار في صفحة تسجيل الدخول."/>
-    <Card className="settings-card"><SectionHead title="وسائل التواصل" detail="اترك الحقل فارغاً لإخفائه من صفحة الدخول."/>
+  return <><PageTitle eyebrow="إعدادات المنصة" title="معلومات التواصل" desc="تظهر هذه البيانات للزوار في زر اتصل بنا وصفحة تسجيل الدخول."/>
+    <Card className="settings-card"><SectionHead title="وسائل التواصل" detail="اترك الحقل فارغاً لإخفائه من صفحة اتصل بنا."/>
       {settings.isLoading?<StateBlock loading error={false} onRetry={()=>settings.refetch()} empty={false}/>:settings.isError?<StateBlock loading={false} error onRetry={()=>settings.refetch()} empty={false}/>:<form className="form-grid settings-form" onSubmit={submit}>
         <label className="field"><span>رقم هاتف الدعم</span><input type="tel" value={values.supportPhone} onChange={e=>setValues({...values,supportPhone:e.target.value})} placeholder="+20 10 1234 5678"/></label>
         <label className="field"><span>رقم واتساب الدعم</span><input type="tel" value={values.supportWhatsapp} onChange={e=>setValues({...values,supportWhatsapp:e.target.value})} placeholder="+20 10 1234 5678"/></label>
