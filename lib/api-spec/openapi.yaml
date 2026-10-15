@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: X-Store point-of-sale and inventory API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: xstore
+    description: Authenticated X-Store operations
 paths:
   /healthz:
     get:
@@ -24,7 +26,562 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /xstore/session:
+    get:
+      operationId: getXStoreSession
+      tags: [xstore]
+      summary: Get the signed-in user's X-Store role
+      responses:
+        "200":
+          description: Current X-Store user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /xstore/dashboard:
+    get:
+      operationId: getXStoreDashboard
+      tags: [xstore]
+      summary: Get the role-scoped dashboard summary
+      responses:
+        "200":
+          description: Dashboard metrics and recent activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /xstore/tenants:
+    get:
+      operationId: listXStoreTenants
+      tags: [xstore]
+      summary: List tenants for platform administrators
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, trial, suspended]
+        - name: businessType
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tenants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tenant"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createXStoreTenant
+      tags: [xstore]
+      summary: Create a tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantInput"
+      responses:
+        "201":
+          description: Created tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /xstore/tenants/{tenantId}:
+    patch:
+      operationId: updateXStoreTenant
+      tags: [xstore]
+      summary: Update a tenant's status or subscription
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantUpdate"
+      responses:
+        "200":
+          description: Updated tenant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tenant"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /xstore/team:
+    get:
+      operationId: listXStoreTeam
+      tags: [xstore]
+      summary: List team members in the current tenant
+      responses:
+        "200":
+          description: Tenant team members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamMember"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: addXStoreTeamMember
+      tags: [xstore]
+      summary: Add or update a team member's role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamMemberInput"
+      responses:
+        "201":
+          description: Added or updated team member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMember"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /xstore/subscription-payments:
+    get:
+      operationId: listXStoreSubscriptionPayments
+      tags: [xstore]
+      summary: List platform subscription payments
+      responses:
+        "200":
+          description: Subscription payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubscriptionPayment"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createXStoreSubscriptionPayment
+      tags: [xstore]
+      summary: Record a subscription payment and renewal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionPaymentInput"
+      responses:
+        "201":
+          description: Recorded payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionPayment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /xstore/products:
+    get:
+      operationId: listXStoreProducts
+      tags: [xstore]
+      summary: List products visible to the signed-in user
+      parameters:
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createXStoreProduct
+      tags: [xstore]
+      summary: Create a product in the current tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /xstore/products/{productId}:
+    patch:
+      operationId: updateXStoreProduct
+      tags: [xstore]
+      summary: Update a product in the current tenant
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /xstore/sales:
+    get:
+      operationId: listXStoreSales
+      tags: [xstore]
+      summary: List sales visible to the signed-in user
+      parameters:
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Sales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sale"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /xstore/reports/profit-loss:
+    get:
+      operationId: getXStoreProfitLossReport
+      tags: [xstore]
+      summary: Get role-scoped gross profit and loss totals
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Profit and loss summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfitLossReport"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: checkoutXStoreSale
+      tags: [xstore]
+      summary: Complete a sale and decrement stock atomically
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaleInput"
+      responses:
+        "201":
+          description: Completed sale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sale"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Insufficient stock or product is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /xstore/held-sales:
+    get:
+      operationId: listXStoreHeldSales
+      tags: [xstore]
+      summary: List held carts in the current tenant
+      responses:
+        "200":
+          description: Held sales
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HeldSale"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: holdXStoreSale
+      tags: [xstore]
+      summary: Save a cart for later checkout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HoldSaleInput"
+      responses:
+        "201":
+          description: Held cart
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeldSale"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /xstore/held-sales/{heldSaleId}:
+    delete:
+      operationId: releaseXStoreHeldSale
+      tags: [xstore]
+      summary: Remove a held cart from the current tenant
+      parameters:
+        - name: heldSaleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Held cart removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /xstore/returns:
+    post:
+      operationId: createXStoreReturn
+      tags: [xstore]
+      summary: Return items from an original invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReturnInput"
+      responses:
+        "201":
+          description: Recorded return
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Requested return exceeds the remaining quantity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /xstore/exchanges:
+    post:
+      operationId: createXStoreExchange
+      tags: [xstore]
+      summary: Process a return and replacement sale as one exchange
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExchangeInput"
+      responses:
+        "201":
+          description: Completed exchange
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Insufficient stock or return quantity is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /xstore/audit-logs:
+    get:
+      operationId: listXStoreAuditLogs
+      tags: [xstore]
+      summary: List sensitive platform support actions
+      responses:
+        "200":
+          description: Audit log
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 components:
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Unauthorized:
+      description: Sign-in required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Forbidden:
+      description: Insufficient role
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +590,395 @@ components:
           type: string
       required:
         - status
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    SessionUser:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        email: { type: string }
+        role:
+          type: string
+          enum: [platform_admin, tenant_admin, cashier, warehouse_manager, accountant]
+        tenantId: { type: ["string", "null"] }
+        tenantName: { type: ["string", "null"] }
+      required: [id, name, email, role, tenantId, tenantName]
+    DashboardSummary:
+      type: object
+      properties:
+        totalTenants: { type: integer }
+        activeTenants: { type: integer }
+        suspendedTenants: { type: integer }
+        todaySales: { type: integer }
+        todayRevenue: { type: number }
+        inventoryValue: { type: number }
+        lowStockCount: { type: integer }
+        subscriptionRevenue: { type: number }
+        activeSubscriptions: { type: integer }
+        expiringSubscriptions: { type: integer }
+        latestTenants:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tenant"
+        latestSales:
+          type: array
+          items:
+            $ref: "#/components/schemas/Sale"
+        latestAuditLogs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+      required:
+        - totalTenants
+        - activeTenants
+        - suspendedTenants
+        - todaySales
+        - todayRevenue
+        - inventoryValue
+        - lowStockCount
+        - subscriptionRevenue
+        - activeSubscriptions
+        - expiringSubscriptions
+        - latestTenants
+        - latestSales
+        - latestAuditLogs
+    Tenant:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        ownerName: { type: string }
+        email: { type: string }
+        businessType: { type: string }
+        status:
+          type: string
+          enum: [active, trial, suspended]
+        plan:
+          type: string
+          enum: [monthly, half_yearly, annual, lifetime]
+        subscriptionEndsAt: { type: ["string", "null"], format: date }
+        branchCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+      required:
+        - id
+        - name
+        - ownerName
+        - email
+        - businessType
+        - status
+        - plan
+        - subscriptionEndsAt
+        - branchCount
+        - createdAt
+    TenantInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        ownerName: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        businessType: { type: string, minLength: 1 }
+        plan:
+          type: string
+          enum: [monthly, half_yearly, annual, lifetime]
+        subscriptionEndsAt: { type: ["string", "null"], format: date }
+      required: [name, ownerName, email, businessType, plan]
+    TenantUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [active, trial, suspended]
+        plan:
+          type: string
+          enum: [monthly, half_yearly, annual, lifetime]
+        subscriptionEndsAt: { type: ["string", "null"], format: date }
+    TeamMember:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: string }
+        role:
+          type: string
+          enum: [tenant_admin, cashier, warehouse_manager, accountant]
+        status:
+          type: string
+          enum: [active, invited]
+        createdAt: { type: string, format: date-time }
+      required: [id, email, name, role, status, createdAt]
+    TeamMemberInput:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        name: { type: string, minLength: 1 }
+        role:
+          type: string
+          enum: [cashier, warehouse_manager, accountant]
+      required: [email, name, role]
+    SubscriptionPayment:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        tenantName: { type: string }
+        amount: { type: number }
+        plan:
+          type: string
+          enum: [monthly, half_yearly, annual, lifetime]
+        paymentMethod:
+          type: string
+          enum: [cash, card, transfer]
+        createdAt: { type: string, format: date-time }
+      required: [id, tenantId, tenantName, amount, plan, paymentMethod, createdAt]
+    SubscriptionPaymentInput:
+      type: object
+      properties:
+        tenantId: { type: string }
+        amount: { type: number, minimum: 0 }
+        plan:
+          type: string
+          enum: [monthly, half_yearly, annual, lifetime]
+        paymentMethod:
+          type: string
+          enum: [cash, card, transfer]
+      required: [tenantId, amount, plan, paymentMethod]
+    Product:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        name: { type: string }
+        sku: { type: string }
+        barcode: { type: ["string", "null"] }
+        category: { type: string }
+        price: { type: number }
+        costPrice: { type: ["number", "null"] }
+        quantity: { type: integer }
+        color: { type: ["string", "null"] }
+        size: { type: ["string", "null"] }
+        partNumber: { type: ["string", "null"] }
+        expiresAt: { type: ["string", "null"], format: date }
+      required:
+        - id
+        - tenantId
+        - name
+        - sku
+        - barcode
+        - category
+        - price
+        - costPrice
+        - quantity
+        - color
+        - size
+        - partNumber
+        - expiresAt
+    ProductInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        sku: { type: string, minLength: 1 }
+        barcode: { type: ["string", "null"] }
+        category: { type: string, minLength: 1 }
+        price: { type: number, minimum: 0 }
+        costPrice: { type: number, minimum: 0 }
+        quantity: { type: integer, minimum: 0 }
+        color: { type: ["string", "null"] }
+        size: { type: ["string", "null"] }
+        partNumber: { type: ["string", "null"] }
+        expiresAt: { type: ["string", "null"], format: date }
+      required: [name, sku, category, quantity]
+    ProductUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        sku: { type: string, minLength: 1 }
+        barcode: { type: ["string", "null"] }
+        category: { type: string, minLength: 1 }
+        price: { type: number, minimum: 0 }
+        costPrice: { type: number, minimum: 0 }
+        quantity: { type: integer, minimum: 0 }
+        color: { type: ["string", "null"] }
+        size: { type: ["string", "null"] }
+        partNumber: { type: ["string", "null"] }
+        expiresAt: { type: ["string", "null"], format: date }
+    SaleLineInput:
+      type: object
+      properties:
+        productId: { type: string }
+        quantity: { type: integer, minimum: 1 }
+      required: [productId, quantity]
+    SaleInput:
+      type: object
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SaleLineInput"
+        discountAmount: { type: number, minimum: 0 }
+        vatRate: { type: number, minimum: 0, maximum: 1 }
+        paymentMethod:
+          type: string
+          enum: [cash, card, wallet]
+        amountReceived: { type: number, minimum: 0 }
+      required: [items, discountAmount, vatRate, paymentMethod, amountReceived]
+    Sale:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        invoiceNo: { type: string }
+        itemCount: { type: integer }
+        subtotal: { type: number }
+        discountAmount: { type: number }
+        taxAmount: { type: number }
+        total: { type: number }
+        grossProfit: { type: ["number", "null"] }
+        paymentMethod:
+          type: string
+          enum: [cash, card, wallet]
+        amountReceived: { type: number }
+        changeAmount: { type: number }
+        status: { type: string, enum: [completed, partially_returned, returned] }
+        createdAt: { type: string, format: date-time }
+      required:
+        - id
+        - tenantId
+        - invoiceNo
+        - itemCount
+        - subtotal
+        - discountAmount
+        - taxAmount
+        - total
+        - grossProfit
+        - paymentMethod
+        - amountReceived
+        - changeAmount
+        - status
+        - createdAt
+    ProfitLossReport:
+      type: object
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        salesCount: { type: integer }
+        netSales: { type: number }
+        returnAmount: { type: number }
+        costOfGoodsSold: { type: number }
+        grossProfit: { type: number }
+      required: [from, to, salesCount, netSales, returnAmount, costOfGoodsSold, grossProfit]
+    HoldSaleInput:
+      type: object
+      properties:
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SaleLineInput"
+        customerName: { type: ["string", "null"] }
+      required: [items]
+    HeldSale:
+      type: object
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        reference: { type: string }
+        customerName: { type: ["string", "null"] }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SaleLineInput"
+        itemCount: { type: integer }
+        estimatedTotal: { type: number }
+        createdAt: { type: string, format: date-time }
+      required:
+        - id
+        - tenantId
+        - reference
+        - customerName
+        - items
+        - itemCount
+        - estimatedTotal
+        - createdAt
+    ReturnInput:
+      type: object
+      properties:
+        invoiceNo: { type: string, minLength: 1 }
+        productId: { type: string }
+        quantity: { type: integer, minimum: 1 }
+        reason: { type: string, minLength: 1 }
+      required: [invoiceNo, productId, quantity, reason]
+    ReturnResult:
+      type: object
+      properties:
+        id: { type: string }
+        invoiceNo: { type: string }
+        productId: { type: string }
+        quantity: { type: integer }
+        refundAmount: { type: number }
+        createdAt: { type: string, format: date-time }
+      required: [id, invoiceNo, productId, quantity, refundAmount, createdAt]
+    ExchangeInput:
+      type: object
+      properties:
+        invoiceNo: { type: string, minLength: 1 }
+        returnItems:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SaleLineInput"
+        replacementItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/SaleLineInput"
+        discountAmount: { type: number, minimum: 0 }
+        vatRate: { type: number, minimum: 0, maximum: 1 }
+        paymentMethod:
+          type: string
+          enum: [cash, card, wallet]
+        amountReceived: { type: number, minimum: 0 }
+      required: [invoiceNo, returnItems, replacementItems, discountAmount, vatRate, paymentMethod, amountReceived]
+    ExchangeResult:
+      type: object
+      properties:
+        originalInvoiceNo: { type: string }
+        exchangeInvoiceNo: { type: string }
+        refundAmount: { type: number }
+        replacementTotal: { type: number }
+        balanceDue: { type: number }
+        changeAmount: { type: number }
+        createdAt: { type: string, format: date-time }
+      required:
+        - originalInvoiceNo
+        - exchangeInvoiceNo
+        - refundAmount
+        - replacementTotal
+        - balanceDue
+        - changeAmount
+        - createdAt
+    AuditLog:
+      type: object
+      properties:
+        id: { type: string }
+        actorName: { type: string }
+        action: { type: string }
+        tenantName: { type: ["string", "null"] }
+        entityType: { type: string }
+        entityId: { type: ["string", "null"] }
+        details: { type: string }
+        createdAt: { type: string, format: date-time }
+      required:
+        - id
+        - actorName
+        - action
+        - tenantName
+        - entityType
+        - entityId
+        - details
+        - createdAt
 
