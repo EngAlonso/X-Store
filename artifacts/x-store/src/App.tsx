@@ -36,7 +36,7 @@ function stripBase(path: string) { return basePath && path.startsWith(basePath) 
 const appearance = {
   theme: shadcn,
   cssLayerName: 'clerk',
-  options: { logoPlacement: 'inside' as const, logoLinkUrl: basePath || '/', logoImageUrl: `${window.location.origin}${basePath}/logo.svg` },
+  options: { logoPlacement: 'inside' as const, logoLinkUrl: basePath || '/', logoImageUrl: `${window.location.origin}${basePath}/x-store-mark.png` },
   variables: {
     colorPrimary: '#0B4619', colorForeground: '#212529', colorMutedForeground: '#6C757D',
     colorDanger: '#DC3545', colorBackground: '#FFFFFF', colorInput: '#FFFFFF',
