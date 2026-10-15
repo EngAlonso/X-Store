@@ -184,9 +184,7 @@ function apiErrorMessage(error:unknown,fallback:string):string {
   return fallback;
 }
 function HomeRedirect() {
-  const status=useGetXStoreAuthStatus();
   const session=useGetXStoreSession();
-  if(status.data?.bootstrapRequired)return <Redirect to="/sign-in"/>;
   if(session.data)return <Redirect to="/dashboard"/>;
   return <Home/>;
 }
