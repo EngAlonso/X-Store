@@ -13,5 +13,6 @@ export interface ProfitLossReport {
   netSales: number;
   returnAmount: number;
   costOfGoodsSold: number;
+  taxCollected: number;
   grossProfit: number;
 }

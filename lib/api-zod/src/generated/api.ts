@@ -398,9 +398,13 @@ export const ListXStoreSalesResponse = zod.array(ListXStoreSalesResponseItem)
 /**
  * @summary Get role-scoped gross profit and loss totals
  */
+export const getXStoreProfitLossReportQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getXStoreProfitLossReportQueryToRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
 export const GetXStoreProfitLossReportQueryParams = zod.object({
-  "from": zod.date().optional(),
-  "to": zod.date().optional(),
+  "from": zod.coerce.string().regex(getXStoreProfitLossReportQueryFromRegExp).optional(),
+  "to": zod.coerce.string().regex(getXStoreProfitLossReportQueryToRegExp).optional(),
   "tenantId": zod.coerce.string().optional()
 })
 
@@ -411,6 +415,7 @@ export const GetXStoreProfitLossReportResponse = zod.object({
   "netSales": zod.number(),
   "returnAmount": zod.number(),
   "costOfGoodsSold": zod.number(),
+  "taxCollected": zod.number(),
   "grossProfit": zod.number()
 })
 

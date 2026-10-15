@@ -126,12 +126,24 @@ export async function requireXStoreUser(
 
     if (user.tenantId && user.role !== "platform_admin") {
       const [tenant] = await db
-        .select({ status: xstoreTenants.status })
+        .select({
+          status: xstoreTenants.status,
+          plan: xstoreTenants.plan,
+          subscriptionEndsAt: xstoreTenants.subscriptionEndsAt,
+        })
         .from(xstoreTenants)
         .where(eq(xstoreTenants.id, user.tenantId))
         .limit(1);
-      if (!tenant || tenant.status === "suspended") {
-        res.status(403).json({ error: "This store account is suspended." });
+      const today = new Date().toISOString().slice(0, 10);
+      const expired =
+        tenant?.plan !== "lifetime" &&
+        tenant?.subscriptionEndsAt !== null &&
+        tenant?.subscriptionEndsAt !== undefined &&
+        tenant.subscriptionEndsAt < today;
+      if (!tenant || tenant.status === "suspended" || expired) {
+        res
+          .status(403)
+          .json({ error: "This store account is suspended or its subscription has expired." });
         return;
       }
     }

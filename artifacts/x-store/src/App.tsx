@@ -11,7 +11,7 @@ import {
   useAddXStoreTeamMember, useCreateXStoreExchange, useCreateXStoreProduct, useCreateXStoreReturn,
   useCreateXStoreSubscriptionPayment, useCreateXStoreTenant, useGetXStoreDashboard, useGetXStoreSession, useHoldXStoreSale,
   useListXStoreAuditLogs, useListXStoreHeldSales, useListXStoreProducts, useListXStoreSales,
-  useListXStoreSubscriptionPayments, useListXStoreTeam, useListXStoreTenants, useReleaseXStoreHeldSale, useUpdateXStoreProduct,
+  useGetXStoreProfitLossReport, useListXStoreSubscriptionPayments, useListXStoreTeam, useListXStoreTenants, useReleaseXStoreHeldSale, useUpdateXStoreProduct,
   useUpdateXStoreTenant, useCheckoutXStoreSale,
 } from '@workspace/api-client-react';
 import type { Product, Tenant, Sale } from '@workspace/api-client-react';
@@ -70,6 +70,7 @@ const nav = [
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
   { href: '/pos', label: 'نقطة البيع', icon: ShoppingCart, roles: ['tenant_admin', 'cashier'] },
   { href: '/inventory', label: 'المخزون', icon: Package, roles: ['tenant_admin', 'warehouse_manager'] },
+  { href: '/reports', label: 'التقارير المالية', icon: Activity, roles: ['platform_admin', 'tenant_admin', 'accountant'] },
   { href: '/sales', label: 'المبيعات', icon: ReceiptText, roles: ['tenant_admin', 'cashier', 'accountant'] },
   { href: '/audit-log', label: 'سجل التدقيق', icon: ScrollText, roles: ['tenant_admin', 'platform_admin'] },
 ];
@@ -114,14 +115,14 @@ function AppShell({ children }: { children: ReactNode }) {
 }
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
-  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['tenant_admin','platform_admin']};
+  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['tenant_admin','platform_admin']};
   if(session.data&&allowed[location]&&!allowed[location].includes(session.data.role))return <Redirect to="/dashboard"/>;
   return <><Show when="signed-in"><AppShell><Switch>
     <Route path="/dashboard" component={DashboardPage}/><Route path="/tenants" component={TenantsPage}/>
     <Route path="/subscriptions" component={SubscriptionsPage}/>
     <Route path="/team" component={TeamPage}/>
     <Route path="/pos" component={PosPage}/><Route path="/inventory" component={InventoryPage}/>
-    <Route path="/sales" component={SalesPage}/><Route path="/audit-log" component={AuditPage}/>
+    <Route path="/reports" component={ReportsPage}/><Route path="/sales" component={SalesPage}/><Route path="/audit-log" component={AuditPage}/>
     <Route component={NotFound}/>
   </Switch></AppShell></Show><Show when="signed-out"><Redirect to="/"/></Show></>;
 }
@@ -189,13 +190,134 @@ function SubscriptionsPage() {
 function Field({label,name,type='text',required=false,placeholder='',defaultValue=''}:{label:string;name:string;type?:string;required?:boolean;placeholder?:string;defaultValue?:string}) {return <label className="field"><span>{label}</span><input name={name} type={type} required={required} placeholder={placeholder} defaultValue={defaultValue}/></label>}
 function Modal({title,close,children}:{title:string;close:()=>void;children:ReactNode}) {return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)close()}}><section className="modal" role="dialog" aria-modal="true"><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={close} aria-label="إغلاق"><X size={18}/></button></div>{children}</section></div>}
 function InventoryPage() {
-  const qc=useQueryClient(), q=useListXStoreProducts(), create=useCreateXStoreProduct(), update=useUpdateXStoreProduct(), session=useGetXStoreSession();
-  const [search,setSearch]=useState(''),[dialog,setDialog]=useState(false),[edit,setEdit]=useState<Product|null>(null),[notice,setNotice]=useState('');
-  const canManage=session.data?.role==='tenant_admin'||session.data?.role==='warehouse_manager';
-  const rows=(q.data||[]).filter(p=>`${p.name} ${p.sku} ${p.category} ${p.barcode||''}`.toLowerCase().includes(search.toLowerCase()));
-  function submit(e:FormEvent<HTMLFormElement>) {e.preventDefault();const f=new FormData(e.currentTarget);const data={name:String(f.get('name')),sku:String(f.get('sku')),barcode:String(f.get('barcode')||'')||null,category:String(f.get('category')),price:Number(f.get('price')),quantity:Number(f.get('quantity')),color:String(f.get('color')||'')||null,size:String(f.get('size')||'')||null,partNumber:String(f.get('partNumber')||'')||null,expiresAt:String(f.get('expiresAt')||'')||null};const done=()=>{qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setDialog(false);setEdit(null);setNotice('تم حفظ بيانات المنتج')};if(edit)update.mutate({productId:edit.id,data},{onSuccess:done});else create.mutate({data},{onSuccess:done});}
-  const changeQuantity=(p:Product,delta:number)=>update.mutate({productId:p.id,data:{quantity:Math.max(0,p.quantity+delta)}},{onSuccess:()=>qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()})});
-  return <><PageTitle eyebrow="كتالوج المتجر" title="المخزون" desc="إدارة المنتجات والخيارات والكميات — سجّل تعديلات المخزون بوضوح." action={canManage?<button className="button button-primary" onClick={()=>{setEdit(null);setDialog(true)}} data-testid="button-add-product"><Plus size={17}/> إضافة منتج</button>:null}/><div className="stat-grid inventory-stats"><StatCard label="إجمالي المنتجات" value={fmt(q.data?.length||0)} detail="منتجات مسجلة" icon={Package}/><StatCard label="مخزون منخفض" value={fmt((q.data||[]).filter(p=>p.quantity<=5).length)} detail="خمسة أو أقل" icon={AlertTriangle} tint="gold"/><StatCard label="قيمة المخزون" value={money((q.data||[]).reduce((a,p)=>a+p.price*p.quantity,0))} detail="حسب سعر البيع" icon={Banknote}/><StatCard label="التصنيفات" value={fmt(new Set((q.data||[]).map(p=>p.category)).size)} detail="فئات المنتجات" icon={Boxes} tint="sage"/></div><Card><SectionHead title="قائمة المنتجات" detail={`${fmt(rows.length)} منتج`}/><div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث بالاسم أو SKU أو الباركود" data-testid="input-search-products"/></label><button className="button button-quiet" onClick={()=>q.refetch()}><RefreshCw size={15}/> تحديث</button></div>{q.isLoading?<StateBlock loading error={false} onRetry={()=>q.refetch()} empty={false}/>:q.isError?<StateBlock loading={false} error onRetry={()=>q.refetch()} empty={false}/>:rows.length?<div className="table-wrap"><table><thead><tr><th>المنتج</th><th>SKU</th><th>التصنيف</th><th>الخيارات</th><th>السعر</th><th>الكمية</th><th>انتهاء الصلاحية</th>{canManage&&<th>إجراء</th>}</tr></thead><tbody>{rows.map(p=><tr key={p.id}><td><b>{p.name}</b><small>{p.partNumber||p.barcode||'—'}</small></td><td className="ltr-id">{p.sku}</td><td>{p.category}</td><td>{[p.color,p.size].filter(Boolean).join(' · ')||'—'}</td><td>{money(p.price)}</td><td><span className={`quantity ${p.quantity<=5?'quantity-low':''}`}>{fmt(p.quantity)}</span></td><td>{dateLabel(p.expiresAt)}</td>{canManage&&<td><div className="row-actions"><button className="qty-control" aria-label="تقليل الكمية" onClick={()=>changeQuantity(p,-1)}><Minus size={13}/></button><button className="qty-control" aria-label="زيادة الكمية" onClick={()=>changeQuantity(p,1)}><Plus size={13}/></button><button className="table-action" onClick={()=>{setEdit(p);setDialog(true)}} data-testid={`button-edit-product-${p.id}`}>تعديل</button></div></td>}</tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد منتجات تطابق البحث.</div>}</Card>{dialog&&<Modal title={edit?'تعديل المنتج':'إضافة منتج'} close={()=>{setDialog(false);setEdit(null)}}><form className="form-grid" onSubmit={submit}><Field label="اسم المنتج" name="name" required defaultValue={edit?.name}/><Field label="رمز SKU" name="sku" required defaultValue={edit?.sku}/><Field label="الباركود" name="barcode" defaultValue={edit?.barcode||''}/><Field label="التصنيف" name="category" required defaultValue={edit?.category}/><Field label="السعر" name="price" type="number" required defaultValue={edit?String(edit.price):''}/><Field label="الكمية" name="quantity" type="number" required defaultValue={edit?String(edit.quantity):'0'}/><Field label="اللون" name="color" defaultValue={edit?.color||''}/><Field label="المقاس" name="size" defaultValue={edit?.size||''}/><Field label="رقم القطعة" name="partNumber" defaultValue={edit?.partNumber||''}/><Field label="تاريخ الصلاحية" name="expiresAt" type="date" defaultValue={edit?.expiresAt?.slice(0,10)||''}/>{(create.isError||update.isError)&&<div className="form-error">تعذر حفظ المنتج. يرجى مراجعة البيانات.</div>}<div className="modal-actions"><button type="button" className="button button-quiet" onClick={()=>{setDialog(false);setEdit(null)}}>إلغاء</button><button className="button button-primary" disabled={create.isPending||update.isPending}>{create.isPending||update.isPending?'جارٍ الحفظ…':'حفظ المنتج'}</button></div></form></Modal>}{notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}</>;
+  const qc = useQueryClient();
+  const q = useListXStoreProducts();
+  const create = useCreateXStoreProduct();
+  const update = useUpdateXStoreProduct();
+  const session = useGetXStoreSession();
+  const [search, setSearch] = useState('');
+  const [dialog, setDialog] = useState(false);
+  const [edit, setEdit] = useState<Product | null>(null);
+  const [notice, setNotice] = useState('');
+  const isWarehouseManager = session.data?.role === 'warehouse_manager';
+  const canManage = session.data?.role === 'tenant_admin' || isWarehouseManager;
+  const rows = (q.data || []).filter(p =>
+    `${p.name} ${p.sku} ${p.category} ${p.barcode || ''}`
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
+
+  function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    const data = {
+      name: String(f.get('name')),
+      sku: String(f.get('sku')),
+      barcode: String(f.get('barcode') || '') || null,
+      category: String(f.get('category')),
+      price: isWarehouseManager ? 0 : Number(f.get('price')),
+      costPrice: isWarehouseManager ? 0 : Number(f.get('costPrice')),
+      quantity: Number(f.get('quantity')),
+      color: String(f.get('color') || '') || null,
+      size: String(f.get('size') || '') || null,
+      partNumber: String(f.get('partNumber') || '') || null,
+      expiresAt: String(f.get('expiresAt') || '') || null,
+    };
+    const done = () => {
+      qc.invalidateQueries({ queryKey: getListXStoreProductsQueryKey() });
+      qc.invalidateQueries({ queryKey: getGetXStoreDashboardQueryKey() });
+      setDialog(false);
+      setEdit(null);
+      setNotice('تم حفظ بيانات المنتج');
+    };
+    if (edit) update.mutate({ productId: edit.id, data }, { onSuccess: done });
+    else create.mutate({ data }, { onSuccess: done });
+  }
+
+  const changeQuantity = (p: Product, delta: number) =>
+    update.mutate(
+      { productId: p.id, data: { quantity: Math.max(0, p.quantity + delta) } },
+      {
+        onSuccess: () =>
+          qc.invalidateQueries({ queryKey: getListXStoreProductsQueryKey() }),
+      },
+    );
+  const inventoryValue = (q.data || []).reduce(
+    (total, product) => total + product.price * product.quantity,
+    0,
+  );
+
+  return <>
+    <PageTitle
+      eyebrow="كتالوج المتجر"
+      title="المخزون"
+      desc="إدارة المنتجات والخيارات والكميات — سجّل تعديلات المخزون بوضوح."
+      action={canManage
+        ? <button className="button button-primary" onClick={() => { setEdit(null); setDialog(true); }} data-testid="button-add-product"><Plus size={17}/> إضافة منتج</button>
+        : null}
+    />
+    <div className="stat-grid inventory-stats">
+      <StatCard label="إجمالي المنتجات" value={fmt(q.data?.length || 0)} detail="منتجات مسجلة" icon={Package}/>
+      <StatCard label="مخزون منخفض" value={fmt((q.data || []).filter(p => p.quantity <= 5).length)} detail="خمسة أو أقل" icon={AlertTriangle} tint="gold"/>
+      <StatCard label="قيمة المخزون" value={isWarehouseManager ? '—' : money(inventoryValue)} detail={isWarehouseManager ? 'متاح لمالك المتجر فقط' : 'حسب سعر البيع'} icon={Banknote}/>
+      <StatCard label="التصنيفات" value={fmt(new Set((q.data || []).map(p => p.category)).size)} detail="فئات المنتجات" icon={Boxes} tint="sage"/>
+    </div>
+    <Card>
+      <SectionHead title="قائمة المنتجات" detail={`${fmt(rows.length)} منتج`}/>
+      <div className="table-toolbar">
+        <label className="search-box"><Search size={17}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث بالاسم أو SKU أو الباركود" data-testid="input-search-products"/></label>
+        <button className="button button-quiet" onClick={() => q.refetch()}><RefreshCw size={15}/> تحديث</button>
+      </div>
+      {q.isLoading
+        ? <StateBlock loading error={false} onRetry={() => q.refetch()} empty={false}/>
+        : q.isError
+          ? <StateBlock loading={false} error onRetry={() => q.refetch()} empty={false}/>
+          : rows.length
+            ? <div className="table-wrap"><table>
+              <thead><tr><th>المنتج</th><th>SKU</th><th>التصنيف</th><th>الخيارات</th>{!isWarehouseManager && <th>السعر</th>}<th>الكمية</th><th>انتهاء الصلاحية</th>{canManage && <th>إجراء</th>}</tr></thead>
+              <tbody>{rows.map(p => <tr key={p.id}>
+                <td><b>{p.name}</b><small>{p.partNumber || p.barcode || '—'}</small></td>
+                <td className="ltr-id">{p.sku}</td>
+                <td>{p.category}</td>
+                <td>{[p.color, p.size].filter(Boolean).join(' · ') || '—'}</td>
+                {!isWarehouseManager && <td>{money(p.price)}</td>}
+                <td><span className={`quantity ${p.quantity <= 5 ? 'quantity-low' : ''}`}>{fmt(p.quantity)}</span></td>
+                <td>{dateLabel(p.expiresAt)}</td>
+                {canManage && <td><div className="row-actions">
+                  <button className="qty-control" aria-label="تقليل الكمية" onClick={() => changeQuantity(p, -1)}><Minus size={13}/></button>
+                  <button className="qty-control" aria-label="زيادة الكمية" onClick={() => changeQuantity(p, 1)}><Plus size={13}/></button>
+                  {!isWarehouseManager && <button className="table-action" onClick={() => { setEdit(p); setDialog(true); }} data-testid={`button-edit-product-${p.id}`}>تعديل</button>}
+                </div></td>}
+              </tr>)}</tbody>
+            </table></div>
+            : <div className="empty-inline">لا توجد منتجات تطابق البحث.</div>
+      }
+    </Card>
+    {dialog && <Modal title={edit ? 'تعديل المنتج' : 'إضافة منتج'} close={() => { setDialog(false); setEdit(null); }}>
+      <form className="form-grid" onSubmit={submit}>
+        <Field label="اسم المنتج" name="name" required defaultValue={edit?.name}/>
+        <Field label="رمز SKU" name="sku" required defaultValue={edit?.sku}/>
+        <Field label="الباركود" name="barcode" defaultValue={edit?.barcode || ''}/>
+        <Field label="التصنيف" name="category" required defaultValue={edit?.category}/>
+        {!isWarehouseManager && <>
+          <Field label="سعر البيع" name="price" type="number" required defaultValue={edit ? String(edit.price) : ''}/>
+          <Field label="سعر التكلفة" name="costPrice" type="number" required defaultValue={edit ? String(edit.costPrice ?? 0) : ''}/>
+        </>}
+        <Field label="الكمية" name="quantity" type="number" required defaultValue={edit ? String(edit.quantity) : '0'}/>
+        <Field label="اللون" name="color" defaultValue={edit?.color || ''}/>
+        <Field label="المقاس" name="size" defaultValue={edit?.size || ''}/>
+        <Field label="رقم القطعة" name="partNumber" defaultValue={edit?.partNumber || ''}/>
+        <Field label="تاريخ الصلاحية" name="expiresAt" type="date" defaultValue={edit?.expiresAt?.slice(0, 10) || ''}/>
+        {isWarehouseManager && <div className="role-hint field-wide"><ShieldCheck size={16}/><span>يمكنك إضافة بيانات المنتج وتحديث الكمية؛ يحدد مالك المتجر الأسعار.</span></div>}
+        {(create.isError || update.isError) && <div className="form-error">تعذر حفظ المنتج. يرجى مراجعة البيانات.</div>}
+        <div className="modal-actions">
+          <button type="button" className="button button-quiet" onClick={() => { setDialog(false); setEdit(null); }}>إلغاء</button>
+          <button className="button button-primary" disabled={create.isPending || update.isPending}>{create.isPending || update.isPending ? 'جارٍ الحفظ…' : 'حفظ المنتج'}</button>
+        </div>
+      </form>
+    </Modal>}
+    {notice && <div className="toast-note" role="status">{notice}<button onClick={() => setNotice('')}><X size={14}/></button></div>}
+  </>;
 }
 function PosPage() {
   const qc=useQueryClient(), products=useListXStoreProducts(), held=useListXStoreHeldSales(), checkout=useCheckoutXStoreSale(), hold=useHoldXStoreSale(), release=useReleaseXStoreHeldSale(), exchange=useCreateXStoreExchange();
@@ -211,6 +333,46 @@ function PosPage() {
   return <div className="pos-page"><PageTitle eyebrow="نقطة البيع" title="صندوق البيع" desc="أضف المنتجات وأكمل الدفع بخطوات قليلة." action={<div className="pos-head-actions"><button className="button button-quiet" onClick={()=>setExchangeOpen(true)}><ArrowLeftRight size={16}/> استبدال</button><button className="button button-quiet held-toggle" onClick={()=>setHeldOpen(!heldOpen)}><Pause size={16}/> فواتير معلقة <span className="count-bubble">{held.data?.length||0}</span></button></div>}/><div className="pos-layout"><section className="pos-products"><label className="search-box pos-search"><Search size={18}/><input autoFocus value={term} onChange={e=>setTerm(e.target.value)} placeholder="ابحث عن منتج أو امسح الباركود..." data-testid="input-pos-search"/><kbd>⌘ K</kbd></label>{products.isLoading?<div className="product-grid">{[1,2,3,4].map(i=><div className="product-skeleton" key={i}/>)}</div>:products.isError?<StateBlock loading={false} error onRetry={()=>products.refetch()} empty={false}/>:visible.length?<div className="product-grid">{visible.map((p,i)=><button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}><span className={`product-art art-${i%5}`}><Package size={25}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span><span className="tile-category">{p.category}</span><b>{p.name}</b><small className="ltr-id">{p.sku}</small><span className="tile-bottom"><strong>{money(p.price)}</strong><span>متاح {fmt(p.quantity)}</span></span></button>)}</div>:<div className="state-box"><div className="empty-symbol"><Package/></div><b>{term?'لا توجد نتائج':'لا توجد منتجات'}</b><span>{term?'جرّب البحث بكلمة مختلفة.':'أضف المنتجات إلى المخزون لتبدأ البيع.'}</span></div>}</section>
       <aside className="cart-panel"><div className="cart-head"><div><h2>الطلب الحالي</h2><span>{fmt(cartLines.reduce((a,p)=>a+p.count,0))} أصناف</span></div><button className="table-action" onClick={()=>setCart({})} disabled={!cartLines.length}><Trash2 size={14}/> تفريغ</button></div><div className="cart-lines">{cartLines.map(p=><div className="cart-line" key={p.id}><span className="cart-line-art"><Package size={17}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div><div className="stepper"><button onClick={()=>mutateCart(p.id,-1)} aria-label="إنقاص"><Minus size={13}/></button><b>{p.count}</b><button onClick={()=>mutateCart(p.id,1)} aria-label="زيادة" disabled={p.count>=p.quantity}><Plus size={13}/></button></div><strong>{money(p.price*p.count)}</strong></div>)}{!cartLines.length&&<div className="cart-empty"><div className="cart-empty-icon"><ShoppingCart size={20}/></div><b>السلة فارغة</b><span>اختر منتجاً لإضافته إلى الفاتورة.</span></div>}</div><div className="cart-calculation"><div><span>المجموع الفرعي</span><b>{money(subtotal)}</b></div><label><span>الخصم</span><div className="discount-input"><input aria-label="قيمة الخصم" type="number" min="0" value={discount} onChange={e=>setDiscount(e.target.value)} disabled={!cartLines.length}/><span>ر.س</span></div></label><div><span>ضريبة القيمة المضافة · ١٥٪</span><b>{money(tax)}</b></div><div className="cart-total"><span>الإجمالي</span><b>{money(total)}</b></div></div><div className="payment-tabs">{(['cash','card','wallet'] as const).map((m,i)=>{const I=[Banknote,CreditCard,Wallet][i];return <button key={m} onClick={()=>setPayment(m)} className={payment===m?'payment-active':''}><I size={16}/>{paymentName(m)}</button>})}</div>{payment==='cash'&&<label className="received-field"><span>المبلغ المستلم</span><div><input type="number" min={total} value={received} onChange={e=>setReceived(e.target.value)} placeholder={fmt(total)} /><small>الباقي {money(Math.max(0,(Number(received)||total)-total))}</small></div></label>}<div className="cart-actions"><button className="button button-quiet" onClick={park} disabled={!cartLines.length||hold.isPending}><Pause size={15}/>{hold.isPending?'جارٍ الحفظ':'تعليق'}</button><button className="button button-confirm" onClick={finish} disabled={!cartLines.length||checkout.isPending|| (payment==='cash'&&Number(received)>0&&Number(received)<total)}>{checkout.isPending?'جارٍ إتمام البيع':<><CircleCheck size={17}/> إتمام البيع</>}</button></div>{(checkout.isError||hold.isError)&&<div className="form-error">تعذر تنفيذ العملية. أعد المحاولة.</div>}</aside></div>{notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}{heldOpen&&<Modal title="الفواتير المعلقة" close={()=>setHeldOpen(false)}><div className="held-list">{held.isLoading?<div className="skeleton-table"><span/><span/></div>:held.isError?<StateBlock loading={false} error onRetry={()=>held.refetch()} empty={false}/>:held.data?.length?held.data.map(h=><div className="held-item" key={h.id}><div><b className="ltr-id">{h.reference}</b><small>{h.customerName||'عميل نقدي'} · {fmt(h.itemCount)} أصناف</small></div><strong>{money(h.estimatedTotal)}</strong><button className="button button-primary button-small" onClick={()=>release.mutate({heldSaleId:h.id},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setHeldOpen(false);setNotice('تم استعادة الفاتورة')}})}><Play size={14}/> استعادة</button></div>):<div className="empty-inline">لا توجد فواتير معلقة.</div>}</div></Modal>}{exchangeOpen&&<Modal title="استبدال منتج" close={()=>setExchangeOpen(false)}><form className="form-grid" onSubmit={submitExchange}><Field label="رقم الفاتورة الأصلية" name="invoiceNo" required placeholder="X-2048"/><label className="field"><span>المنتج المرتجع</span><select name="returnProduct" defaultValue="" required><option value="" disabled>اختر المنتج المرتجع</option>{products.data?.map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku}</option>)}</select></label><Field label="كمية المرتجع" name="returnQuantity" type="number" required defaultValue="1"/><label className="field"><span>المنتج البديل</span><select name="replacementProduct" defaultValue="" required><option value="" disabled>اختر المنتج البديل</option>{products.data?.filter(p=>p.quantity>0).map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku} · {money(p.price)}</option>)}</select></label><Field label="كمية المنتج البديل" name="replacementQuantity" type="number" required defaultValue="1"/><label className="field"><span>طريقة الدفع / التسوية</span><select name="paymentMethod"><option value="cash">نقداً</option><option value="card">بطاقة</option><option value="wallet">محفظة</option></select></label><Field label="المبلغ المستلم" name="amountReceived" type="number" defaultValue="0"/><div className="role-hint field-wide"><ArrowLeftRight size={17}/><span>يُسجل المرتجع والمنتج البديل كعملية واحدة ذرية؛ لا يتم حفظ نصف العملية.</span></div>{exchange.isError&&<div className="form-error">تعذر إتمام الاستبدال. تحقق من الفاتورة والكميات.</div>}<div className="modal-actions"><button type="button" className="button button-quiet" onClick={()=>setExchangeOpen(false)}>إلغاء</button><button className="button button-confirm" disabled={exchange.isPending}>{exchange.isPending?'جارٍ تنفيذ الاستبدال…':'تأكيد الاستبدال'}</button></div></form></Modal>}</div>;
 }
+function ReportsPage() {
+  const today = new Date().toISOString().slice(0, 10);
+  const [from, setFrom] = useState(`${today.slice(0, 7)}-01`);
+  const [to, setTo] = useState(today);
+  const report = useGetXStoreProfitLossReport({ from, to });
+  const data = report.data;
+
+  return <>
+    <PageTitle
+      eyebrow="الأداء المالي"
+      title="التقارير المالية"
+      desc="ملخص المبيعات والمرتجعات وتكلفة البضائع والربح الإجمالي للفترة المحددة."
+      action={<button className="button button-quiet" onClick={() => report.refetch()}><RefreshCw size={15}/> تحديث التقرير</button>}
+    />
+    <Card className="report-panel">
+      <div className="report-filters" dir="rtl">
+        <label className="field"><span>من تاريخ</span><input type="date" value={from} max={to} onChange={e => setFrom(e.target.value)}/></label>
+        <label className="field"><span>إلى تاريخ</span><input type="date" value={to} min={from} max={today} onChange={e => setTo(e.target.value)}/></label>
+        <span className="report-period">{data ? `${dateLabel(data.from)} — ${dateLabel(data.to)}` : 'اختر فترة التقرير'}</span>
+      </div>
+      {report.isLoading
+        ? <div className="stat-grid">{[1, 2, 3, 4].map(i => <div className="stat-card stat-skeleton" key={i}/>)}</div>
+        : report.isError
+          ? <StateBlock loading={false} error onRetry={() => report.refetch()} empty={false}/>
+          : data && <>
+            <div className="stat-grid report-stats">
+              <StatCard label="عدد الفواتير" value={fmt(data.salesCount)} detail="عمليات البيع في الفترة" icon={ReceiptText}/>
+              <StatCard label="صافي المبيعات" value={money(data.netSales)} detail="بعد الخصومات وقبل المرتجعات" icon={Banknote} tint="gold"/>
+              <StatCard label="قيمة المرتجعات" value={money(data.returnAmount)} detail="المبالغ المستردة" icon={RotateCcw} tint="red"/>
+              <StatCard label="تكلفة البضائع" value={money(data.costOfGoodsSold)} detail="تكلفة الأصناف غير المرتجعة" icon={Boxes} tint="sage"/>
+              <StatCard label="صافي الضريبة" value={money(data.taxCollected)} detail="بعد تسوية ضريبة المرتجعات" icon={ReceiptText} tint="gold"/>
+            </div>
+            <div className="report-profit"><span><Activity size={18}/> الربح الإجمالي</span><strong>{money(data.grossProfit)}</strong></div>
+            <p className="report-disclaimer">الربح الإجمالي لا يشمل المصاريف التشغيلية. قيمة الضريبة ملخص للمبالغ المسجلة على الفواتير والمرتجعات.</p>
+          </>
+      }
+    </Card>
+  </>;
+}
+
 function SalesPage() {
   const qc=useQueryClient(), sales=useListXStoreSales({limit:100}), products=useListXStoreProducts(), ret=useCreateXStoreReturn();
   const isCashier=useGetXStoreSession().data?.role==='cashier';

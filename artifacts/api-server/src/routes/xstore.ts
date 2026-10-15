@@ -6,6 +6,7 @@ import {
   eq,
   gte,
   ilike,
+  inArray,
   lte,
   lt,
   or,
@@ -28,6 +29,8 @@ import {
   CreateXStoreTenantBody,
   CreateXStoreTenantResponse,
   GetXStoreDashboardResponse,
+  GetXStoreProfitLossReportQueryParams,
+  GetXStoreProfitLossReportResponse,
   GetXStoreSessionResponse,
   HoldXStoreSaleBody,
   HoldXStoreSaleResponse,
@@ -73,6 +76,12 @@ const tenantManagers = ["tenant_admin"] as const;
 const inventoryEditors = ["platform_admin", "tenant_admin", "warehouse_manager"] as const;
 const cashierRoles = ["platform_admin", "tenant_admin", "cashier"] as const;
 const reportRoles = ["platform_admin", "tenant_admin", "accountant"] as const;
+const saleHistoryRoles = [
+  "platform_admin",
+  "tenant_admin",
+  "cashier",
+  "accountant",
+] as const;
 
 class DomainError extends Error {
   constructor(
@@ -102,23 +111,32 @@ function tenantDto(tenant: XStoreTenant) {
   };
 }
 
-function saleDto(sale: typeof xstoreSales.$inferSelect) {
+function saleDto(
+  sale: typeof xstoreSales.$inferSelect,
+  role: string,
+  grossProfit: number | null = null,
+) {
   return {
     ...sale,
     subtotal: toNumber(sale.subtotal),
     discountAmount: toNumber(sale.discountAmount),
     taxAmount: toNumber(sale.taxAmount),
     total: toNumber(sale.total),
+    grossProfit: role === "cashier" ? null : grossProfit,
     amountReceived: toNumber(sale.amountReceived),
     changeAmount: toNumber(sale.changeAmount),
     createdAt: iso(sale.createdAt),
   };
 }
 
-function productDto(product: XStoreProduct) {
+function productDto(product: XStoreProduct, role?: string) {
   return {
     ...product,
-    price: toNumber(product.price),
+    price: role === "warehouse_manager" ? 0 : toNumber(product.price),
+    costPrice:
+      role === "cashier" || role === "warehouse_manager"
+        ? null
+        : toNumber(product.costPrice),
     barcode: product.barcode ?? null,
     color: product.color ?? null,
     size: product.size ?? null,
@@ -340,7 +358,7 @@ router.get("/xstore/dashboard", async (req, res): Promise<void> => {
     activeSubscriptions: activeTenants,
     expiringSubscriptions: Number(expiringCount[0]?.total ?? 0),
     latestTenants: latestTenants.map(tenantDto),
-    latestSales: latestSales.map(saleDto),
+    latestSales: latestSales.map((sale) => saleDto(sale, user.role)),
     latestAuditLogs: latestLogs.map((log) => ({
       ...log,
       tenantName: log.tenantName ?? null,
@@ -707,7 +725,11 @@ router.get("/xstore/products", async (req, res): Promise<void> => {
     .where(filters.length ? and(...filters) : undefined)
     .orderBy(xstoreProducts.name)
     .limit(500);
-  res.json(ListXStoreProductsResponse.parse(rows.map(productDto)));
+  res.json(
+    ListXStoreProductsResponse.parse(
+      rows.map((product) => productDto(product, user.role)),
+    ),
+  );
 });
 
 router.post("/xstore/products", async (req, res): Promise<void> => {
@@ -723,7 +745,11 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  if (actor.role === "warehouse_manager" && parsed.data.price !== 0) {
+  if (
+    actor.role === "warehouse_manager" &&
+    ((parsed.data.price !== undefined && parsed.data.price !== 0) ||
+      (parsed.data.costPrice !== undefined && parsed.data.costPrice !== 0))
+  ) {
     res.status(403).json({
       error: "Warehouse managers can add stock but cannot set selling prices.",
     });
@@ -734,7 +760,10 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
     .values({
       ...parsed.data,
       tenantId,
-      price: String(parsed.data.price),
+      price: String(actor.role === "warehouse_manager" ? 0 : parsed.data.price),
+      costPrice: String(
+        actor.role === "warehouse_manager" ? 0 : (parsed.data.costPrice ?? 0),
+      ),
       barcode: parsed.data.barcode ?? null,
       color: parsed.data.color ?? null,
       size: parsed.data.size ?? null,
@@ -756,7 +785,9 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
   );
   res
     .status(201)
-    .json(CreateXStoreProductResponse.parse(productDto(product)));
+    .json(
+      CreateXStoreProductResponse.parse(productDto(product, actor.role)),
+    );
 });
 
 router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
@@ -792,6 +823,10 @@ router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
     ...parsed.data,
     price:
       parsed.data.price === undefined ? undefined : String(parsed.data.price),
+    costPrice:
+      parsed.data.costPrice === undefined
+        ? undefined
+        : String(parsed.data.costPrice),
     expiresAt: dbDate(parsed.data.expiresAt),
   };
   const [product] = await db
@@ -811,13 +846,15 @@ router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
     product.id,
     `Updated ${product.name}`,
   );
-  res.json(UpdateXStoreProductResponse.parse(productDto(product)));
+  res.json(
+    UpdateXStoreProductResponse.parse(productDto(product, actor.role)),
+  );
 });
 
 router.get("/xstore/sales", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!hasRole(user, reportRoles)) {
-    res.status(403).json({ error: "Sales reports are not available to this role." });
+  if (!hasRole(user, saleHistoryRoles)) {
+    res.status(403).json({ error: "Sales history is not available to this role." });
     return;
   }
   const parsed = ListXStoreSalesQueryParams.safeParse(req.query);
@@ -832,7 +869,139 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
     .where(scopedTenant ? eq(xstoreSales.tenantId, scopedTenant) : undefined)
     .orderBy(desc(xstoreSales.createdAt))
     .limit(parsed.data.limit ?? 50);
-  res.json(ListXStoreSalesResponse.parse(rows.map(saleDto)));
+  const saleIds = rows.map((sale) => sale.id);
+  const costsBySale = saleIds.length
+    ? await db
+        .select({
+          saleId: xstoreSaleItems.saleId,
+          amount: sql<number>`coalesce(sum(${xstoreSaleItems.unitCost} * (${xstoreSaleItems.quantity} - ${xstoreSaleItems.returnedQuantity})), 0)`,
+        })
+        .from(xstoreSaleItems)
+        .where(inArray(xstoreSaleItems.saleId, saleIds))
+        .groupBy(xstoreSaleItems.saleId)
+    : [];
+  const returnsBySale = saleIds.length
+    ? await db
+        .select({
+          saleId: xstoreReturns.saleId,
+          amount: sql<number>`coalesce(sum(${xstoreReturns.refundAmount} - (${xstoreReturns.refundAmount} * ${xstoreSales.taxAmount} / nullif(${xstoreSales.subtotal} - ${xstoreSales.discountAmount} + ${xstoreSales.taxAmount}, 0))), 0)`,
+        })
+        .from(xstoreReturns)
+        .innerJoin(xstoreSales, eq(xstoreReturns.saleId, xstoreSales.id))
+        .where(inArray(xstoreReturns.saleId, saleIds))
+        .groupBy(xstoreReturns.saleId)
+    : [];
+  const costs = new Map(
+    costsBySale.map((row) => [row.saleId, toNumber(row.amount)]),
+  );
+  const refunds = new Map(
+    returnsBySale.map((row) => [row.saleId, toNumber(row.amount)]),
+  );
+  res.json(
+    ListXStoreSalesResponse.parse(
+      rows.map((sale) =>
+        saleDto(
+          sale,
+          user.role,
+          roundMoney(
+            toNumber(sale.subtotal) -
+              toNumber(sale.discountAmount) -
+              (refunds.get(sale.id) ?? 0) -
+              (costs.get(sale.id) ?? 0),
+          ),
+        ),
+      ),
+    ),
+  );
+});
+
+router.get("/xstore/reports/profit-loss", async (req, res): Promise<void> => {
+  const user = getXStoreUser(res);
+  if (!hasRole(user, reportRoles)) {
+    res.status(403).json({ error: "Financial reports are not available to this role." });
+    return;
+  }
+
+  const parsed = GetXStoreProfitLossReportQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const to = parsed.data.to ?? new Date().toISOString().slice(0, 10);
+  const from = parsed.data.from ?? `${to.slice(0, 7)}-01`;
+  if (from > to) {
+    res.status(400).json({ error: "The report start date must be on or before its end date." });
+    return;
+  }
+
+  const scopedTenant =
+    user.role === "platform_admin" ? parsed.data.tenantId : user.tenantId;
+  if (user.role !== "platform_admin" && !scopedTenant) {
+    res.status(403).json({ error: "Select a store before viewing financial reports." });
+    return;
+  }
+
+  const endExclusive = new Date(`${to}T00:00:00.000Z`);
+  endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
+  const saleFilters = and(
+    scopedTenant ? eq(xstoreSales.tenantId, scopedTenant) : undefined,
+    gte(xstoreSales.createdAt, new Date(`${from}T00:00:00.000Z`)),
+    lt(xstoreSales.createdAt, endExclusive),
+  );
+  const [salesSummary] = await db
+    .select({
+      salesCount: count(),
+      netSales: sql<number>`coalesce(sum(${xstoreSales.subtotal} - ${xstoreSales.discountAmount}), 0)`,
+      taxCollected: sql<number>`coalesce(sum(${xstoreSales.taxAmount}), 0)`,
+    })
+    .from(xstoreSales)
+    .where(saleFilters);
+  const saleIds = await db
+    .select({ id: xstoreSales.id })
+    .from(xstoreSales)
+    .where(saleFilters);
+
+  let returnAmount = 0;
+  let returnedTax = 0;
+  let costOfGoodsSold = 0;
+  if (saleIds.length) {
+    const ids = saleIds.map((sale) => sale.id);
+    const [returns] = await db
+      .select({
+        amount: sql<number>`coalesce(sum(${xstoreReturns.refundAmount} - (${xstoreReturns.refundAmount} * ${xstoreSales.taxAmount} / nullif(${xstoreSales.subtotal} - ${xstoreSales.discountAmount} + ${xstoreSales.taxAmount}, 0))), 0)`,
+        taxAmount: sql<number>`coalesce(sum(${xstoreReturns.refundAmount} * ${xstoreSales.taxAmount} / nullif(${xstoreSales.subtotal} - ${xstoreSales.discountAmount} + ${xstoreSales.taxAmount}, 0)), 0)`,
+      })
+      .from(xstoreReturns)
+      .innerJoin(xstoreSales, eq(xstoreReturns.saleId, xstoreSales.id))
+      .where(inArray(xstoreReturns.saleId, ids));
+    const [costs] = await db
+      .select({
+        amount: sql<number>`coalesce(sum(${xstoreSaleItems.unitCost} * (${xstoreSaleItems.quantity} - ${xstoreSaleItems.returnedQuantity})), 0)`,
+      })
+      .from(xstoreSaleItems)
+      .where(inArray(xstoreSaleItems.saleId, ids));
+    returnAmount = toNumber(returns?.amount);
+    returnedTax = toNumber(returns?.taxAmount);
+    costOfGoodsSold = toNumber(costs?.amount);
+  }
+
+  const netSales = toNumber(salesSummary?.netSales);
+  const taxCollected = roundMoney(
+    toNumber(salesSummary?.taxCollected) - returnedTax,
+  );
+  res.json(
+    GetXStoreProfitLossReportResponse.parse({
+      from,
+      to,
+      salesCount: Number(salesSummary?.salesCount ?? 0),
+      netSales: roundMoney(netSales),
+      returnAmount: roundMoney(returnAmount),
+      costOfGoodsSold: roundMoney(costOfGoodsSold),
+      taxCollected,
+      grossProfit: roundMoney(netSales - returnAmount - costOfGoodsSold),
+    }),
+  );
 });
 
 router.post("/xstore/sales", async (req, res): Promise<void> => {
@@ -930,11 +1099,14 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
           productId: line.product.id,
           quantity: line.quantity,
           unitPrice: String(line.unitPrice),
+          unitCost: String(toNumber(line.product.costPrice)),
         });
       }
       return createdSale;
     });
-    res.status(201).json(CheckoutXStoreSaleResponse.parse(saleDto(sale)));
+    res
+      .status(201)
+      .json(CheckoutXStoreSaleResponse.parse(saleDto(sale, actor.role)));
   } catch (error) {
     if (error instanceof DomainError) {
       res.status(error.statusCode).json({ error: error.message });
@@ -1105,8 +1277,24 @@ router.post("/xstore/returns", async (req, res): Promise<void> => {
           409,
         );
       }
+      const originalSubtotal = toNumber(sale.subtotal);
+      const discountedSubtotal = Math.max(
+        0,
+        originalSubtotal - toNumber(sale.discountAmount),
+      );
+      const discountRate =
+        originalSubtotal > 0
+          ? toNumber(sale.discountAmount) / originalSubtotal
+          : 0;
+      const taxRate =
+        discountedSubtotal > 0
+          ? toNumber(sale.taxAmount) / discountedSubtotal
+          : 0;
       const refundAmount = roundMoney(
-        toNumber(saleItem.unitPrice) * parsed.data.quantity,
+        toNumber(saleItem.unitPrice) *
+          parsed.data.quantity *
+          (1 - discountRate) *
+          (1 + taxRate),
       );
       const [product] = await tx
         .select()
@@ -1128,6 +1316,9 @@ router.post("/xstore/returns", async (req, res): Promise<void> => {
           productId: product.id,
           quantity: parsed.data.quantity,
           refundAmount: String(refundAmount),
+          costAmount: String(
+            roundMoney(toNumber(saleItem.unitCost) * parsed.data.quantity),
+          ),
           reason: parsed.data.reason,
         })
         .returning();
@@ -1160,6 +1351,14 @@ router.post("/xstore/returns", async (req, res): Promise<void> => {
       if (!returned) throw new DomainError("Unable to record this return.", 500);
       return returned;
     });
+    await audit(
+      actor,
+      "sale.returned",
+      tenantId,
+      "sale",
+      parsed.data.invoiceNo,
+      `Returned ${parsed.data.quantity} unit(s) from ${parsed.data.invoiceNo}`,
+    );
     res.status(201).json(
       CreateXStoreReturnResponse.parse({
         id: result.id,
@@ -1240,7 +1439,26 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
           .for("update")
           .limit(1);
         if (!product) throw new DomainError("Product not found.", 404);
-        refundAmount += toNumber(saleItem.unitPrice) * line.quantity;
+        const originalSubtotal = toNumber(original.subtotal);
+        const discountedSubtotal = Math.max(
+          0,
+          originalSubtotal - toNumber(original.discountAmount),
+        );
+        const discountRate =
+          originalSubtotal > 0
+            ? toNumber(original.discountAmount) / originalSubtotal
+            : 0;
+        const taxRate =
+          discountedSubtotal > 0
+            ? toNumber(original.taxAmount) / discountedSubtotal
+            : 0;
+        const lineRefund = roundMoney(
+          toNumber(saleItem.unitPrice) *
+            line.quantity *
+            (1 - discountRate) *
+            (1 + taxRate),
+        );
+        refundAmount += lineRefund;
         await tx
           .update(xstoreSaleItems)
           .set({
@@ -1255,8 +1473,9 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
           saleId: original.id,
           productId: product.id,
           quantity: line.quantity,
-          refundAmount: String(
-            roundMoney(toNumber(saleItem.unitPrice) * line.quantity),
+          refundAmount: String(lineRefund),
+          costAmount: String(
+            roundMoney(toNumber(saleItem.unitCost) * line.quantity),
           ),
           reason: "Exchange",
         });
@@ -1354,6 +1573,7 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
             productId: line.product.id,
             quantity: line.quantity,
             unitPrice: String(line.unitPrice),
+            unitCost: String(toNumber(line.product.costPrice)),
           });
         }
       }
@@ -1392,8 +1612,11 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
 
 router.get("/xstore/audit-logs", async (_req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (user.role !== "platform_admin") {
-    res.status(403).json({ error: "Only the platform owner can view this audit log." });
+  if (
+    !hasRole(user, ["platform_admin", "tenant_admin"]) ||
+    (!user.tenantId && user.role !== "platform_admin")
+  ) {
+    res.status(403).json({ error: "You cannot view this audit log." });
     return;
   }
   const rows = await db
@@ -1409,6 +1632,11 @@ router.get("/xstore/audit-logs", async (_req, res): Promise<void> => {
     })
     .from(xstoreAuditLogs)
     .leftJoin(xstoreTenants, eq(xstoreAuditLogs.tenantId, xstoreTenants.id))
+    .where(
+      user.role === "platform_admin"
+        ? undefined
+        : eq(xstoreAuditLogs.tenantId, user.tenantId!),
+    )
     .orderBy(desc(xstoreAuditLogs.createdAt))
     .limit(200);
   res.json(

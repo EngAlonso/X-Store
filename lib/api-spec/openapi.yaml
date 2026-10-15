@@ -361,13 +361,13 @@ paths:
           required: false
           schema:
             type: string
-            format: date
+            pattern: '^\d{4}-\d{2}-\d{2}$'
         - name: to
           in: query
           required: false
           schema:
             type: string
-            format: date
+            pattern: '^\d{4}-\d{2}-\d{2}$'
         - name: tenantId
           in: query
           required: false
@@ -870,8 +870,9 @@ components:
         netSales: { type: number }
         returnAmount: { type: number }
         costOfGoodsSold: { type: number }
+        taxCollected: { type: number }
         grossProfit: { type: number }
-      required: [from, to, salesCount, netSales, returnAmount, costOfGoodsSold, grossProfit]
+      required: [from, to, salesCount, netSales, returnAmount, costOfGoodsSold, taxCollected, grossProfit]
     HoldSaleInput:
       type: object
       properties:

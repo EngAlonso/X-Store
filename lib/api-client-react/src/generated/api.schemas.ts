@@ -390,6 +390,7 @@ export interface ProfitLossReport {
   netSales: number;
   returnAmount: number;
   costOfGoodsSold: number;
+  taxCollected: number;
   grossProfit: number;
 }
 
@@ -519,7 +520,13 @@ limit?: number;
 };
 
 export type GetXStoreProfitLossReportParams = {
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
 from?: string;
+/**
+ * @pattern ^\d{4}-\d{2}-\d{2}$
+ */
 to?: string;
 tenantId?: string;
 };
