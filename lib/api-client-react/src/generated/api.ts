@@ -20,9 +20,13 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AdminBootstrapInput,
   ApiError,
   AuditLog,
+  AuthStatus,
   BadRequestResponse,
+  ContactSettings,
+  ContactSettingsInput,
   DashboardSummary,
   ExchangeInput,
   ExchangeResult,
@@ -35,6 +39,7 @@ import type {
   ListXStoreSalesParams,
   ListXStoreTenantsParams,
   NotFoundResponse,
+  PhoneLoginInput,
   Product,
   ProductInput,
   ProductUpdate,
@@ -49,6 +54,7 @@ import type {
   TeamMember,
   TeamMemberInput,
   Tenant,
+  TenantCredentialsInput,
   TenantInput,
   TenantUpdate,
   UnauthorizedResponse
@@ -158,6 +164,333 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+
+export const getGetXStoreAuthStatusUrl = () => {
+
+
+
+
+  return `/api/xstore/auth/status`
+}
+
+/**
+ * @summary Get public sign-in status and support contacts
+ */
+export const getXStoreAuthStatus = async ( options?: Parameters<typeof customFetch>[1]): Promise<AuthStatus> => {
+
+  return customFetch<AuthStatus>(getGetXStoreAuthStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetXStoreAuthStatusQueryKey = () => {
+    return [
+    `/api/xstore/auth/status`
+    ] as const;
+    }
+
+
+export const getGetXStoreAuthStatusQueryOptions = <TData = Awaited<ReturnType<typeof getXStoreAuthStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getXStoreAuthStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetXStoreAuthStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getXStoreAuthStatus>>> = ({ signal }) => getXStoreAuthStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getXStoreAuthStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetXStoreAuthStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getXStoreAuthStatus>>>
+export type GetXStoreAuthStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get public sign-in status and support contacts
+ */
+
+export function useGetXStoreAuthStatus<TData = Awaited<ReturnType<typeof getXStoreAuthStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getXStoreAuthStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetXStoreAuthStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getLoginXStoreWithPhoneUrl = () => {
+
+
+
+
+  return `/api/xstore/auth/login`
+}
+
+/**
+ * @summary Sign in with a phone number and password
+ */
+export const loginXStoreWithPhone = async (phoneLoginInput: PhoneLoginInput, options?: Parameters<typeof customFetch>[1]): Promise<SessionUser> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SessionUser>(getLoginXStoreWithPhoneUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(phoneLoginInput)
+  }
+);}
+
+
+
+
+
+export const getLoginXStoreWithPhoneMutationKey = () => ['loginXStoreWithPhone'] as const;
+
+export const getLoginXStoreWithPhoneMutationOptions = <TError = ErrorType<UnauthorizedResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginXStoreWithPhone>>, TError,LoginXStoreWithPhoneMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof loginXStoreWithPhone>>, TError,LoginXStoreWithPhoneMutationVariables, TContext> => {
+
+const mutationKey = getLoginXStoreWithPhoneMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof loginXStoreWithPhone>>, LoginXStoreWithPhoneMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  loginXStoreWithPhone(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LoginXStoreWithPhoneMutationResult = NonNullable<Awaited<ReturnType<typeof loginXStoreWithPhone>>>
+    export type LoginXStoreWithPhoneMutationBody = BodyType<PhoneLoginInput>
+    export type LoginXStoreWithPhoneMutationError = ErrorType<UnauthorizedResponse | ApiError>
+    export type LoginXStoreWithPhoneMutationVariables = {data: BodyType<PhoneLoginInput>}
+
+    /**
+ * @summary Sign in with a phone number and password
+ */
+export const useLoginXStoreWithPhone = <TError = ErrorType<UnauthorizedResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof loginXStoreWithPhone>>, TError,LoginXStoreWithPhoneMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof loginXStoreWithPhone>>,
+        TError,
+        LoginXStoreWithPhoneMutationVariables,
+        TContext
+      > => {
+      return useMutation(getLoginXStoreWithPhoneMutationOptions(options));
+    }
+
+export const getLogoutXStoreUrl = () => {
+
+
+
+
+  return `/api/xstore/auth/logout`
+}
+
+/**
+ * @summary Sign out of the current X-Store account
+ */
+export const logoutXStore = async ( options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getLogoutXStoreUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getLogoutXStoreMutationKey = () => ['logoutXStore'] as const;
+
+export const getLogoutXStoreMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutXStore>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof logoutXStore>>, TError,void, TContext> => {
+
+const mutationKey = getLogoutXStoreMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof logoutXStore>>, void> = () => {
+
+
+          return  logoutXStore(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type LogoutXStoreMutationResult = NonNullable<Awaited<ReturnType<typeof logoutXStore>>>
+
+    export type LogoutXStoreMutationError = ErrorType<unknown>
+
+
+    /**
+ * @summary Sign out of the current X-Store account
+ */
+export const useLogoutXStore = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof logoutXStore>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof logoutXStore>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getLogoutXStoreMutationOptions(options));
+    }
+
+export const getBootstrapXStorePlatformAdminUrl = () => {
+
+
+
+
+  return `/api/xstore/auth/bootstrap`
+}
+
+/**
+ * @summary Convert the initial Clerk owner session to phone-and-password access
+ */
+export const bootstrapXStorePlatformAdmin = async (adminBootstrapInput: AdminBootstrapInput, options?: Parameters<typeof customFetch>[1]): Promise<SessionUser> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SessionUser>(getBootstrapXStorePlatformAdminUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminBootstrapInput)
+  }
+);}
+
+
+
+
+
+export const getBootstrapXStorePlatformAdminMutationKey = () => ['bootstrapXStorePlatformAdmin'] as const;
+
+export const getBootstrapXStorePlatformAdminMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>, TError,BootstrapXStorePlatformAdminMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>, TError,BootstrapXStorePlatformAdminMutationVariables, TContext> => {
+
+const mutationKey = getBootstrapXStorePlatformAdminMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>, BootstrapXStorePlatformAdminMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  bootstrapXStorePlatformAdmin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BootstrapXStorePlatformAdminMutationResult = NonNullable<Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>>
+    export type BootstrapXStorePlatformAdminMutationBody = BodyType<AdminBootstrapInput>
+    export type BootstrapXStorePlatformAdminMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ApiError>
+    export type BootstrapXStorePlatformAdminMutationVariables = {data: BodyType<AdminBootstrapInput>}
+
+    /**
+ * @summary Convert the initial Clerk owner session to phone-and-password access
+ */
+export const useBootstrapXStorePlatformAdmin = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>, TError,BootstrapXStorePlatformAdminMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>,
+        TError,
+        BootstrapXStorePlatformAdminMutationVariables,
+        TContext
+      > => {
+      return useMutation(getBootstrapXStorePlatformAdminMutationOptions(options));
+    }
 
 export const getGetXStoreSessionUrl = () => {
 
@@ -572,6 +905,260 @@ export const useUpdateXStoreTenant = <TError = ErrorType<BadRequestResponse | Un
         TContext
       > => {
       return useMutation(getUpdateXStoreTenantMutationOptions(options));
+    }
+
+export const getUpdateXStoreTenantCredentialsUrl = (tenantId: string,) => {
+
+
+
+
+  return `/api/xstore/tenants/${tenantId}/credentials`
+}
+
+/**
+ * @summary Set a tenant administrator's phone number and password
+ */
+export const updateXStoreTenantCredentials = async (tenantId: string,
+    tenantCredentialsInput: TenantCredentialsInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getUpdateXStoreTenantCredentialsUrl(tenantId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(tenantCredentialsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateXStoreTenantCredentialsMutationKey = () => ['updateXStoreTenantCredentials'] as const;
+
+export const getUpdateXStoreTenantCredentialsMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateXStoreTenantCredentials>>, TError,UpdateXStoreTenantCredentialsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateXStoreTenantCredentials>>, TError,UpdateXStoreTenantCredentialsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateXStoreTenantCredentialsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateXStoreTenantCredentials>>, UpdateXStoreTenantCredentialsMutationVariables> = (props) => {
+          const {tenantId,data} = props ?? {};
+
+          return  updateXStoreTenantCredentials(tenantId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateXStoreTenantCredentialsMutationResult = NonNullable<Awaited<ReturnType<typeof updateXStoreTenantCredentials>>>
+    export type UpdateXStoreTenantCredentialsMutationBody = BodyType<TenantCredentialsInput>
+    export type UpdateXStoreTenantCredentialsMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type UpdateXStoreTenantCredentialsMutationVariables = {tenantId: string;data: BodyType<TenantCredentialsInput>}
+
+    /**
+ * @summary Set a tenant administrator's phone number and password
+ */
+export const useUpdateXStoreTenantCredentials = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateXStoreTenantCredentials>>, TError,UpdateXStoreTenantCredentialsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateXStoreTenantCredentials>>,
+        TError,
+        UpdateXStoreTenantCredentialsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateXStoreTenantCredentialsMutationOptions(options));
+    }
+
+export const getGetXStoreContactSettingsUrl = () => {
+
+
+
+
+  return `/api/xstore/settings/contact`
+}
+
+/**
+ * @summary Get platform contact settings
+ */
+export const getXStoreContactSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<ContactSettings> => {
+
+  return customFetch<ContactSettings>(getGetXStoreContactSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetXStoreContactSettingsQueryKey = () => {
+    return [
+    `/api/xstore/settings/contact`
+    ] as const;
+    }
+
+
+export const getGetXStoreContactSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getXStoreContactSettings>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getXStoreContactSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetXStoreContactSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getXStoreContactSettings>>> = ({ signal }) => getXStoreContactSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getXStoreContactSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetXStoreContactSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getXStoreContactSettings>>>
+export type GetXStoreContactSettingsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Get platform contact settings
+ */
+
+export function useGetXStoreContactSettings<TData = Awaited<ReturnType<typeof getXStoreContactSettings>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getXStoreContactSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetXStoreContactSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateXStoreContactSettingsUrl = () => {
+
+
+
+
+  return `/api/xstore/settings/contact`
+}
+
+/**
+ * @summary Update platform contact settings
+ */
+export const updateXStoreContactSettings = async (contactSettingsInput: ContactSettingsInput, options?: Parameters<typeof customFetch>[1]): Promise<ContactSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ContactSettings>(getUpdateXStoreContactSettingsUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(contactSettingsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateXStoreContactSettingsMutationKey = () => ['updateXStoreContactSettings'] as const;
+
+export const getUpdateXStoreContactSettingsMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateXStoreContactSettings>>, TError,UpdateXStoreContactSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateXStoreContactSettings>>, TError,UpdateXStoreContactSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateXStoreContactSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateXStoreContactSettings>>, UpdateXStoreContactSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateXStoreContactSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateXStoreContactSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateXStoreContactSettings>>>
+    export type UpdateXStoreContactSettingsMutationBody = BodyType<ContactSettingsInput>
+    export type UpdateXStoreContactSettingsMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+    export type UpdateXStoreContactSettingsMutationVariables = {data: BodyType<ContactSettingsInput>}
+
+    /**
+ * @summary Update platform contact settings
+ */
+export const useUpdateXStoreContactSettings = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateXStoreContactSettings>>, TError,UpdateXStoreContactSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateXStoreContactSettings>>,
+        TError,
+        UpdateXStoreContactSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateXStoreContactSettingsMutationOptions(options));
     }
 
 export const getListXStoreTeamUrl = () => {

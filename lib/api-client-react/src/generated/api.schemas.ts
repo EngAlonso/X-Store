@@ -27,12 +27,68 @@ export const SessionUserRole = {
 export interface SessionUser {
   id: string;
   name: string;
-  email: string;
+  phone: string;
+  /** @nullable */
+  email: string | null;
   role: SessionUserRole;
   /** @nullable */
   tenantId: string | null;
   /** @nullable */
   tenantName: string | null;
+}
+
+export interface AuthStatus {
+  bootstrapRequired: boolean;
+  /** @nullable */
+  supportPhone: string | null;
+  /** @nullable */
+  supportWhatsapp: string | null;
+  /** @nullable */
+  supportEmail: string | null;
+}
+
+export interface PhoneLoginInput {
+  /**
+     * @minLength 8
+     * @maxLength 20
+     */
+  phone: string;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface AdminBootstrapInput {
+  /**
+     * @minLength 8
+     * @maxLength 20
+     */
+  phone: string;
+  /**
+     * @minLength 10
+     * @maxLength 128
+     */
+  password: string;
+}
+
+export interface ContactSettings {
+  /** @nullable */
+  supportPhone: string | null;
+  /** @nullable */
+  supportWhatsapp: string | null;
+  /** @nullable */
+  supportEmail: string | null;
+}
+
+export interface ContactSettingsInput {
+  /** @nullable */
+  supportPhone: string | null;
+  /** @nullable */
+  supportWhatsapp: string | null;
+  /** @nullable */
+  supportEmail: string | null;
 }
 
 export type TenantStatus = typeof TenantStatus[keyof typeof TenantStatus];
@@ -58,7 +114,10 @@ export interface Tenant {
   id: string;
   name: string;
   ownerName: string;
-  email: string;
+  /** @nullable */
+  phone: string | null;
+  /** @nullable */
+  email: string | null;
   businessType: string;
   status: TenantStatus;
   plan: TenantPlan;
@@ -148,12 +207,36 @@ export interface TenantInput {
   name: string;
   /** @minLength 1 */
   ownerName: string;
-  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 20
+     */
+  phone: string;
+  /**
+     * @minLength 10
+     * @maxLength 128
+     */
+  ownerPassword: string;
+  /** @nullable */
+  email?: string | null;
   /** @minLength 1 */
   businessType: string;
   plan: TenantInputPlan;
   /** @nullable */
   subscriptionEndsAt?: string | null;
+}
+
+export interface TenantCredentialsInput {
+  /**
+     * @minLength 8
+     * @maxLength 20
+     */
+  phone: string;
+  /**
+     * @minLength 10
+     * @maxLength 128
+     */
+  password: string;
 }
 
 export type TenantUpdateStatus = typeof TenantUpdateStatus[keyof typeof TenantUpdateStatus];
@@ -202,7 +285,10 @@ export const TeamMemberStatus = {
 
 export interface TeamMember {
   id: string;
-  email: string;
+  /** @nullable */
+  phone: string | null;
+  /** @nullable */
+  email: string | null;
   name: string;
   role: TeamMemberRole;
   status: TeamMemberStatus;
@@ -219,7 +305,18 @@ export const TeamMemberInputRole = {
 } as const;
 
 export interface TeamMemberInput {
-  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 20
+     */
+  phone: string;
+  /**
+     * @minLength 10
+     * @maxLength 128
+     */
+  password: string;
+  /** @nullable */
+  email?: string | null;
   /** @minLength 1 */
   name: string;
   role: TeamMemberInputRole;

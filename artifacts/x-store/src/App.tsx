@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from '@clerk/react';
+import { ClerkProvider, SignIn, useAuth, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { arSA } from '@clerk/localizations';
 import {
-  getGetXStoreDashboardQueryKey, getListXStoreHeldSalesQueryKey, getListXStoreProductsQueryKey,
+  getGetXStoreAuthStatusQueryKey, getGetXStoreDashboardQueryKey, getGetXStoreSessionQueryKey,
+  getListXStoreHeldSalesQueryKey, getListXStoreProductsQueryKey,
   getListXStoreSalesQueryKey, getListXStoreTeamQueryKey, getListXStoreTenantsQueryKey,
   getListXStoreSubscriptionPaymentsQueryKey,
-  useAddXStoreTeamMember, useCreateXStoreExchange, useCreateXStoreProduct, useCreateXStoreReturn,
+  logoutXStore, useAddXStoreTeamMember, useBootstrapXStorePlatformAdmin, useCreateXStoreExchange, useCreateXStoreProduct, useCreateXStoreReturn,
   useCreateXStoreSubscriptionPayment, useCreateXStoreTenant, useGetXStoreDashboard, useGetXStoreSession, useHoldXStoreSale,
+  useGetXStoreAuthStatus, useGetXStoreContactSettings, useLoginXStoreWithPhone,
   useListXStoreAuditLogs, useListXStoreHeldSales, useListXStoreProducts, useListXStoreSales,
   useGetXStoreProfitLossReport, useListXStoreSubscriptionPayments, useListXStoreTeam, useListXStoreTenants, useReleaseXStoreHeldSale, useUpdateXStoreProduct,
-  useUpdateXStoreTenant, useCheckoutXStoreSale,
+  useUpdateXStoreTenant, useUpdateXStoreTenantCredentials, useUpdateXStoreContactSettings, useCheckoutXStoreSale,
 } from '@workspace/api-client-react';
 import type { Product, Tenant, Sale } from '@workspace/api-client-react';
 import { Route, Switch, Redirect, Link, useLocation, Router as WouterRouter } from 'wouter';
@@ -25,6 +27,7 @@ import {
   Bell, LogOut, Menu, X, ArrowUpLeft, ChevronLeft, ChevronDown, CreditCard, Banknote,
   Wallet, CircleCheck, Clock3, AlertTriangle, RotateCcw,
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
+  Settings2, KeyRound, Phone, Mail, MessageCircle,
 } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -73,6 +76,7 @@ const nav = [
   { href: '/reports', label: 'التقارير المالية', icon: Activity, roles: ['platform_admin', 'tenant_admin', 'accountant'] },
   { href: '/sales', label: 'المبيعات', icon: ReceiptText, roles: ['tenant_admin', 'cashier', 'accountant'] },
   { href: '/audit-log', label: 'سجل التدقيق', icon: ScrollText, roles: ['tenant_admin', 'platform_admin'] },
+  { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
 ];
 
 function Logo({ compact = false }: { compact?: boolean }) {
@@ -81,50 +85,142 @@ function Logo({ compact = false }: { compact?: boolean }) {
 function Home() {
   const [, go] = useLocation();
   return <main dir="rtl" className="landing">
-    <header className="landing-nav"><Logo /><div className="landing-actions"><Link href="/sign-in" className="button button-quiet">تسجيل الدخول</Link><Link href="/sign-up" className="button button-primary">ابدأ الآن <ArrowUpLeft size={16}/></Link></div></header>
+    <header className="landing-nav"><Logo /><div className="landing-actions"><Link href="/sign-in" className="button button-quiet">تسجيل الدخول</Link><Link href="/sign-in" className="button button-primary">دخول الحساب <ArrowUpLeft size={16}/></Link></div></header>
     <section className="landing-hero">
-      <div className="hero-copy"><div className="eyebrow"><span className="live-dot"/> إدارة واضحة. يوم عمل أهدأ.</div><h1>كل متجرك،<br/><em>في مكان واحد.</em></h1><p>نقطة بيع سريعة ومخزون مرتب وتقارير موثوقة — أدوات يومية تساعد أصحاب المتاجر وفرقهم على العمل بثقة.</p><div className="hero-ctas"><button onClick={() => go('/sign-up')} className="button button-primary button-large" data-testid="button-start">أنشئ حساب متجرك <ChevronLeft size={18}/></button><button onClick={() => go('/sign-in')} className="text-link" data-testid="button-login">لديك حساب؟ تسجيل الدخول</button></div><div className="hero-proof"><span><CircleCheck size={16}/> إعداد بسيط</span><span><ShieldCheck size={16}/> بياناتك بأمان</span><span><Clock3 size={16}/> جاهز لليوم</span></div></div>
+      <div className="hero-copy"><div className="eyebrow"><span className="live-dot"/> إدارة واضحة. يوم عمل أهدأ.</div><h1>كل متجرك،<br/><em>في مكان واحد.</em></h1><p>نقطة بيع سريعة ومخزون مرتب وتقارير موثوقة — أدوات يومية تساعد أصحاب المتاجر وفرقهم على العمل بثقة.</p><div className="hero-ctas"><button onClick={() => go('/sign-in')} className="button button-primary button-large" data-testid="button-start">دخول إلى حسابك <ChevronLeft size={18}/></button><button onClick={() => go('/sign-in')} className="text-link" data-testid="button-login">تحتاج حساباً؟ تواصل مع إدارة المنصة</button></div><div className="hero-proof"><span><CircleCheck size={16}/> إعداد بسيط</span><span><ShieldCheck size={16}/> بياناتك بأمان</span><span><Clock3 size={16}/> جاهز لليوم</span></div></div>
       <div className="hero-visual"><div className="dashboard-window"><div className="window-top"><span className="window-brand"><img src={`${basePath}/x-store-mark.png`}/> X-Store</span><span className="window-date">الأربعاء، ١٤ مايو</span><span className="window-avatar">م</span></div><div className="window-body" dir="rtl"><div className="window-greeting">مرحباً، متجر النخبة <span>صباح الخير</span></div><div className="mock-stats"><div><small>مبيعات اليوم</small><b>٤٬٨٢٠ <i>ر.س</i></b><span className="positive">↑ ١٢٪ عن أمس</span></div><div><small>الطلبات</small><b>٣٨</b><span>اليوم</span></div></div><div className="mock-chart"><div className="chart-title"><b>حركة المبيعات</b><span>آخر ٧ أيام</span></div><div className="bars">{[34,50,42,67,56,83,62,91,68,78,56,72,46,65].map((h,i)=><span key={i} style={{height:`${h}%`}} className={i===7?'bar-hot':''}/>)}</div><div className="chart-days"><span>السبت</span><span>الإثنين</span><span>الأربعاء</span><span>الجمعة</span></div></div><div className="mock-bottom"><span><i className="mini-stock"/> مخزون منخفض</span><b>٥ منتجات تحتاج متابعة</b><ChevronLeft size={14}/></div></div></div><div className="hero-float"><span className="float-check"><CircleCheck size={16}/></span><div><b>عملية بيع ناجحة</b><small>فاتورة X-2048 · منذ لحظات</small></div><strong>٢٤٥ ر.س</strong></div><div className="hero-orbit orbit-one"/><div className="hero-orbit orbit-two"/></div>
     </section>
     <section className="landing-ribbon"><span>مصمم لروتين المتجر الحقيقي</span><b>من أول مسح للمنتج</b><i/><b>حتى إغلاق الوردية</b><i/><b>كل شيء واضح</b></section>
     <section className="feature-section"><div className="section-heading"><div className="eyebrow">أدوات يومية، بدون تعقيد</div><h2>تركيز على ما يحتاجه<br/>متجرك فعلاً.</h2><p>واجهة عربية مريحة وسير عمل مترابط يقلل الخطوات ويترك لك مساحة للاهتمام بعملائك.</p></div><div className="feature-grid"><article className="feature feature-large"><span className="feature-icon"><ShoppingCart size={21}/></span><div><h3>بيع أسرع عند الصندوق</h3><p>ابحث أو امسح الباركود، أضف الخصم واختر طريقة الدفع. شاشة واضحة تبقى سهلة القراءة طوال الوردية.</p><span className="feature-foot">نقطة بيع سريعة <ArrowUpLeft size={15}/></span></div><div className="feature-receipt"><div className="receipt-head">X-Store <span>فاتورة</span></div><div className="receipt-line">قميص قطني <b>١٢٠ ر.س</b></div><div className="receipt-line">حزام جلدي <b>٨٥ ر.س</b></div><div className="receipt-total">الإجمالي <b>٢٠٥ ر.س</b></div><span className="receipt-mark">تم الدفع</span></div></article><article className="feature"><span className="feature-icon feature-icon-gold"><Boxes size={21}/></span><h3>مخزون يعرف تفاصيله</h3><p>تابع المقاسات والألوان والكميات وتواريخ الصلاحية من قائمة واحدة.</p><div className="stock-preview"><span><i/> حذاء رياضي · ٣ ألوان</span><b>١٨ قطعة</b></div></article><article className="feature"><span className="feature-icon feature-icon-red"><Activity size={21}/></span><h3>صورة صادقة عن الأداء</h3><p>اطّلع على المبيعات والاشتراكات ونشاط المتجر حسب صلاحيتك.</p><div className="mini-metrics"><span>المبيعات <b>١٢٨</b></span><span>متاجر نشطة <b>٢٤</b></span></div></article></div></section>
     <section className="landing-quote"><div className="quote-mark">“</div><blockquote>عندما تكون الأرقام واضحة،<br/>تكون قرارات اليوم أسهل.</blockquote><span>صُمم لأصحاب المتاجر الذين يديرون التفاصيل كل يوم.</span><div className="quote-seal"><img src={`${basePath}/x-store-mark.png`} alt=""/></div></section>
-    <footer className="landing-footer"><Logo compact/><span>إدارة أوضح. متجر أقوى.</span><Link href="/sign-up">ابدأ مع X-Store <ArrowUpLeft size={15}/></Link></footer>
+    <footer className="landing-footer"><Logo compact/><span>إدارة أوضح. متجر أقوى.</span><Link href="/sign-in">تسجيل الدخول <ArrowUpLeft size={15}/></Link></footer>
   </main>;
 }
 function AuthPage({ kind }: { kind: 'in' | 'up' }) {
-  return <div dir="rtl" className="auth-screen"><div className="auth-brand"><Logo/><p>مساحة عملك تبدأ من هنا.</p><div className="auth-note"><img src={`${basePath}/x-store-mark.png`}/><span>تجربة عمل هادئة<br/>وموثوقة كل يوم.</span></div></div><div className="auth-widget">{kind === 'in' ? <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`}/> : <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`}/>}</div></div>;
+  const status = useGetXStoreAuthStatus();
+  const { isSignedIn } = useAuth();
+  const [showLegacy, setShowLegacy] = useState(false);
+  if (kind === 'up') return <Redirect to="/sign-in"/>;
+  const bootstrapRequired = status.data?.bootstrapRequired === true;
+  return <div dir="rtl" className="auth-screen">
+    <div className="auth-brand"><Logo/><p>مساحة عملك تبدأ من هنا.</p><div className="auth-note"><img src={`${basePath}/x-store-mark.png`}/><span>تجربة عمل هادئة<br/>وموثوقة كل يوم.</span></div></div>
+    <div className="auth-widget"><section className="auth-card">
+      {bootstrapRequired && isSignedIn
+        ? <PlatformBootstrapForm/>
+        : <PhoneLoginForm bootstrapRequired={bootstrapRequired}/>}
+      {bootstrapRequired && !isSignedIn && <div className="legacy-bootstrap">
+        {showLegacy
+          ? <><div className="role-hint"><ShieldCheck size={17}/><span>استخدم حساب مدير المنصة الحالي مرة واحدة لتحويله إلى دخول الهاتف وكلمة المرور.</span></div><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} appearance={{...appearance,elements:{...appearance.elements,footerAction:'hidden'}}}/><button className="text-link" type="button" onClick={()=>setShowLegacy(false)}>إخفاء تسجيل الدخول القديم</button></>
+          : <button className="button button-quiet" type="button" onClick={()=>setShowLegacy(true)}>إعداد دخول مدير المنصة لأول مرة</button>}
+      </div>}
+      <ContactMethods status={status.data}/>
+    </section></div>
+  </div>;
+}
+function PhoneLoginForm({ bootstrapRequired }: { bootstrapRequired:boolean }) {
+  const login = useLoginXStoreWithPhone();
+  const qc = useQueryClient();
+  const [, setLocation] = useLocation();
+  function submit(e:FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    login.mutate({data:{phone:String(form.get('phone')),password:String(form.get('password'))}},{
+      onSuccess:user=>{
+        qc.setQueryData(getGetXStoreSessionQueryKey(),user);
+        qc.invalidateQueries({queryKey:getGetXStoreAuthStatusQueryKey()});
+        setLocation('/dashboard');
+      },
+    });
+  }
+  return <><div className="auth-card-heading"><span className="auth-icon"><KeyRound size={20}/></span><div><h1>تسجيل الدخول</h1><p>استخدم رقم الهاتف وكلمة المرور المخصصين لحسابك.</p></div></div>
+    <form className="auth-form" onSubmit={submit}>
+      <label className="field"><span>رقم الهاتف</span><input name="phone" type="tel" autoComplete="username" required placeholder="مثال: ‎+20 10 1234 5678"/></label>
+      <label className="field"><span>كلمة المرور</span><input name="password" type="password" autoComplete="current-password" required placeholder="أدخل كلمة المرور"/></label>
+      {login.isError&&<div className="form-error">{apiErrorMessage(login.error,'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.')}</div>}
+      {bootstrapRequired&&<div className="role-hint"><ShieldCheck size={16}/><span>حساب مدير المنصة لم يُجهّز بعد. استخدم خيار الإعداد لأول مرة أسفل هذه الصفحة.</span></div>}
+      <button className="button button-primary auth-submit" disabled={login.isPending}>{login.isPending?'جارٍ تسجيل الدخول…':'دخول'}</button>
+    </form>
+  </>;
+}
+function PlatformBootstrapForm() {
+  const bootstrap = useBootstrapXStorePlatformAdmin();
+  const qc = useQueryClient();
+  const [, setLocation] = useLocation();
+  function submit(e:FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    bootstrap.mutate({data:{phone:String(form.get('phone')),password:String(form.get('password'))}},{
+      onSuccess:user=>{
+        qc.setQueryData(getGetXStoreSessionQueryKey(),user);
+        qc.invalidateQueries({queryKey:getGetXStoreAuthStatusQueryKey()});
+        setLocation('/dashboard');
+      },
+    });
+  }
+  return <><div className="auth-card-heading"><span className="auth-icon"><ShieldCheck size={20}/></span><div><h1>إعداد حساب مدير المنصة</h1><p>أنشئ بيانات الدخول التي ستستخدمها بعد ذلك بدلاً من تسجيل الدخول القديم.</p></div></div>
+    <form className="auth-form" onSubmit={submit}>
+      <label className="field"><span>رقم هاتف مدير المنصة</span><input name="phone" type="tel" autoComplete="tel" required placeholder="مثال: ‎+20 10 1234 5678"/></label>
+      <label className="field"><span>كلمة مرور جديدة</span><input name="password" type="password" autoComplete="new-password" minLength={10} maxLength={128} required placeholder="10 أحرف على الأقل"/></label>
+      {bootstrap.isError&&<div className="form-error">{apiErrorMessage(bootstrap.error,'تعذر إعداد الحساب. تحقق من رقم الهاتف وحاول مرة أخرى.')}</div>}
+      <div className="role-hint"><ShieldCheck size={16}/><span>بعد الحفظ، يصبح هذا الحساب هو وسيلة الدخول لجميع الحسابات، ويتوقف تسجيل الدخول القديم.</span></div>
+      <button className="button button-primary auth-submit" disabled={bootstrap.isPending}>{bootstrap.isPending?'جارٍ إعداد الحساب…':'حفظ بيانات الدخول'}</button>
+    </form>
+  </>;
+}
+function ContactMethods({status}:{status?:{supportPhone:string|null;supportWhatsapp:string|null;supportEmail:string|null}}) {
+  const methods=[
+    status?.supportPhone&&{icon:Phone,label:'اتصال',href:`tel:${status.supportPhone}`,value:status.supportPhone},
+    status?.supportWhatsapp&&{icon:MessageCircle,label:'واتساب',href:`https://wa.me/${status.supportWhatsapp.replace(/\D/g,'')}`,value:status.supportWhatsapp},
+    status?.supportEmail&&{icon:Mail,label:'البريد',href:`mailto:${status.supportEmail}`,value:status.supportEmail},
+  ].filter(Boolean) as {icon:typeof Phone;label:string;href:string;value:string}[];
+  if(!methods.length)return <div className="auth-contact-empty">تُدار الحسابات بواسطة إدارة المنصة.</div>;
+  return <div className="auth-contact-list"><span>تحتاج مساعدة؟ تواصل مع إدارة المنصة</span>{methods.map(item=><a key={item.label} href={item.href} target={item.label==='واتساب'?'_blank':undefined} rel={item.label==='واتساب'?'noreferrer':undefined}><item.icon size={15}/><b>{item.label}</b><span>{item.value}</span></a>)}</div>;
+}
+function apiErrorMessage(error:unknown,fallback:string):string {
+  if(typeof error==='object'&&error!==null&&'data' in error) {
+    const data=(error as {data?:unknown}).data;
+    if(typeof data==='object'&&data!==null&&'error' in data&&typeof (data as {error?:unknown}).error==='string')return (data as {error:string}).error;
+  }
+  return fallback;
 }
 function HomeRedirect() {
-  return <><Show when="signed-in"><Redirect to="/dashboard"/></Show><Show when="signed-out"><Home/></Show></>;
+  const status=useGetXStoreAuthStatus();
+  const session=useGetXStoreSession();
+  if(status.data?.bootstrapRequired)return <Redirect to="/sign-in"/>;
+  if(session.data)return <Redirect to="/dashboard"/>;
+  return <Home/>;
 }
 function SignInPage() { return <AuthPage kind="in"/>; }
-function SignUpPage() { return <AuthPage kind="up"/>; }
+function SignUpPage() { return <Redirect to="/sign-in"/>; }
 
 function AppShell({ children }: { children: ReactNode }) {
-  const [location] = useLocation(); const { signOut } = useClerk(); const [open,setOpen] = useState(false);
+  const [location,setLocation] = useLocation(); const { signOut } = useClerk(); const [open,setOpen] = useState(false);
+  const qc=useQueryClient();
   const { data:user, isLoading, isError, refetch } = useGetXStoreSession();
   if (isLoading) return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if (isError || !user) return <div className="auth-required" dir="rtl"><div className="empty-symbol"><ShieldCheck/></div><h2>يلزم تسجيل الدخول</h2><p>سجّل الدخول باستخدام حساب X-Store للوصول إلى مساحة العمل.</p><Link href="/sign-in" className="button button-primary">تسجيل الدخول</Link><button className="button button-quiet" onClick={()=>refetch()}>إعادة المحاولة</button></div>;
   const items = nav.filter(n=>n.roles.includes('all') || n.roles.includes(user.role));
   return <div dir="rtl" className="app-frame">
-    <aside className={`sidebar ${open?'sidebar-open':''}`}><div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={()=>setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div><div className="store-chip"><span className="store-avatar">{(user.tenantName||user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{roleNames[user.role]||user.role}</small></span><ChevronDown size={15}/></div><div className="nav-caption">القائمة الرئيسية</div><nav className="side-nav">{items.map(item=><Link key={item.href} href={item.href} onClick={()=>setOpen(false)} className={`nav-link ${location===item.href?'nav-active':''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location===item.href&&<i/>}</Link>)}</nav><div className="sidebar-bottom"><div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div><div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.email}</small></span><button className="icon-button" onClick={()=>signOut({redirectUrl:basePath||'/'})} title="تسجيل الخروج" data-testid="button-sign-out"><LogOut size={17}/></button></div></div></aside>
+     <aside className={`sidebar ${open?'sidebar-open':''}`}><div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={()=>setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div><div className="store-chip"><span className="store-avatar">{(user.tenantName||user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{roleNames[user.role]||user.role}</small></span><ChevronDown size={15}/></div><div className="nav-caption">القائمة الرئيسية</div><nav className="side-nav">{items.map(item=><Link key={item.href} href={item.href} onClick={()=>setOpen(false)} className={`nav-link ${location===item.href?'nav-active':''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location===item.href&&<i/>}</Link>)}</nav><div className="sidebar-bottom"><div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div><div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.phone}</small></span><button className="icon-button" onClick={()=>{void logoutXStore().then(async()=>{qc.clear();try{await signOut({redirectUrl:basePath||'/'})}catch{setLocation('/sign-in')}}).catch(()=>window.alert('تعذر تسجيل الخروج. تحقق من الاتصال وحاول مرة أخرى.'))}} title="تسجيل الخروج" data-testid="button-sign-out"><LogOut size={17}/></button></div></div></aside>
     {open&&<button aria-label="إغلاق القائمة" className="mobile-scrim" onClick={()=>setOpen(false)}/>}
     <div className="workspace"><header className="topbar"><button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={()=>setOpen(true)}><Menu size={20}/></button><div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i=>i.href===location)?.label||'لوحة التحكم'}</b></div><div className="topbar-tools"><span className="today"><CalendarDays size={15}/> {new Intl.DateTimeFormat('ar-SA',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span><button className="icon-button notification" aria-label="الإشعارات"><Bell size={18}/><i/></button><span className="top-avatar">{user.name.slice(0,1)}</span></div></header><main className="main-content">{children}</main><footer className="workspace-footer"><span>X-Store</span><span>مساحة عمل موثوقة لمتجرك</span><span>© ٢٠٢٥</span></footer></div>
   </div>;
 }
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
-  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['tenant_admin','platform_admin']};
+  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/settings':['platform_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['tenant_admin','platform_admin']};
   if(session.data&&allowed[location]&&!allowed[location].includes(session.data.role))return <Redirect to="/dashboard"/>;
-  return <><Show when="signed-in"><AppShell><Switch>
+  if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
+  if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
+  return <AppShell><Switch>
     <Route path="/dashboard" component={DashboardPage}/><Route path="/tenants" component={TenantsPage}/>
     <Route path="/subscriptions" component={SubscriptionsPage}/>
     <Route path="/team" component={TeamPage}/>
     <Route path="/pos" component={PosPage}/><Route path="/inventory" component={InventoryPage}/>
     <Route path="/reports" component={ReportsPage}/><Route path="/sales" component={SalesPage}/><Route path="/audit-log" component={AuditPage}/>
+    <Route path="/settings" component={PlatformSettingsPage}/>
     <Route component={NotFound}/>
-  </Switch></AppShell></Show><Show when="signed-out"><Redirect to="/"/></Show></>;
+  </Switch></AppShell>;
 }
 function PageTitle({ eyebrow, title, desc, action }: { eyebrow:string; title:string; desc:string; action?:ReactNode }) {
   return <div className="page-title"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{desc}</p></div>{action&&<div className="page-action">{action}</div>}</div>;
@@ -153,7 +249,7 @@ function DashboardPage() {
 }
 function TenantTable({tenants,compact=false}:{tenants:Tenant[];compact?:boolean}) {
   if(!tenants.length)return <div className="empty-inline">لا توجد متاجر لعرضها.</div>;
-  return <div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th>{!compact&&<th>نوع النشاط</th>}<th>الحالة</th><th>الخطة</th>{!compact&&<th>الفروع</th>}</tr></thead><tbody>{tenants.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email}</small></td><td>{t.ownerName}</td>{!compact&&<td>{t.businessType}</td>}<td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td>{!compact&&<td>{fmt(t.branchCount)}</td>}</tr>)}</tbody></table></div>;
+  return <div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th>{!compact&&<th>نوع النشاط</th>}<th>الحالة</th><th>الخطة</th>{!compact&&<th>الفروع</th>}</tr></thead><tbody>{tenants.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone||'—'}</small></td><td>{t.ownerName}</td>{!compact&&<td>{t.businessType}</td>}<td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td>{!compact&&<td>{fmt(t.branchCount)}</td>}</tr>)}</tbody></table></div>;
 }
 function SalesTable({sales,compact=false,onReturn,onPrint,showAmounts=true}:{sales:Sale[];compact?:boolean;onReturn?:(s:Sale)=>void;onPrint?:(s:Sale)=>void;showAmounts?:boolean}) {
   if(!sales.length)return <div className="empty-inline">لا توجد عمليات بيع لعرضها.</div>;
@@ -164,19 +260,123 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
   return <div className="modal-backdrop receipt-backdrop"><section className="modal receipt-modal" role="dialog" aria-modal="true" dir="rtl"><div className="receipt-brand"><img src={`${basePath}/x-store-mark.png`} alt=""/><b>X-Store</b><span>إيصال بيع</span></div><div className="receipt-number"><span>رقم الفاتورة</span><b className="ltr-id">{sale.invoiceNo}</b></div><div className="receipt-detail"><span>التاريخ</span><b>{dateLabel(sale.createdAt)}</b></div><div className="receipt-detail"><span>عدد الأصناف</span><b>{fmt(sale.itemCount)}</b></div><div className="receipt-detail"><span>طريقة الدفع</span><b>{paymentName(sale.paymentMethod)}</b></div><div className="receipt-divider"/><div className="receipt-detail"><span>المجموع الفرعي</span><b>{money(sale.subtotal)}</b></div><div className="receipt-detail"><span>الخصم</span><b>{money(sale.discountAmount)}</b></div><div className="receipt-detail"><span>الضريبة</span><b>{money(sale.taxAmount)}</b></div><div className="receipt-grand"><span>الإجمالي</span><b>{money(sale.total)}</b></div><div className="receipt-detail"><span>المبلغ المستلم</span><b>{money(sale.amountReceived)}</b></div><div className="receipt-detail"><span>الباقي</span><b>{money(sale.changeAmount)}</b></div><p className="receipt-thanks">شكراً لزيارتكم</p><div className="modal-actions receipt-actions"><button className="button button-quiet" onClick={close}>إغلاق</button><button className="button button-primary" onClick={()=>window.print()}><Printer size={16}/> طباعة الإيصال</button></div></section></div>;
 }
 function TenantsPage() {
-  const qc=useQueryClient(), tenants=useListXStoreTenants(), create=useCreateXStoreTenant(), update=useUpdateXStoreTenant();
-  const [search,setSearch]=useState(''),[dialog,setDialog]=useState(false),[notice,setNotice]=useState('');
-  const filtered=useMemo(()=> (tenants.data||[]).filter(t=>`${t.name} ${t.ownerName} ${t.email}`.toLowerCase().includes(search.toLowerCase())),[tenants.data,search]);
-function submit(e:FormEvent<HTMLFormElement>) { e.preventDefault(); const f=new FormData(e.currentTarget); create.mutate({data:{name:String(f.get('name')),ownerName:String(f.get('ownerName')),email:String(f.get('email')),businessType:String(f.get('businessType')),plan:String(f.get('plan')) as 'monthly'|'annual'|'half_yearly'|'lifetime'}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreTenantsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setDialog(false);setNotice('تم إنشاء المتجر بنجاح');}}); }
-  return <><PageTitle eyebrow="إدارة المنصة" title="المتاجر" desc="إدارة المتاجر المشتركة وحالة الاشتراكات — كل إجراء مرتبط بمتجر محدد." action={<button onClick={()=>setDialog(true)} className="button button-primary" data-testid="button-add-tenant"><Plus size={17}/> إضافة متجر</button>}/><div className="tenant-summary"><span><Store size={17}/> {fmt(filtered.length)} متجر</span><span><CircleCheck size={17}/> {fmt(filtered.filter(t=>t.status==='active').length)} نشط</span><span><Clock3 size={17}/> {fmt(filtered.filter(t=>t.status==='trial').length)} تجريبي</span></div><Card><SectionHead title="قائمة المتاجر" detail="تحديث حالة الاشتراك مسجل في سجل التدقيق."/><div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم المتجر أو المالك" data-testid="input-search-tenants"/></label><span className="result-count">{fmt(filtered.length)} نتيجة</span></div>{tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع النشاط</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email}</small></td><td>{t.ownerName}</td><td>{t.businessType}</td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreTenantsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select></td></tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}</Card>{notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}{dialog&&<Modal title="إضافة متجر جديد" close={()=>setDialog(false)}><form className="form-grid" onSubmit={submit}><Field label="اسم المتجر" name="name" required/><Field label="اسم المالك" name="ownerName" required/><Field label="البريد الإلكتروني" name="email" type="email" required/><Field label="نوع النشاط" name="businessType" required placeholder="مثال: ملابس"/><label className="field"><span>الخطة</span><select name="plan"><option value="monthly">شهري</option><option value="half_yearly">نصف سنوي</option><option value="annual">سنوي</option><option value="lifetime">مدى الحياة</option></select></label>{create.isError&&<div className="form-error">تعذر إضافة المتجر. تحقق من البيانات والصلاحيات.</div>}<div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setDialog(false)}>إلغاء</button><button className="button button-primary" disabled={create.isPending}>{create.isPending?'جارٍ الحفظ…':'إنشاء المتجر'}</button></div></form></Modal>}</>;
+  const qc=useQueryClient();
+  const tenants=useListXStoreTenants();
+  const create=useCreateXStoreTenant();
+  const update=useUpdateXStoreTenant();
+  const credentials=useUpdateXStoreTenantCredentials();
+  const [search,setSearch]=useState('');
+  const [dialog,setDialog]=useState(false);
+  const [accessTenant,setAccessTenant]=useState<Tenant|null>(null);
+  const [notice,setNotice]=useState('');
+  const filtered=useMemo(()=> (tenants.data||[]).filter(t=>`${t.name} ${t.ownerName} ${t.phone} ${t.email||''}`.toLowerCase().includes(search.toLowerCase())),[tenants.data,search]);
+  function refreshTenants(){qc.invalidateQueries({queryKey:getListXStoreTenantsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});}
+  function submit(e:FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f=new FormData(e.currentTarget);
+    create.mutate({data:{
+      name:String(f.get('name')),
+      ownerName:String(f.get('ownerName')),
+      phone:String(f.get('phone')),
+      ownerPassword:String(f.get('ownerPassword')),
+      email:String(f.get('email')||'').trim()||null,
+      businessType:String(f.get('businessType')),
+      plan:String(f.get('plan')) as 'monthly'|'annual'|'half_yearly'|'lifetime',
+    }},{onSuccess:()=>{refreshTenants();setDialog(false);setNotice('تم إنشاء المتجر وحساب المالك');}});
+  }
+  function submitCredentials(e:FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if(!accessTenant)return;
+    const f=new FormData(e.currentTarget);
+    credentials.mutate({tenantId:accessTenant.id,data:{phone:String(f.get('phone')),password:String(f.get('password'))}},{onSuccess:()=>{refreshTenants();setAccessTenant(null);setNotice('تم تحديث بيانات دخول مالك المتجر');}});
+  }
+  return <><PageTitle eyebrow="إدارة المنصة" title="المتاجر" desc="إدارة المتاجر والاشتراكات وإنشاء بيانات دخول كل مالك." action={<button onClick={()=>setDialog(true)} className="button button-primary" data-testid="button-add-tenant"><Plus size={17}/> إضافة متجر</button>}/>
+    <div className="tenant-summary"><span><Store size={17}/> {fmt(filtered.length)} متجر</span><span><CircleCheck size={17}/> {fmt(filtered.filter(t=>t.status==='active').length)} نشط</span><span><Clock3 size={17}/> {fmt(filtered.filter(t=>t.status==='trial').length)} تجريبي</span></div>
+    <Card><SectionHead title="قائمة المتاجر" detail="تحديث الحالة وتغيير بيانات دخول المالك مسجلان في سجل التدقيق."/>
+      <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم المتجر أو المالك أو الهاتف" data-testid="input-search-tenants"/></label><span className="result-count">{fmt(filtered.length)} نتيجة</span></div>
+      {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع النشاط</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td>{t.businessType}</td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></td></tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
+    </Card>
+    {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
+    {dialog&&<Modal title="إضافة متجر وحساب مالكه" close={()=>setDialog(false)}><form className="form-grid" onSubmit={submit}>
+      <Field label="اسم المتجر" name="name" required/><Field label="اسم المالك" name="ownerName" required/>
+      <Field label="رقم هاتف الدخول" name="phone" type="tel" required placeholder="+20 10 1234 5678"/>
+      <Field label="كلمة مرور المالك" name="ownerPassword" type="password" required placeholder="10 أحرف على الأقل"/>
+      <Field label="البريد الإلكتروني (اختياري)" name="email" type="email"/>
+      <Field label="نوع النشاط" name="businessType" required placeholder="مثال: ملابس"/>
+      <label className="field"><span>الخطة</span><select name="plan"><option value="monthly">شهري</option><option value="half_yearly">نصف سنوي</option><option value="annual">سنوي</option><option value="lifetime">مدى الحياة</option></select></label>
+      <div className="role-hint field-wide"><ShieldCheck size={16}/><span>سيتم حفظ كلمة المرور مشفّرة فقط، ولن تظهر مرة أخرى بعد إنشاء الحساب.</span></div>
+      {create.isError&&<div className="form-error">{apiErrorMessage(create.error,'تعذر إضافة المتجر. تحقق من الهاتف وكلمة المرور.')}</div>}
+      <div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setDialog(false)}>إلغاء</button><button className="button button-primary" disabled={create.isPending}>{create.isPending?'جارٍ الحفظ…':'إنشاء المتجر والحساب'}</button></div>
+    </form></Modal>}
+    {accessTenant&&<Modal title={`بيانات دخول المالك · ${accessTenant.name}`} close={()=>setAccessTenant(null)}><form className="form-grid" onSubmit={submitCredentials}>
+      <Field label="رقم الهاتف" name="phone" type="tel" required defaultValue={accessTenant.phone||''}/>
+      <Field label="كلمة مرور جديدة" name="password" type="password" required placeholder="10 أحرف على الأقل"/>
+      <div className="role-hint field-wide"><KeyRound size={16}/><span>سيؤدي الحفظ إلى إلغاء الجلسات الحالية لهذا الحساب. لا يمكن استرجاع كلمة المرور القديمة.</span></div>
+      {credentials.isError&&<div className="form-error">{apiErrorMessage(credentials.error,'تعذر تحديث بيانات دخول المالك.')}</div>}
+      <div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setAccessTenant(null)}>إلغاء</button><button className="button button-primary" disabled={credentials.isPending}>{credentials.isPending?'جارٍ الحفظ…':'حفظ بيانات الدخول'}</button></div>
+    </form></Modal>}
+  </>;
 }
 function TeamPage() {
   const qc=useQueryClient(), team=useListXStoreTeam(), add=useAddXStoreTeamMember();
   const [dialog,setDialog]=useState(false),[search,setSearch]=useState(''),[notice,setNotice]=useState('');
   const roleTitle:Record<string,string>={cashier:'أمين الصندوق',warehouse_manager:'مدير المخزون',accountant:'محاسب'};
-  const members=(team.data||[]).filter(m=>`${m.name} ${m.email}`.toLowerCase().includes(search.toLowerCase()));
-  function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);add.mutate({data:{name:String(f.get('name')),email:String(f.get('email')),role:String(f.get('role')) as 'cashier'|'warehouse_manager'|'accountant'}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreTeamQueryKey()});setDialog(false);setNotice('تم حفظ صلاحيات عضو الفريق');}})}
-  return <><PageTitle eyebrow="إدارة الصلاحيات" title="فريق العمل" desc="أضف أعضاء إلى متجرك وحدد الدور المناسب لكل شخص." action={<button className="button button-primary" onClick={()=>setDialog(true)} data-testid="button-add-team-member"><Plus size={17}/> إضافة عضو</button>}/><div className="team-summary"><div><span className="team-summary-icon"><Users size={18}/></span><b>{fmt(members.length)} عضو</b><small>ضمن فريق متجرك</small></div><div><span className="team-summary-icon team-sage"><ShieldCheck size={18}/></span><b>صلاحيات حسب الدور</b><small>كل شخص يرى ما يحتاجه فقط</small></div><div className="team-summary-note">تحديث الدور موثق ضمن إجراءات المتجر.</div></div><Card><SectionHead title="أعضاء الفريق" detail="أضف أو حدّث دور العضو باستخدام بريده الإلكتروني."/><div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم العضو أو البريد الإلكتروني" data-testid="input-search-team"/></label><span className="result-count">{fmt(members.length)} عضو</span></div>{team.isLoading?<StateBlock loading error={false} onRetry={()=>team.refetch()} empty={false}/>:team.isError?<StateBlock loading={false} error onRetry={()=>team.refetch()} empty={false}/>:members.length?<div className="table-wrap"><table><thead><tr><th>عضو الفريق</th><th>البريد الإلكتروني</th><th>الدور</th><th>الحالة</th><th>تاريخ الإضافة</th></tr></thead><tbody>{members.map(m=><tr key={m.id}><td><div className="member-name"><span>{m.name.slice(0,1)}</span><b>{m.name}</b></div></td><td>{m.email}</td><td>{roleTitle[m.role]||m.role}</td><td><span className={`status-pill ${m.status==='active'?'status-active':'status-trial'}`}>{m.status==='active'?'نشط':'دعوة مرسلة'}</span></td><td>{dateLabel(m.createdAt)}</td></tr>)}</tbody></table></div>:<div className="state-box"><div className="empty-symbol"><Users/></div><b>ابدأ ببناء فريقك</b><span>أضف أمين صندوق أو مدير مخزون أو محاسب.</span><button className="button button-primary" onClick={()=>setDialog(true)}><Plus size={16}/> إضافة عضو</button></div>}</Card>{dialog&&<Modal title="إضافة عضو للفريق" close={()=>setDialog(false)}><form className="form-grid" onSubmit={submit}><Field label="اسم العضو" name="name" required/><Field label="البريد الإلكتروني" name="email" type="email" required/><label className="field field-wide"><span>الدور</span><select name="role"><option value="cashier">أمين الصندوق — البيع والمرتجعات</option><option value="warehouse_manager">مدير المخزون — إدارة المنتجات والكميات</option><option value="accountant">محاسب — متابعة المبيعات والتقارير المالية</option></select></label><div className="role-hint field-wide"><ShieldCheck size={17}/><span>الصلاحيات محدودة بدور العضو ولا تمنح وصولاً إلى أدوات المالك.</span></div>{add.isError&&<div className="form-error">تعذر إضافة العضو. تحقق من البريد الإلكتروني والصلاحيات.</div>}<div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setDialog(false)}>إلغاء</button><button className="button button-primary" disabled={add.isPending}>{add.isPending?'جارٍ الإضافة…':'إضافة إلى الفريق'}</button></div></form></Modal>}{notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}</>;
+  const members=(team.data||[]).filter(m=>`${m.name} ${m.phone} ${m.email||''}`.toLowerCase().includes(search.toLowerCase()));
+  function submit(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();const f=new FormData(e.currentTarget);
+    add.mutate({data:{name:String(f.get('name')),phone:String(f.get('phone')),password:String(f.get('password')),email:String(f.get('email')||'').trim()||null,role:String(f.get('role')) as 'cashier'|'warehouse_manager'|'accountant'}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreTeamQueryKey()});setDialog(false);setNotice('تم حفظ حساب عضو الفريق');}});
+  }
+  return <><PageTitle eyebrow="إدارة الصلاحيات" title="فريق العمل" desc="أنشئ حسابات الفريق برقم الهاتف وكلمة المرور وحدد دور كل شخص." action={<button className="button button-primary" onClick={()=>setDialog(true)} data-testid="button-add-team-member"><Plus size={17}/> إضافة عضو</button>}/>
+    <div className="team-summary"><div><span className="team-summary-icon"><Users size={18}/></span><b>{fmt(members.length)} عضو</b><small>ضمن فريق متجرك</small></div><div><span className="team-summary-icon team-sage"><ShieldCheck size={18}/></span><b>صلاحيات حسب الدور</b><small>كل شخص يرى ما يحتاجه فقط</small></div><div className="team-summary-note">إعادة استخدام رقم عضو في نفس المتجر تحدّث دوره وكلمة مروره.</div></div>
+    <Card><SectionHead title="أعضاء الفريق" detail="بيانات الدخول: رقم الهاتف وكلمة المرور التي تحددها لكل عضو."/>
+      <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم العضو أو الهاتف" data-testid="input-search-team"/></label><span className="result-count">{fmt(members.length)} عضو</span></div>
+      {team.isLoading?<StateBlock loading error={false} onRetry={()=>team.refetch()} empty={false}/>:team.isError?<StateBlock loading={false} error onRetry={()=>team.refetch()} empty={false}/>:members.length?<div className="table-wrap"><table><thead><tr><th>عضو الفريق</th><th>رقم الهاتف</th><th>البريد الإلكتروني</th><th>الدور</th><th>الحالة</th><th>تاريخ الإضافة</th></tr></thead><tbody>{members.map(m=><tr key={m.id}><td><div className="member-name"><span>{m.name.slice(0,1)}</span><b>{m.name}</b></div></td><td dir="ltr">{m.phone}</td><td>{m.email||'—'}</td><td>{roleTitle[m.role]||m.role}</td><td><span className={`status-pill ${m.status==='active'?'status-active':'status-trial'}`}>{m.status==='active'?'نشط':'دعوة مرسلة'}</span></td><td>{dateLabel(m.createdAt)}</td></tr>)}</tbody></table></div>:<div className="state-box"><div className="empty-symbol"><Users/></div><b>ابدأ ببناء فريقك</b><span>أضف أمين صندوق أو مدير مخزون أو محاسب.</span><button className="button button-primary" onClick={()=>setDialog(true)}><Plus size={16}/> إضافة عضو</button></div>}
+    </Card>
+    {dialog&&<Modal title="إضافة حساب لفريق العمل" close={()=>setDialog(false)}><form className="form-grid" onSubmit={submit}>
+      <Field label="اسم العضو" name="name" required/>
+      <Field label="رقم هاتف الدخول" name="phone" type="tel" required placeholder="+20 10 1234 5678"/>
+      <Field label="كلمة المرور" name="password" type="password" required placeholder="10 أحرف على الأقل"/>
+      <Field label="البريد الإلكتروني (اختياري)" name="email" type="email"/>
+      <label className="field field-wide"><span>الدور</span><select name="role"><option value="cashier">أمين الصندوق — البيع والمرتجعات</option><option value="warehouse_manager">مدير المخزون — إدارة المنتجات والكميات</option><option value="accountant">محاسب — متابعة المبيعات والتقارير المالية</option></select></label>
+      <div className="role-hint field-wide"><ShieldCheck size={17}/><span>الحساب الجديد لا يصل إلى إعدادات المنصة أو بيانات المتاجر الأخرى.</span></div>
+      {add.isError&&<div className="form-error">{apiErrorMessage(add.error,'تعذر حفظ الحساب. تحقق من رقم الهاتف والصلاحيات.')}</div>}
+      <div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setDialog(false)}>إلغاء</button><button className="button button-primary" disabled={add.isPending}>{add.isPending?'جارٍ الحفظ…':'حفظ الحساب'}</button></div>
+    </form></Modal>}
+    {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
+  </>;
+}
+function PlatformSettingsPage() {
+  const settings=useGetXStoreContactSettings();
+  const update=useUpdateXStoreContactSettings();
+  const [values,setValues]=useState({supportPhone:'',supportWhatsapp:'',supportEmail:''});
+  const [notice,setNotice]=useState('');
+  useEffect(()=>{
+    if(settings.data)setValues({
+      supportPhone:settings.data.supportPhone||'',
+      supportWhatsapp:settings.data.supportWhatsapp||'',
+      supportEmail:settings.data.supportEmail||'',
+    });
+  },[settings.data]);
+  function submit(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    update.mutate({data:{
+      supportPhone:values.supportPhone.trim()||null,
+      supportWhatsapp:values.supportWhatsapp.trim()||null,
+      supportEmail:values.supportEmail.trim().toLowerCase()||null,
+    }},{onSuccess:()=>setNotice('تم تحديث معلومات التواصل التي تظهر في صفحة الدخول.')});
+  }
+  return <><PageTitle eyebrow="إعدادات المنصة" title="معلومات التواصل" desc="تظهر هذه البيانات للزوار في صفحة تسجيل الدخول."/>
+    <Card className="settings-card"><SectionHead title="وسائل التواصل" detail="اترك الحقل فارغاً لإخفائه من صفحة الدخول."/>
+      {settings.isLoading?<StateBlock loading error={false} onRetry={()=>settings.refetch()} empty={false}/>:settings.isError?<StateBlock loading={false} error onRetry={()=>settings.refetch()} empty={false}/>:<form className="form-grid settings-form" onSubmit={submit}>
+        <label className="field"><span>رقم هاتف الدعم</span><input type="tel" value={values.supportPhone} onChange={e=>setValues({...values,supportPhone:e.target.value})} placeholder="+20 10 1234 5678"/></label>
+        <label className="field"><span>رقم واتساب الدعم</span><input type="tel" value={values.supportWhatsapp} onChange={e=>setValues({...values,supportWhatsapp:e.target.value})} placeholder="+20 10 1234 5678"/></label>
+        <label className="field field-wide"><span>البريد الإلكتروني للدعم</span><input type="email" value={values.supportEmail} onChange={e=>setValues({...values,supportEmail:e.target.value})} placeholder="support@example.com"/></label>
+        {update.isError&&<div className="form-error">{apiErrorMessage(update.error,'تعذر حفظ معلومات التواصل.')}</div>}
+        {notice&&<div className="settings-success"><CircleCheck size={16}/>{notice}</div>}
+        <div className="modal-actions"><button className="button button-primary" disabled={update.isPending}>{update.isPending?'جارٍ الحفظ…':'حفظ معلومات التواصل'}</button></div>
+      </form>}
+    </Card>
+  </>;
 }
 function SubscriptionsPage() {
   const qc=useQueryClient(), tenants=useListXStoreTenants(), payments=useListXStoreSubscriptionPayments(), update=useUpdateXStoreTenant(), createPayment=useCreateXStoreSubscriptionPayment();
@@ -397,7 +597,7 @@ function ClerkCacheInvalidator() {
 function Routed() {
   const [,setLocation]=useLocation();
   return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={appearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={arSA} routerPush={to=>setLocation(stripBase(to))} routerReplace={to=>setLocation(stripBase(to),{replace:true})}>
-    <QueryClientProvider client={queryClient}><ClerkCacheInvalidator/><ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary></QueryClientProvider>
+    <QueryClientProvider client={queryClient}><ClerkCacheInvalidator/><ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary></QueryClientProvider>
   </ClerkProvider>;
 }
 function App() {

@@ -12,7 +12,10 @@ export interface Tenant {
   id: string;
   name: string;
   ownerName: string;
-  email: string;
+  /** @nullable */
+  phone: string | null;
+  /** @nullable */
+  email: string | null;
   businessType: string;
   status: TenantStatus;
   plan: TenantPlan;

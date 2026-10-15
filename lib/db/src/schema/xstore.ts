@@ -1,5 +1,6 @@
 import { createInsertSchema } from "drizzle-zod";
 import {
+  boolean,
   date,
   index,
   integer,
@@ -23,7 +24,8 @@ export const xstoreTenants = pgTable("xstore_tenants", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   ownerName: text("owner_name").notNull(),
-  email: text("email").notNull(),
+  phone: text("phone"),
+  email: text("email"),
   businessType: text("business_type").notNull(),
   status: text("status").notNull().default("trial"),
   plan: text("plan").notNull().default("monthly"),
@@ -38,8 +40,12 @@ export const xstoreUsers = pgTable(
   "xstore_users",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    clerkUserId: text("clerk_user_id").notNull().unique(),
-    email: text("email").notNull(),
+    clerkUserId: text("clerk_user_id").unique(),
+    email: text("email"),
+    phone: text("phone").unique(),
+    passwordHash: text("password_hash"),
+    sessionVersion: integer("session_version").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
     name: text("name").notNull(),
     role: text("role").notNull(),
     tenantId: uuid("tenant_id").references(() => xstoreTenants.id, {
@@ -62,7 +68,8 @@ export const xstoreTeamMembers = pgTable(
     tenantId: uuid("tenant_id")
       .notNull()
       .references(() => xstoreTenants.id, { onDelete: "cascade" }),
-    email: text("email").notNull(),
+    phone: text("phone"),
+    email: text("email"),
     name: text("name").notNull(),
     role: text("role").notNull(),
     status: text("status").notNull().default("invited"),
@@ -71,13 +78,23 @@ export const xstoreTeamMembers = pgTable(
       .defaultNow(),
   },
   (table) => [
-    uniqueIndex("xstore_team_members_tenant_email_idx").on(
+    uniqueIndex("xstore_team_members_tenant_phone_idx").on(
       table.tenantId,
-      table.email,
+      table.phone,
     ),
     index("xstore_team_members_email_idx").on(table.email),
   ],
 );
+
+export const xstorePlatformSettings = pgTable("xstore_platform_settings", {
+  id: text("id").primaryKey().default("global"),
+  supportPhone: text("support_phone"),
+  supportWhatsapp: text("support_whatsapp"),
+  supportEmail: text("support_email"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
 
 export const xstoreSubscriptionPayments = pgTable(
   "xstore_subscription_payments",

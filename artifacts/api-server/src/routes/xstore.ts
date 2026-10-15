@@ -1,4 +1,3 @@
-import { clerkClient } from "@clerk/express";
 import {
   and,
   count,
@@ -7,13 +6,16 @@ import {
   gte,
   ilike,
   inArray,
+  isNotNull,
   lte,
   lt,
   or,
   sql,
 } from "drizzle-orm";
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import {
+  BootstrapXStorePlatformAdminBody,
+  BootstrapXStorePlatformAdminResponse,
   AddXStoreTeamMemberBody,
   AddXStoreTeamMemberResponse,
   CheckoutXStoreSaleBody,
@@ -28,10 +30,15 @@ import {
   CreateXStoreSubscriptionPaymentResponse,
   CreateXStoreTenantBody,
   CreateXStoreTenantResponse,
+  GetXStoreAuthStatusResponse,
+  GetXStoreContactSettingsResponse,
   GetXStoreDashboardResponse,
   GetXStoreProfitLossReportQueryParams,
   GetXStoreProfitLossReportResponse,
   GetXStoreSessionResponse,
+  LoginXStoreWithPhoneBody,
+  LoginXStoreWithPhoneResponse,
+  LogoutXStoreResponse,
   HoldXStoreSaleBody,
   HoldXStoreSaleResponse,
   ListXStoreAuditLogsResponse,
@@ -51,12 +58,18 @@ import {
   UpdateXStoreTenantBody,
   UpdateXStoreTenantParams,
   UpdateXStoreTenantResponse,
+  UpdateXStoreTenantCredentialsBody,
+  UpdateXStoreTenantCredentialsParams,
+  UpdateXStoreTenantCredentialsResponse,
+  UpdateXStoreContactSettingsBody,
+  UpdateXStoreContactSettingsResponse,
 } from "@workspace/api-zod";
 import {
   db,
   xstoreAuditLogs,
   xstoreHeldSales,
   xstoreProducts,
+  xstorePlatformSettings,
   xstoreReturns,
   xstoreSaleItems,
   xstoreSales,
@@ -68,7 +81,21 @@ import {
   type XStoreProduct,
   type XStoreTenant,
 } from "@workspace/db";
-import { getXStoreUser, hasRole, requireXStoreUser } from "../middlewares/xstoreAuth";
+import {
+  getXStoreUser,
+  hasRole,
+  requireXStoreUser,
+  ensureXStoreTenantAccess,
+} from "../middlewares/xstoreAuth";
+import {
+  clearSessionCookie,
+  createSessionToken,
+  hashPassword,
+  normalizePhone,
+  readSessionToken,
+  setSessionCookie,
+  verifyPassword,
+} from "../lib/xstore-session";
 
 const router: IRouter = Router();
 const platformAdmin = ["platform_admin"] as const;
@@ -82,6 +109,9 @@ const saleHistoryRoles = [
   "cashier",
   "accountant",
 ] as const;
+const loginAttempts = new Map<string, { count: number; resetsAt: number }>();
+const LOGIN_ATTEMPT_LIMIT = 8;
+const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 
 class DomainError extends Error {
   constructor(
@@ -109,6 +139,82 @@ function tenantDto(tenant: XStoreTenant) {
     subscriptionEndsAt: tenant.subscriptionEndsAt ?? null,
     createdAt: iso(tenant.createdAt),
   };
+}
+
+async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
+  const [tenant] = user.tenantId
+    ? await db
+        .select({ name: xstoreTenants.name })
+        .from(xstoreTenants)
+        .where(eq(xstoreTenants.id, user.tenantId))
+        .limit(1)
+    : [];
+  return {
+    id: user.id,
+    name: user.name,
+    phone: user.phone ?? "",
+    email: user.email,
+    role: user.role,
+    tenantId: user.tenantId,
+    tenantName: tenant?.name ?? null,
+  };
+}
+
+async function contactSettingsDto() {
+  const [settings] = await db
+    .select()
+    .from(xstorePlatformSettings)
+    .where(eq(xstorePlatformSettings.id, "global"))
+    .limit(1);
+  return {
+    supportPhone: settings?.supportPhone ?? null,
+    supportWhatsapp: settings?.supportWhatsapp ?? null,
+    supportEmail: settings?.supportEmail ?? null,
+  };
+}
+
+function rateLimitLogin(req: Request, phone: string) {
+  const now = Date.now();
+  if (loginAttempts.size > 5_000) {
+    for (const [key, bucket] of loginAttempts) {
+      if (bucket.resetsAt <= now) loginAttempts.delete(key);
+    }
+  }
+  const keys = [
+    `ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`,
+    `phone:${phone}`,
+  ];
+  const blocked = keys.some((key) => {
+    const bucket = loginAttempts.get(key);
+    return !!bucket && bucket.resetsAt > now && bucket.count >= LOGIN_ATTEMPT_LIMIT;
+  });
+  if (blocked) return true;
+  for (const key of keys) {
+    const bucket = loginAttempts.get(key);
+    if (!bucket || bucket.resetsAt <= now) {
+      loginAttempts.set(key, {
+        count: 1,
+        resetsAt: now + LOGIN_ATTEMPT_WINDOW_MS,
+      });
+    } else {
+      bucket.count += 1;
+    }
+  }
+  return false;
+}
+
+function clearLoginLimit(req: Request, phone: string) {
+  loginAttempts.delete(`ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`);
+  loginAttempts.delete(`phone:${phone}`);
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "23505"
+  );
 }
 
 function saleDto(
@@ -205,25 +311,240 @@ function requireTenant(
   return null;
 }
 
+router.get("/xstore/auth/status", async (_req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  const [platformAdmin] = await db
+    .select({ id: xstoreUsers.id })
+    .from(xstoreUsers)
+    .where(
+      and(
+        eq(xstoreUsers.role, "platform_admin"),
+        isNotNull(xstoreUsers.passwordHash),
+      ),
+    )
+    .limit(1);
+  res.json(
+    GetXStoreAuthStatusResponse.parse({
+      bootstrapRequired: !platformAdmin,
+      ...(await contactSettingsDto()),
+    }),
+  );
+});
+
+router.post("/xstore/auth/login", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  const parsed = LoginXStoreWithPhoneBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Enter a valid phone number and password." });
+    return;
+  }
+
+  let phone: string;
+  try {
+    phone = normalizePhone(parsed.data.phone);
+  } catch {
+    res.status(400).json({ error: "Enter a valid phone number." });
+    return;
+  }
+  if (rateLimitLogin(req, phone)) {
+    res.status(429).json({
+      error: "Too many sign-in attempts. Wait a few minutes and try again.",
+    });
+    return;
+  }
+
+  const [user] = await db
+    .select()
+    .from(xstoreUsers)
+    .where(eq(xstoreUsers.phone, phone))
+    .limit(1);
+  const passwordMatches = await verifyPassword(
+    parsed.data.password,
+    user?.passwordHash,
+  );
+  if (!user || !user.isActive || !user.passwordHash || !passwordMatches) {
+    res.status(401).json({ error: "Phone number or password is incorrect." });
+    return;
+  }
+  if (!(await ensureXStoreTenantAccess(user, req, res))) return;
+
+  clearLoginLimit(req, phone);
+  setSessionCookie(res, createSessionToken(user.id, user.sessionVersion));
+  res.json(
+    LoginXStoreWithPhoneResponse.parse(await sessionUserDto(user)),
+  );
+});
+
+router.post("/xstore/auth/logout", async (req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  const session = readSessionToken(req);
+  if (session) {
+    await db
+      .update(xstoreUsers)
+      .set({ sessionVersion: sql`${xstoreUsers.sessionVersion} + 1` })
+      .where(eq(xstoreUsers.id, session.userId));
+  }
+  clearSessionCookie(res);
+  res.status(204).end();
+});
+
 router.use("/xstore", requireXStoreUser);
 
-router.get("/xstore/session", async (_req, res): Promise<void> => {
-  const user = getXStoreUser(res);
-  const [tenant] = user.tenantId
-    ? await db
-        .select({ name: xstoreTenants.name })
-        .from(xstoreTenants)
-        .where(eq(xstoreTenants.id, user.tenantId))
-        .limit(1)
-    : [];
+router.post("/xstore/auth/bootstrap", async (req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (actor.role !== "platform_admin" || !actor.clerkUserId) {
+    res.status(403).json({
+      error: "Sign in with the existing platform owner account to set it up.",
+    });
+    return;
+  }
+  const parsed = BootstrapXStorePlatformAdminBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  let phone: string;
+  try {
+    phone = normalizePhone(parsed.data.phone);
+  } catch {
+    res.status(400).json({ error: "Enter a valid phone number." });
+    return;
+  }
+  const passwordHash = await hashPassword(parsed.data.password);
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext('xstore-owner-bootstrap'))`,
+    );
+    const [existingAdmin] = await tx
+      .select({ id: xstoreUsers.id })
+      .from(xstoreUsers)
+      .where(
+        and(
+          eq(xstoreUsers.role, "platform_admin"),
+          isNotNull(xstoreUsers.passwordHash),
+        ),
+      )
+      .limit(1);
+    if (existingAdmin) return { kind: "configured" as const };
+
+    const [phoneOwner] = await tx
+      .select({ id: xstoreUsers.id })
+      .from(xstoreUsers)
+      .where(eq(xstoreUsers.phone, phone))
+      .limit(1);
+    if (phoneOwner && phoneOwner.id !== actor.id) {
+      return { kind: "phone_taken" as const };
+    }
+
+    const [updated] = await tx
+      .update(xstoreUsers)
+      .set({
+        phone,
+        passwordHash,
+        clerkUserId: null,
+        sessionVersion: actor.sessionVersion + 1,
+        isActive: true,
+      })
+      .where(
+        and(
+          eq(xstoreUsers.id, actor.id),
+          eq(xstoreUsers.role, "platform_admin"),
+        ),
+      )
+      .returning();
+    return updated
+      ? { kind: "success" as const, user: updated }
+      : { kind: "missing" as const };
+  });
+
+  if (result.kind === "configured") {
+    res.status(409).json({ error: "The platform owner account is already set up." });
+    return;
+  }
+  if (result.kind === "phone_taken") {
+    res.status(409).json({ error: "This phone number already belongs to an account." });
+    return;
+  }
+  if (result.kind !== "success") {
+    res.status(404).json({ error: "The current platform owner account was not found." });
+    return;
+  }
+
+  await audit(
+    actor,
+    "auth.platform_admin_bootstrapped",
+    null,
+    "user",
+    actor.id,
+    "The platform owner switched to phone-and-password sign-in.",
+  );
+  setSessionCookie(
+    res,
+    createSessionToken(result.user.id, result.user.sessionVersion),
+  );
   res.json(
-    GetXStoreSessionResponse.parse({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      tenantId: user.tenantId,
-      tenantName: tenant?.name ?? null,
+    BootstrapXStorePlatformAdminResponse.parse(
+      await sessionUserDto(result.user),
+    ),
+  );
+});
+
+router.get("/xstore/session", async (_req, res): Promise<void> => {
+  res.setHeader("Cache-Control", "no-store");
+  const user = getXStoreUser(res);
+  res.json(
+    GetXStoreSessionResponse.parse(await sessionUserDto(user)),
+  );
+});
+
+router.get("/xstore/settings/contact", async (_req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (actor.role !== "platform_admin") {
+    res.status(403).json({ error: "Only the platform owner can manage contact details." });
+    return;
+  }
+  res.json(GetXStoreContactSettingsResponse.parse(await contactSettingsDto()));
+});
+
+router.put("/xstore/settings/contact", async (req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (actor.role !== "platform_admin") {
+    res.status(403).json({ error: "Only the platform owner can manage contact details." });
+    return;
+  }
+  const parsed = UpdateXStoreContactSettingsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const update = {
+    supportPhone: parsed.data.supportPhone?.trim() || null,
+    supportWhatsapp: parsed.data.supportWhatsapp?.trim() || null,
+    supportEmail: parsed.data.supportEmail?.trim().toLowerCase() || null,
+    updatedAt: new Date(),
+  };
+  const [settings] = await db
+    .insert(xstorePlatformSettings)
+    .values({ id: "global", ...update })
+    .onConflictDoUpdate({
+      target: xstorePlatformSettings.id,
+      set: update,
+    })
+    .returning();
+  await audit(
+    actor,
+    "platform.contact_settings_updated",
+    null,
+    "platform_settings",
+    "global",
+    "Updated the public support contact details.",
+  );
+  res.json(
+    UpdateXStoreContactSettingsResponse.parse({
+      supportPhone: settings?.supportPhone ?? null,
+      supportWhatsapp: settings?.supportWhatsapp ?? null,
+      supportEmail: settings?.supportEmail ?? null,
     }),
   );
 });
@@ -412,24 +733,68 @@ router.post("/xstore/tenants", async (req, res): Promise<void> => {
     return;
   }
   const input = parsed.data;
+  let phone: string;
+  try {
+    phone = normalizePhone(input.phone);
+  } catch {
+    res.status(400).json({ error: "Enter a valid owner phone number." });
+    return;
+  }
+  const ownerPasswordHash = await hashPassword(input.ownerPassword);
   const requestedEnd = dbDate(input.subscriptionEndsAt);
   const subscriptionEndsAt =
     requestedEnd === undefined
       ? planEndDate(input.plan, new Date())
       : requestedEnd;
-  const [tenant] = await db
-    .insert(xstoreTenants)
-    .values({
-      name: input.name,
-      ownerName: input.ownerName,
-      email: input.email.trim().toLowerCase(),
-      businessType: input.businessType,
-      status: "trial",
-      plan: input.plan,
-      subscriptionEndsAt,
-      branchCount: 1,
-    })
-    .returning();
+  let tenant: XStoreTenant | undefined;
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${phone}))`);
+      const [existingAccount] = await tx
+        .select({ id: xstoreUsers.id })
+        .from(xstoreUsers)
+        .where(eq(xstoreUsers.phone, phone))
+        .limit(1);
+      if (existingAccount) return { kind: "phone_taken" as const };
+
+      const [createdTenant] = await tx
+        .insert(xstoreTenants)
+        .values({
+          name: input.name,
+          ownerName: input.ownerName,
+          phone,
+          email: input.email?.trim().toLowerCase() || null,
+          businessType: input.businessType,
+          status: "trial",
+          plan: input.plan,
+          subscriptionEndsAt,
+          branchCount: 1,
+        })
+        .returning();
+      if (!createdTenant) return { kind: "failed" as const };
+      await tx.insert(xstoreUsers).values({
+        clerkUserId: null,
+        email: input.email?.trim().toLowerCase() || null,
+        phone,
+        passwordHash: ownerPasswordHash,
+        name: input.ownerName,
+        role: "tenant_admin",
+        tenantId: createdTenant.id,
+      });
+      return { kind: "success" as const, tenant: createdTenant };
+    });
+    if (result.kind === "phone_taken") {
+      res.status(409).json({ error: "This phone number already belongs to an account." });
+      return;
+    }
+    if (result.kind === "success") tenant = result.tenant;
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      res.status(409).json({ error: "This phone number already belongs to an account." });
+      return;
+    }
+    throw error;
+  }
   if (!tenant) {
     res.status(500).json({ error: "Unable to create this store." });
     return;
@@ -488,6 +853,116 @@ router.patch("/xstore/tenants/:tenantId", async (req, res): Promise<void> => {
   res.json(UpdateXStoreTenantResponse.parse(tenantDto(tenant)));
 });
 
+router.patch(
+  "/xstore/tenants/:tenantId/credentials",
+  async (req, res): Promise<void> => {
+    const actor = getXStoreUser(res);
+    if (actor.role !== "platform_admin") {
+      res.status(403).json({ error: "Only the platform owner can manage store access." });
+      return;
+    }
+    const params = UpdateXStoreTenantCredentialsParams.safeParse(req.params);
+    const parsed = UpdateXStoreTenantCredentialsBody.safeParse(req.body);
+    if (!params.success || !parsed.success) {
+      res.status(400).json({
+        error: params.error?.message ?? parsed.error?.message ?? "Invalid credentials.",
+      });
+      return;
+    }
+
+    const [tenant] = await db
+      .select()
+      .from(xstoreTenants)
+      .where(eq(xstoreTenants.id, params.data.tenantId))
+      .limit(1);
+    if (!tenant) {
+      res.status(404).json({ error: "Store not found." });
+      return;
+    }
+
+    let phone: string;
+    try {
+      phone = normalizePhone(parsed.data.phone);
+    } catch {
+      res.status(400).json({ error: "Enter a valid owner phone number." });
+      return;
+    }
+    const passwordHash = await hashPassword(parsed.data.password);
+
+    try {
+      const result = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${phone}))`);
+        const [owner] = await tx
+          .select()
+          .from(xstoreUsers)
+          .where(
+            and(
+              eq(xstoreUsers.tenantId, tenant.id),
+              eq(xstoreUsers.role, "tenant_admin"),
+            ),
+          )
+          .limit(1);
+        const [phoneOwner] = await tx
+          .select({ id: xstoreUsers.id })
+          .from(xstoreUsers)
+          .where(eq(xstoreUsers.phone, phone))
+          .limit(1);
+        if (phoneOwner && phoneOwner.id !== owner?.id) {
+          return { kind: "phone_taken" as const };
+        }
+
+        if (owner) {
+          await tx
+            .update(xstoreUsers)
+            .set({
+              phone,
+              passwordHash,
+              sessionVersion: sql`${xstoreUsers.sessionVersion} + 1`,
+              isActive: true,
+              clerkUserId: null,
+            })
+            .where(eq(xstoreUsers.id, owner.id));
+        } else {
+          await tx.insert(xstoreUsers).values({
+            clerkUserId: null,
+            email: tenant.email,
+            phone,
+            passwordHash,
+            name: tenant.ownerName,
+            role: "tenant_admin",
+            tenantId: tenant.id,
+          });
+        }
+        await tx
+          .update(xstoreTenants)
+          .set({ phone })
+          .where(eq(xstoreTenants.id, tenant.id));
+        return { kind: "success" as const };
+      });
+      if (result.kind === "phone_taken") {
+        res.status(409).json({ error: "This phone number already belongs to another account." });
+        return;
+      }
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        res.status(409).json({ error: "This phone number already belongs to another account." });
+        return;
+      }
+      throw error;
+    }
+
+    await audit(
+      actor,
+      "tenant.credentials_updated",
+      tenant.id,
+      "tenant",
+      tenant.id,
+      "Updated the tenant administrator's phone number and password.",
+    );
+    res.status(204).end();
+  },
+);
+
 router.get("/xstore/team", async (_req, res): Promise<void> => {
   const user = getXStoreUser(res);
   if (user.role !== "tenant_admin" || !user.tenantId) {
@@ -521,57 +996,159 @@ router.post("/xstore/team", async (req, res): Promise<void> => {
     return;
   }
   const memberInput = parsed.data;
-  const email = memberInput.email.trim().toLowerCase();
-  const [existingAccount] = await db
-    .select()
-    .from(xstoreUsers)
-    .where(ilike(xstoreUsers.email, email))
-    .limit(1);
-  if (
-    existingAccount &&
-    (existingAccount.role === "platform_admin" ||
-      existingAccount.role === "tenant_admin" ||
-      existingAccount.tenantId !== actor.tenantId)
-  ) {
-    res.status(409).json({
-      error: "This email already belongs to another X-Store account.",
-    });
+  let phone: string;
+  try {
+    phone = normalizePhone(memberInput.phone);
+  } catch {
+    res.status(400).json({ error: "Enter a valid team member phone number." });
     return;
   }
-  const [member] = await db
-    .insert(xstoreTeamMembers)
-    .values({
-      tenantId: actor.tenantId,
-      email,
-      name: memberInput.name,
-      role: memberInput.role,
-      status: "invited",
-    })
-    .onConflictDoUpdate({
-      target: [xstoreTeamMembers.tenantId, xstoreTeamMembers.email],
-      set: { name: memberInput.name, role: memberInput.role },
-    })
-    .returning();
+  const email = memberInput.email?.trim().toLowerCase() || null;
+  const passwordHash = await hashPassword(memberInput.password);
+
+  let member: typeof xstoreTeamMembers.$inferSelect | undefined;
+  try {
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${phone}))`);
+      const [phoneAccount] = await tx
+        .select()
+        .from(xstoreUsers)
+        .where(eq(xstoreUsers.phone, phone))
+        .limit(1);
+      const [legacyEmailAccount] = !phoneAccount && email
+        ? await tx
+            .select()
+            .from(xstoreUsers)
+            .where(
+              and(
+                ilike(xstoreUsers.email, email),
+                eq(xstoreUsers.tenantId, actor.tenantId!),
+                inArray(xstoreUsers.role, [
+                  "cashier",
+                  "warehouse_manager",
+                  "accountant",
+                ]),
+              ),
+            )
+            .limit(1)
+        : [];
+      const existingAccount = phoneAccount ?? legacyEmailAccount;
+      if (
+        existingAccount &&
+        (existingAccount.role === "platform_admin" ||
+          existingAccount.role === "tenant_admin" ||
+          existingAccount.tenantId !== actor.tenantId)
+      ) {
+        return { kind: "phone_taken" as const };
+      }
+
+      const [memberByPhone] = await tx
+        .select()
+        .from(xstoreTeamMembers)
+        .where(
+          and(
+            eq(xstoreTeamMembers.tenantId, actor.tenantId!),
+            eq(xstoreTeamMembers.phone, phone),
+          ),
+        )
+        .limit(1);
+      const [memberByEmail] = !memberByPhone && email
+        ? await tx
+            .select()
+            .from(xstoreTeamMembers)
+            .where(
+              and(
+                eq(xstoreTeamMembers.tenantId, actor.tenantId!),
+                ilike(xstoreTeamMembers.email, email),
+              ),
+            )
+            .limit(1)
+        : [];
+      const existingMember = memberByPhone ?? memberByEmail;
+      const [savedMember] = existingMember
+        ? await tx
+            .update(xstoreTeamMembers)
+            .set({
+              phone,
+              email,
+              name: memberInput.name,
+              role: memberInput.role,
+              status: "active",
+            })
+            .where(eq(xstoreTeamMembers.id, existingMember.id))
+            .returning()
+        : await tx
+            .insert(xstoreTeamMembers)
+            .values({
+              tenantId: actor.tenantId!,
+              phone,
+              email,
+              name: memberInput.name,
+              role: memberInput.role,
+              status: "active",
+            })
+            .onConflictDoUpdate({
+              target: [xstoreTeamMembers.tenantId, xstoreTeamMembers.phone],
+              set: {
+                email,
+                name: memberInput.name,
+                role: memberInput.role,
+                status: "active",
+              },
+            })
+            .returning();
+      if (!savedMember) return { kind: "failed" as const };
+
+      if (existingAccount) {
+        await tx
+          .update(xstoreUsers)
+          .set({
+            email,
+            name: memberInput.name,
+            role: memberInput.role,
+            tenantId: actor.tenantId,
+            passwordHash,
+            sessionVersion: sql`${xstoreUsers.sessionVersion} + 1`,
+            isActive: true,
+            clerkUserId: null,
+          })
+          .where(eq(xstoreUsers.id, existingAccount.id));
+      } else {
+        await tx.insert(xstoreUsers).values({
+          clerkUserId: null,
+          email,
+          phone,
+          passwordHash,
+          name: memberInput.name,
+          role: memberInput.role,
+          tenantId: actor.tenantId,
+        });
+      }
+      return { kind: "success" as const, member: savedMember };
+    });
+    if (result.kind === "phone_taken") {
+      res.status(409).json({ error: "This phone number already belongs to another account." });
+      return;
+    }
+    if (result.kind === "success") member = result.member;
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      res.status(409).json({ error: "This phone number already belongs to another account." });
+      return;
+    }
+    throw error;
+  }
   if (!member) {
     res.status(500).json({ error: "Unable to add this team member." });
     return;
   }
-  await db
-    .update(xstoreUsers)
-    .set({ name: member.name, role: member.role, tenantId: actor.tenantId })
-    .where(
-      and(
-        eq(xstoreUsers.tenantId, actor.tenantId),
-        ilike(xstoreUsers.email, email),
-      ),
-    );
   await audit(
     actor,
     "team.role_assigned",
     actor.tenantId,
     "team_member",
     member.id,
-    `${member.email} assigned ${member.role}`,
+    `${member.phone} assigned ${member.role}`,
   );
   res
     .status(201)

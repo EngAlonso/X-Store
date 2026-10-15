@@ -18,12 +18,83 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * @summary Get public sign-in status and support contacts
+ */
+export const GetXStoreAuthStatusResponse = zod.object({
+  "bootstrapRequired": zod.boolean(),
+  "supportPhone": zod.string().nullable(),
+  "supportWhatsapp": zod.string().nullable(),
+  "supportEmail": zod.string().email().nullable()
+})
+
+
+/**
+ * @summary Sign in with a phone number and password
+ */
+export const loginXStoreWithPhoneBodyPhoneMin = 8;
+export const loginXStoreWithPhoneBodyPhoneMax = 20;
+
+export const loginXStoreWithPhoneBodyPasswordMax = 128;
+
+
+
+export const LoginXStoreWithPhoneBody = zod.object({
+  "phone": zod.string().min(loginXStoreWithPhoneBodyPhoneMin).max(loginXStoreWithPhoneBodyPhoneMax),
+  "password": zod.string().min(1).max(loginXStoreWithPhoneBodyPasswordMax)
+})
+
+export const LoginXStoreWithPhoneResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string().email().nullable(),
+  "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
+  "tenantId": zod.string().nullable(),
+  "tenantName": zod.string().nullable()
+})
+
+
+/**
+ * @summary Sign out of the current X-Store account
+ */
+export const LogoutXStoreResponse = zod.void()
+
+
+/**
+ * @summary Convert the initial Clerk owner session to phone-and-password access
+ */
+export const bootstrapXStorePlatformAdminBodyPhoneMin = 8;
+export const bootstrapXStorePlatformAdminBodyPhoneMax = 20;
+
+export const bootstrapXStorePlatformAdminBodyPasswordMin = 10;
+export const bootstrapXStorePlatformAdminBodyPasswordMax = 128;
+
+
+
+export const BootstrapXStorePlatformAdminBody = zod.object({
+  "phone": zod.string().min(bootstrapXStorePlatformAdminBodyPhoneMin).max(bootstrapXStorePlatformAdminBodyPhoneMax),
+  "password": zod.string().min(bootstrapXStorePlatformAdminBodyPasswordMin).max(bootstrapXStorePlatformAdminBodyPasswordMax)
+})
+
+export const BootstrapXStorePlatformAdminResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string().email().nullable(),
+  "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
+  "tenantId": zod.string().nullable(),
+  "tenantName": zod.string().nullable()
+})
+
+
+/**
  * @summary Get the signed-in user's X-Store role
  */
 export const GetXStoreSessionResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
-  "email": zod.string(),
+  "phone": zod.string(),
+  "email": zod.string().email().nullable(),
   "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable()
@@ -48,7 +119,8 @@ export const GetXStoreDashboardResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "ownerName": zod.string(),
-  "email": zod.string(),
+  "phone": zod.string().nullable(),
+  "email": zod.string().email().nullable(),
   "businessType": zod.string(),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
@@ -98,7 +170,8 @@ export const ListXStoreTenantsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "ownerName": zod.string(),
-  "email": zod.string(),
+  "phone": zod.string().nullable(),
+  "email": zod.string().email().nullable(),
   "businessType": zod.string(),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
@@ -114,13 +187,21 @@ export const ListXStoreTenantsResponse = zod.array(ListXStoreTenantsResponseItem
  */
 
 
+export const createXStoreTenantBodyPhoneMin = 8;
+export const createXStoreTenantBodyPhoneMax = 20;
+
+export const createXStoreTenantBodyOwnerPasswordMin = 10;
+export const createXStoreTenantBodyOwnerPasswordMax = 128;
+
 
 
 
 export const CreateXStoreTenantBody = zod.object({
   "name": zod.string().min(1),
   "ownerName": zod.string().min(1),
-  "email": zod.string().email(),
+  "phone": zod.string().min(createXStoreTenantBodyPhoneMin).max(createXStoreTenantBodyPhoneMax),
+  "ownerPassword": zod.string().min(createXStoreTenantBodyOwnerPasswordMin).max(createXStoreTenantBodyOwnerPasswordMax),
+  "email": zod.string().email().nullish(),
   "businessType": zod.string().min(1),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
   "subscriptionEndsAt": zod.coerce.date().nullish()
@@ -130,7 +211,8 @@ export const CreateXStoreTenantResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "ownerName": zod.string(),
-  "email": zod.string(),
+  "phone": zod.string().nullable(),
+  "email": zod.string().email().nullable(),
   "businessType": zod.string(),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
@@ -157,7 +239,8 @@ export const UpdateXStoreTenantResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
   "ownerName": zod.string(),
-  "email": zod.string(),
+  "phone": zod.string().nullable(),
+  "email": zod.string().email().nullable(),
   "businessType": zod.string(),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
@@ -168,11 +251,61 @@ export const UpdateXStoreTenantResponse = zod.object({
 
 
 /**
+ * @summary Set a tenant administrator's phone number and password
+ */
+export const UpdateXStoreTenantCredentialsParams = zod.object({
+  "tenantId": zod.coerce.string()
+})
+
+export const updateXStoreTenantCredentialsBodyPhoneMin = 8;
+export const updateXStoreTenantCredentialsBodyPhoneMax = 20;
+
+export const updateXStoreTenantCredentialsBodyPasswordMin = 10;
+export const updateXStoreTenantCredentialsBodyPasswordMax = 128;
+
+
+
+export const UpdateXStoreTenantCredentialsBody = zod.object({
+  "phone": zod.string().min(updateXStoreTenantCredentialsBodyPhoneMin).max(updateXStoreTenantCredentialsBodyPhoneMax),
+  "password": zod.string().min(updateXStoreTenantCredentialsBodyPasswordMin).max(updateXStoreTenantCredentialsBodyPasswordMax)
+})
+
+export const UpdateXStoreTenantCredentialsResponse = zod.void()
+
+
+/**
+ * @summary Get platform contact settings
+ */
+export const GetXStoreContactSettingsResponse = zod.object({
+  "supportPhone": zod.string().nullable(),
+  "supportWhatsapp": zod.string().nullable(),
+  "supportEmail": zod.string().email().nullable()
+})
+
+
+/**
+ * @summary Update platform contact settings
+ */
+export const UpdateXStoreContactSettingsBody = zod.object({
+  "supportPhone": zod.string().nullable(),
+  "supportWhatsapp": zod.string().nullable(),
+  "supportEmail": zod.string().email().nullable()
+})
+
+export const UpdateXStoreContactSettingsResponse = zod.object({
+  "supportPhone": zod.string().nullable(),
+  "supportWhatsapp": zod.string().nullable(),
+  "supportEmail": zod.string().email().nullable()
+})
+
+
+/**
  * @summary List team members in the current tenant
  */
 export const ListXStoreTeamResponseItem = zod.object({
   "id": zod.string(),
-  "email": zod.string().email(),
+  "phone": zod.string().nullable(),
+  "email": zod.string().email().nullable(),
   "name": zod.string(),
   "role": zod.enum(['tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
   "status": zod.enum(['active', 'invited']),
@@ -184,18 +317,27 @@ export const ListXStoreTeamResponse = zod.array(ListXStoreTeamResponseItem)
 /**
  * @summary Add or update a team member's role
  */
+export const addXStoreTeamMemberBodyPhoneMin = 8;
+export const addXStoreTeamMemberBodyPhoneMax = 20;
+
+export const addXStoreTeamMemberBodyPasswordMin = 10;
+export const addXStoreTeamMemberBodyPasswordMax = 128;
+
 
 
 
 export const AddXStoreTeamMemberBody = zod.object({
-  "email": zod.string().email(),
+  "phone": zod.string().min(addXStoreTeamMemberBodyPhoneMin).max(addXStoreTeamMemberBodyPhoneMax),
+  "password": zod.string().min(addXStoreTeamMemberBodyPasswordMin).max(addXStoreTeamMemberBodyPasswordMax),
+  "email": zod.string().email().nullish(),
   "name": zod.string().min(1),
   "role": zod.enum(['cashier', 'warehouse_manager', 'accountant'])
 })
 
 export const AddXStoreTeamMemberResponse = zod.object({
   "id": zod.string(),
-  "email": zod.string().email(),
+  "phone": zod.string().nullable(),
+  "email": zod.string().email().nullable(),
   "name": zod.string(),
   "role": zod.enum(['tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
   "status": zod.enum(['active', 'invited']),

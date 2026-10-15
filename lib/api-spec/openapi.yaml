@@ -26,6 +26,80 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /xstore/auth/status:
+    get:
+      operationId: getXStoreAuthStatus
+      tags: [xstore]
+      summary: Get public sign-in status and support contacts
+      responses:
+        "200":
+          description: Public authentication status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthStatus"
+  /xstore/auth/login:
+    post:
+      operationId: loginXStoreWithPhone
+      tags: [xstore]
+      summary: Sign in with a phone number and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhoneLoginInput"
+      responses:
+        "200":
+          description: Signed-in X-Store account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: Too many sign-in attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /xstore/auth/logout:
+    post:
+      operationId: logoutXStore
+      tags: [xstore]
+      summary: Sign out of the current X-Store account
+      responses:
+        "204":
+          description: Signed out
+  /xstore/auth/bootstrap:
+    post:
+      operationId: bootstrapXStorePlatformAdmin
+      tags: [xstore]
+      summary: Convert the initial Clerk owner session to phone-and-password access
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminBootstrapInput"
+      responses:
+        "200":
+          description: Initial platform administrator account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: The initial administrator has already been configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /xstore/session:
     get:
       operationId: getXStoreSession
@@ -146,6 +220,71 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /xstore/tenants/{tenantId}/credentials:
+    patch:
+      operationId: updateXStoreTenantCredentials
+      tags: [xstore]
+      summary: Set a tenant administrator's phone number and password
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TenantCredentialsInput"
+      responses:
+        "204":
+          description: Tenant login credentials updated
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /xstore/settings/contact:
+    get:
+      operationId: getXStoreContactSettings
+      tags: [xstore]
+      summary: Get platform contact settings
+      responses:
+        "200":
+          description: Platform contact details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactSettings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      operationId: updateXStoreContactSettings
+      tags: [xstore]
+      summary: Update platform contact settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactSettingsInput"
+      responses:
+        "200":
+          description: Updated contact details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactSettings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
   /xstore/team:
     get:
       operationId: listXStoreTeam
@@ -601,13 +740,48 @@ components:
       properties:
         id: { type: string }
         name: { type: string }
-        email: { type: string }
+        phone: { type: string }
+        email: { type: ["string", "null"], format: email }
         role:
           type: string
           enum: [platform_admin, tenant_admin, cashier, warehouse_manager, accountant]
         tenantId: { type: ["string", "null"] }
         tenantName: { type: ["string", "null"] }
-      required: [id, name, email, role, tenantId, tenantName]
+      required: [id, name, phone, email, role, tenantId, tenantName]
+    AuthStatus:
+      type: object
+      properties:
+        bootstrapRequired: { type: boolean }
+        supportPhone: { type: ["string", "null"] }
+        supportWhatsapp: { type: ["string", "null"] }
+        supportEmail: { type: ["string", "null"], format: email }
+      required: [bootstrapRequired, supportPhone, supportWhatsapp, supportEmail]
+    PhoneLoginInput:
+      type: object
+      properties:
+        phone: { type: string, minLength: 8, maxLength: 20 }
+        password: { type: string, minLength: 1, maxLength: 128 }
+      required: [phone, password]
+    AdminBootstrapInput:
+      type: object
+      properties:
+        phone: { type: string, minLength: 8, maxLength: 20 }
+        password: { type: string, minLength: 10, maxLength: 128 }
+      required: [phone, password]
+    ContactSettings:
+      type: object
+      properties:
+        supportPhone: { type: ["string", "null"] }
+        supportWhatsapp: { type: ["string", "null"] }
+        supportEmail: { type: ["string", "null"], format: email }
+      required: [supportPhone, supportWhatsapp, supportEmail]
+    ContactSettingsInput:
+      type: object
+      properties:
+        supportPhone: { type: ["string", "null"] }
+        supportWhatsapp: { type: ["string", "null"] }
+        supportEmail: { type: ["string", "null"], format: email }
+      required: [supportPhone, supportWhatsapp, supportEmail]
     DashboardSummary:
       type: object
       properties:
@@ -653,7 +827,8 @@ components:
         id: { type: string }
         name: { type: string }
         ownerName: { type: string }
-        email: { type: string }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"], format: email }
         businessType: { type: string }
         status:
           type: string
@@ -668,6 +843,7 @@ components:
         - id
         - name
         - ownerName
+        - phone
         - email
         - businessType
         - status
@@ -680,13 +856,21 @@ components:
       properties:
         name: { type: string, minLength: 1 }
         ownerName: { type: string, minLength: 1 }
-        email: { type: string, format: email }
+        phone: { type: string, minLength: 8, maxLength: 20 }
+        ownerPassword: { type: string, minLength: 10, maxLength: 128 }
+        email: { type: ["string", "null"], format: email }
         businessType: { type: string, minLength: 1 }
         plan:
           type: string
           enum: [monthly, half_yearly, annual, lifetime]
         subscriptionEndsAt: { type: ["string", "null"], format: date }
-      required: [name, ownerName, email, businessType, plan]
+      required: [name, ownerName, phone, ownerPassword, businessType, plan]
+    TenantCredentialsInput:
+      type: object
+      properties:
+        phone: { type: string, minLength: 8, maxLength: 20 }
+        password: { type: string, minLength: 10, maxLength: 128 }
+      required: [phone, password]
     TenantUpdate:
       type: object
       properties:
@@ -701,7 +885,8 @@ components:
       type: object
       properties:
         id: { type: string }
-        email: { type: string, format: email }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"], format: email }
         name: { type: string }
         role:
           type: string
@@ -710,16 +895,18 @@ components:
           type: string
           enum: [active, invited]
         createdAt: { type: string, format: date-time }
-      required: [id, email, name, role, status, createdAt]
+      required: [id, phone, email, name, role, status, createdAt]
     TeamMemberInput:
       type: object
       properties:
-        email: { type: string, format: email }
+        phone: { type: string, minLength: 8, maxLength: 20 }
+        password: { type: string, minLength: 10, maxLength: 128 }
+        email: { type: ["string", "null"], format: email }
         name: { type: string, minLength: 1 }
         role:
           type: string
           enum: [cashier, warehouse_manager, accountant]
-      required: [email, name, role]
+      required: [phone, password, name, role]
     SubscriptionPayment:
       type: object
       properties:

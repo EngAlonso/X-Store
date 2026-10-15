@@ -10,7 +10,9 @@ import type { SessionUserRole } from './sessionUserRole';
 export interface SessionUser {
   id: string;
   name: string;
-  email: string;
+  phone: string;
+  /** @nullable */
+  email: string | null;
   role: SessionUserRole;
   /** @nullable */
   tenantId: string | null;

@@ -6,9 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './adminBootstrapInput';
 export * from './apiError';
 export * from './auditLog';
+export * from './authStatus';
 export * from './badRequestResponse';
+export * from './contactSettings';
+export * from './contactSettingsInput';
 export * from './dashboardSummary';
 export * from './exchangeInput';
 export * from './exchangeInputPaymentMethod';
@@ -23,6 +27,7 @@ export * from './listXStoreSalesParams';
 export * from './listXStoreTenantsParams';
 export * from './listXStoreTenantsStatus';
 export * from './notFoundResponse';
+export * from './phoneLoginInput';
 export * from './product';
 export * from './productInput';
 export * from './productUpdate';
@@ -49,6 +54,7 @@ export * from './teamMemberInputRole';
 export * from './teamMemberRole';
 export * from './teamMemberStatus';
 export * from './tenant';
+export * from './tenantCredentialsInput';
 export * from './tenantInput';
 export * from './tenantInputPlan';
 export * from './tenantPlan';

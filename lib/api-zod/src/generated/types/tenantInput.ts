@@ -12,7 +12,18 @@ export interface TenantInput {
   name: string;
   /** @minLength 1 */
   ownerName: string;
-  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 20
+     */
+  phone: string;
+  /**
+     * @minLength 10
+     * @maxLength 128
+     */
+  ownerPassword: string;
+  /** @nullable */
+  email?: string | null;
   /** @minLength 1 */
   businessType: string;
   plan: TenantInputPlan;

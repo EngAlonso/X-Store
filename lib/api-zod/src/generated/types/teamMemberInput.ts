@@ -8,7 +8,18 @@
 import type { TeamMemberInputRole } from './teamMemberInputRole';
 
 export interface TeamMemberInput {
-  email: string;
+  /**
+     * @minLength 8
+     * @maxLength 20
+     */
+  phone: string;
+  /**
+     * @minLength 10
+     * @maxLength 128
+     */
+  password: string;
+  /** @nullable */
+  email?: string | null;
   /** @minLength 1 */
   name: string;
   role: TeamMemberInputRole;

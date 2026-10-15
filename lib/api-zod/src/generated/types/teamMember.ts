@@ -10,7 +10,10 @@ import type { TeamMemberStatus } from './teamMemberStatus';
 
 export interface TeamMember {
   id: string;
-  email: string;
+  /** @nullable */
+  phone: string | null;
+  /** @nullable */
+  email: string | null;
   name: string;
   role: TeamMemberRole;
   status: TeamMemberStatus;

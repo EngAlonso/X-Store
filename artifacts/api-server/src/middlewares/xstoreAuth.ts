@@ -1,5 +1,5 @@
 import { clerkClient, getAuth } from "@clerk/express";
-import { and, eq, ilike, sql } from "drizzle-orm";
+import { and, eq, ilike, isNotNull, sql } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
 import {
   db,
@@ -8,6 +8,7 @@ import {
   xstoreUsers,
   type XStoreUser,
 } from "@workspace/db";
+import { readSessionToken } from "../lib/xstore-session";
 
 declare global {
   namespace Express {
@@ -110,6 +111,43 @@ export async function requireXStoreUser(
   next: NextFunction,
 ): Promise<void> {
   try {
+    const localSession = readSessionToken(req);
+    if (localSession) {
+      const [localUser] = await db
+        .select()
+        .from(xstoreUsers)
+        .where(eq(xstoreUsers.id, localSession.userId))
+        .limit(1);
+      if (
+        !localUser ||
+        !localUser.isActive ||
+        !localUser.passwordHash ||
+        localUser.sessionVersion !== localSession.sessionVersion
+      ) {
+        res.status(401).json({ error: "Your session has expired. Sign in again." });
+        return;
+      }
+      if (!(await ensureXStoreTenantAccess(localUser, req, res))) return;
+      res.locals.xstoreUser = localUser;
+      next();
+      return;
+    }
+
+    const [localPlatformAdmin] = await db
+      .select({ id: xstoreUsers.id })
+      .from(xstoreUsers)
+      .where(
+        and(
+          eq(xstoreUsers.role, "platform_admin"),
+          isNotNull(xstoreUsers.passwordHash),
+        ),
+      )
+      .limit(1);
+    if (localPlatformAdmin) {
+      res.status(401).json({ error: "Sign in with your phone number and password." });
+      return;
+    }
+
     const { userId } = getAuth(req);
     if (!userId) {
       res.status(401).json({ error: "Sign in to continue." });
@@ -124,29 +162,7 @@ export async function requireXStoreUser(
       return;
     }
 
-    if (user.tenantId && user.role !== "platform_admin") {
-      const [tenant] = await db
-        .select({
-          status: xstoreTenants.status,
-          plan: xstoreTenants.plan,
-          subscriptionEndsAt: xstoreTenants.subscriptionEndsAt,
-        })
-        .from(xstoreTenants)
-        .where(eq(xstoreTenants.id, user.tenantId))
-        .limit(1);
-      const today = new Date().toISOString().slice(0, 10);
-      const expired =
-        tenant?.plan !== "lifetime" &&
-        tenant?.subscriptionEndsAt !== null &&
-        tenant?.subscriptionEndsAt !== undefined &&
-        tenant.subscriptionEndsAt < today;
-      if (!tenant || tenant.status === "suspended" || expired) {
-        res
-          .status(403)
-          .json({ error: "This store account is suspended or its subscription has expired." });
-        return;
-      }
-    }
+    if (!(await ensureXStoreTenantAccess(user, req, res))) return;
 
     res.locals.xstoreUser = user;
     next();
@@ -154,6 +170,41 @@ export async function requireXStoreUser(
     req.log.error({ error }, "Unable to resolve X-Store identity");
     res.status(500).json({ error: "Unable to load the X-Store account." });
   }
+}
+
+export async function ensureXStoreTenantAccess(
+  user: XStoreUser,
+  req: Request,
+  res: Response,
+): Promise<boolean> {
+  if (user.tenantId && user.role !== "platform_admin") {
+    const [tenant] = await db
+      .select({
+        status: xstoreTenants.status,
+        plan: xstoreTenants.plan,
+        subscriptionEndsAt: xstoreTenants.subscriptionEndsAt,
+      })
+      .from(xstoreTenants)
+      .where(eq(xstoreTenants.id, user.tenantId))
+      .limit(1);
+    const today = new Date().toISOString().slice(0, 10);
+    const expired =
+      tenant?.plan !== "lifetime" &&
+      tenant?.subscriptionEndsAt !== null &&
+      tenant?.subscriptionEndsAt !== undefined &&
+      tenant.subscriptionEndsAt < today;
+    if (!tenant || tenant.status === "suspended" || expired) {
+      req.log.warn(
+        { userId: user.id, tenantId: user.tenantId },
+        "Blocked access to inactive X-Store tenant",
+      );
+      res.status(403).json({
+        error: "This store account is suspended or its subscription has expired.",
+      });
+      return false;
+    }
+  }
+  return true;
 }
 
 export function getXStoreUser(res: Response): XStoreUser {
