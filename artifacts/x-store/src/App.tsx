@@ -22,12 +22,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import './auth-unified.css';
 import {
   LayoutDashboard, Store, Package, ShoppingCart, ReceiptText, ScrollText, Search, Plus,
   Bell, LogOut, Menu, X, ArrowUpLeft, ChevronLeft, ChevronDown, CreditCard, Banknote,
   Wallet, CircleCheck, Clock3, AlertTriangle, RotateCcw,
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
-  Settings2, KeyRound, Phone, Mail, MessageCircle,
+  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone,
 } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -119,24 +120,54 @@ function AuthPage({ kind }: { kind: 'in' | 'up' }) {
   const bootstrapRequired = status.data?.bootstrapRequired === true;
   const founderSetupRequired = status.data?.founderSetupRequired === true;
   const setupRequired = bootstrapRequired || founderSetupRequired;
-  return <div dir="rtl" className="auth-screen auth-refined">
-    <div className="auth-brand"><Logo/><p>مساحة عملك تبدأ من هنا.</p><div className="auth-note"><img src={`${basePath}/x-store-mark.png`}/><span>تجربة عمل هادئة<br/>وموثوقة كل يوم.</span></div></div>
-    <div className="auth-widget"><section className="auth-card">
-      {status.isLoading
-        ? <div className="auth-status-state" role="status">جارٍ التحقق من إعداد المنصة…</div>
-        : status.isError
-          ? <div className="auth-status-state" role="alert"><span>تعذر التحقق من إعداد حساب المالك.</span><button className="button button-quiet button-small" type="button" onClick={() => void status.refetch()} data-testid="button-retry-auth-status">إعادة المحاولة</button></div>
-          : setupRequired
-            ? <FounderSetupForm recoveringExistingOwner={bootstrapRequired}/>
-            : <PhoneLoginForm/>}
-      {status.data && <ContactMethods status={status.data}/>}
-    </section></div>
-  </div>;
+  return <main dir="rtl" className="auth-screen xsu-page">
+    <div className="xsu-shell">
+      <section className="xsu-brand" aria-label="هوية X-Store">
+        <div className="xsu-brand-top">
+          <Link href="/" className="xsu-brand-lockup" data-testid="link-brand" aria-label="X-Store — نظام إدارة متجرك">
+            <span className="xsu-logo-frame"><img src={`${basePath}/x-store-mark.png`} alt=""/></span>
+            <span className="xsu-brand-name">X-Store</span>
+            <span className="xsu-brand-divider"/>
+            <span className="xsu-brand-caption">نظام إدارة متجرك</span>
+          </Link>
+          <span className="xsu-secure-pill"><ShieldCheck size={15} strokeWidth={1.8}/><span>مساحة آمنة</span></span>
+        </div>
+        <div className="xsu-brand-copy">
+          <span className="xsu-eyebrow"><span className="xsu-eyebrow-dot"/>يومك التجاري يبدأ بهدوء</span>
+          <h2>كل تفاصيل<br/>متجرك، <em>في مكانها.</em></h2>
+          <p>مساحة عمل واحدة تساعدك على متابعة شؤون متجرك بثقة، من أول اليوم إلى آخره.</p>
+        </div>
+        <div className="xsu-brand-footer">
+          <span className="xsu-footer-mark"><LockKeyhole size={17} strokeWidth={1.7}/></span>
+          <div><strong>عملك محفوظ بعناية</strong><span>دخول موثوق لفريقك، كل يوم.</span></div>
+          <span className="xsu-footer-index">01 / 01</span>
+        </div>
+        <span className="xsu-orbit xsu-orbit-one" aria-hidden="true"/>
+        <span className="xsu-orbit xsu-orbit-two" aria-hidden="true"/>
+        <span className="xsu-orbit xsu-orbit-three" aria-hidden="true"/>
+        <span className="xsu-brand-glint" aria-hidden="true"/>
+      </section>
+      <section className="xsu-login" aria-label="تسجيل الدخول إلى X-Store">
+        <div className="xsu-login-inner">
+          {status.isLoading
+            ? <div className="auth-status-state" role="status">جارٍ التحقق من إعداد المنصة…</div>
+            : status.isError
+              ? <div className="auth-status-state" role="alert"><span>تعذر التحقق من إعداد حساب المالك.</span><button className="button button-quiet button-small" type="button" onClick={() => void status.refetch()} data-testid="button-retry-auth-status">إعادة المحاولة</button></div>
+              : setupRequired
+                ? <FounderSetupForm recoveringExistingOwner={bootstrapRequired}/>
+                : <PhoneLoginForm/>}
+          {status.data && <ContactMethods status={status.data}/>}
+          {status.data && !setupRequired && <p className="xsu-footnote"><ShieldCheck size={14} strokeWidth={1.8}/><span>بياناتك تبقى خاصة وآمنة</span></p>}
+        </div>
+      </section>
+    </div>
+  </main>;
 }
 function PhoneLoginForm() {
   const login = useLoginXStoreWithPhone();
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
+  const [showPassword, setShowPassword] = useState(false);
   function submit(e:FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
@@ -148,12 +179,27 @@ function PhoneLoginForm() {
       },
     });
   }
-  return <><div className="auth-card-heading"><span className="auth-icon"><KeyRound size={20}/></span><div><h1>تسجيل الدخول</h1><p>استخدم رقم الهاتف وكلمة المرور المخصصين لحسابك.</p></div></div>
-    <form className="auth-form" onSubmit={submit}>
-      <label className="field"><span>رقم الهاتف</span><input name="phone" type="tel" autoComplete="username" required placeholder="مثال: ‎+20 10 1234 5678"/></label>
-      <label className="field"><span>كلمة المرور</span><input name="password" type="password" autoComplete="current-password" required placeholder="أدخل كلمة المرور"/></label>
-      {login.isError&&<div className="form-error">{apiErrorMessage(login.error,'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.')}</div>}
-      <button className="button button-primary auth-submit" disabled={login.isPending}>{login.isPending?'جارٍ تسجيل الدخول…':'دخول'}</button>
+  return <>
+    <div className="xsu-heading">
+      <div className="xsu-heading-icon"><Smartphone size={20} strokeWidth={1.75}/></div>
+      <div><span className="xsu-heading-kicker">مرحباً بعودتك</span><h1 id="xsu-title">تسجيل الدخول</h1></div>
+    </div>
+    <p className="xsu-intro">أدخل بيانات حسابك للعودة إلى مساحة عملك.</p>
+    <form className="xsu-form" onSubmit={submit}>
+      <div className="xsu-field">
+        <label className="xsu-field-label" htmlFor="signin-phone">رقم الهاتف</label>
+        <span className="xsu-input-wrap"><Smartphone size={17} aria-hidden="true"/><input id="signin-phone" name="phone" type="tel" autoComplete="username" inputMode="tel" required placeholder="مثال: ‎+20 10 1234 5678"/></span>
+      </div>
+      <div className="xsu-field">
+        <label className="xsu-field-label" htmlFor="signin-password">كلمة المرور</label>
+        <span className="xsu-input-wrap">
+          <LockKeyhole size={17} aria-hidden="true"/>
+          <input id="signin-password" name="password" type={showPassword?'text':'password'} autoComplete="current-password" required placeholder="أدخل كلمة المرور"/>
+          <button className="xsu-visibility" type="button" onClick={()=>setShowPassword(visible=>!visible)} aria-label={showPassword?'إخفاء كلمة المرور':'إظهار كلمة المرور'} aria-pressed={showPassword}>{showPassword?<EyeOff size={17}/>:<Eye size={17}/>}</button>
+        </span>
+      </div>
+      {login.isError&&<div className="form-error xsu-login-error" role="alert">{apiErrorMessage(login.error,'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.')}</div>}
+      <button className="button button-primary auth-submit xsu-submit" disabled={login.isPending}><span>{login.isPending?'جارٍ تسجيل الدخول…':'دخول إلى متجري'}</span><ArrowLeft size={17} strokeWidth={2} aria-hidden="true"/></button>
     </form>
   </>;
 }
@@ -181,9 +227,9 @@ function FounderSetupForm({ recoveringExistingOwner }: { recoveringExistingOwner
     );
   }
   return <>
-    <div className="auth-card-heading"><span className="auth-icon"><ShieldCheck size={20}/></span><div><h1>{recoveringExistingOwner?'تفعيل حساب مالك المنصة':'إعداد حساب المؤسس'}</h1><p>{recoveringExistingOwner?'أكمل بيانات الدخول لحساب المالك الحالي.':'أنشئ الحساب الأول، وسيصبح مالك المنصة.'}</p></div></div>
+    <div className="auth-card-heading xsu-setup-heading"><span className="auth-icon"><ShieldCheck size={20}/></span><div><h1>{recoveringExistingOwner?'تفعيل حساب مالك المنصة':'إعداد حساب المؤسس'}</h1><p>{recoveringExistingOwner?'أكمل بيانات الدخول لحساب المالك الحالي.':'أنشئ الحساب الأول، وسيصبح مالك المنصة.'}</p></div></div>
     <Form {...form}>
-      <form className="auth-form" onSubmit={form.handleSubmit(submit)} noValidate>
+      <form className="auth-form xsu-setup-form" onSubmit={form.handleSubmit(submit)} noValidate>
         <FormField control={form.control} name="name" render={({ field }) => <FormItem className="field">
           <FormLabel>اسم المؤسس</FormLabel><FormControl><input {...field} autoComplete="name" maxLength={100} data-testid="input-founder-name" disabled={createOwner.isPending}/></FormControl><FormMessage/>
         </FormItem>}/>
