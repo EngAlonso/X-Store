@@ -9,7 +9,11 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/db run generate` — create a versioned Drizzle migration after changing the schema; commit it with the schema change
+- `pnpm --filter @workspace/db run migrate` — apply pending migrations to an existing PostgreSQL database
 - Required env: `DATABASE_URL` — Postgres connection string
+
+For external hosting, start the API with `pnpm --filter @workspace/api-server run start`; it applies pending migrations before listening. The database itself must already exist, and `DATABASE_URL` must point to it with permission to create/alter tables. A fresh database gets empty X-Store tables; this does not copy founder accounts or business data. Existing X-Store tables without a Drizzle migration tracking table are rejected rather than overwritten and must be baselined separately. Replit-managed databases skip app-start migrations: development schema changes use the existing post-merge setup, and production schema changes use Publish.
 
 ## Stack
 
