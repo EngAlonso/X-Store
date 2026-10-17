@@ -246,6 +246,15 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
+function isMissingDatabaseRelation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "42P01"
+  );
+}
+
 function saleDto(
   sale: typeof xstoreSales.$inferSelect,
   role: string,
@@ -342,18 +351,29 @@ function requireTenant(
 
 router.get("/xstore/auth/status", async (_req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
-  const [platformAdmin] = await db
-    .select({ id: xstoreUsers.id, passwordHash: xstoreUsers.passwordHash })
-    .from(xstoreUsers)
-    .where(eq(xstoreUsers.role, "platform_admin"))
-    .limit(1);
-  res.json(
-    GetXStoreAuthStatusResponse.parse({
-      bootstrapRequired: !!platformAdmin && !platformAdmin.passwordHash,
-      founderSetupRequired: !platformAdmin,
-      ...(await contactSettingsDto()),
-    }),
-  );
+  try {
+    const [platformAdmin] = await db
+      .select({ id: xstoreUsers.id, passwordHash: xstoreUsers.passwordHash })
+      .from(xstoreUsers)
+      .where(eq(xstoreUsers.role, "platform_admin"))
+      .limit(1);
+    res.json(
+      GetXStoreAuthStatusResponse.parse({
+        bootstrapRequired: !!platformAdmin && !platformAdmin.passwordHash,
+        founderSetupRequired: !platformAdmin,
+        ...(await contactSettingsDto()),
+      }),
+    );
+  } catch (error) {
+    if (isMissingDatabaseRelation(error)) {
+      res.status(503).json({
+        error:
+          "قاعدة بيانات هذه النسخة لم تُجهّز بعد. شغّل pnpm --filter @workspace/db run push في Shell، ثم أعد تحميل الصفحة.",
+      });
+      return;
+    }
+    throw error;
+  }
 });
 
 router.post("/xstore/auth/login", async (req, res): Promise<void> => {

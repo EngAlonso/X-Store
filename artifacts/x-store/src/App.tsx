@@ -154,7 +154,7 @@ function AuthPage({ kind }: { kind: 'in' | 'up' }) {
           {status.isLoading
             ? <div className="auth-status-state" role="status">جارٍ التحقق من إعداد المنصة…</div>
             : status.isError
-              ? <div className="auth-status-state" role="alert"><span>تعذر التحقق من إعداد حساب المالك.</span><button className="button button-quiet button-small" type="button" onClick={() => void status.refetch()} data-testid="button-retry-auth-status">إعادة المحاولة</button></div>
+              ? <div className="auth-status-state" role="alert"><span>{apiErrorMessage(status.error, 'تعذر التحقق من إعداد حساب المالك.')}</span><button className="button button-quiet button-small" type="button" onClick={() => void status.refetch()} data-testid="button-retry-auth-status">إعادة المحاولة</button></div>
               : setupRequired
                 ? <FounderSetupForm recoveringExistingOwner={bootstrapRequired}/>
                 : <PhoneLoginForm/>}
@@ -248,7 +248,7 @@ function FounderSetupForm({ recoveringExistingOwner }: { recoveringExistingOwner
           <FormLabel>تأكيد كلمة المرور</FormLabel><FormControl><input {...field} type="password" autoComplete="new-password" minLength={1} maxLength={128} data-testid="input-founder-confirm-password" disabled={createOwner.isPending}/></FormControl><FormMessage/>
         </FormItem>}/>
         {createOwner.isError && <div className="form-error" role="alert">{apiErrorMessage(createOwner.error, 'تعذر إنشاء حساب المالك. حاول مرة أخرى.')}</div>}
-        <div className="role-hint"><ShieldCheck size={16}/><span>يُطلب الرمز لحماية الإعداد الأول فقط. بعد إكماله، يختفي هذا النموذج ولا يمكن استخدام الرمز لإنشاء مالك آخر.</span></div>
+        <div className="role-hint"><ShieldCheck size={16}/><span>يُطلب الرمز لحماية الإعداد الأول فقط. في نسخة Replit جديدة، أضف XSTORE_BOOTSTRAP_SECRET إلى Secrets واستخدم قيمته هنا؛ لا تضعه في ملفات المشروع. بعد الإعداد، يختفي هذا النموذج.</span></div>
         <button className="button button-primary auth-submit" type="submit" disabled={createOwner.isPending}>{createOwner.isPending ? 'جارٍ حفظ بيانات المالك…' : recoveringExistingOwner?'حفظ بيانات الدخول':'إنشاء حساب المالك'}</button>
       </form>
     </Form>
