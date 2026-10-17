@@ -374,31 +374,43 @@
 }
 
 .xsu-form > .xsu-field,
-.xsu-setup-form > .field,
 .xsu-form > .xsu-login-error,
-.xsu-setup-form > .role-hint,
-.xsu-form > .xsu-submit,
-.xsu-setup-form > .auth-submit {
+.xsu-form > .xsu-submit {
   animation: xsu-reveal 560ms 220ms cubic-bezier(.2, .75, .25, 1) both;
 }
 
-.xsu-form > .xsu-field:nth-child(2),
+.xsu-setup-form > .field,
+.xsu-setup-form > .role-hint,
+.xsu-setup-form > .auth-submit {
+  animation: xsu-reveal 360ms 80ms cubic-bezier(.2, .75, .25, 1) both;
+}
+
 .xsu-setup-form > .field:nth-child(2) {
-  animation-delay: 290ms;
+  animation-delay: 115ms;
 }
 
-.xsu-form > .xsu-field:nth-child(3),
 .xsu-setup-form > .field:nth-child(3) {
-  animation-delay: 360ms;
+  animation-delay: 150ms;
 }
 
-.xsu-form > .xsu-field:nth-child(4),
 .xsu-setup-form > .field:nth-child(4) {
-  animation-delay: 430ms;
+  animation-delay: 185ms;
 }
 
 .xsu-setup-form > .field:nth-child(5) {
-  animation-delay: 500ms;
+  animation-delay: 220ms;
+}
+
+.xsu-form > .xsu-field:nth-child(2) {
+  animation-delay: 290ms;
+}
+
+.xsu-form > .xsu-field:nth-child(3) {
+  animation-delay: 360ms;
+}
+
+.xsu-form > .xsu-field:nth-child(4) {
+  animation-delay: 430ms;
 }
 
 .xsu-form > .xsu-submit {
@@ -406,11 +418,11 @@
 }
 
 .xsu-setup-form > .role-hint {
-  animation-delay: 570ms;
+  animation-delay: 255ms;
 }
 
 .xsu-setup-form > .auth-submit {
-  animation-delay: 640ms;
+  animation-delay: 290ms;
 }
 
 .xsu-login .auth-contact-list,
