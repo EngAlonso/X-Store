@@ -498,8 +498,8 @@ function SubscriptionsPage() {
   const payMethod:Record<string,string>={cash:'نقداً',card:'بطاقة',transfer:'تحويل بنكي'};
   return <><PageTitle eyebrow="الخطط والتحصيل" title="الاشتراكات" desc="تابع الخطة وموعد التجديد لكل متجر وسجّل الدفعات يدوياً." action={<button className="button button-primary" onClick={()=>setPaymentOpen(true)} data-testid="button-record-payment"><Plus size={16}/> تسجيل دفعة</button>}/><div className="stat-grid"><StatCard label="الاشتراكات النشطة" value={fmt((tenants.data||[]).filter(t=>t.status==='active').length)} detail="متاجر بخطة سارية" icon={ShieldCheck}/><StatCard label="تجريبية" value={fmt((tenants.data||[]).filter(t=>t.status==='trial').length)} detail="تحتاج متابعة التجديد" icon={Clock3} tint="gold"/><StatCard label="منتهية / موقوفة" value={fmt((tenants.data||[]).filter(t=>t.status==='suspended').length)} detail="حالة الاشتراك موقوفة" icon={AlertTriangle} tint="red"/><StatCard label="دفعات مسجلة" value={fmt(payments.data?.length||0)} detail="سجل التحصيل اليدوي" icon={Banknote} tint="sage"/></div><Card><SectionHead title="خطط المتاجر" detail="إجراء التجديد يحدّث خطة المتجر المحدد وتاريخ انتهاء اشتراكه."/><div className="table-wrap">{tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:tenants.data?.length?<table><thead><tr><th>المتجر</th><th>الخطة الحالية</th><th>الحالة</th><th>تاريخ الانتهاء</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{tenants.data.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.ownerName} · {t.email}</small></td><td>{planNames[t.plan]}</td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><button className="table-action" onClick={()=>setRenewTenant(t)} data-testid={`button-renew-${t.id}`}><RefreshCw size={14}/> تجديد / تعديل</button></td></tr>)}</tbody></table>:<div className="empty-inline">لا توجد اشتراكات مسجلة.</div>}</div></Card><Card className="payments-panel"><SectionHead title="سجل الدفعات" detail="دفعات الاشتراكات المسجلة يدوياً بواسطة مدير المنصة." action={<button className="text-link" onClick={()=>payments.refetch()}>تحديث <RefreshCw size={14}/></button>}/>{payments.isLoading?<StateBlock loading error={false} onRetry={()=>payments.refetch()} empty={false}/>:payments.isError?<StateBlock loading={false} error onRetry={()=>payments.refetch()} empty={false}/>:payments.data?.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>الخطة</th><th>طريقة الدفع</th><th>المبلغ</th><th>تاريخ التسجيل</th></tr></thead><tbody>{payments.data.map(p=><tr key={p.id}><td><b>{p.tenantName}</b></td><td>{planNames[p.plan]}</td><td>{payMethod[p.paymentMethod]}</td><td><b>{money(p.amount)}</b></td><td>{dateLabel(p.createdAt)}</td></tr>)}</tbody></table></div>:<div className="empty-inline">لم تُسجل دفعات بعد.</div>}</Card>{renewTenant&&<Modal title={`تجديد اشتراك · ${renewTenant.name}`} close={()=>setRenewTenant(null)}><form className="form-grid" onSubmit={saveRenewal}><label className="field"><span>الخطة الجديدة</span><select name="plan" defaultValue={renewTenant.plan}><option value="monthly">شهري</option><option value="half_yearly">نصف سنوي</option><option value="annual">سنوي</option><option value="lifetime">مدى الحياة</option></select></label><Field label="تاريخ الانتهاء" name="subscriptionEndsAt" type="date" required defaultValue={renewTenant.subscriptionEndsAt?.slice(0,10)||''}/><div className="role-hint field-wide"><ShieldCheck size={16}/><span>سيُعاد تفعيل هذا المتجر عند حفظ التجديد. لإثبات التحصيل، سجّل الدفعة بشكل منفصل.</span></div>{update.isError&&<div className="form-error">تعذر تحديث الاشتراك.</div>}<div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setRenewTenant(null)}>إلغاء</button><button className="button button-primary" disabled={update.isPending}>{update.isPending?'جارٍ التحديث…':'حفظ التجديد'}</button></div></form></Modal>}{paymentOpen&&<Modal title="تسجيل دفعة اشتراك" close={()=>setPaymentOpen(false)}><form className="form-grid" onSubmit={savePayment}><label className="field field-wide"><span>المتجر المعني</span><select name="tenantId" defaultValue="" required><option value="" disabled>اختر متجراً</option>{tenants.data?.map(t=><option key={t.id} value={t.id}>{t.name} · {t.ownerName}</option>)}</select></label><Field label="المبلغ المستلم" name="amount" type="number" required/><label className="field"><span>الخطة المدفوعة</span><select name="plan"><option value="monthly">شهري</option><option value="half_yearly">نصف سنوي</option><option value="annual">سنوي</option><option value="lifetime">مدى الحياة</option></select></label><label className="field field-wide"><span>طريقة الدفع</span><select name="paymentMethod"><option value="cash">نقداً</option><option value="card">بطاقة</option><option value="transfer">تحويل بنكي</option></select></label><div className="role-hint field-wide"><ShieldCheck size={16}/><span>سيُسجل اسم المتجر والخطة والمبلغ والطريقة في سجل الدفعات والتدقيق.</span></div>{createPayment.isError&&<div className="form-error">تعذر تسجيل الدفعة. تحقق من المتجر والمبلغ.</div>}<div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setPaymentOpen(false)}>إلغاء</button><button className="button button-primary" disabled={createPayment.isPending}>{createPayment.isPending?'جارٍ التسجيل…':'تسجيل الدفعة'}</button></div></form></Modal>}{notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}</>;
 }
-function Field({label,name,type='text',required=false,placeholder='',defaultValue='',maxLength}:{label:string;name:string;type?:string;required?:boolean;placeholder?:string;defaultValue?:string;maxLength?:number}) {return <label className="field"><span>{label}</span><input name={name} type={type} required={required} placeholder={placeholder} defaultValue={defaultValue} maxLength={maxLength}/></label>}
-function Modal({title,close,children}:{title:string;close:()=>void;children:ReactNode}) {return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)close()}}><section className="modal" role="dialog" aria-modal="true"><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={close} aria-label="إغلاق"><X size={18}/></button></div>{children}</section></div>}
+function Field({label,name,type='text',required=false,placeholder='',defaultValue='',maxLength,min,step,className=''}:{label:string;name:string;type?:string;required?:boolean;placeholder?:string;defaultValue?:string;maxLength?:number;min?:number;step?:number;className?:string}) {return <label className={`field ${className}`.trim()}><span>{label}</span><input name={name} type={type} required={required} placeholder={placeholder} defaultValue={defaultValue} maxLength={maxLength} min={min} step={step}/></label>}
+function Modal({title,close,children,className=''}:{title:string;close:()=>void;children:ReactNode;className?:string}) {return <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)close()}}><section className={`modal ${className}`.trim()} role="dialog" aria-modal="true"><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={close} aria-label="إغلاق"><X size={18}/></button></div>{children}</section></div>}
 function InventoryPage() {
   const qc = useQueryClient();
   const q = useListXStoreProducts();
@@ -524,16 +524,16 @@ function InventoryPage() {
     const f = new FormData(e.currentTarget);
     const data = {
       name: String(f.get('name')),
-      sku: String(f.get('sku')),
+      sku: edit?.sku ?? `XST-${crypto.randomUUID().replaceAll('-', '').slice(0, 16).toUpperCase()}`,
       barcode: String(f.get('barcode') || '') || null,
-      category: String(f.get('category')),
+      category: edit ? edit.category : 'عام',
       price: isWarehouseManager ? 0 : Number(f.get('price')),
-      costPrice: isWarehouseManager ? 0 : Number(f.get('costPrice')),
+      costPrice: isWarehouseManager ? 0 : Number(f.get('costPrice') || 0),
       quantity: Number(f.get('quantity')),
       color: String(f.get('color') || '') || null,
       size: String(f.get('size') || '') || null,
       partNumber: String(f.get('partNumber') || '') || null,
-      expiresAt: String(f.get('expiresAt') || '') || null,
+      expiresAt: edit?.expiresAt?.slice(0, 10) || null,
     };
     const done = () => {
       qc.invalidateQueries({ queryKey: getListXStoreProductsQueryKey() });
@@ -605,21 +605,41 @@ function InventoryPage() {
             : <div className="empty-inline">لا توجد منتجات تطابق البحث.</div>
       }
     </Card>
-    {dialog && <Modal title={edit ? 'تعديل المنتج' : 'إضافة منتج'} close={() => { setDialog(false); setEdit(null); }}>
-      <form className="form-grid" onSubmit={submit}>
-        <Field label="اسم المنتج" name="name" required defaultValue={edit?.name}/>
-        <Field label="رمز SKU" name="sku" required defaultValue={edit?.sku}/>
-        <Field label="الباركود" name="barcode" defaultValue={edit?.barcode || ''}/>
-        <Field label="التصنيف" name="category" required defaultValue={edit?.category}/>
+    {dialog && <Modal className="product-modal" title={edit ? 'تعديل المنتج' : 'إضافة منتج'} close={() => { setDialog(false); setEdit(null); }}>
+      <form className={`form-grid product-form ${isWarehouseManager ? 'product-form--warehouse' : ''}`} onSubmit={submit}>
+        <div className="product-form-intro field-wide">
+          <span className="product-form-icon"><Package size={21}/></span>
+          <div className="product-form-intro-copy">
+            <strong>{edit ? 'حدّث بيانات المنتج' : 'أضف منتجًا إلى مخزونك'}</strong>
+            <span>رمز المنتج يُنشأ تلقائيًا، والتصنيف الافتراضي «عام».</span>
+          </div>
+          <span className="product-form-required-note"><i/> الحقول المطلوبة عليها علامة *</span>
+        </div>
+        <div className="product-form-section field-wide">
+          <span className="product-form-section-number">01</span>
+          <div><b>بيانات المنتج</b><small>الاسم والباركود للتعرّف عليه بسهولة.</small></div>
+        </div>
+        <Field className="product-form-field" label="اسم المنتج" name="name" required placeholder="مثال: تيشيرت قطني أسود" defaultValue={edit?.name}/>
+        <Field className="product-form-field" label="الباركود (اختياري)" name="barcode" placeholder="اكتب الرقم أو امسح الكود" defaultValue={edit?.barcode || ''}/>
+        <div className="product-form-section field-wide">
+          <span className="product-form-section-number">02</span>
+          <div>
+            <b>{isWarehouseManager ? 'الكمية والمخزون' : 'السعر والمخزون'}</b>
+            <small>{isWarehouseManager ? 'أدخل الكمية المتاحة؛ يحدد مالك المتجر الأسعار.' : 'أدخل أسعار الوحدة والكمية المتاحة.'}</small>
+          </div>
+        </div>
         {!isWarehouseManager && <>
-          <Field label="سعر البيع" name="price" type="number" required defaultValue={edit ? String(edit.price) : ''}/>
-          <Field label="سعر التكلفة" name="costPrice" type="number" required defaultValue={edit ? String(edit.costPrice ?? 0) : ''}/>
+          <Field className="product-form-field" label="سعر البيع" name="price" type="number" min={0} step={0.01} required placeholder="0.00" defaultValue={edit ? String(edit.price) : ''}/>
+          <Field className="product-form-field" label="سعر التكلفة (اختياري)" name="costPrice" type="number" min={0} step={0.01} placeholder="اتركه فارغًا لو غير متاح" defaultValue={edit ? String(edit.costPrice ?? 0) : ''}/>
         </>}
-        <Field label="الكمية" name="quantity" type="number" required defaultValue={edit ? String(edit.quantity) : '0'}/>
-        <Field label="اللون" name="color" defaultValue={edit?.color || ''}/>
-        <Field label="المقاس" name="size" defaultValue={edit?.size || ''}/>
-        <Field label="رقم القطعة" name="partNumber" defaultValue={edit?.partNumber || ''}/>
-        <Field label="تاريخ الصلاحية" name="expiresAt" type="date" defaultValue={edit?.expiresAt?.slice(0, 10) || ''}/>
+        <Field className={`product-form-field ${isWarehouseManager ? 'field-wide' : ''}`} label="الكمية" name="quantity" type="number" min={0} step={1} required placeholder="0" defaultValue={edit ? String(edit.quantity) : '0'}/>
+        <div className="product-form-section field-wide">
+          <span className="product-form-section-number">03</span>
+          <div><b>تفاصيل إضافية</b><small>كل هذه المعلومات اختيارية.</small></div>
+        </div>
+        <Field className="product-form-field" label="اللون (اختياري)" name="color" placeholder="مثال: أسود" defaultValue={edit?.color || ''}/>
+        <Field className="product-form-field" label="المقاس (اختياري)" name="size" placeholder="مثال: M أو 42" defaultValue={edit?.size || ''}/>
+        <Field className="product-form-field field-wide" label="رقم القطعة (اختياري)" name="partNumber" placeholder="رقم الموديل أو كود المورد" defaultValue={edit?.partNumber || ''}/>
         {isWarehouseManager && <div className="role-hint field-wide"><ShieldCheck size={16}/><span>يمكنك إضافة بيانات المنتج وتحديث الكمية؛ يحدد مالك المتجر الأسعار.</span></div>}
         {(create.isError || update.isError) && <div className="form-error">تعذر حفظ المنتج. يرجى مراجعة البيانات.</div>}
         <div className="modal-actions">
