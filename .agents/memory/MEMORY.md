@@ -1,3 +1,4 @@
 - [Tenant currency meaning](tenant-currency.md) — changing a store's currency relabels its saved amounts; it does not convert them.
 - [X-Store password choice](xstore-password-choice.md) — account passwords may be any non-empty value up to 128 characters, without complexity rules.
 - [X-Store founder setup](xstore-founder-setup.md) — keep first-owner registration one-time; after success, show normal sign-in and don't reopen setup.
+- [POS long-shift comfort](pos-long-shift-comfort.md) — X-Store's checkout should stay legible, calm and engaging during extended shifts.

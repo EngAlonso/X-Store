@@ -667,19 +667,19 @@ function PosPage() {
     <div className="pos-page">
       <PageTitle eyebrow="نقطة البيع" title="صندوق البيع" desc="أضف المنتجات وأكمل الدفع بخطوات قليلة."
         action={<div className="pos-head-actions">
-          <button className="button button-quiet" onClick={()=>setExchangeOpen(true)}><ArrowLeftRight size={16}/> استبدال</button>
-          <button className="button button-quiet held-toggle" onClick={()=>setHeldOpen(!heldOpen)}><Pause size={16}/> فواتير معلقة <span className="count-bubble">{held.data?.length||0}</span></button>
+          <button className="button button-quiet" onClick={()=>setExchangeOpen(true)}><ArrowLeftRight size={16}/> استبدال منتج</button>
+          <button className="button button-quiet held-toggle" onClick={()=>setHeldOpen(!heldOpen)}><Pause size={16}/> الفواتير المعلّقة <span className="count-bubble">{held.data?.length||0}</span></button>
         </div>}
       />
       <div className="pos-layout">
         <section className="pos-products">
-          <label className="search-box pos-search"><Search size={18}/><input autoFocus value={term} onChange={e=>setTerm(e.target.value)} placeholder="ابحث عن منتج أو امسح الباركود..." data-testid="input-pos-search"/><kbd>⌘ K</kbd></label>
+          <label className="search-box pos-search"><Search size={18}/><input autoFocus value={term} onChange={e=>setTerm(e.target.value)} aria-label="البحث عن منتج أو مسح الباركود" placeholder="ابحث عن منتج أو امسح الباركود..." data-testid="input-pos-search"/><kbd>⌘ K</kbd></label>
           {products.isLoading
             ? <div className="product-grid">{[1,2,3,4].map(i=><div className="product-skeleton" key={i}/>)}</div>
             : products.isError
               ? <StateBlock loading={false} error onRetry={()=>products.refetch()} empty={false}/>
               : visible.length
-                ? <div className="product-grid">{visible.map((p,i)=><button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
+                ? <div className="product-grid">{visible.map((p,i)=><button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} aria-label={`إضافة ${p.name} إلى الفاتورة`} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
                     <span className={`product-art art-${i%5}`}><Package size={25}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
                     <span className="tile-category">{p.category}</span><b>{p.name}</b><small className="ltr-id">{p.sku}</small>
                     <span className="tile-bottom"><strong>{money(p.price)}</strong><span>متاح {fmt(p.quantity)}</span></span>
