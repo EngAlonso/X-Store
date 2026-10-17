@@ -14,7 +14,7 @@ export interface TeamMemberInput {
      */
   phone: string;
   /**
-     * @minLength 10
+     * @minLength 1
      * @maxLength 128
      */
   password: string;

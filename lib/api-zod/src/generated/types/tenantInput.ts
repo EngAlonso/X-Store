@@ -19,7 +19,7 @@ export interface TenantInput {
      */
   phone: string;
   /**
-     * @minLength 10
+     * @minLength 1
      * @maxLength 128
      */
   ownerPassword: string;

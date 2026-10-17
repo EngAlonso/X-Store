@@ -38,7 +38,6 @@ export const createInitialPlatformOwnerBodyNameMax = 100;
 export const createInitialPlatformOwnerBodyPhoneMin = 8;
 export const createInitialPlatformOwnerBodyPhoneMax = 20;
 
-export const createInitialPlatformOwnerBodyPasswordMin = 10;
 export const createInitialPlatformOwnerBodyPasswordMax = 128;
 
 export const createInitialPlatformOwnerBodySetupSecretMax = 512;
@@ -48,7 +47,7 @@ export const createInitialPlatformOwnerBodySetupSecretMax = 512;
 export const CreateInitialPlatformOwnerBody = zod.object({
   "name": zod.string().min(createInitialPlatformOwnerBodyNameMin).max(createInitialPlatformOwnerBodyNameMax),
   "phone": zod.string().min(createInitialPlatformOwnerBodyPhoneMin).max(createInitialPlatformOwnerBodyPhoneMax),
-  "password": zod.string().min(createInitialPlatformOwnerBodyPasswordMin).max(createInitialPlatformOwnerBodyPasswordMax),
+  "password": zod.string().min(1).max(createInitialPlatformOwnerBodyPasswordMax),
   "setupSecret": zod.string().min(1).max(createInitialPlatformOwnerBodySetupSecretMax)
 })
 
@@ -203,7 +202,6 @@ export const ListXStoreTenantsResponse = zod.array(ListXStoreTenantsResponseItem
 export const createXStoreTenantBodyPhoneMin = 8;
 export const createXStoreTenantBodyPhoneMax = 20;
 
-export const createXStoreTenantBodyOwnerPasswordMin = 10;
 export const createXStoreTenantBodyOwnerPasswordMax = 128;
 
 
@@ -213,7 +211,7 @@ export const CreateXStoreTenantBody = zod.object({
   "name": zod.string().min(1),
   "ownerName": zod.string().min(1),
   "phone": zod.string().min(createXStoreTenantBodyPhoneMin).max(createXStoreTenantBodyPhoneMax),
-  "ownerPassword": zod.string().min(createXStoreTenantBodyOwnerPasswordMin).max(createXStoreTenantBodyOwnerPasswordMax),
+  "ownerPassword": zod.string().min(1).max(createXStoreTenantBodyOwnerPasswordMax),
   "email": zod.string().email().nullish(),
   "businessType": zod.string().min(1),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
@@ -277,14 +275,13 @@ export const UpdateXStoreTenantCredentialsParams = zod.object({
 export const updateXStoreTenantCredentialsBodyPhoneMin = 8;
 export const updateXStoreTenantCredentialsBodyPhoneMax = 20;
 
-export const updateXStoreTenantCredentialsBodyPasswordMin = 10;
 export const updateXStoreTenantCredentialsBodyPasswordMax = 128;
 
 
 
 export const UpdateXStoreTenantCredentialsBody = zod.object({
   "phone": zod.string().min(updateXStoreTenantCredentialsBodyPhoneMin).max(updateXStoreTenantCredentialsBodyPhoneMax),
-  "password": zod.string().min(updateXStoreTenantCredentialsBodyPasswordMin).max(updateXStoreTenantCredentialsBodyPasswordMax)
+  "password": zod.string().min(1).max(updateXStoreTenantCredentialsBodyPasswordMax)
 })
 
 export const UpdateXStoreTenantCredentialsResponse = zod.void()
@@ -337,7 +334,6 @@ export const ListXStoreTeamResponse = zod.array(ListXStoreTeamResponseItem)
 export const addXStoreTeamMemberBodyPhoneMin = 8;
 export const addXStoreTeamMemberBodyPhoneMax = 20;
 
-export const addXStoreTeamMemberBodyPasswordMin = 10;
 export const addXStoreTeamMemberBodyPasswordMax = 128;
 
 
@@ -345,7 +341,7 @@ export const addXStoreTeamMemberBodyPasswordMax = 128;
 
 export const AddXStoreTeamMemberBody = zod.object({
   "phone": zod.string().min(addXStoreTeamMemberBodyPhoneMin).max(addXStoreTeamMemberBodyPhoneMax),
-  "password": zod.string().min(addXStoreTeamMemberBodyPasswordMin).max(addXStoreTeamMemberBodyPasswordMax),
+  "password": zod.string().min(1).max(addXStoreTeamMemberBodyPasswordMax),
   "email": zod.string().email().nullish(),
   "name": zod.string().min(1),
   "role": zod.enum(['cashier', 'warehouse_manager', 'accountant'])

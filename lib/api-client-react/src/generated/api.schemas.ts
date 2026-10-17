@@ -90,7 +90,7 @@ export interface FounderAccountInput {
      */
   phone: string;
   /**
-     * @minLength 10
+     * @minLength 1
      * @maxLength 128
      */
   password: string;
@@ -254,7 +254,7 @@ export interface TenantInput {
      */
   phone: string;
   /**
-     * @minLength 10
+     * @minLength 1
      * @maxLength 128
      */
   ownerPassword: string;
@@ -275,7 +275,7 @@ export interface TenantCredentialsInput {
      */
   phone: string;
   /**
-     * @minLength 10
+     * @minLength 1
      * @maxLength 128
      */
   password: string;
@@ -354,7 +354,7 @@ export interface TeamMemberInput {
      */
   phone: string;
   /**
-     * @minLength 10
+     * @minLength 1
      * @maxLength 128
      */
   password: string;

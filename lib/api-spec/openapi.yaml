@@ -775,7 +775,7 @@ components:
       properties:
         name: { type: string, minLength: 2, maxLength: 100 }
         phone: { type: string, minLength: 8, maxLength: 20 }
-        password: { type: string, minLength: 10, maxLength: 128 }
+        password: { type: string, minLength: 1, maxLength: 128 }
         setupSecret: { type: string, minLength: 1, maxLength: 512 }
       required: [name, phone, password, setupSecret]
     ContactSettings:
@@ -869,7 +869,7 @@ components:
         name: { type: string, minLength: 1 }
         ownerName: { type: string, minLength: 1 }
         phone: { type: string, minLength: 8, maxLength: 20 }
-        ownerPassword: { type: string, minLength: 10, maxLength: 128 }
+        ownerPassword: { type: string, minLength: 1, maxLength: 128 }
         email: { type: ["string", "null"], format: email }
         businessType: { type: string, minLength: 1 }
         currency: { $ref: "#/components/schemas/StoreCurrency" }
@@ -882,7 +882,7 @@ components:
       type: object
       properties:
         phone: { type: string, minLength: 8, maxLength: 20 }
-        password: { type: string, minLength: 10, maxLength: 128 }
+        password: { type: string, minLength: 1, maxLength: 128 }
       required: [phone, password]
     TenantUpdate:
       type: object
@@ -917,7 +917,7 @@ components:
       type: object
       properties:
         phone: { type: string, minLength: 8, maxLength: 20 }
-        password: { type: string, minLength: 10, maxLength: 128 }
+        password: { type: string, minLength: 1, maxLength: 128 }
         email: { type: ["string", "null"], format: email }
         name: { type: string, minLength: 1 }
         role:

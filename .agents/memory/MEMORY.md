@@ -1,1 +1,2 @@
 - [Tenant currency meaning](tenant-currency.md) — changing a store's currency relabels its saved amounts; it does not convert them.
+- [X-Store password choice](xstore-password-choice.md) — account passwords may be any non-empty value up to 128 characters, without complexity rules.
