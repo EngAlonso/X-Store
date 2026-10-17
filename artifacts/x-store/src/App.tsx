@@ -543,16 +543,28 @@ function InventoryPage() {
   const session = useGetXStoreSession();
   const money=useMoney();
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('__all__');
+  const [stockFilter, setStockFilter] = useState<'all'|'low'|'out'>('all');
   const [dialog, setDialog] = useState(false);
   const [edit, setEdit] = useState<Product | null>(null);
   const [notice, setNotice] = useState('');
   const isWarehouseManager = session.data?.role === 'warehouse_manager';
   const canManage = session.data?.role === 'tenant_admin' || isWarehouseManager;
-  const rows = (q.data || []).filter(p =>
-    `${p.name} ${p.sku} ${p.category} ${p.barcode || ''}`
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
+  const allProducts = q.data || [];
+  const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))]
+    .sort((a,b) => a.localeCompare(b,'ar'));
+  const normalizedSearch = search.trim().toLocaleLowerCase('ar');
+  const rows = allProducts.filter(p => {
+    const searchable = `${p.name} ${p.sku} ${p.category} ${p.barcode || ''} ${p.partNumber || ''}`.toLocaleLowerCase('ar');
+    const matchesSearch = !normalizedSearch || searchable.includes(normalizedSearch);
+    const matchesCategory = categoryFilter === '__all__' || p.category === categoryFilter;
+    const matchesStock = stockFilter === 'all'
+      || (stockFilter === 'low' && p.quantity > 0 && p.quantity <= 5)
+      || (stockFilter === 'out' && p.quantity <= 0);
+    return matchesSearch && matchesCategory && matchesStock;
+  });
+  const lowStockCount = allProducts.filter(p => p.quantity > 0 && p.quantity <= 5).length;
+  const outOfStockCount = allProducts.filter(p => p.quantity <= 0).length;
 
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -594,50 +606,76 @@ function InventoryPage() {
     0,
   );
 
-  return <>
+  return <div className="inventory-page">
     <PageTitle
       eyebrow="كتالوج المتجر"
       title="المخزون"
-      desc="إدارة المنتجات والخيارات والكميات — سجّل تعديلات المخزون بوضوح."
+      desc="تابع أرصدة المنتجات، ابحث بسرعة، وحدّث الكميات من مكان واحد."
       action={canManage
         ? <button className="button button-primary" onClick={() => { setEdit(null); setDialog(true); }} data-testid="button-add-product"><Plus size={17}/> إضافة منتج</button>
         : null}
     />
     <div className="stat-grid inventory-stats">
-      <StatCard label="إجمالي المنتجات" value={fmt(q.data?.length || 0)} detail="منتجات مسجلة" icon={Package}/>
-      <StatCard label="مخزون منخفض" value={fmt((q.data || []).filter(p => p.quantity <= 5).length)} detail="خمسة أو أقل" icon={AlertTriangle} tint="gold"/>
-      <StatCard label="قيمة المخزون" value={isWarehouseManager ? '—' : money(inventoryValue)} detail={isWarehouseManager ? 'متاح لمالك المتجر فقط' : 'حسب سعر البيع'} icon={Banknote}/>
-      <StatCard label="التصنيفات" value={fmt(new Set((q.data || []).map(p => p.category)).size)} detail="فئات المنتجات" icon={Boxes} tint="sage"/>
+      <StatCard label="إجمالي المنتجات" value={q.isLoading?'—':fmt(allProducts.length)} detail="منتجات مسجلة في المتجر" icon={Package}/>
+      <StatCard label="قريب من النفاد" value={q.isLoading?'—':fmt(lowStockCount)} detail="رصيد من ١ إلى ٥ وحدات" icon={AlertTriangle} tint="gold"/>
+      <StatCard label="قيمة المخزون" value={isWarehouseManager ? '—' : money(inventoryValue)} detail={isWarehouseManager ? 'متاح لمالك المتجر فقط' : 'محسوبة بسعر البيع'} icon={Banknote}/>
+      <StatCard label="التصنيفات" value={q.isLoading?'—':fmt(categories.length)} detail="فئات المنتجات المسجلة" icon={Boxes} tint="sage"/>
     </div>
-    <Card>
-      <SectionHead title="قائمة المنتجات" detail={`${fmt(rows.length)} منتج`}/>
-      <div className="table-toolbar">
-        <label className="search-box"><Search size={17}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث بالاسم أو SKU أو الباركود" data-testid="input-search-products"/></label>
-        <button className="button button-quiet" onClick={() => q.refetch()}><RefreshCw size={15}/> تحديث</button>
+    <Card className="inventory-catalog">
+      <SectionHead title="المنتجات" detail={`${fmt(rows.length)} من ${fmt(allProducts.length)} منتج`}/>
+      <div className="inventory-toolbar">
+        <label className="search-box inventory-search"><Search size={19}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث باسم المنتج أو الكود أو الباركود" data-testid="input-search-products"/>
+          {search&&<button type="button" className="inventory-clear-search" aria-label="مسح البحث" onClick={()=>setSearch('')}><X size={16}/></button>}
+        </label>
+        <label className="inventory-category-filter"><span>التصنيف</span><select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} data-testid="select-inventory-category">
+          <option value="__all__">كل التصنيفات</option>{categories.map(category=><option value={category} key={category}>{category}</option>)}
+        </select></label>
+        <button className="button button-quiet inventory-refresh" onClick={() => q.refetch()} data-testid="button-refresh-inventory"><RefreshCw size={16}/> تحديث</button>
+      </div>
+      <div className="inventory-filter-row" role="group" aria-label="تصفية المنتجات حسب الرصيد">
+        <button type="button" className={`inventory-filter ${stockFilter==='all'?'is-active':''}`} aria-pressed={stockFilter==='all'} onClick={()=>setStockFilter('all')} data-testid="button-inventory-filter-all">كل المنتجات <span>{fmt(allProducts.length)}</span></button>
+        <button type="button" className={`inventory-filter ${stockFilter==='low'?'is-active':''}`} aria-pressed={stockFilter==='low'} onClick={()=>setStockFilter('low')} data-testid="button-inventory-filter-low"><i className="stock-dot stock-dot-low"/>قريب من النفاد <span>{fmt(lowStockCount)}</span></button>
+        <button type="button" className={`inventory-filter ${stockFilter==='out'?'is-active':''}`} aria-pressed={stockFilter==='out'} onClick={()=>setStockFilter('out')} data-testid="button-inventory-filter-out"><i className="stock-dot stock-dot-out"/>نفد المخزون <span>{fmt(outOfStockCount)}</span></button>
       </div>
       {q.isLoading
         ? <StateBlock loading error={false} onRetry={() => q.refetch()} empty={false}/>
         : q.isError
           ? <StateBlock loading={false} error onRetry={() => q.refetch()} empty={false}/>
           : rows.length
-            ? <div className="table-wrap"><table>
-              <thead><tr><th>المنتج</th><th>SKU</th><th>التصنيف</th><th>الخيارات</th>{!isWarehouseManager && <th>السعر</th>}<th>الكمية</th><th>انتهاء الصلاحية</th>{canManage && <th>إجراء</th>}</tr></thead>
-              <tbody>{rows.map(p => <tr key={p.id}>
-                <td><b>{p.name}</b><small>{p.partNumber || p.barcode || '—'}</small></td>
-                <td className="ltr-id">{p.sku}</td>
-                <td>{p.category}</td>
-                <td>{[p.color, p.size].filter(Boolean).join(' · ') || '—'}</td>
-                {!isWarehouseManager && <td>{money(p.price)}</td>}
-                <td><span className={`quantity ${p.quantity <= 5 ? 'quantity-low' : ''}`}>{fmt(p.quantity)}</span></td>
-                <td>{dateLabel(p.expiresAt)}</td>
-                {canManage && <td><div className="row-actions">
-                  <button className="qty-control" aria-label="تقليل الكمية" onClick={() => changeQuantity(p, -1)}><Minus size={13}/></button>
-                  <button className="qty-control" aria-label="زيادة الكمية" onClick={() => changeQuantity(p, 1)}><Plus size={13}/></button>
-                  {!isWarehouseManager && <button className="table-action" onClick={() => { setEdit(p); setDialog(true); }} data-testid={`button-edit-product-${p.id}`}>تعديل</button>}
-                </div></td>}
-              </tr>)}</tbody>
-            </table></div>
-            : <div className="empty-inline">لا توجد منتجات تطابق البحث.</div>
+            ? <>
+              <div className="inventory-desktop-view">
+                <div className="table-wrap inventory-table-wrap"><table className="inventory-table">
+                  <thead><tr><th>المنتج</th><th>رمز المنتج</th><th>التصنيف</th><th>المواصفات</th>{!isWarehouseManager && <th>سعر البيع</th>}<th>الرصيد</th>{canManage && <th>تحديث الكمية</th>}</tr></thead>
+                  <tbody>{rows.map(p=>{const {Icon,tone,kind}=getProductIcon(p);return <tr key={p.id} data-testid={`row-inventory-product-${p.id}`}>
+                    <td><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><Icon size={20} strokeWidth={1.8}/></span><span className="inventory-product-copy"><b>{p.name}</b><small>{p.partNumber?`رقم القطعة: ${p.partNumber}`:p.barcode?`باركود: ${p.barcode}`:'—'}</small></span></div></td>
+                    <td className="ltr-id inventory-sku">{p.sku}</td>
+                    <td><span className="inventory-category-chip">{p.category}</span></td>
+                    <td><div className="inventory-variants">{p.color&&<span>{p.color}</span>}{p.size&&<span>{p.size}</span>}{!p.color&&!p.size&&<small>—</small>}</div></td>
+                    {!isWarehouseManager && <td className="inventory-price">{money(p.price)}</td>}
+                    <td><div className="inventory-quantity"><b className={`quantity ${p.quantity<=5?'quantity-low':''}`}>{fmt(p.quantity)}</b><span className={`inventory-stock-status ${p.quantity<=0?'is-out':p.quantity<=5?'is-low':'is-available'}`}>{p.quantity<=0?'نفد':p.quantity<=5?'منخفض':'متاح'}</span></div></td>
+                    {canManage&&<td><div className="inventory-row-actions">
+                      <button className="qty-control" aria-label={`تقليل كمية ${p.name}`} title="تقليل الكمية" disabled={p.quantity<=0} onClick={()=>changeQuantity(p,-1)} data-testid={`button-inventory-decrease-${p.id}`}><Minus size={16}/></button>
+                      <button className="qty-control" aria-label={`زيادة كمية ${p.name}`} title="زيادة الكمية" onClick={()=>changeQuantity(p,1)} data-testid={`button-inventory-increase-${p.id}`}><Plus size={16}/></button>
+                      {!isWarehouseManager&&<button className="inventory-edit-button" onClick={()=>{setEdit(p);setDialog(true)}} data-testid={`button-edit-product-${p.id}`}>تعديل البيانات</button>}
+                    </div></td>}
+                  </tr>})}</tbody>
+                </table></div>
+              </div>
+              <div className="inventory-mobile-list">
+                {rows.map(p=>{const {Icon,tone,kind}=getProductIcon(p);return <article className="inventory-mobile-card" key={p.id} data-testid={`card-inventory-product-${p.id}`}>
+                  <div className="inventory-mobile-head"><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><Icon size={20} strokeWidth={1.8}/></span><span className="inventory-product-copy"><b>{p.name}</b><small className="ltr-id">{p.sku}</small></span></div><span className={`inventory-stock-status ${p.quantity<=0?'is-out':p.quantity<=5?'is-low':'is-available'}`}>{p.quantity<=0?'نفد المخزون':p.quantity<=5?'رصيد منخفض':'متاح'}</span></div>
+                  <div className="inventory-mobile-details">
+                    <div><small>التصنيف</small><b>{p.category}</b></div>
+                    {!isWarehouseManager&&<div><small>سعر البيع</small><b>{money(p.price)}</b></div>}
+                    <div><small>الكمية المتاحة</small><b className={p.quantity<=5?'quantity-low':''}>{fmt(p.quantity)} وحدة</b></div>
+                    <div className="inventory-mobile-variants"><small>اللون والمقاس</small><b>{[p.color,p.size].filter(Boolean).join(' · ')||'—'}</b></div>
+                    {(p.partNumber||p.barcode)&&<div className="inventory-mobile-variants"><small>بيانات إضافية</small><b>{p.partNumber?`رقم القطعة: ${p.partNumber}`:`باركود: ${p.barcode}`}</b></div>}
+                  </div>
+                  {canManage&&<div className="inventory-mobile-actions"><div><span>تحديث الكمية</span><button className="qty-control" aria-label={`تقليل كمية ${p.name}`} disabled={p.quantity<=0} onClick={()=>changeQuantity(p,-1)} data-testid={`button-inventory-mobile-decrease-${p.id}`}><Minus size={16}/></button><button className="qty-control" aria-label={`زيادة كمية ${p.name}`} onClick={()=>changeQuantity(p,1)} data-testid={`button-inventory-mobile-increase-${p.id}`}><Plus size={16}/></button></div>{!isWarehouseManager&&<button className="inventory-edit-button" onClick={()=>{setEdit(p);setDialog(true)}} data-testid={`button-edit-product-mobile-${p.id}`}>تعديل المنتج</button>}</div>}
+                </article>})}
+              </div>
+            </>
+            : <div className="inventory-empty" role="status" data-testid="status-inventory-empty"><span className="inventory-empty-icon"><Package size={24}/></span><b>{allProducts.length?'لا توجد منتجات مطابقة':'المخزون فارغ حتى الآن'}</b><span>{allProducts.length?'غيّر البحث أو الفلاتر لعرض منتجات أخرى.':'أضف منتجاتك لتبدأ متابعة الكميات والأسعار من هنا.'}</span>{(search||categoryFilter!=='__all__'||stockFilter!=='all')&&<button className="button button-quiet" onClick={()=>{setSearch('');setCategoryFilter('__all__');setStockFilter('all')}} data-testid="button-clear-inventory-filters">مسح البحث والفلاتر</button>}</div>
       }
     </Card>
     {dialog && <Modal className="product-modal" title={edit ? 'تعديل المنتج' : 'إضافة منتج'} close={() => { setDialog(false); setEdit(null); }}>
@@ -684,7 +722,7 @@ function InventoryPage() {
       </form>
     </Modal>}
     {notice && <div className="toast-note" role="status">{notice}<button onClick={() => setNotice('')}><X size={14}/></button></div>}
-  </>;
+  </div>;
 }
 function PosPage() {
   const qc=useQueryClient(), products=useListXStoreProducts(), held=useListXStoreHeldSales(), session=useGetXStoreSession(), checkout=useCheckoutXStoreSale(), hold=useHoldXStoreSale(), release=useReleaseXStoreHeldSale(), exchange=useCreateXStoreExchange();
