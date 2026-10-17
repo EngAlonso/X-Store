@@ -21,3 +21,8 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+XSTORE_BOOTSTRAP_SECRET = "Alonso01200Alonso01200Alonso01200"

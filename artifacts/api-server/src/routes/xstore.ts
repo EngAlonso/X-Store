@@ -471,6 +471,7 @@ router.post("/xstore/auth/founder", async (req, res): Promise<void> => {
             name,
             phone,
             passwordHash,
+            clerkUserId: null,
             sessionVersion: existingAdmin.sessionVersion + 1,
             isActive: true,
           })
