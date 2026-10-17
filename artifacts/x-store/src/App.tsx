@@ -29,6 +29,10 @@ import {
   Wallet, CircleCheck, Clock3, AlertTriangle, RotateCcw,
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
   Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone,
+  Apple, Baby, Beef, Bike, BookOpen, Brush, Camera, Car, Cat, Coffee, CookingPot, Croissant, CupSoda, Dog, Dumbbell,
+  Footprints, Gamepad2, Gem, Gift, Headphones, Laptop, Milk, NotebookPen, Pill, Plug, Shirt, ShoppingBag,
+  Sofa, Sparkles, SprayCan, Tv, Utensils, Watch, Wrench,
+  type LucideIcon,
 } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -651,6 +655,76 @@ function InventoryPage() {
     {notice && <div className="toast-note" role="status">{notice}<button onClick={() => setNotice('')}><X size={14}/></button></div>}
   </>;
 }
+type ProductIconRule = {
+  icon: LucideIcon;
+  tone: string;
+  nameTerms: string[];
+  categoryTerms: string[];
+};
+
+const productIconRules: ProductIconRule[] = [
+  { icon: Coffee, tone: 'clay', nameTerms: ['قهوة', 'بن', 'شاي', 'coffee', 'espresso', 'اسبرسو', 'tea'], categoryTerms: ['قهوة', 'coffee', 'tea'] },
+  { icon: CupSoda, tone: 'blue', nameTerms: ['مشروب', 'عصير', 'مياه', 'ماء', 'صودا', 'drink', 'juice', 'water', 'soda'], categoryTerms: ['مشروبات', 'مشروب', 'beverage', 'drinks'] },
+  { icon: Croissant, tone: 'gold', nameTerms: ['مخبوز', 'خبز', 'كرواسون', 'كيك', 'معجن', 'bakery', 'bread', 'cake'], categoryTerms: ['مخبوزات', 'مخبز', 'bakery'] },
+  { icon: Apple, tone: 'sage', nameTerms: ['فاكه', 'تفاح', 'خضار', 'طماطم', 'موز', 'برتقال', 'produce', 'fruit', 'vegetable'], categoryTerms: ['خضروات', 'فواكه', 'بقالة', 'produce', 'grocery'] },
+  { icon: Beef, tone: 'clay', nameTerms: ['لحوم', 'لحم', 'دجاج', 'فراخ', 'سمك', 'beef', 'chicken', 'meat', 'fish'], categoryTerms: ['لحوم', 'دواجن', 'اسماك', 'meat', 'seafood'] },
+  { icon: Milk, tone: 'blue', nameTerms: ['لبن', 'حليب', 'جبن', 'زبادي', 'زبدة', 'milk', 'cheese', 'yogurt'], categoryTerms: ['البان', 'ألبان', 'dairy'] },
+  { icon: Smartphone, tone: 'blue', nameTerms: ['موبايل', 'هاتف', 'جوال', 'smartphone', 'phone', 'mobile'], categoryTerms: ['هواتف', 'موبايلات', 'smartphones', 'mobile phones'] },
+  { icon: Laptop, tone: 'blue', nameTerms: ['لابتوب', 'كمبيوتر', 'حاسوب', 'لابتوب', 'laptop', 'computer'], categoryTerms: ['كمبيوتر', 'حاسب', 'computers', 'laptops'] },
+  { icon: Headphones, tone: 'mauve', nameTerms: ['سماعة', 'سماعات', 'headphone', 'earphone', 'earbud'], categoryTerms: ['سماعات', 'headphones', 'audio'] },
+  { icon: Camera, tone: 'mauve', nameTerms: ['كاميرا', 'camera'], categoryTerms: ['كاميرات', 'cameras', 'تصوير'] },
+  { icon: Tv, tone: 'mauve', nameTerms: ['تلفزيون', 'شاشة', 'tv', 'television', 'monitor'], categoryTerms: ['شاشات', 'تلفزيونات', 'tv', 'monitors'] },
+  { icon: Plug, tone: 'blue', nameTerms: ['شاحن', 'كابل', 'وصلة', 'محول', 'keyboard', 'mouse', 'charger', 'cable'], categoryTerms: ['الكترونيات', 'الكتروني', 'electronics', 'electronic', 'اجهزة كهربائية'] },
+  { icon: Footprints, tone: 'clay', nameTerms: ['حذاء', 'احذية', 'جزمة', 'كوتشي', 'صندل', 'shoe', 'sneaker', 'sandal'], categoryTerms: ['احذية', 'shoes', 'footwear'] },
+  { icon: Shirt, tone: 'sage', nameTerms: ['قميص', 'تيشيرت', 'ملابس', 'بنطلون', 'فستان', 'جاكيت', 'shirt', 'clothing', 'dress', 'trousers'], categoryTerms: ['ملابس', 'أزياء', 'clothing', 'apparel', 'fashion'] },
+  { icon: Watch, tone: 'gold', nameTerms: ['ساعة', 'ساعات', 'watch'], categoryTerms: ['ساعات', 'watches'] },
+  { icon: BookOpen, tone: 'sage', nameTerms: ['كتاب', 'رواية', 'مصحف', 'book', 'novel'], categoryTerms: ['كتب', 'books', 'قرطاسية'] },
+  { icon: NotebookPen, tone: 'blue', nameTerms: ['كراسة', 'دفتر', 'قلم', 'كشكول', 'notebook', 'pen', 'stationery'], categoryTerms: ['ادوات مكتبية', 'قرطاسية', 'stationery', 'office supplies'] },
+  { icon: Sparkles, tone: 'mauve', nameTerms: ['مكياج', 'عطر', 'كريم', 'شامبو', 'مستحضر', 'makeup', 'cosmetic', 'perfume', 'skincare'], categoryTerms: ['تجميل', 'عطور', 'مستحضرات تجميل', 'beauty', 'cosmetics'] },
+  { icon: SprayCan, tone: 'sage', nameTerms: ['منظف', 'مطهر', 'صابون', 'مسحوق', 'cleaner', 'detergent', 'soap'], categoryTerms: ['منظفات', 'تنظيف', 'cleaning', 'detergents'] },
+  { icon: Pill, tone: 'rose', nameTerms: ['دواء', 'علاج', 'فيتامين', 'حبوب', 'medicine', 'vitamin', 'pharmacy'], categoryTerms: ['ادوية', 'صيدلية', 'pharmacy', 'medicine'] },
+  { icon: ShoppingBag, tone: 'gold', nameTerms: ['شنطة', 'حقيبة', 'محفظة', 'bag', 'purse', 'wallet'], categoryTerms: ['حقائب', 'شنط', 'bags', 'accessories'] },
+  { icon: Gem, tone: 'mauve', nameTerms: ['ذهب', 'فضة', 'خاتم', 'سلسلة', 'مجوهرات', 'jewelry', 'ring', 'necklace'], categoryTerms: ['مجوهرات', 'ذهب', 'jewelry'] },
+  { icon: Sofa, tone: 'clay', nameTerms: ['كنبة', 'كرسي', 'أثاث', 'دولاب', 'sofa', 'furniture', 'chair'], categoryTerms: ['اثاث', 'أثاث', 'furniture', 'home decor'] },
+  { icon: CookingPot, tone: 'gold', nameTerms: ['حلة', 'طاسة', 'مقلاة', 'قدر', 'pot', 'pan'], categoryTerms: ['ادوات مطبخ', 'أدوات مطبخ', 'kitchenware'] },
+  { icon: Utensils, tone: 'gold', nameTerms: ['معلقة', 'شوكة', 'سكينة', 'طبق', 'كوب', 'ملعقة', 'utensil', 'cutlery'], categoryTerms: ['ادوات منزلية', 'أدوات منزلية', 'مطبخ', 'housewares'] },
+  { icon: Dumbbell, tone: 'sage', nameTerms: ['رياضة', 'كرة', 'دمبل', 'تمرين', 'sport', 'fitness', 'dumbbell'], categoryTerms: ['رياضة', 'معدات رياضية', 'sports', 'fitness'] },
+  { icon: Gamepad2, tone: 'mauve', nameTerms: ['لعبة', 'ألعاب', 'العاب', 'بلايستيشن', 'اكس بوكس', 'game', 'gaming', 'console'], categoryTerms: ['ألعاب', 'العاب', 'العاب اطفال', 'toys', 'games', 'gaming'] },
+  { icon: Baby, tone: 'rose', nameTerms: ['حفاض', 'رضاعة', 'لهاية', 'baby', 'diaper'], categoryTerms: ['اطفال', 'أطفال', 'رضع', 'baby', 'kids'] },
+  { icon: Dog, tone: 'gold', nameTerms: ['كلب', 'كلاب', 'dog'], categoryTerms: ['حيوانات اليفة', 'pet supplies', 'dogs'] },
+  { icon: Cat, tone: 'mauve', nameTerms: ['قط', 'قطط', 'cat'], categoryTerms: ['قطط', 'cats'] },
+  { icon: Car, tone: 'blue', nameTerms: ['سيارة', 'عربية', 'سيارات', 'car', 'automotive'], categoryTerms: ['سيارات', 'قطع غيار', 'automotive', 'auto parts'] },
+  { icon: Wrench, tone: 'clay', nameTerms: ['عدة', 'مفك', 'مطرقة', 'مفتاح ربط', 'tool', 'wrench', 'hammer'], categoryTerms: ['عدد', 'ادوات', 'أدوات', 'tools', 'hardware'] },
+  { icon: Bike, tone: 'sage', nameTerms: ['عجلة', 'دراجة', 'bicycle', 'bike'], categoryTerms: ['دراجات', 'bicycles'] },
+  { icon: Brush, tone: 'clay', nameTerms: ['فرشاة', 'مشط', 'brush', 'comb'], categoryTerms: ['عناية شخصية', 'personal care'] },
+  { icon: Gift, tone: 'gold', nameTerms: ['هدية', 'هدايا', 'gift'], categoryTerms: ['هدايا', 'gifts'] },
+];
+
+function normalizeProductText(value: string) {
+  return value.toLocaleLowerCase('ar')
+    .normalize('NFKD')
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+const normalizedProductIconRules = productIconRules.map(rule => ({
+  ...rule,
+  nameTerms: rule.nameTerms.map(normalizeProductText),
+  categoryTerms: rule.categoryTerms.map(normalizeProductText),
+}));
+
+function getProductIcon(product: Product): { Icon: LucideIcon; tone: string } {
+  const name = normalizeProductText(product.name);
+  const category = normalizeProductText(product.category);
+  const byName = normalizedProductIconRules.find(rule => rule.nameTerms.some(term => name.includes(term)));
+  const byCategory = normalizedProductIconRules.find(rule => rule.categoryTerms.some(term => category.includes(term)));
+  const match = byName || byCategory;
+  return match ? { Icon: match.icon, tone: match.tone } : { Icon: Package, tone: 'sage' };
+}
+
 function PosPage() {
   const qc=useQueryClient(), products=useListXStoreProducts(), held=useListXStoreHeldSales(), checkout=useCheckoutXStoreSale(), hold=useHoldXStoreSale(), release=useReleaseXStoreHeldSale(), exchange=useCreateXStoreExchange();
   const money=useMoney(), currency=useContext(CurrencyContext);
@@ -679,22 +753,22 @@ function PosPage() {
             : products.isError
               ? <StateBlock loading={false} error onRetry={()=>products.refetch()} empty={false}/>
               : visible.length
-                ? <div className="product-grid">{visible.map((p,i)=><button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} aria-label={`إضافة ${p.name} إلى الفاتورة`} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
-                    <span className={`product-art art-${i%5}`}><Package size={25}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
+                ? <div className="product-grid">{visible.map(p=>{const {Icon,tone}=getProductIcon(p);return <button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} aria-label={`إضافة ${p.name} إلى الفاتورة`} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
+                    <span className={`product-art art-${tone}`}><Icon size={25}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
                     <span className="tile-category">{p.category}</span><b>{p.name}</b><small className="ltr-id">{p.sku}</small>
                     <span className="tile-bottom"><strong>{money(p.price)}</strong><span>متاح {fmt(p.quantity)}</span></span>
-                  </button>)}</div>
+                  </button>})}</div>
                 : <div className="state-box"><div className="empty-symbol"><Package/></div><b>{term?'لا توجد نتائج':'لا توجد منتجات'}</b><span>{term?'جرّب البحث بكلمة مختلفة.':'أضف المنتجات إلى المخزون لتبدأ البيع.'}</span></div>
           }
         </section>
         <aside className="cart-panel">
           <div className="cart-head"><div><h2>الطلب الحالي</h2><span>{fmt(cartLines.reduce((a,p)=>a+p.count,0))} أصناف</span></div><button className="table-action" onClick={()=>setCart({})} disabled={!cartLines.length}><Trash2 size={14}/> تفريغ</button></div>
           <div className="cart-lines">
-            {cartLines.map(p=><div className="cart-line" key={p.id}>
-              <span className="cart-line-art"><Package size={17}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div>
+            {cartLines.map(p=>{const {Icon,tone}=getProductIcon(p);return <div className="cart-line" key={p.id}>
+              <span className={`cart-line-art art-${tone}`}><Icon size={17}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div>
               <div className="stepper"><button onClick={()=>mutateCart(p.id,-1)} aria-label="إنقاص"><Minus size={13}/></button><b>{p.count}</b><button onClick={()=>mutateCart(p.id,1)} aria-label="زيادة" disabled={p.count>=p.quantity}><Plus size={13}/></button></div>
               <strong>{money(p.price*p.count)}</strong>
-            </div>)}
+            </div>})}
             {!cartLines.length&&<div className="cart-empty"><div className="cart-empty-icon"><ShoppingCart size={20}/></div><b>السلة فارغة</b><span>اختر منتجاً لإضافته إلى الفاتورة.</span></div>}
           </div>
           <div className="cart-calculation">

@@ -1457,6 +1457,12 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 .pos-page .product-art.art-2 { background:#eeeaf0;color:#796c82; }
 .pos-page .product-art.art-3 { background:#e8eff0;color:#5f7a80; }
 .pos-page .product-art.art-4 { background:#f3eae4;color:#8d6e58; }
+.pos-page .product-art.art-sage,.pos-page .cart-line-art.art-sage { background:#eaf1e7;color:#4f7c60; }
+.pos-page .product-art.art-gold,.pos-page .cart-line-art.art-gold { background:#f3ede2;color:#8d7651; }
+.pos-page .product-art.art-mauve,.pos-page .cart-line-art.art-mauve { background:#eeeaf0;color:#796c82; }
+.pos-page .product-art.art-blue,.pos-page .cart-line-art.art-blue { background:#e8eff0;color:#5f7a80; }
+.pos-page .product-art.art-clay,.pos-page .cart-line-art.art-clay { background:#f3eae4;color:#8d6e58; }
+.pos-page .product-art.art-rose,.pos-page .cart-line-art.art-rose { background:#f5e9e8;color:#986c70; }
 .pos-page .product-art>i { min-width:21px;height:21px;inset-inline-end:-5px;top:-5px;border:2px solid #fffefa;background:var(--pos-jade);font-size:10px; }
 .pos-page .tile-bottom { padding-top:13px; }
 .pos-page .tile-bottom strong { color:#32634b;font-size:14px; }
