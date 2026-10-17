@@ -23,6 +23,18 @@
   50% { transform: translate3d(-10px, -16px, 0); opacity: .62; }
 }
 
+@keyframes xsu-login-orb-one {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(.92); }
+  38% { transform: translate3d(-38px, 30px, 0) scale(1.06); }
+  72% { transform: translate3d(-16px, 70px, 0) scale(.98); }
+}
+
+@keyframes xsu-login-orb-two {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(.94); }
+  42% { transform: translate3d(58px, -34px, 0) scale(1.08); }
+  76% { transform: translate3d(24px, -68px, 0) scale(.97); }
+}
+
 @keyframes xsu-glint {
   0%, 100% { opacity: .45; }
   50% { opacity: .9; }
@@ -369,6 +381,9 @@
 }
 
 .xsu-login {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
   min-width: 0;
   place-items: center;
@@ -378,7 +393,53 @@
     var(--xsu-card);
 }
 
+.xsu-login::before,
+.xsu-login::after {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  content: "";
+  will-change: transform;
+}
+
+.xsu-login::before {
+  top: -128px;
+  right: -106px;
+  width: clamp(210px, 31vw, 300px);
+  aspect-ratio: 1;
+  background: radial-gradient(circle at 33% 29%,
+    rgba(247, 252, 229, .98) 0 4%,
+    rgba(216, 232, 145, .92) 9%,
+    rgba(142, 188, 92, .66) 26%,
+    rgba(69, 139, 76, .35) 51%,
+    rgba(35, 100, 59, .08) 72%,
+    transparent 75%);
+  filter: blur(2px);
+  opacity: .48;
+  animation: xsu-login-orb-one 12s ease-in-out infinite;
+}
+
+.xsu-login::after {
+  bottom: -116px;
+  left: -108px;
+  width: clamp(190px, 28vw, 270px);
+  aspect-ratio: 1;
+  background: radial-gradient(circle at 36% 34%,
+    rgba(246, 251, 225, .92) 0 4%,
+    rgba(191, 219, 128, .78) 11%,
+    rgba(112, 174, 82, .54) 30%,
+    rgba(44, 116, 65, .3) 56%,
+    rgba(27, 83, 51, .04) 74%,
+    transparent 77%);
+  filter: blur(2px);
+  opacity: .4;
+  animation: xsu-login-orb-two 15s ease-in-out infinite;
+}
+
 .xsu-login-inner {
+  position: relative;
+  z-index: 1;
   width: min(100%, 420px);
   min-width: 0;
 }
@@ -894,6 +955,18 @@
     padding-inline: 17px;
   }
 
+  .xsu-login::before {
+    top: -96px;
+    right: -104px;
+    width: 214px;
+  }
+
+  .xsu-login::after {
+    bottom: -103px;
+    left: -94px;
+    width: 196px;
+  }
+
   .xsu-login .auth-contact-empty {
     font-size: 8px;
   }
@@ -909,6 +982,8 @@
   .xsu-orbit-one,
   .xsu-orbit-two,
   .xsu-brand-glint,
+  .xsu-login::before,
+  .xsu-login::after,
   .xsu-heading,
   .xsu-intro,
   .xsu-form > *,
