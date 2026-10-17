@@ -2248,10 +2248,7 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
 
 router.get("/xstore/audit-logs", async (_req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (
-    !hasRole(user, ["platform_admin", "tenant_admin"]) ||
-    (!user.tenantId && user.role !== "platform_admin")
-  ) {
+  if (user.role !== "platform_admin") {
     res.status(403).json({ error: "You cannot view this audit log." });
     return;
   }
