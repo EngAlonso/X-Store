@@ -104,34 +104,6 @@ paths:
       responses:
         "204":
           description: Signed out
-  /xstore/auth/bootstrap:
-    post:
-      operationId: bootstrapXStorePlatformAdmin
-      tags: [xstore]
-      summary: Convert the initial Clerk owner session to phone-and-password access
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/AdminBootstrapInput"
-      responses:
-        "200":
-          description: Initial platform administrator account
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SessionUser"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "409":
-          description: The initial administrator has already been configured
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
   /xstore/session:
     get:
       operationId: getXStoreSession
@@ -804,13 +776,8 @@ components:
         name: { type: string, minLength: 2, maxLength: 100 }
         phone: { type: string, minLength: 8, maxLength: 20 }
         password: { type: string, minLength: 10, maxLength: 128 }
-      required: [name, phone, password]
-    AdminBootstrapInput:
-      type: object
-      properties:
-        phone: { type: string, minLength: 8, maxLength: 20 }
-        password: { type: string, minLength: 10, maxLength: 128 }
-      required: [phone, password]
+        setupSecret: { type: string, minLength: 1, maxLength: 512 }
+      required: [name, phone, password, setupSecret]
     ContactSettings:
       type: object
       properties:

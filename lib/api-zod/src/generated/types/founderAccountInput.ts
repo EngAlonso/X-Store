@@ -22,4 +22,9 @@ export interface FounderAccountInput {
      * @maxLength 128
      */
   password: string;
+  /**
+     * @minLength 1
+     * @maxLength 512
+     */
+  setupSecret: string;
 }

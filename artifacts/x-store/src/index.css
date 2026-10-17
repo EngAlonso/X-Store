@@ -573,8 +573,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { 
 .auth-form input[type="tel"] { direction:ltr;text-align:right; }
 .auth-status-state { display:grid;justify-items:start;gap:12px;padding:18px;border:1px solid #e6ece7;border-radius:12px;background:#f8faf8;color:#53665a;font-size:13px;line-height:1.7; }
 .auth-submit { min-height:45px;width:100%;margin-top:2px; }
-.legacy-bootstrap { margin-top:20px;padding-top:19px;border-top:1px solid #edf0ed;display:grid;justify-items:center;gap:12px; }
-.legacy-bootstrap>.button { width:100%; }
 .auth-contact-list { display:grid;gap:7px;margin-top:22px;padding-top:17px;border-top:1px solid #edf0ed;color:#748178;font-size:10px; }
 .auth-contact-list>a { min-width:0;display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #edf1ed;border-radius:8px;color:#2c6940;text-decoration:none; }
 .auth-contact-list>a span { margin-right:auto;color:#4d5a50;direction:ltr;text-align:left;overflow-wrap:anywhere; }

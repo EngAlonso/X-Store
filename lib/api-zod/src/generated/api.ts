@@ -41,12 +41,15 @@ export const createInitialPlatformOwnerBodyPhoneMax = 20;
 export const createInitialPlatformOwnerBodyPasswordMin = 10;
 export const createInitialPlatformOwnerBodyPasswordMax = 128;
 
+export const createInitialPlatformOwnerBodySetupSecretMax = 512;
+
 
 
 export const CreateInitialPlatformOwnerBody = zod.object({
   "name": zod.string().min(createInitialPlatformOwnerBodyNameMin).max(createInitialPlatformOwnerBodyNameMax),
   "phone": zod.string().min(createInitialPlatformOwnerBodyPhoneMin).max(createInitialPlatformOwnerBodyPhoneMax),
-  "password": zod.string().min(createInitialPlatformOwnerBodyPasswordMin).max(createInitialPlatformOwnerBodyPasswordMax)
+  "password": zod.string().min(createInitialPlatformOwnerBodyPasswordMin).max(createInitialPlatformOwnerBodyPasswordMax),
+  "setupSecret": zod.string().min(1).max(createInitialPlatformOwnerBodySetupSecretMax)
 })
 
 export const CreateInitialPlatformOwnerResponse = zod.object({
@@ -92,34 +95,6 @@ export const LoginXStoreWithPhoneResponse = zod.object({
  * @summary Sign out of the current X-Store account
  */
 export const LogoutXStoreResponse = zod.void()
-
-
-/**
- * @summary Convert the initial Clerk owner session to phone-and-password access
- */
-export const bootstrapXStorePlatformAdminBodyPhoneMin = 8;
-export const bootstrapXStorePlatformAdminBodyPhoneMax = 20;
-
-export const bootstrapXStorePlatformAdminBodyPasswordMin = 10;
-export const bootstrapXStorePlatformAdminBodyPasswordMax = 128;
-
-
-
-export const BootstrapXStorePlatformAdminBody = zod.object({
-  "phone": zod.string().min(bootstrapXStorePlatformAdminBodyPhoneMin).max(bootstrapXStorePlatformAdminBodyPhoneMax),
-  "password": zod.string().min(bootstrapXStorePlatformAdminBodyPasswordMin).max(bootstrapXStorePlatformAdminBodyPasswordMax)
-})
-
-export const BootstrapXStorePlatformAdminResponse = zod.object({
-  "id": zod.string(),
-  "name": zod.string(),
-  "phone": zod.string(),
-  "email": zod.string().email().nullable(),
-  "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
-  "tenantId": zod.string().nullable(),
-  "tenantName": zod.string().nullable(),
-  "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable()
-})
 
 
 /**

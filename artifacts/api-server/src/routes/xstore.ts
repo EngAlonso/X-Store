@@ -6,17 +6,17 @@ import {
   gte,
   ilike,
   inArray,
-  isNotNull,
+  isNull,
   lte,
   lt,
   or,
   sql,
 } from "drizzle-orm";
+import { timingSafeEqual } from "node:crypto";
 import { Router, type IRouter, type Request } from "express";
 import {
-  BootstrapXStorePlatformAdminBody,
-  BootstrapXStorePlatformAdminResponse,
   CreateInitialPlatformOwnerBody,
+  CreateInitialPlatformOwnerResponse,
   AddXStoreTeamMemberBody,
   AddXStoreTeamMemberResponse,
   CheckoutXStoreSaleBody,
@@ -208,6 +208,17 @@ function rateLimitLogin(req: Request, phone: string) {
   return false;
 }
 
+function hasValidBootstrapSecret(candidate: string): boolean {
+  const configured = process.env.XSTORE_BOOTSTRAP_SECRET;
+  if (!configured || configured.length < 32) return false;
+  const providedBytes = Buffer.from(candidate);
+  const expectedBytes = Buffer.from(configured);
+  return (
+    providedBytes.length === expectedBytes.length &&
+    timingSafeEqual(providedBytes, expectedBytes)
+  );
+}
+
 function clearLoginLimit(req: Request, phone: string) {
   loginAttempts.delete(`ip:${req.ip ?? req.socket.remoteAddress ?? "unknown"}`);
   loginAttempts.delete(`phone:${phone}`);
@@ -339,7 +350,6 @@ router.post("/xstore/auth/login", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Enter a valid phone number and password." });
     return;
   }
-
   let phone: string;
   try {
     phone = normalizePhone(parsed.data.phone);
@@ -416,12 +426,22 @@ router.post("/xstore/auth/founder", async (req, res): Promise<void> => {
     });
     return;
   }
+  if (!hasValidBootstrapSecret(parsed.data.setupSecret)) {
+    const configured = process.env.XSTORE_BOOTSTRAP_SECRET;
+    res.status(configured && configured.length >= 32 ? 403 : 503).json({
+      error:
+        configured && configured.length >= 32
+          ? "رمز التأسيس غير صحيح."
+          : "إعداد حساب المالك غير متاح حاليًا. يلزم إعداد رمز تأسيس قوي في أسرار المشروع.",
+    });
+    return;
+  }
 
   const passwordHash = await hashPassword(parsed.data.password);
   let result:
     | { kind: "configured" }
     | { kind: "phone_taken" }
-    | { kind: "success"; user: typeof xstoreUsers.$inferSelect };
+    | { kind: "success"; user: typeof xstoreUsers.$inferSelect; recovered: boolean };
   try {
     result = await db.transaction(async (tx) => {
       // Only one first-run request can claim the platform owner role.
@@ -429,18 +449,43 @@ router.post("/xstore/auth/founder", async (req, res): Promise<void> => {
         sql`SELECT pg_advisory_xact_lock(hashtext('xstore-owner-bootstrap'))`,
       );
       const [existingAdmin] = await tx
-        .select({ id: xstoreUsers.id })
+        .select()
         .from(xstoreUsers)
         .where(eq(xstoreUsers.role, "platform_admin"))
         .limit(1);
-      if (existingAdmin) return { kind: "configured" as const };
+      if (existingAdmin?.passwordHash) return { kind: "configured" as const };
 
       const [phoneOwner] = await tx
         .select({ id: xstoreUsers.id })
         .from(xstoreUsers)
         .where(eq(xstoreUsers.phone, phone))
         .limit(1);
-      if (phoneOwner) return { kind: "phone_taken" as const };
+      if (phoneOwner && phoneOwner.id !== existingAdmin?.id) {
+        return { kind: "phone_taken" as const };
+      }
+
+      if (existingAdmin) {
+        const [updated] = await tx
+          .update(xstoreUsers)
+          .set({
+            name,
+            phone,
+            passwordHash,
+            sessionVersion: existingAdmin.sessionVersion + 1,
+            isActive: true,
+          })
+          .where(
+            and(
+              eq(xstoreUsers.id, existingAdmin.id),
+              eq(xstoreUsers.role, "platform_admin"),
+              isNull(xstoreUsers.passwordHash),
+            ),
+          )
+          .returning();
+        return updated
+          ? { kind: "success" as const, user: updated, recovered: true }
+          : { kind: "configured" as const };
+      }
 
       const [user] = await tx
         .insert(xstoreUsers)
@@ -449,13 +494,12 @@ router.post("/xstore/auth/founder", async (req, res): Promise<void> => {
           phone,
           passwordHash,
           role: "platform_admin",
-          clerkUserId: null,
           email: null,
           tenantId: null,
         })
         .returning();
       return user
-        ? { kind: "success" as const, user }
+        ? { kind: "success" as const, user, recovered: false }
         : { kind: "configured" as const };
     });
   } catch (error) {
@@ -479,11 +523,15 @@ router.post("/xstore/auth/founder", async (req, res): Promise<void> => {
   try {
     await audit(
       result.user,
-      "auth.platform_owner_created",
+      result.recovered
+        ? "auth.platform_owner_credentials_set"
+        : "auth.platform_owner_created",
       null,
       "user",
       result.user.id,
-      "The initial platform owner completed one-time account setup.",
+      result.recovered
+        ? "The existing platform owner set phone-and-password sign-in."
+        : "The initial platform owner completed one-time account setup.",
     );
   } catch (error) {
     req.log.error(
@@ -496,113 +544,13 @@ router.post("/xstore/auth/founder", async (req, res): Promise<void> => {
     createSessionToken(result.user.id, result.user.sessionVersion),
   );
   res.json(
-    BootstrapXStorePlatformAdminResponse.parse(
+    CreateInitialPlatformOwnerResponse.parse(
       await sessionUserDto(result.user),
     ),
   );
 });
 
 router.use("/xstore", requireXStoreUser);
-
-router.post("/xstore/auth/bootstrap", async (req, res): Promise<void> => {
-  const actor = getXStoreUser(res);
-  if (actor.role !== "platform_admin" || !actor.clerkUserId) {
-    res.status(403).json({
-      error: "Sign in with the existing platform owner account to set it up.",
-    });
-    return;
-  }
-  const parsed = BootstrapXStorePlatformAdminBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-
-  let phone: string;
-  try {
-    phone = normalizePhone(parsed.data.phone);
-  } catch {
-    res.status(400).json({ error: "Enter a valid phone number." });
-    return;
-  }
-  const passwordHash = await hashPassword(parsed.data.password);
-  const result = await db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(hashtext('xstore-owner-bootstrap'))`,
-    );
-    const [existingAdmin] = await tx
-      .select({ id: xstoreUsers.id })
-      .from(xstoreUsers)
-      .where(
-        and(
-          eq(xstoreUsers.role, "platform_admin"),
-          isNotNull(xstoreUsers.passwordHash),
-        ),
-      )
-      .limit(1);
-    if (existingAdmin) return { kind: "configured" as const };
-
-    const [phoneOwner] = await tx
-      .select({ id: xstoreUsers.id })
-      .from(xstoreUsers)
-      .where(eq(xstoreUsers.phone, phone))
-      .limit(1);
-    if (phoneOwner && phoneOwner.id !== actor.id) {
-      return { kind: "phone_taken" as const };
-    }
-
-    const [updated] = await tx
-      .update(xstoreUsers)
-      .set({
-        phone,
-        passwordHash,
-        clerkUserId: null,
-        sessionVersion: actor.sessionVersion + 1,
-        isActive: true,
-      })
-      .where(
-        and(
-          eq(xstoreUsers.id, actor.id),
-          eq(xstoreUsers.role, "platform_admin"),
-        ),
-      )
-      .returning();
-    return updated
-      ? { kind: "success" as const, user: updated }
-      : { kind: "missing" as const };
-  });
-
-  if (result.kind === "configured") {
-    res.status(409).json({ error: "The platform owner account is already set up." });
-    return;
-  }
-  if (result.kind === "phone_taken") {
-    res.status(409).json({ error: "This phone number already belongs to an account." });
-    return;
-  }
-  if (result.kind !== "success") {
-    res.status(404).json({ error: "The current platform owner account was not found." });
-    return;
-  }
-
-  await audit(
-    actor,
-    "auth.platform_admin_bootstrapped",
-    null,
-    "user",
-    actor.id,
-    "The platform owner switched to phone-and-password sign-in.",
-  );
-  setSessionCookie(
-    res,
-    createSessionToken(result.user.id, result.user.sessionVersion),
-  );
-  res.json(
-    BootstrapXStorePlatformAdminResponse.parse(
-      await sessionUserDto(result.user),
-    ),
-  );
-});
 
 router.get("/xstore/session", async (_req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
@@ -888,7 +836,6 @@ router.post("/xstore/tenants", async (req, res): Promise<void> => {
         .returning();
       if (!createdTenant) return { kind: "failed" as const };
       await tx.insert(xstoreUsers).values({
-        clerkUserId: null,
         email: input.email?.trim().toLowerCase() || null,
         phone,
         passwordHash: ownerPasswordHash,
@@ -1034,12 +981,10 @@ router.patch(
               passwordHash,
               sessionVersion: sql`${xstoreUsers.sessionVersion} + 1`,
               isActive: true,
-              clerkUserId: null,
             })
             .where(eq(xstoreUsers.id, owner.id));
         } else {
           await tx.insert(xstoreUsers).values({
-            clerkUserId: null,
             email: tenant.email,
             phone,
             passwordHash,
@@ -1225,12 +1170,10 @@ router.post("/xstore/team", async (req, res): Promise<void> => {
             passwordHash,
             sessionVersion: sql`${xstoreUsers.sessionVersion} + 1`,
             isActive: true,
-            clerkUserId: null,
           })
           .where(eq(xstoreUsers.id, existingAccount.id));
       } else {
         await tx.insert(xstoreUsers).values({
-          clerkUserId: null,
           email,
           phone,
           passwordHash,

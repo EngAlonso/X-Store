@@ -94,19 +94,11 @@ export interface FounderAccountInput {
      * @maxLength 128
      */
   password: string;
-}
-
-export interface AdminBootstrapInput {
   /**
-     * @minLength 8
-     * @maxLength 20
+     * @minLength 1
+     * @maxLength 512
      */
-  phone: string;
-  /**
-     * @minLength 10
-     * @maxLength 128
-     */
-  password: string;
+  setupSecret: string;
 }
 
 export interface ContactSettings {

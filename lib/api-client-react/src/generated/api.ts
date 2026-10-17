@@ -20,7 +20,6 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  AdminBootstrapInput,
   ApiError,
   AuditLog,
   AuthStatus,
@@ -491,94 +490,6 @@ export const useLogoutXStore = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getLogoutXStoreMutationOptions(options));
-    }
-
-export const getBootstrapXStorePlatformAdminUrl = () => {
-
-
-
-
-  return `/api/xstore/auth/bootstrap`
-}
-
-/**
- * @summary Convert the initial Clerk owner session to phone-and-password access
- */
-export const bootstrapXStorePlatformAdmin = async (adminBootstrapInput: AdminBootstrapInput, options?: Parameters<typeof customFetch>[1]): Promise<SessionUser> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<SessionUser>(getBootstrapXStorePlatformAdminUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(adminBootstrapInput)
-  }
-);}
-
-
-
-
-
-export const getBootstrapXStorePlatformAdminMutationKey = () => ['bootstrapXStorePlatformAdmin'] as const;
-
-export const getBootstrapXStorePlatformAdminMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ApiError>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>, TError,BootstrapXStorePlatformAdminMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>, TError,BootstrapXStorePlatformAdminMutationVariables, TContext> => {
-
-const mutationKey = getBootstrapXStorePlatformAdminMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>, BootstrapXStorePlatformAdminMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  bootstrapXStorePlatformAdmin(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type BootstrapXStorePlatformAdminMutationResult = NonNullable<Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>>
-    export type BootstrapXStorePlatformAdminMutationBody = BodyType<AdminBootstrapInput>
-    export type BootstrapXStorePlatformAdminMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ApiError>
-    export type BootstrapXStorePlatformAdminMutationVariables = {data: BodyType<AdminBootstrapInput>}
-
-    /**
- * @summary Convert the initial Clerk owner session to phone-and-password access
- */
-export const useBootstrapXStorePlatformAdmin = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ApiError>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>, TError,BootstrapXStorePlatformAdminMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- ): UseMutationResult<
-        Awaited<ReturnType<typeof bootstrapXStorePlatformAdmin>>,
-        TError,
-        BootstrapXStorePlatformAdminMutationVariables,
-        TContext
-      > => {
-      return useMutation(getBootstrapXStorePlatformAdminMutationOptions(options));
     }
 
 export const getGetXStoreSessionUrl = () => {

@@ -1,13 +1,6 @@
-import { clerkClient, getAuth } from "@clerk/express";
-import { and, eq, ilike, isNotNull, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
-import {
-  db,
-  xstoreTeamMembers,
-  xstoreTenants,
-  xstoreUsers,
-  type XStoreUser,
-} from "@workspace/db";
+import { db, xstoreTenants, xstoreUsers, type XStoreUser } from "@workspace/db";
 import { readSessionToken } from "../lib/xstore-session";
 
 declare global {
@@ -16,93 +9,6 @@ declare global {
       xstoreUser?: XStoreUser;
     }
   }
-}
-
-async function getOrProvisionUser(clerkUserId: string): Promise<XStoreUser | null> {
-  const [existing] = await db
-    .select()
-    .from(xstoreUsers)
-    .where(eq(xstoreUsers.clerkUserId, clerkUserId))
-    .limit(1);
-  if (existing) return existing;
-
-  const identity = await clerkClient.users.getUser(clerkUserId);
-  const emailAddress =
-    identity.emailAddresses.find(
-      (address) => address.id === identity.primaryEmailAddressId,
-    )?.emailAddress ?? identity.emailAddresses[0]?.emailAddress;
-  if (!emailAddress) return null;
-
-  const email = emailAddress.trim().toLowerCase();
-  const name =
-    [identity.firstName, identity.lastName].filter(Boolean).join(" ").trim() ||
-    email.split("@")[0] ||
-    clerkUserId;
-
-  return db.transaction(async (tx) => {
-    // Serialize first-owner bootstrap so two simultaneous sign-ups cannot both
-    // claim the single initial platform administrator account.
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('xstore-owner-bootstrap'))`);
-
-    const [ownerTenant] = await tx
-      .select({ id: xstoreTenants.id })
-      .from(xstoreTenants)
-      .where(ilike(xstoreTenants.email, email))
-      .limit(1);
-
-    const [teamMember] = ownerTenant
-      ? []
-      : await tx
-          .select()
-          .from(xstoreTeamMembers)
-          .where(ilike(xstoreTeamMembers.email, email))
-          .limit(1);
-
-    let role: string;
-    let tenantId: string | null = null;
-    if (ownerTenant) {
-      role = "tenant_admin";
-      tenantId = ownerTenant.id;
-    } else if (teamMember) {
-      role = teamMember.role;
-      tenantId = teamMember.tenantId;
-    } else {
-      const [platformAdmin] = await tx
-        .select({ id: xstoreUsers.id })
-        .from(xstoreUsers)
-        .where(eq(xstoreUsers.role, "platform_admin"))
-        .limit(1);
-      if (platformAdmin) return null;
-      if (process.env.NODE_ENV === "production") {
-        const bootstrapEmail = process.env.XSTORE_PLATFORM_ADMIN_EMAIL
-          ?.trim()
-          .toLowerCase();
-        if (!bootstrapEmail || bootstrapEmail !== email) return null;
-      }
-      role = "platform_admin";
-    }
-
-    const [created] = await tx
-      .insert(xstoreUsers)
-      .values({ clerkUserId, email, name, role, tenantId })
-      .onConflictDoNothing({ target: xstoreUsers.clerkUserId })
-      .returning();
-
-    if (teamMember) {
-      await tx
-        .update(xstoreTeamMembers)
-        .set({ status: "active" })
-        .where(eq(xstoreTeamMembers.id, teamMember.id));
-    }
-
-    if (created) return created;
-    const [raced] = await tx
-      .select()
-      .from(xstoreUsers)
-      .where(eq(xstoreUsers.clerkUserId, clerkUserId))
-      .limit(1);
-    return raced ?? null;
-  });
 }
 
 export async function requireXStoreUser(
@@ -133,39 +39,7 @@ export async function requireXStoreUser(
       return;
     }
 
-    const [localPlatformAdmin] = await db
-      .select({ id: xstoreUsers.id })
-      .from(xstoreUsers)
-      .where(
-        and(
-          eq(xstoreUsers.role, "platform_admin"),
-          isNotNull(xstoreUsers.passwordHash),
-        ),
-      )
-      .limit(1);
-    if (localPlatformAdmin) {
-      res.status(401).json({ error: "Sign in with your phone number and password." });
-      return;
-    }
-
-    const { userId } = getAuth(req);
-    if (!userId) {
-      res.status(401).json({ error: "Sign in to continue." });
-      return;
-    }
-
-    const user = await getOrProvisionUser(userId);
-    if (!user) {
-      res.status(403).json({
-        error: "This account is not assigned to an X-Store workspace.",
-      });
-      return;
-    }
-
-    if (!(await ensureXStoreTenantAccess(user, req, res))) return;
-
-    res.locals.xstoreUser = user;
-    next();
+    res.status(401).json({ error: "Sign in with your phone number and password." });
   } catch (error) {
     req.log.error({ error }, "Unable to resolve X-Store identity");
     res.status(500).json({ error: "Unable to load the X-Store account." });

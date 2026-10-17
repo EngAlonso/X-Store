@@ -3,16 +3,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { ClerkProvider, SignIn, useAuth, useClerk } from '@clerk/react';
-import { publishableKeyFromHost } from '@clerk/react/internal';
-import { shadcn } from '@clerk/themes';
-import { arSA } from '@clerk/localizations';
 import {
   getGetXStoreAuthStatusQueryKey, getGetXStoreDashboardQueryKey, getGetXStoreSessionQueryKey,
   getListXStoreHeldSalesQueryKey, getListXStoreProductsQueryKey,
   getListXStoreSalesQueryKey, getListXStoreTeamQueryKey, getListXStoreTenantsQueryKey,
   getListXStoreSubscriptionPaymentsQueryKey,
-  logoutXStore, useAddXStoreTeamMember, useBootstrapXStorePlatformAdmin, useCreateInitialPlatformOwner, useCreateXStoreExchange, useCreateXStoreProduct, useCreateXStoreReturn,
+  logoutXStore, useAddXStoreTeamMember, useCreateInitialPlatformOwner, useCreateXStoreExchange, useCreateXStoreProduct, useCreateXStoreReturn,
   useCreateXStoreSubscriptionPayment, useCreateXStoreTenant, useGetXStoreDashboard, useGetXStoreSession, useHoldXStoreSale,
   useGetXStoreAuthStatus, useGetXStoreContactSettings, useLoginXStoreWithPhone,
   useListXStoreAuditLogs, useListXStoreHeldSales, useListXStoreProducts, useListXStoreSales,
@@ -36,34 +32,6 @@ import {
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
-const clerkPubKey = publishableKeyFromHost(window.location.hostname, import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
-const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-function stripBase(path: string) { return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || '/' : path; }
-
-const appearance = {
-  theme: shadcn,
-  cssLayerName: 'clerk',
-  options: { logoPlacement: 'inside' as const, logoLinkUrl: basePath || '/', logoImageUrl: `${window.location.origin}${basePath}/x-store-mark.png` },
-  variables: {
-    colorPrimary: '#0B4619', colorForeground: '#212529', colorMutedForeground: '#6C757D',
-    colorDanger: '#DC3545', colorBackground: '#FFFFFF', colorInput: '#FFFFFF',
-    colorInputForeground: '#212529', colorNeutral: '#DDE3DF',
-    fontFamily: "'IBM Plex Sans Arabic', 'DM Sans', sans-serif", borderRadius: '0.8rem',
-  },
-  elements: {
-    rootBox: 'w-full flex justify-center', cardBox: 'bg-white rounded-2xl w-[440px] max-w-full overflow-hidden shadow-xl',
-    card: '!shadow-none !border-0 !bg-transparent !rounded-none', footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
-    headerTitle: 'text-[#212529] font-bold', headerSubtitle: 'text-[#6C757D]',
-    socialButtonsBlockButtonText: 'text-[#212529]', formFieldLabel: 'text-[#212529]',
-    footerActionLink: 'text-[#0B4619] font-semibold', footerActionText: 'text-[#6C757D]',
-    dividerText: 'text-[#6C757D]', identityPreviewEditButton: 'text-[#0B4619]',
-    formFieldSuccessText: 'text-[#0B4619]', alertText: 'text-[#212529]',
-    logoBox: 'mb-3', logoImage: 'max-h-12 object-contain', socialButtonsBlockButton: 'border-[#DDE3DF]',
-    formButtonPrimary: 'bg-[#0B4619] hover:bg-[#083815]', formFieldInput: 'border-[#DDE3DF]',
-    footerAction: 'text-[#6C757D]', dividerLine: 'bg-[#DDE3DF]', alert: 'border-[#DDE3DF]',
-    otpCodeFieldInput: 'border-[#DDE3DF]', formFieldRow: 'text-[#212529]', main: 'text-[#212529]',
-  },
-};
 
 const fmt = (n: number) => new Intl.NumberFormat('ar-SA', { maximumFractionDigits: 2 }).format(n);
 type StoreCurrency = 'EGP' | 'SAR' | 'AED' | 'USD' | 'EUR' | 'GBP';
@@ -94,6 +62,7 @@ const founderSetupSchema = z.object({
   name: z.string().trim().min(2, 'اكتب اسم المؤسس').max(100, 'الاسم طويل جدًا'),
   phone: z.string().min(8, 'أدخل رقم هاتف صحيحًا').max(20, 'رقم الهاتف طويل جدًا'),
   password: z.string().min(10, 'كلمة المرور يجب أن تكون 10 أحرف على الأقل').max(128, 'كلمة المرور طويلة جدًا'),
+  setupSecret: z.string().min(32, 'رمز التأسيس يجب أن يتكون من 32 حرفًا على الأقل').max(512, 'رمز التأسيس طويل جدًا'),
   confirmPassword: z.string(),
 }).refine((values) => values.password === values.confirmPassword, {
   message: 'كلمتا المرور غير متطابقتين',
@@ -146,11 +115,10 @@ function Home() {
 }
 function AuthPage({ kind }: { kind: 'in' | 'up' }) {
   const status = useGetXStoreAuthStatus();
-  const { isSignedIn } = useAuth();
-  const [showLegacy, setShowLegacy] = useState(false);
   if (kind === 'up') return <Redirect to="/sign-in"/>;
   const bootstrapRequired = status.data?.bootstrapRequired === true;
   const founderSetupRequired = status.data?.founderSetupRequired === true;
+  const setupRequired = bootstrapRequired || founderSetupRequired;
   return <div dir="rtl" className="auth-screen auth-refined">
     <div className="auth-brand"><Logo/><p>مساحة عملك تبدأ من هنا.</p><div className="auth-note"><img src={`${basePath}/x-store-mark.png`}/><span>تجربة عمل هادئة<br/>وموثوقة كل يوم.</span></div></div>
     <div className="auth-widget"><section className="auth-card">
@@ -158,21 +126,14 @@ function AuthPage({ kind }: { kind: 'in' | 'up' }) {
         ? <div className="auth-status-state" role="status">جارٍ التحقق من إعداد المنصة…</div>
         : status.isError
           ? <div className="auth-status-state" role="alert"><span>تعذر التحقق من إعداد حساب المالك.</span><button className="button button-quiet button-small" type="button" onClick={() => void status.refetch()} data-testid="button-retry-auth-status">إعادة المحاولة</button></div>
-          : founderSetupRequired
-            ? <FounderSetupForm/>
-            : bootstrapRequired && isSignedIn
-              ? <PlatformBootstrapForm/>
-              : <PhoneLoginForm bootstrapRequired={bootstrapRequired}/>}
-      {status.data && bootstrapRequired && !founderSetupRequired && !isSignedIn && <div className="legacy-bootstrap">
-        {showLegacy
-          ? <><div className="role-hint"><ShieldCheck size={17}/><span>استخدم حساب مدير المنصة الحالي مرة واحدة لتحويله إلى دخول الهاتف وكلمة المرور.</span></div><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} appearance={{...appearance,elements:{...appearance.elements,footerAction:'hidden'}}}/><button className="text-link" type="button" onClick={()=>setShowLegacy(false)}>إخفاء تسجيل الدخول القديم</button></>
-          : <button className="button button-quiet" type="button" onClick={()=>setShowLegacy(true)}>إعداد دخول مدير المنصة لأول مرة</button>}
-      </div>}
+          : setupRequired
+            ? <FounderSetupForm recoveringExistingOwner={bootstrapRequired}/>
+            : <PhoneLoginForm/>}
       {status.data && <ContactMethods status={status.data}/>}
     </section></div>
   </div>;
 }
-function PhoneLoginForm({ bootstrapRequired }: { bootstrapRequired:boolean }) {
+function PhoneLoginForm() {
   const login = useLoginXStoreWithPhone();
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
@@ -192,47 +153,21 @@ function PhoneLoginForm({ bootstrapRequired }: { bootstrapRequired:boolean }) {
       <label className="field"><span>رقم الهاتف</span><input name="phone" type="tel" autoComplete="username" required placeholder="مثال: ‎+20 10 1234 5678"/></label>
       <label className="field"><span>كلمة المرور</span><input name="password" type="password" autoComplete="current-password" required placeholder="أدخل كلمة المرور"/></label>
       {login.isError&&<div className="form-error">{apiErrorMessage(login.error,'تعذر تسجيل الدخول. تحقق من البيانات وحاول مرة أخرى.')}</div>}
-      {bootstrapRequired&&<div className="role-hint"><ShieldCheck size={16}/><span>حساب مدير المنصة لم يُجهّز بعد. استخدم خيار الإعداد لأول مرة أسفل هذه الصفحة.</span></div>}
       <button className="button button-primary auth-submit" disabled={login.isPending}>{login.isPending?'جارٍ تسجيل الدخول…':'دخول'}</button>
     </form>
   </>;
 }
-function PlatformBootstrapForm() {
-  const bootstrap = useBootstrapXStorePlatformAdmin();
-  const qc = useQueryClient();
-  const [, setLocation] = useLocation();
-  function submit(e:FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    bootstrap.mutate({data:{phone:String(form.get('phone')),password:String(form.get('password'))}},{
-      onSuccess:user=>{
-        qc.setQueryData(getGetXStoreSessionQueryKey(),user);
-        qc.invalidateQueries({queryKey:getGetXStoreAuthStatusQueryKey()});
-        setLocation('/dashboard');
-      },
-    });
-  }
-  return <><div className="auth-card-heading"><span className="auth-icon"><ShieldCheck size={20}/></span><div><h1>إعداد حساب مدير المنصة</h1><p>أنشئ بيانات الدخول التي ستستخدمها بعد ذلك بدلاً من تسجيل الدخول القديم.</p></div></div>
-    <form className="auth-form" onSubmit={submit}>
-      <label className="field"><span>رقم هاتف مدير المنصة</span><input name="phone" type="tel" autoComplete="tel" required placeholder="مثال: ‎+20 10 1234 5678"/></label>
-      <label className="field"><span>كلمة مرور جديدة</span><input name="password" type="password" autoComplete="new-password" minLength={10} maxLength={128} required placeholder="10 أحرف على الأقل"/></label>
-      {bootstrap.isError&&<div className="form-error">{apiErrorMessage(bootstrap.error,'تعذر إعداد الحساب. تحقق من رقم الهاتف وحاول مرة أخرى.')}</div>}
-      <div className="role-hint"><ShieldCheck size={16}/><span>بعد الحفظ، يصبح هذا الحساب هو وسيلة الدخول لجميع الحسابات، ويتوقف تسجيل الدخول القديم.</span></div>
-      <button className="button button-primary auth-submit" disabled={bootstrap.isPending}>{bootstrap.isPending?'جارٍ إعداد الحساب…':'حفظ بيانات الدخول'}</button>
-    </form>
-  </>;
-}
-function FounderSetupForm() {
+function FounderSetupForm({ recoveringExistingOwner }: { recoveringExistingOwner: boolean }) {
   const createOwner = useCreateInitialPlatformOwner();
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
   const form = useForm<FounderSetupValues>({
     resolver: zodResolver(founderSetupSchema),
-    defaultValues: { name: '', phone: '', password: '', confirmPassword: '' },
+    defaultValues: { name: '', phone: '', password: '', setupSecret: '', confirmPassword: '' },
   });
   function submit(values: FounderSetupValues) {
     createOwner.mutate(
-      { data: { name: values.name, phone: values.phone, password: values.password } },
+      { data: { name: values.name, phone: values.phone, password: values.password, setupSecret: values.setupSecret } },
       {
         onSuccess: (user) => {
           qc.setQueryData(getGetXStoreSessionQueryKey(), user);
@@ -246,7 +181,7 @@ function FounderSetupForm() {
     );
   }
   return <>
-    <div className="auth-card-heading"><span className="auth-icon"><ShieldCheck size={20}/></span><div><h1>إعداد حساب المؤسس</h1><p>أنشئ الحساب الأول، وسيصبح مالك المنصة.</p></div></div>
+    <div className="auth-card-heading"><span className="auth-icon"><ShieldCheck size={20}/></span><div><h1>{recoveringExistingOwner?'تفعيل حساب مالك المنصة':'إعداد حساب المؤسس'}</h1><p>{recoveringExistingOwner?'أكمل بيانات الدخول لحساب المالك الحالي.':'أنشئ الحساب الأول، وسيصبح مالك المنصة.'}</p></div></div>
     <Form {...form}>
       <form className="auth-form" onSubmit={form.handleSubmit(submit)} noValidate>
         <FormField control={form.control} name="name" render={({ field }) => <FormItem className="field">
@@ -258,12 +193,15 @@ function FounderSetupForm() {
         <FormField control={form.control} name="password" render={({ field }) => <FormItem className="field">
           <FormLabel>كلمة المرور</FormLabel><FormControl><input {...field} type="password" autoComplete="new-password" minLength={10} maxLength={128} placeholder="10 أحرف على الأقل" data-testid="input-founder-password" disabled={createOwner.isPending}/></FormControl><FormMessage/>
         </FormItem>}/>
+        <FormField control={form.control} name="setupSecret" render={({ field }) => <FormItem className="field">
+          <FormLabel>رمز التأسيس السري</FormLabel><FormControl><input {...field} type="password" autoComplete="off" minLength={32} maxLength={512} data-testid="input-founder-secret" disabled={createOwner.isPending}/></FormControl><FormMessage/>
+        </FormItem>}/>
         <FormField control={form.control} name="confirmPassword" render={({ field }) => <FormItem className="field">
           <FormLabel>تأكيد كلمة المرور</FormLabel><FormControl><input {...field} type="password" autoComplete="new-password" minLength={10} maxLength={128} data-testid="input-founder-confirm-password" disabled={createOwner.isPending}/></FormControl><FormMessage/>
         </FormItem>}/>
         {createOwner.isError && <div className="form-error" role="alert">{apiErrorMessage(createOwner.error, 'تعذر إنشاء حساب المالك. حاول مرة أخرى.')}</div>}
-        <div className="role-hint"><ShieldCheck size={16}/><span>الإعداد لمرة واحدة. أول شخص يكمل الحفظ يصبح مالك المنصة، وبعدها يختفي هذا النموذج.</span></div>
-        <button className="button button-primary auth-submit" type="submit" disabled={createOwner.isPending}>{createOwner.isPending ? 'جارٍ إنشاء حساب المالك…' : 'إنشاء حساب المالك'}</button>
+        <div className="role-hint"><ShieldCheck size={16}/><span>يُطلب الرمز لحماية الإعداد الأول فقط. بعد إكماله، يختفي هذا النموذج ولا يمكن استخدام الرمز لإنشاء مالك آخر.</span></div>
+        <button className="button button-primary auth-submit" type="submit" disabled={createOwner.isPending}>{createOwner.isPending ? 'جارٍ حفظ بيانات المالك…' : recoveringExistingOwner?'حفظ بيانات الدخول':'إنشاء حساب المالك'}</button>
       </form>
     </Form>
   </>;
@@ -293,14 +231,14 @@ function SignInPage() { return <AuthPage kind="in"/>; }
 function SignUpPage() { return <Redirect to="/sign-in"/>; }
 
 function AppShell({ children }: { children: ReactNode }) {
-  const [location,setLocation] = useLocation(); const { signOut } = useClerk(); const [open,setOpen] = useState(false);
+  const [location,setLocation] = useLocation(); const [open,setOpen] = useState(false);
   const qc=useQueryClient();
   const { data:user, isLoading, isError, refetch } = useGetXStoreSession();
   if (isLoading) return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if (isError || !user) return <div className="auth-required" dir="rtl"><div className="empty-symbol"><ShieldCheck/></div><h2>يلزم تسجيل الدخول</h2><p>سجّل الدخول باستخدام حساب X-Store للوصول إلى مساحة العمل.</p><Link href="/sign-in" className="button button-primary">تسجيل الدخول</Link><button className="button button-quiet" onClick={()=>refetch()}>إعادة المحاولة</button></div>;
   const items = nav.filter(n=>n.roles.includes('all') || n.roles.includes(user.role));
    return <CurrencyContext.Provider value={(user.currency as StoreCurrency | null) || 'SAR'}><div dir="rtl" className="app-frame">
-     <aside className={`sidebar ${open?'sidebar-open':''}`}><div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={()=>setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div><div className="store-chip"><span className="store-avatar">{(user.tenantName||user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{roleNames[user.role]||user.role}</small></span><ChevronDown size={15}/></div><div className="nav-caption">القائمة الرئيسية</div><nav className="side-nav">{items.map(item=><Link key={item.href} href={item.href} onClick={()=>setOpen(false)} className={`nav-link ${location===item.href?'nav-active':''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location===item.href&&<i/>}</Link>)}</nav><div className="sidebar-bottom"><div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div><div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.phone}</small></span><button className="icon-button" onClick={()=>{void logoutXStore().then(async()=>{qc.clear();try{await signOut({redirectUrl:basePath||'/'})}catch{setLocation('/sign-in')}}).catch(()=>window.alert('تعذر تسجيل الخروج. تحقق من الاتصال وحاول مرة أخرى.'))}} title="تسجيل الخروج" data-testid="button-sign-out"><LogOut size={17}/></button></div></div></aside>
+     <aside className={`sidebar ${open?'sidebar-open':''}`}><div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={()=>setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div><div className="store-chip"><span className="store-avatar">{(user.tenantName||user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{roleNames[user.role]||user.role}</small></span><ChevronDown size={15}/></div><div className="nav-caption">القائمة الرئيسية</div><nav className="side-nav">{items.map(item=><Link key={item.href} href={item.href} onClick={()=>setOpen(false)} className={`nav-link ${location===item.href?'nav-active':''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location===item.href&&<i/>}</Link>)}</nav><div className="sidebar-bottom"><div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div><div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.phone}</small></span><button className="icon-button" onClick={()=>{void logoutXStore().then(()=>{qc.clear();setLocation('/sign-in')}).catch(()=>window.alert('تعذر تسجيل الخروج. تحقق من الاتصال وحاول مرة أخرى.'))}} title="تسجيل الخروج" data-testid="button-sign-out"><LogOut size={17}/></button></div></div></aside>
     {open&&<button aria-label="إغلاق القائمة" className="mobile-scrim" onClick={()=>setOpen(false)}/>}
     <div className="workspace"><header className="topbar"><button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={()=>setOpen(true)}><Menu size={20}/></button><div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i=>i.href===location)?.label||'لوحة التحكم'}</b></div><div className="topbar-tools"><span className="today"><CalendarDays size={15}/> {new Intl.DateTimeFormat('ar-SA',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span><button className="icon-button notification" aria-label="الإشعارات"><Bell size={18}/><i/></button><span className="top-avatar">{user.name.slice(0,1)}</span></div></header><main className="main-content">{children}</main><footer className="workspace-footer"><span>X-Store</span><span>مساحة عمل موثوقة لمتجرك</span><span>© ٢٠٢٥</span></footer></div>
    </div></CurrencyContext.Provider>;
@@ -771,19 +709,10 @@ function AuditRows({logs}:{logs:any[]}) {
   return <div className="audit-list">{logs.map((log:any,i)=><div className="audit-row" key={log.id||i}><span className={`audit-icon audit-icon-${i%4}`}><Activity size={17}/></span><div className="audit-main"><b>{log.action}</b><small>{log.actorName} · {log.tenantName||'المنصة'} · {log.entityType}{log.entityId?` · ${log.entityId}`:''}</small><span>{log.details}</span></div><time>{dateLabel(log.createdAt)}</time></div>)}</div>;
 }
 
-function ClerkCacheInvalidator() {
-  const { addListener }=useClerk(), qc=useQueryClient();
-  useEffect(()=>{let previous:string|null|undefined=undefined;const off=addListener(({user})=>{const id=user?.id??null;if(previous!==undefined&&previous!==id)qc.clear();previous=id});return off},[addListener,qc]);
-  return null;
-}
 function Routed() {
-  const [,setLocation]=useLocation();
-  return <ClerkProvider publishableKey={clerkPubKey} proxyUrl={clerkProxyUrl} appearance={appearance} signInUrl={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} localization={arSA} routerPush={to=>setLocation(stripBase(to))} routerReplace={to=>setLocation(stripBase(to),{replace:true})}>
-    <QueryClientProvider client={queryClient}><ClerkCacheInvalidator/><ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary></QueryClientProvider>
-  </ClerkProvider>;
+  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
 }
 function App() {
-  if (!clerkPubKey) throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY in .env file');
-  return <TooltipProvider><WouterRouter base={basePath}><Routed/></WouterRouter><Toaster/></TooltipProvider>;
+  return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><Routed/></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;
 }
 export default App;
