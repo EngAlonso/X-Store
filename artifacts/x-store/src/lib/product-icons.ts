@@ -100,22 +100,23 @@ const productIconRules: ProductIconRule[] = [
     Icon: Coffee,
     tone: "clay",
     nameTerms: [
-      "قهوة", "بن", "بن مطحون", "بن محوج", "شاي", "شاي اخضر", "شاي احمر",
-      "نسكافيه", "كابتشينو", "قهوة تركي", "قهوة فرنساوي", "اسبرسو", "موكا",
-      "coffee", "espresso", "tea", "cappuccino",
+      "قهوة", "قهوه", "بن", "بن مطحون", "بن محوج", "شاي", "شاهي", "شاي اخضر", "شاي احمر",
+      "نسكافيه", "كابتشينو", "قهوة عربي", "قهوة عربية", "قهوة تركي", "قهوة فرنساوي", "اسبرسو", "موكا",
+      "coffee", "espresso", "tea", "cappuccino", "americano", "latte", "matcha",
     ],
-    categoryTerms: ["قهوة", "بن", "شاي", "مشروبات ساخنة", "مشروبات دافئة", "coffee", "tea", "hot drinks"],
+    categoryTerms: ["قهوة", "بن", "شاي", "شاهي", "مشروبات ساخنة", "مشروبات دافئة", "coffee", "tea", "hot drinks"],
   },
   {
     kind: "drinks",
     Icon: CupSoda,
     tone: "blue",
     nameTerms: [
-      "مشروب", "عصير", "مية", "ميه", "مايه", "مياه", "ماء", "ازازة مياه",
+      "مشروب", "عصير", "عصاير", "مية", "ميه", "مايه", "مياه", "ماء", "موية", "مويه", "ماي", "ازازة مياه",
       "مياه غازية", "مياه معدنية", "بيبسي", "كوكاكولا", "كوكا كولا", "كولا",
-      "فانتا", "سفن اب", "سبرايت", "كانز", "شربات", "drink", "juice", "water", "soda", "cola",
+      "فانتا", "سفن اب", "سبن اب", "سبرايت", "كانز", "شربات", "مشروب طاقة", "drink", "beverage",
+      "juice", "water", "soda", "cola", "soft drink", "sparkling water", "energy drink", "bottled water",
     ],
-    categoryTerms: ["مشروبات", "مشروب", "عصائر", "مياه", "مشروبات غازية", "beverage", "drinks"],
+    categoryTerms: ["مشروبات", "مشروب", "عصائر", "عصاير", "مياه", "موية", "مويه", "مشروبات غازية", "beverage", "drinks", "soft drinks"],
   },
   {
     kind: "snacks",
@@ -124,8 +125,9 @@ const productIconRules: ProductIconRule[] = [
     nameTerms: [
       "بسكوت", "بسكوتة", "بسكويت", "بسكويته", "شيبسي", "شيبس", "مقرمشات", "سناكس",
       "دوريتوس", "لبان", "بونبون", "بنبون", "مصاصة", "توفي", "شوكولاتة",
-      "شيكولاتة", "شيكولاته", "حلويات", "بسبوسة", "كنافة", "قطايف",
-      "حلاوة طحينية", "snack", "snacks", "chips", "cookie", "cookies",
+      "شيكولاتة", "شيكولاته", "حلويات", "حلا", "حلوى", "بسبوسة", "كنافة", "قطايف",
+      "حلاوة طحينية", "فشار", "بوب كورن", "popcorn", "snack", "snacks", "chips", "crisps",
+      "cookie", "cookies", "biscuit", "biscuits", "candy", "chocolate", "sweets",
     ],
     categoryTerms: ["سناكس", "مقرمشات", "حلويات", "شوكولاتة", "snacks", "candy", "cookies"],
   },
@@ -135,10 +137,10 @@ const productIconRules: ProductIconRule[] = [
     tone: "gold",
     nameTerms: [
       "عيش", "عيش بلدي", "عيش فينو", "عيش شامي", "عيش سن", "فينو", "رغيف",
-      "خبز", "توست", "باتيه", "فطير", "كرواسون", "كروسان", "كيك", "كعك",
-      "مخبوزات", "معجنات", "bakery", "bread", "cake", "pastry",
+      "خبز", "خبز عربي", "صامولي", "تميس", "توست", "باتيه", "فطير", "كرواسون", "كروسان", "كيك", "كعك",
+      "مخبوزات", "معجنات", "bakery", "bread", "bun", "bagel", "cake", "pastry", "croissant", "brioche",
     ],
-    categoryTerms: ["مخبوزات", "مخبز", "مخبزات", "معجنات", "bakery", "bread", "pastry"],
+    categoryTerms: ["مخبوزات", "مخبز", "مخبزات", "معجنات", "bakery", "bread", "pastry", "baked goods"],
   },
   {
     kind: "produce",
@@ -148,8 +150,8 @@ const productIconRules: ProductIconRule[] = [
       "فاكهة", "فواكه", "فاكهه", "خضار", "تفاح", "موز", "برتقال", "برتقان",
       "يوسفي", "عنب", "فراولة", "مانجا", "مانجو", "جوافة", "خوخ", "كمثرى",
       "بطيخ", "شمام", "طماطم", "بندورة", "بطاطس", "بطاطا", "بصل", "خيار",
-      "فلفل", "كوسة", "جزر", "باذنجان", "ملوخية", "بامية", "ليمون", "ثوم",
-      "produce", "fruit", "vegetable", "vegetables",
+      "فلفل", "كوسة", "جزر", "باذنجان", "ملوخية", "بامية", "ليمون", "ثوم", "خضرة",
+      "produce", "fruit", "fruits", "vegetable", "vegetables", "tomato", "potato", "onion",
     ],
     categoryTerms: ["خضار", "خضروات", "فاكهة", "فواكه", "produce", "fruit", "vegetables"],
   },
@@ -158,8 +160,8 @@ const productIconRules: ProductIconRule[] = [
     Icon: Drumstick,
     tone: "clay",
     nameTerms: [
-      "فراخ", "فراخة", "فرخة", "دجاج", "فراخ بانيه", "بانيه", "وراك فراخ",
-      "صدور فراخ", "كتاكيت", "poultry", "chicken",
+      "فراخ", "فراخة", "فرخة", "دجاج", "دياي", "دجاجة", "فراخ بانيه", "بانيه", "وراك فراخ",
+      "صدور فراخ", "كتاكيت", "poultry", "chicken", "chicken breast", "wings",
     ],
     categoryTerms: ["فراخ", "دواجن", "طيور", "poultry", "chicken"],
   },
@@ -169,7 +171,7 @@ const productIconRules: ProductIconRule[] = [
     tone: "blue",
     nameTerms: [
       "سمك", "أسماك", "جمبري", "روبيان", "سردين", "تونة", "فيليه", "بلطي",
-      "بوري", "ماكريل", "fish", "seafood", "shrimp", "tuna",
+      "بوري", "ماكريل", "fish", "seafood", "shrimp", "prawn", "tuna", "salmon",
     ],
     categoryTerms: ["أسماك", "سمك", "مأكولات بحرية", "seafood", "fish"],
   },
@@ -178,8 +180,9 @@ const productIconRules: ProductIconRule[] = [
     Icon: Beef,
     tone: "clay",
     nameTerms: [
-      "لحمة", "لحمه", "لحم", "لحوم", "مفروم", "كفتة", "كباب", "سجق",
-      "برجر", "بسطرمة", "لانشون", "كبدة", "beef", "meat",
+      "لحمة", "لحمه", "لحم", "لحوم", "لحم غنم", "لحم بقر", "لحم حاشي", "حاشي", "غنم", "خروف",
+      "مفروم", "لحمة مفرومة", "لحم مفروم", "كفتة", "كباب", "سجق", "برجر", "بسطرمة", "لانشون", "كبدة",
+      "beef", "meat", "lamb", "mutton", "minced meat", "sausage",
     ],
     categoryTerms: ["لحوم", "لحمة", "لحوم حمراء", "meat", "beef"],
   },
@@ -188,8 +191,9 @@ const productIconRules: ProductIconRule[] = [
     Icon: Milk,
     tone: "blue",
     nameTerms: [
-      "لبن", "حليب", "جبنة", "جبن", "زبادي", "رايب", "لبن رايب", "قشطة",
-      "زبدة", "كريمة طبخ", "كريمة خفق", "لبنة", "ايس كريم", "آيس كريم", "milk", "cheese", "yogurt", "dairy",
+      "لبن", "حليب", "جبنة", "جبن", "زبادي", "روب", "رايب", "لبن رايب", "لبن خاثر", "قشطة",
+      "زبدة", "كريمة طبخ", "كريمة خفق", "لبنة", "ايس كريم", "آيس كريم",
+      "milk", "cheese", "yogurt", "yoghurt", "dairy", "butter", "cream", "ice cream",
     ],
     categoryTerms: ["ألبان", "البان", "منتجات الألبان", "dairy"],
   },
@@ -197,22 +201,28 @@ const productIconRules: ProductIconRule[] = [
     kind: "phone",
     Icon: Smartphone,
     tone: "blue",
-    nameTerms: ["موبايل", "موبيل", "هاتف", "تليفون", "تليفونات", "جوال", "ايفون", "smartphone", "phone", "mobile", "iphone"],
-    categoryTerms: ["موبايلات", "هواتف", "تليفونات", "smartphones", "mobile phones", "phones"],
+    nameTerms: [
+      "موبايل", "موبيل", "هاتف", "تليفون", "تليفونات", "جوال", "جهاز جوال", "ايفون", "آيفون",
+      "smartphone", "phone", "mobile", "cell phone", "cellphone", "iphone", "samsung galaxy",
+    ],
+    categoryTerms: ["موبايلات", "هواتف", "تليفونات", "جوالات", "smartphones", "mobile phones", "phones"],
   },
   {
     kind: "computer",
     Icon: Laptop,
     tone: "blue",
-    nameTerms: ["لابتوب", "لاب توب", "كمبيوتر", "حاسوب", "pc", "laptop", "computer"],
-    categoryTerms: ["كمبيوتر", "حاسب", "لابتوب", "computers", "laptops"],
+    nameTerms: ["لابتوب", "لاب توب", "كمبيوتر", "حاسوب", "حاسب آلي", "pc", "laptop", "computer", "desktop", "notebook computer"],
+    categoryTerms: ["كمبيوتر", "حاسب", "حاسوب", "لابتوب", "computers", "laptops", "desktops"],
   },
   {
     kind: "audio",
     Icon: Headphones,
     tone: "mauve",
-    nameTerms: ["سماعة", "سماعات", "هيدفون", "ايربودز", "سماعات اذن", "headphone", "earphone", "earbud", "airpods", "audio"],
-    categoryTerms: ["سماعات", "صوتيات", "headphones", "audio"],
+    nameTerms: [
+      "سماعة", "سماعات", "هيدفون", "ايربودز", "سماعات اذن", "سماعة بلوتوث",
+      "headphone", "headphones", "earphone", "earphones", "earbud", "earbuds", "airpods", "audio", "speaker",
+    ],
+    categoryTerms: ["سماعات", "صوتيات", "سماعات أذن", "headphones", "audio", "speakers"],
   },
   {
     kind: "camera",
@@ -225,8 +235,8 @@ const productIconRules: ProductIconRule[] = [
     kind: "display",
     Icon: Tv,
     tone: "mauve",
-    nameTerms: ["تلفزيون", "تليفزيون", "شاشة", "شاشات", "monitor", "television", "tv"],
-    categoryTerms: ["شاشات", "تلفزيونات", "tv", "monitors", "displays"],
+    nameTerms: ["تلفزيون", "تليفزيون", "شاشة", "شاشات", "monitor", "television", "tv", "display"],
+    categoryTerms: ["شاشات", "تلفزيونات", "tv", "monitors", "displays", "screens"],
   },
   {
     kind: "electronics",
@@ -234,26 +244,29 @@ const productIconRules: ProductIconRule[] = [
     tone: "blue",
     nameTerms: [
       "شاحن", "كابل", "وصلة", "محول", "فلاشة", "فلاش ميموري", "كيبورد",
-      "ماوس", "فارة", "جراب", "كفر", "باور بانك", "charger", "cable", "keyboard",
-      "mouse", "electronics",
+      "ماوس", "فارة", "جراب", "كفر", "باور بانك", "اكسسوارات جوال", "شاحن متنقل",
+      "charger", "cable", "keyboard", "mouse", "power bank", "phone case", "electronics",
     ],
-    categoryTerms: ["إلكترونيات", "الكترونيات", "إلكتروني", "أجهزة كهربائية", "electronics", "electronic accessories"],
+    categoryTerms: ["إلكترونيات", "الكترونيات", "إلكتروني", "أجهزة كهربائية", "اكسسوارات", "electronics", "electronic accessories"],
   },
   {
     kind: "shoes",
     Icon: Footprints,
     tone: "clay",
-    nameTerms: ["حذاء", "أحذية", "جزمة", "كوتشي", "شبشب", "صندل", "سليبر", "بوط", "shoe", "sneaker", "sandal", "slippers"],
-    categoryTerms: ["أحذية", "احذية", "شوز", "shoes", "footwear"],
+    nameTerms: [
+      "حذاء", "أحذية", "جزمة", "كوتشي", "شوز", "شبشب", "نعال", "شحاطة", "صندل", "سليبر", "بوط", "كروكس",
+      "shoe", "sneaker", "sneakers", "sandal", "slippers", "footwear", "boots", "crocs",
+    ],
+    categoryTerms: ["أحذية", "احذية", "شوز", "نعال", "shoes", "footwear"],
   },
   {
     kind: "clothing",
     Icon: Shirt,
     tone: "sage",
     nameTerms: [
-      "قميص", "تيشيرت", "تيشرت", "تي شيرت", "بلوزة", "بنطلون", "فستان",
-      "جاكيت", "جاكت", "عباية", "جلابية", "هدوم", "ملابس", "شراب", "جوارب",
-      "shirt", "clothing", "dress", "trousers", "apparel",
+      "قميص", "تيشيرت", "تيشرت", "تي شيرت", "بلوزة", "بنطلون", "سروال", "فستان",
+      "جاكيت", "جاكت", "عباية", "عبايه", "عباءة", "جلابية", "دشداشة", "ثوب", "هدوم", "ملابس", "شراب", "جوارب",
+      "شورت", "جينز", "shirt", "t shirt", "tee", "hoodie", "jacket", "clothing", "dress", "trousers", "pants", "jeans", "apparel",
     ],
     categoryTerms: ["ملابس", "أزياء", "clothing", "apparel", "fashion"],
   },
@@ -276,8 +289,8 @@ const productIconRules: ProductIconRule[] = [
     Icon: NotebookPen,
     tone: "blue",
     nameTerms: [
-      "كراسة", "دفتر", "كشكول", "قلم", "أقلام", "قلم رصاص", "ورق",
-      "دوسيه", "استيكة", "براية", "ألوان", "قرطاسية", "notebook", "pen", "stationery",
+      "كراسة", "دفتر", "كشكول", "قلم", "أقلام", "قلم حبر", "قلم رصاص", "ورق",
+      "دوسيه", "استيكة", "براية", "ألوان", "قرطاسية", "notebook", "pen", "pencil", "stationery",
     ],
     categoryTerms: ["أدوات مكتبية", "ادوات مكتبية", "قرطاسية", "stationery", "office supplies"],
   },
@@ -285,7 +298,7 @@ const productIconRules: ProductIconRule[] = [
     kind: "personal-care",
     Icon: Brush,
     tone: "clay",
-    nameTerms: ["فرشاة", "مشط", "فرشة شعر", "brush", "comb", "hairbrush"],
+    nameTerms: ["فرشاة", "مشط", "فرشة شعر", "مشط شعر", "brush", "comb", "hairbrush", "nail clipper"],
     categoryTerms: ["عناية شخصية", "personal care"],
   },
   {
@@ -293,9 +306,9 @@ const productIconRules: ProductIconRule[] = [
     Icon: Sparkles,
     tone: "mauve",
     nameTerms: [
-      "مكياج", "ميكاب", "عطر", "برفان", "كولونيا", "كريم", "شامبو", "بلسم",
-      "غسول", "سيروم", "مزيل عرق", "كحل", "روج", "بودرة", "makeup", "cosmetic",
-      "perfume", "skincare", "beauty",
+      "مكياج", "ميكاب", "ميكب", "عطر", "عطور", "برفان", "كولونيا", "كريم", "شامبو", "بلسم",
+      "غسول", "سيروم", "مزيل عرق", "مزيل العرق", "كحل", "روج", "بودرة", "makeup", "cosmetic",
+      "perfume", "fragrance", "skincare", "beauty", "sunscreen", "deodorant", "shampoo",
     ],
     categoryTerms: ["تجميل", "عطور", "مستحضرات تجميل", "مستحضرات عناية", "beauty", "cosmetics", "perfume"],
   },
@@ -304,8 +317,8 @@ const productIconRules: ProductIconRule[] = [
     Icon: SprayCan,
     tone: "sage",
     nameTerms: [
-      "منظف", "مطهر", "صابون", "مسحوق غسيل", "كلور", "ديتول", "سائل مواعين",
-      "سائل تنظيف", "فيري", "cleaner", "detergent", "soap", "cleaning",
+      "منظف", "مطهر", "صابون", "مسحوق غسيل", "كلور", "ديتول", "سائل مواعين", "سائل جلي",
+      "سائل تنظيف", "فيري", "منظفات", "cleaner", "detergent", "soap", "cleaning", "laundry", "dish soap",
     ],
     categoryTerms: ["منظفات", "تنظيف", "مستلزمات نظافة", "cleaning", "detergents"],
   },
@@ -313,99 +326,99 @@ const productIconRules: ProductIconRule[] = [
     kind: "medicine",
     Icon: Pill,
     tone: "rose",
-    nameTerms: ["دواء", "علاج", "فيتامين", "حبوب", "مسكن", "بانادول", "مضاد حيوي", "medicine", "vitamin", "pharmacy"],
+    nameTerms: ["دواء", "علاج", "فيتامين", "حبوب", "مسكن", "بانادول", "مضاد حيوي", "دواء صيدلية", "medicine", "vitamin", "pharmacy", "medicine", "drug", "supplement"],
     categoryTerms: ["أدوية", "ادوية", "صيدلية", "pharmacy", "medicine"],
   },
   {
     kind: "bags",
     Icon: ShoppingBag,
     tone: "gold",
-    nameTerms: ["شنطة", "شنط", "حقيبة", "محفظة", "bag", "purse", "wallet"],
-    categoryTerms: ["حقائب", "شنط", "bags", "luggage"],
+    nameTerms: ["شنطة", "شنط", "جنطة", "حقيبة", "حقيبة ظهر", "محفظة", "شنطة ظهر", "bag", "purse", "wallet", "backpack", "luggage"],
+    categoryTerms: ["حقائب", "شنط", "جنط", "bags", "luggage", "backpacks"],
   },
   {
     kind: "jewelry",
     Icon: Gem,
     tone: "mauve",
-    nameTerms: ["ذهب", "فضة", "خاتم", "سلسلة", "مجوهرات", "jewelry", "ring", "necklace"],
-    categoryTerms: ["مجوهرات", "ذهب", "jewelry"],
+    nameTerms: ["ذهب", "فضة", "خاتم", "سلسلة", "مجوهرات", "حلي", "اسورة", "سوار", "jewelry", "ring", "necklace", "bracelet"],
+    categoryTerms: ["مجوهرات", "ذهب", "حلي", "jewelry", "accessories"],
   },
   {
     kind: "furniture",
     Icon: Sofa,
     tone: "clay",
-    nameTerms: ["كنبة", "كرسي", "أثاث", "دولاب", "ترابيزة", "مكتب", "سرير", "مرتبة", "انتريه", "sofa", "furniture", "chair"],
+    nameTerms: ["كنبة", "كنب", "كرسي", "أثاث", "دولاب", "ترابيزة", "طاولة", "مكتب", "سرير", "مرتبة", "انتريه", "أريكة", "صوفا", "sofa", "couch", "furniture", "chair", "table", "desk", "bed"],
     categoryTerms: ["أثاث", "اثاث", "أثاث منزلي", "furniture", "home decor"],
   },
   {
     kind: "cookware",
     Icon: CookingPot,
     tone: "gold",
-    nameTerms: ["حلة", "طاسة", "مقلاة", "طنجرة", "طقم حلل", "pot", "pan", "cookware"],
+    nameTerms: ["حلة", "حله", "طاسة", "مقلاة", "طنجرة", "قدر", "قدر ضغط", "طقم حلل", "pot", "pan", "cookware", "pressure cooker"],
     categoryTerms: ["أواني طهي", "أواني الطبخ", "حلل", "cookware"],
   },
   {
     kind: "tableware",
     Icon: Utensils,
     tone: "gold",
-    nameTerms: ["معلقة", "ملعقة", "شوكة", "سكينة", "طبق", "كوب", "كوباية", "كاس", "مواعين", "utensil", "cutlery"],
+    nameTerms: ["معلقة", "ملعقة", "ملاعق", "شوكة", "سكينة", "طبق", "كوب", "كوباية", "كاسة", "كاس", "مواعين", "utensil", "cutlery", "plate", "cup", "glass", "fork", "spoon"],
     categoryTerms: ["أدوات منزلية", "ادوات منزلية", "أدوات مطبخ", "أدوات المطبخ", "مطبخ", "housewares", "kitchenware"],
   },
   {
     kind: "sports",
     Icon: Dumbbell,
     tone: "sage",
-    nameTerms: ["رياضة", "كرة", "كورة", "دمبل", "تمرين", "حبل نط", "مضرب", "sport", "fitness", "dumbbell"],
+    nameTerms: ["رياضة", "كرة", "كورة", "كرة قدم", "دمبل", "تمرين", "حبل نط", "مضرب", "أدوات رياضية", "sport", "sports", "fitness", "dumbbell", "exercise"],
     categoryTerms: ["رياضة", "معدات رياضية", "sports", "fitness"],
   },
   {
     kind: "toys",
     Icon: Gamepad2,
     tone: "mauve",
-    nameTerms: ["لعبة", "ألعاب", "العاب", "مكعبات", "عروسة", "دمية", "بازل", "بلايستيشن", "اكس بوكس", "عربية لعبة", "game", "gaming", "console", "toy"],
+    nameTerms: ["لعبة", "ألعاب", "العاب", "مكعبات", "عروسة", "دمية", "بازل", "بلايستيشن", "اكس بوكس", "عربية لعبة", "ألعاب أطفال", "لعبة أطفال", "game", "gaming", "console", "toy", "toys", "puzzle", "playstation", "xbox"],
     categoryTerms: ["ألعاب", "العاب", "ألعاب أطفال", "العاب اطفال", "toys", "games", "gaming"],
   },
   {
     kind: "baby",
     Icon: Baby,
     tone: "rose",
-    nameTerms: ["حفاض", "حفاضة", "بامبرز", "رضاعة", "ببرونة", "لهاية", "لبن أطفال", "عربة أطفال", "baby", "diaper"],
+    nameTerms: ["حفاض", "حفاضة", "حفاضات", "بامبرز", "رضاعة", "ببرونة", "لهاية", "لبن أطفال", "عربة أطفال", "بيبي", "baby", "diaper", "diapers", "baby formula"],
     categoryTerms: ["أطفال", "اطفال", "رضع", "مستلزمات أطفال", "baby", "kids"],
   },
   {
     kind: "dog",
     Icon: Dog,
     tone: "gold",
-    nameTerms: ["كلب", "كلاب", "أكل كلاب", "dog"],
+    nameTerms: ["كلب", "كلاب", "أكل كلاب", "dog", "dogs", "puppy", "dog food"],
     categoryTerms: ["كلاب", "حيوانات أليفة", "dogs", "dog supplies", "pet supplies"],
   },
   {
     kind: "cat",
     Icon: Cat,
     tone: "mauve",
-    nameTerms: ["قط", "قطة", "قطط", "أكل قطط", "cat"],
-    categoryTerms: ["قطط", "cats", "cat supplies"],
+    nameTerms: ["قط", "قطة", "قطط", "بسة", "بسس", "أكل قطط", "cat", "cats", "kitten", "cat food"],
+    categoryTerms: ["قطط", "بساس", "cats", "cat supplies"],
   },
   {
     kind: "automotive",
     Icon: Car,
     tone: "blue",
-    nameTerms: ["سيارة", "سيارات", "عربية", "عربيات", "عربية ملاكي", "قطع غيار", "car", "automotive", "auto parts"],
-    categoryTerms: ["سيارات", "عربيات", "قطع غيار", "automotive", "auto parts"],
+    nameTerms: ["سيارة", "سيارات", "عربية", "عربيات", "موتر", "مركبة", "عربية ملاكي", "قطع غيار", "car", "automotive", "auto parts", "vehicle", "spare parts"],
+    categoryTerms: ["سيارات", "عربيات", "مواتر", "قطع غيار", "automotive", "auto parts", "vehicles"],
   },
   {
     kind: "tools",
     Icon: Wrench,
     tone: "clay",
-    nameTerms: ["عدة", "مفك", "شاكوش", "مطرقة", "مفتاح ربط", "كماشة", "دريل", "مسمار", "tool", "wrench", "hammer"],
+    nameTerms: ["عدة", "مفك", "شاكوش", "مطرقة", "مفتاح ربط", "كماشة", "زرادية", "دريل", "مسمار", "tool", "tools", "wrench", "hammer", "drill", "screwdriver"],
     categoryTerms: ["عدد", "أدوات", "ادوات", "هاردوير", "tools", "hardware"],
   },
   {
     kind: "bikes",
     Icon: Bike,
     tone: "sage",
-    nameTerms: ["عجلة", "دراجة", "دراجة هوائية", "bicycle", "bike"],
-    categoryTerms: ["دراجات", "عجل", "bicycles", "bikes"],
+    nameTerms: ["عجلة", "دراجة", "دراجة هوائية", "سيكل", "بايسكل", "bicycle", "bike", "bikes", "cycle"],
+    categoryTerms: ["دراجات", "عجل", "سيكل", "bicycles", "bikes", "cycles"],
   },
   {
     kind: "gifts",
@@ -427,15 +440,24 @@ function normalizeProductText(value: string): string {
   return value
     .toLocaleLowerCase("ar")
     .normalize("NFKD")
-    .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+    .replace(/\p{M}/gu, "")
+    .replace(/[\u0640]/g, "")
     .replace(/[أإآٱ]/g, "ا")
     .replace(/ى/g, "ي")
     .replace(/ة/g, "ه")
+    .replace(/ؤ/g, "و")
+    .replace(/[ک]/g, "ك")
+    .replace(/[ی]/g, "ي")
+    .replace(/[پ]/g, "ب")
+    .replace(/[چ]/g, "ج")
+    .replace(/[ڤ]/g, "ف")
+    .replace(/[گ]/g, "ك")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
-const articlePrefixes = ["وال", "بال", "كال", "فال", "ال"];
+const articlePrefixes = ["وال", "بال", "كال", "فال", "لل", "ال", "و", "ب", "ف", "ل"];
 
 function tokenVariants(token: string): Set<string> {
   const variants = new Set([token]);
@@ -502,4 +524,47 @@ export function getProductIcon(product: { name?: string | null; category?: strin
   return match
     ? { kind: match.kind, Icon: match.Icon, tone: match.tone }
     : genericIcon;
+}
+
+type ProductSearchTarget = {
+  name?: string | null;
+  category?: string | null;
+  sku?: string | null;
+  barcode?: string | null;
+  partNumber?: string | null;
+};
+
+export function matchesProductSearch(product: ProductSearchTarget, query: string): boolean {
+  const normalizedQuery = normalizeProductText(query);
+  if (!normalizedQuery) return true;
+
+  const searchable = normalizeProductText(
+    [
+      product.name,
+      product.category,
+      product.sku,
+      product.barcode,
+      product.partNumber,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+  if (searchable.includes(normalizedQuery)) return true;
+
+  const queryTokens = tokenizeProductText(query);
+  const queryRule =
+    bestRuleFor(queryTokens, "nameTerms") ??
+    bestRuleFor(queryTokens, "categoryTerms");
+  if (!queryRule) return false;
+
+  // Only use cross-language matching for a category-only query, not extra
+  // descriptive words such as a color or model number.
+  const ruleVocabulary = [
+    ...queryRule.nameTerms.flat(),
+    ...queryRule.categoryTerms.flat(),
+  ];
+  const isCategoryOnlyQuery = queryTokens.every((token) =>
+    [...token].some((variant) => ruleVocabulary.includes(variant)),
+  );
+  return isCategoryOnlyQuery && getProductIcon(product).kind === queryRule.kind;
 }

@@ -8,5 +8,7 @@ export const modules: ModuleMap = {
   "./components/mockups/xstore-login-desktop/Current.tsx": () => import("../components/mockups/xstore-login-desktop/Current.tsx"),
   "./components/mockups/xstore-login-desktop/Refined.tsx": () => import("../components/mockups/xstore-login-desktop/Refined.tsx"),
   "./components/mockups/xstore-product-form/Branded.tsx": () => import("../components/mockups/xstore-product-form/Branded.tsx"),
-  "./components/mockups/xstore-product-form/Current.tsx": () => import("../components/mockups/xstore-product-form/Current.tsx")
+  "./components/mockups/xstore-product-form/Current.tsx": () => import("../components/mockups/xstore-product-form/Current.tsx"),
+  "./components/mockups/xstore-product-icons/Current.tsx": () => import("../components/mockups/xstore-product-icons/Current.tsx"),
+  "./components/mockups/xstore-product-icons/Modern.tsx": () => import("../components/mockups/xstore-product-icons/Modern.tsx")
 };

@@ -20,7 +20,7 @@ For external hosting, start the API with `pnpm --filter @workspace/api-server ru
 A GitHub import creates a separate Replit database and does not transfer accounts, store data, or Replit Secrets. An old founder login cannot work in a new import until its data is restored or the new project is pointed at the original database. To start the new import with a fresh account:
 
 1. Add a strong `XSTORE_BOOTSTRAP_SECRET` (at least 32 characters) in Replit Secrets. Secrets do not travel with the repository.
-2. Run `pnpm --filter @workspace/db run push` once in Shell to create the new development schema.
+2. Run `pnpm xstore:setup` once in Shell to create the new development schema.
 3. Open `/sign-in`, create the first platform-owner account, and use the same value from Secrets in the setup-secret field.
 
 This initializes an empty database; it does not restore the former project's accounts or business data. Never store bootstrap secrets in `.replit` or commit them to Git.

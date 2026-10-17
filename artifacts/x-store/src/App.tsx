@@ -22,7 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import { getProductIcon } from '@/lib/product-icons';
+import { getProductIcon, matchesProductSearch } from '@/lib/product-icons';
 import './auth-unified.css';
 import {
   LayoutDashboard, Store, Package, ShoppingCart, ReceiptText, ScrollText, Search, Plus,
@@ -553,10 +553,8 @@ function InventoryPage() {
   const allProducts = q.data || [];
   const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))]
     .sort((a,b) => a.localeCompare(b,'ar'));
-  const normalizedSearch = search.trim().toLocaleLowerCase('ar');
   const rows = allProducts.filter(p => {
-    const searchable = `${p.name} ${p.sku} ${p.category} ${p.barcode || ''} ${p.partNumber || ''}`.toLocaleLowerCase('ar');
-    const matchesSearch = !normalizedSearch || searchable.includes(normalizedSearch);
+    const matchesSearch = matchesProductSearch(p, search);
     const matchesCategory = categoryFilter === '__all__' || p.category === categoryFilter;
     const matchesStock = stockFilter === 'all'
       || (stockFilter === 'low' && p.quantity > 0 && p.quantity <= 5)
@@ -624,7 +622,7 @@ function InventoryPage() {
     <Card className="inventory-catalog">
       <SectionHead title="المنتجات" detail={`${fmt(rows.length)} من ${fmt(allProducts.length)} منتج`}/>
       <div className="inventory-toolbar">
-        <label className="search-box inventory-search"><Search size={19}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث باسم المنتج أو الكود أو الباركود" data-testid="input-search-products"/>
+        <label className="search-box inventory-search"><Search size={19}/><input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث بالعربي أو English أو بالكود والباركود" data-testid="input-search-products"/>
           {search&&<button type="button" className="inventory-clear-search" aria-label="مسح البحث" onClick={()=>setSearch('')}><X size={16}/></button>}
         </label>
         <label className="inventory-category-filter"><span>التصنيف</span><select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} data-testid="select-inventory-category">
@@ -729,7 +727,7 @@ function PosPage() {
   const money=useMoney(), currency=useContext(CurrencyContext);
   const vatRate=session.data?.vatRate??.15;
   const [cart,setCart]=useState<Record<string,number>>({}),[term,setTerm]=useState(''),[discount,setDiscount]=useState('0'),[received,setReceived]=useState(''),[payment,setPayment]=useState<'cash'|'card'|'wallet'>('cash'),[heldOpen,setHeldOpen]=useState(false),[exchangeOpen,setExchangeOpen]=useState(false),[notice,setNotice]=useState('');
-  const visible=(products.data||[]).filter(p=>`${p.name} ${p.sku} ${p.barcode||''}`.toLowerCase().includes(term.toLowerCase()));
+  const visible=(products.data||[]).filter(p=>matchesProductSearch(p,term));
   const cartLines=(products.data||[]).filter(p=>cart[p.id]).map(p=>({...p,count:cart[p.id]}));
   const subtotal=cartLines.reduce((s,p)=>s+p.price*p.count,0), disc=Math.min(subtotal,Math.max(0,Number(discount)||0)), tax=(subtotal-disc)*vatRate, total=subtotal-disc+tax;
   const add=(p:Product)=>setCart(c=>({...c,[p.id]:Math.min(p.quantity,(c[p.id]||0)+1)}));
@@ -747,7 +745,7 @@ function PosPage() {
       />
       <div className="pos-layout">
         <section className="pos-products">
-          <label className="search-box pos-search"><Search size={18}/><input autoFocus value={term} onChange={e=>setTerm(e.target.value)} aria-label="البحث عن منتج أو مسح الباركود" placeholder="ابحث عن منتج أو امسح الباركود..." data-testid="input-pos-search"/><kbd>⌘ K</kbd></label>
+          <label className="search-box pos-search"><Search size={18}/><input autoFocus value={term} onChange={e=>setTerm(e.target.value)} aria-label="البحث عن منتج بالعربي أو English أو مسح الباركود" placeholder="ابحث باسم المنتج بأي لهجة أو English..." data-testid="input-pos-search"/><kbd>⌘ K</kbd></label>
           {products.isLoading
             ? <div className="product-grid">{[1,2,3,4].map(i=><div className="product-skeleton" key={i}/>)}</div>
             : products.isError

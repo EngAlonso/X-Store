@@ -368,7 +368,7 @@ router.get("/xstore/auth/status", async (_req, res): Promise<void> => {
     if (isMissingDatabaseRelation(error)) {
       res.status(503).json({
         error:
-          "قاعدة بيانات هذه النسخة لم تُجهّز بعد. شغّل pnpm --filter @workspace/db run push في Shell، ثم أعد تحميل الصفحة.",
+          "قاعدة بيانات هذه النسخة لم تُجهّز بعد. شغّل pnpm xstore:setup في Shell، ثم أعد تحميل الصفحة.",
       });
       return;
     }
