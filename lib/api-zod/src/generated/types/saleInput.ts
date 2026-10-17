@@ -13,11 +13,6 @@ export interface SaleInput {
   items: SaleLineInput[];
   /** @minimum 0 */
   discountAmount: number;
-  /**
-     * @minimum 0
-     * @maximum 1
-     */
-  vatRate: number;
   paymentMethod: SaleInputPaymentMethod;
   /** @minimum 0 */
   amountReceived: number;

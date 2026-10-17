@@ -118,6 +118,32 @@ paths:
                 $ref: "#/components/schemas/SessionUser"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /xstore/store-settings:
+    patch:
+      operationId: updateXStoreStoreSettings
+      tags: [xstore]
+      summary: Update the current store's VAT rate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoreSettingsInput"
+      responses:
+        "200":
+          description: Updated store settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreSettings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /xstore/dashboard:
     get:
       operationId: getXStoreDashboard
@@ -754,7 +780,22 @@ components:
         currency:
           type: ["string", "null"]
           enum: [EGP, SAR, AED, USD, EUR, GBP, null]
-      required: [id, name, phone, email, role, tenantId, tenantName, currency]
+        vatRate: { type: ["number", "null"], minimum: 0, maximum: 1 }
+      required: [id, name, phone, email, role, tenantId, tenantName, currency, vatRate]
+    StoreSettings:
+      type: object
+      properties:
+        vatRate: { type: number, minimum: 0, maximum: 1 }
+      required: [vatRate]
+    StoreSettingsInput:
+      type: object
+      properties:
+        vatRate:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: VAT rate as a fraction; 0.15 means 15%.
+      required: [vatRate]
     AuthStatus:
       type: object
       properties:
@@ -1025,12 +1066,11 @@ components:
           items:
             $ref: "#/components/schemas/SaleLineInput"
         discountAmount: { type: number, minimum: 0 }
-        vatRate: { type: number, minimum: 0, maximum: 1 }
         paymentMethod:
           type: string
           enum: [cash, card, wallet]
         amountReceived: { type: number, minimum: 0 }
-      required: [items, discountAmount, vatRate, paymentMethod, amountReceived]
+      required: [items, discountAmount, paymentMethod, amountReceived]
     Sale:
       type: object
       properties:
@@ -1142,12 +1182,11 @@ components:
           items:
             $ref: "#/components/schemas/SaleLineInput"
         discountAmount: { type: number, minimum: 0 }
-        vatRate: { type: number, minimum: 0, maximum: 1 }
         paymentMethod:
           type: string
           enum: [cash, card, wallet]
         amountReceived: { type: number, minimum: 0 }
-      required: [invoiceNo, returnItems, replacementItems, discountAmount, vatRate, paymentMethod, amountReceived]
+      required: [invoiceNo, returnItems, replacementItems, discountAmount, paymentMethod, amountReceived]
     ExchangeResult:
       type: object
       properties:

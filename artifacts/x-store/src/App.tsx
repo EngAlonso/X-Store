@@ -13,7 +13,7 @@ import {
   useGetXStoreAuthStatus, useGetXStoreContactSettings, useLoginXStoreWithPhone,
   useListXStoreAuditLogs, useListXStoreHeldSales, useListXStoreProducts, useListXStoreSales,
   useGetXStoreProfitLossReport, useListXStoreSubscriptionPayments, useListXStoreTeam, useListXStoreTenants, useReleaseXStoreHeldSale, useUpdateXStoreProduct,
-  useUpdateXStoreTenant, useUpdateXStoreTenantCredentials, useUpdateXStoreContactSettings, useCheckoutXStoreSale,
+  useUpdateXStoreTenant, useUpdateXStoreTenantCredentials, useUpdateXStoreContactSettings, useUpdateXStoreStoreSettings, useCheckoutXStoreSale,
 } from '@workspace/api-client-react';
 import type { Product, Tenant, Sale } from '@workspace/api-client-react';
 import { Route, Switch, Redirect, Link, useLocation, Router as WouterRouter } from 'wouter';
@@ -22,6 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import { getProductIcon } from '@/lib/product-icons';
 import './auth-unified.css';
 import {
   LayoutDashboard, Store, Package, ShoppingCart, ReceiptText, ScrollText, Search, Plus,
@@ -29,10 +30,6 @@ import {
   Wallet, CircleCheck, Clock3, AlertTriangle, RotateCcw,
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
   Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone,
-  Apple, Baby, Beef, Bike, BookOpen, Brush, Camera, Car, Cat, Coffee, CookingPot, Croissant, CupSoda, Dog, Dumbbell,
-  Footprints, Gamepad2, Gem, Gift, Headphones, Laptop, Milk, NotebookPen, Pill, Plug, Shirt, ShoppingBag,
-  Sofa, Sparkles, SprayCan, Tv, Utensils, Watch, Wrench,
-  type LucideIcon,
 } from 'lucide-react';
 
 const queryClient = new QueryClient();
@@ -84,6 +81,7 @@ const nav = [
   { href: '/sales', label: 'المبيعات', icon: ReceiptText, roles: ['tenant_admin', 'cashier', 'accountant'] },
   { href: '/audit-log', label: 'سجل التدقيق', icon: ScrollText, roles: ['platform_admin'] },
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
+  { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
 ];
 
@@ -308,7 +306,7 @@ function AppShell({ children }: { children: ReactNode }) {
 }
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
-  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/settings':['platform_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/settings':['platform_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   if(session.data&&allowed[location]&&!allowed[location].includes(session.data.role))return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
@@ -319,6 +317,7 @@ function ProtectedLayout() {
     <Route path="/pos" component={PosPage}/><Route path="/inventory" component={InventoryPage}/>
     <Route path="/reports" component={ReportsPage}/><Route path="/sales" component={SalesPage}/><Route path="/audit-log" component={AuditPage}/>
     <Route path="/settings" component={PlatformSettingsPage}/>
+    <Route path="/store-settings" component={StoreSettingsPage}/>
     <Route component={NotFound}/>
   </Switch></AppShell>;
 }
@@ -492,6 +491,38 @@ function PlatformSettingsPage() {
     </Card>
   </>;
 }
+function StoreSettingsPage() {
+  const qc=useQueryClient();
+  const session=useGetXStoreSession();
+  const update=useUpdateXStoreStoreSettings();
+  const [vatPercent,setVatPercent]=useState('15');
+  const [notice,setNotice]=useState('');
+  useEffect(()=>{
+    if(session.data?.vatRate!=null)setVatPercent(String(session.data.vatRate*100));
+  },[session.data?.vatRate]);
+  function submit(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const percent=Number(vatPercent);
+    if(!Number.isFinite(percent)||percent<0||percent>100)return;
+    update.mutate({data:{vatRate:percent/100}},{onSuccess:settings=>{
+      setVatPercent(String(settings.vatRate*100));
+      qc.setQueryData(getGetXStoreSessionQueryKey(),current=>current?{...current,vatRate:settings.vatRate}:current);
+      void qc.invalidateQueries({queryKey:getGetXStoreSessionQueryKey()});
+      setNotice('تم تحديث نسبة ضريبة القيمة المضافة، وستُطبق على الفواتير الجديدة.');
+    }});
+  }
+  return <><PageTitle eyebrow="إعدادات المتجر" title="ضريبة القيمة المضافة" desc="حدد النسبة التي تُحسب على فواتير البيع والاستبدال الجديدة."/>
+    <Card className="settings-card"><SectionHead title="نسبة الضريبة" detail="تُحفظ النسبة للمتجر كله، وتظهر لأمناء الصندوق عند البيع."/>
+      {session.isLoading?<StateBlock loading error={false} onRetry={()=>session.refetch()} empty={false}/>:session.isError?<StateBlock loading={false} error onRetry={()=>session.refetch()} empty={false}/>:<form className="form-grid settings-form" onSubmit={submit}>
+        <label className="field field-wide"><span>نسبة ضريبة القيمة المضافة</span><div className="vat-rate-input"><input aria-label="نسبة ضريبة القيمة المضافة" type="number" min="0" max="100" step="0.01" required value={vatPercent} onChange={e=>{setVatPercent(e.target.value);setNotice('')}}/><span>%</span></div></label>
+        <div className="role-hint field-wide"><ShieldCheck size={16}/><span>اكتب النسبة من ٠ إلى ١٠٠٪. تغييرها لا يعدّل الفواتير السابقة.</span></div>
+        {update.isError&&<div className="form-error">{apiErrorMessage(update.error,'تعذر حفظ نسبة الضريبة.')}</div>}
+        {notice&&<div className="settings-success"><CircleCheck size={16}/>{notice}</div>}
+        <div className="modal-actions"><button className="button button-primary" disabled={update.isPending}>{update.isPending?'جارٍ الحفظ…':'حفظ نسبة الضريبة'}</button></div>
+      </form>}
+    </Card>
+  </>;
+}
 function SubscriptionsPage() {
   const qc=useQueryClient(), tenants=useListXStoreTenants(), payments=useListXStoreSubscriptionPayments(), update=useUpdateXStoreTenant(), createPayment=useCreateXStoreSubscriptionPayment();
   const money=useMoney();
@@ -655,88 +686,19 @@ function InventoryPage() {
     {notice && <div className="toast-note" role="status">{notice}<button onClick={() => setNotice('')}><X size={14}/></button></div>}
   </>;
 }
-type ProductIconRule = {
-  icon: LucideIcon;
-  tone: string;
-  nameTerms: string[];
-  categoryTerms: string[];
-};
-
-const productIconRules: ProductIconRule[] = [
-  { icon: Coffee, tone: 'clay', nameTerms: ['قهوة', 'بن', 'شاي', 'coffee', 'espresso', 'اسبرسو', 'tea'], categoryTerms: ['قهوة', 'coffee', 'tea'] },
-  { icon: CupSoda, tone: 'blue', nameTerms: ['مشروب', 'عصير', 'مياه', 'ماء', 'صودا', 'drink', 'juice', 'water', 'soda'], categoryTerms: ['مشروبات', 'مشروب', 'beverage', 'drinks'] },
-  { icon: Croissant, tone: 'gold', nameTerms: ['مخبوز', 'خبز', 'كرواسون', 'كيك', 'معجن', 'bakery', 'bread', 'cake'], categoryTerms: ['مخبوزات', 'مخبز', 'bakery'] },
-  { icon: Apple, tone: 'sage', nameTerms: ['فاكه', 'تفاح', 'خضار', 'طماطم', 'موز', 'برتقال', 'produce', 'fruit', 'vegetable'], categoryTerms: ['خضروات', 'فواكه', 'بقالة', 'produce', 'grocery'] },
-  { icon: Beef, tone: 'clay', nameTerms: ['لحوم', 'لحم', 'دجاج', 'فراخ', 'سمك', 'beef', 'chicken', 'meat', 'fish'], categoryTerms: ['لحوم', 'دواجن', 'اسماك', 'meat', 'seafood'] },
-  { icon: Milk, tone: 'blue', nameTerms: ['لبن', 'حليب', 'جبن', 'زبادي', 'زبدة', 'milk', 'cheese', 'yogurt'], categoryTerms: ['البان', 'ألبان', 'dairy'] },
-  { icon: Smartphone, tone: 'blue', nameTerms: ['موبايل', 'هاتف', 'جوال', 'smartphone', 'phone', 'mobile'], categoryTerms: ['هواتف', 'موبايلات', 'smartphones', 'mobile phones'] },
-  { icon: Laptop, tone: 'blue', nameTerms: ['لابتوب', 'كمبيوتر', 'حاسوب', 'لابتوب', 'laptop', 'computer'], categoryTerms: ['كمبيوتر', 'حاسب', 'computers', 'laptops'] },
-  { icon: Headphones, tone: 'mauve', nameTerms: ['سماعة', 'سماعات', 'headphone', 'earphone', 'earbud'], categoryTerms: ['سماعات', 'headphones', 'audio'] },
-  { icon: Camera, tone: 'mauve', nameTerms: ['كاميرا', 'camera'], categoryTerms: ['كاميرات', 'cameras', 'تصوير'] },
-  { icon: Tv, tone: 'mauve', nameTerms: ['تلفزيون', 'شاشة', 'tv', 'television', 'monitor'], categoryTerms: ['شاشات', 'تلفزيونات', 'tv', 'monitors'] },
-  { icon: Plug, tone: 'blue', nameTerms: ['شاحن', 'كابل', 'وصلة', 'محول', 'keyboard', 'mouse', 'charger', 'cable'], categoryTerms: ['الكترونيات', 'الكتروني', 'electronics', 'electronic', 'اجهزة كهربائية'] },
-  { icon: Footprints, tone: 'clay', nameTerms: ['حذاء', 'احذية', 'جزمة', 'كوتشي', 'صندل', 'shoe', 'sneaker', 'sandal'], categoryTerms: ['احذية', 'shoes', 'footwear'] },
-  { icon: Shirt, tone: 'sage', nameTerms: ['قميص', 'تيشيرت', 'ملابس', 'بنطلون', 'فستان', 'جاكيت', 'shirt', 'clothing', 'dress', 'trousers'], categoryTerms: ['ملابس', 'أزياء', 'clothing', 'apparel', 'fashion'] },
-  { icon: Watch, tone: 'gold', nameTerms: ['ساعة', 'ساعات', 'watch'], categoryTerms: ['ساعات', 'watches'] },
-  { icon: BookOpen, tone: 'sage', nameTerms: ['كتاب', 'رواية', 'مصحف', 'book', 'novel'], categoryTerms: ['كتب', 'books', 'قرطاسية'] },
-  { icon: NotebookPen, tone: 'blue', nameTerms: ['كراسة', 'دفتر', 'قلم', 'كشكول', 'notebook', 'pen', 'stationery'], categoryTerms: ['ادوات مكتبية', 'قرطاسية', 'stationery', 'office supplies'] },
-  { icon: Sparkles, tone: 'mauve', nameTerms: ['مكياج', 'عطر', 'كريم', 'شامبو', 'مستحضر', 'makeup', 'cosmetic', 'perfume', 'skincare'], categoryTerms: ['تجميل', 'عطور', 'مستحضرات تجميل', 'beauty', 'cosmetics'] },
-  { icon: SprayCan, tone: 'sage', nameTerms: ['منظف', 'مطهر', 'صابون', 'مسحوق', 'cleaner', 'detergent', 'soap'], categoryTerms: ['منظفات', 'تنظيف', 'cleaning', 'detergents'] },
-  { icon: Pill, tone: 'rose', nameTerms: ['دواء', 'علاج', 'فيتامين', 'حبوب', 'medicine', 'vitamin', 'pharmacy'], categoryTerms: ['ادوية', 'صيدلية', 'pharmacy', 'medicine'] },
-  { icon: ShoppingBag, tone: 'gold', nameTerms: ['شنطة', 'حقيبة', 'محفظة', 'bag', 'purse', 'wallet'], categoryTerms: ['حقائب', 'شنط', 'bags', 'accessories'] },
-  { icon: Gem, tone: 'mauve', nameTerms: ['ذهب', 'فضة', 'خاتم', 'سلسلة', 'مجوهرات', 'jewelry', 'ring', 'necklace'], categoryTerms: ['مجوهرات', 'ذهب', 'jewelry'] },
-  { icon: Sofa, tone: 'clay', nameTerms: ['كنبة', 'كرسي', 'أثاث', 'دولاب', 'sofa', 'furniture', 'chair'], categoryTerms: ['اثاث', 'أثاث', 'furniture', 'home decor'] },
-  { icon: CookingPot, tone: 'gold', nameTerms: ['حلة', 'طاسة', 'مقلاة', 'قدر', 'pot', 'pan'], categoryTerms: ['ادوات مطبخ', 'أدوات مطبخ', 'kitchenware'] },
-  { icon: Utensils, tone: 'gold', nameTerms: ['معلقة', 'شوكة', 'سكينة', 'طبق', 'كوب', 'ملعقة', 'utensil', 'cutlery'], categoryTerms: ['ادوات منزلية', 'أدوات منزلية', 'مطبخ', 'housewares'] },
-  { icon: Dumbbell, tone: 'sage', nameTerms: ['رياضة', 'كرة', 'دمبل', 'تمرين', 'sport', 'fitness', 'dumbbell'], categoryTerms: ['رياضة', 'معدات رياضية', 'sports', 'fitness'] },
-  { icon: Gamepad2, tone: 'mauve', nameTerms: ['لعبة', 'ألعاب', 'العاب', 'بلايستيشن', 'اكس بوكس', 'game', 'gaming', 'console'], categoryTerms: ['ألعاب', 'العاب', 'العاب اطفال', 'toys', 'games', 'gaming'] },
-  { icon: Baby, tone: 'rose', nameTerms: ['حفاض', 'رضاعة', 'لهاية', 'baby', 'diaper'], categoryTerms: ['اطفال', 'أطفال', 'رضع', 'baby', 'kids'] },
-  { icon: Dog, tone: 'gold', nameTerms: ['كلب', 'كلاب', 'dog'], categoryTerms: ['حيوانات اليفة', 'pet supplies', 'dogs'] },
-  { icon: Cat, tone: 'mauve', nameTerms: ['قط', 'قطط', 'cat'], categoryTerms: ['قطط', 'cats'] },
-  { icon: Car, tone: 'blue', nameTerms: ['سيارة', 'عربية', 'سيارات', 'car', 'automotive'], categoryTerms: ['سيارات', 'قطع غيار', 'automotive', 'auto parts'] },
-  { icon: Wrench, tone: 'clay', nameTerms: ['عدة', 'مفك', 'مطرقة', 'مفتاح ربط', 'tool', 'wrench', 'hammer'], categoryTerms: ['عدد', 'ادوات', 'أدوات', 'tools', 'hardware'] },
-  { icon: Bike, tone: 'sage', nameTerms: ['عجلة', 'دراجة', 'bicycle', 'bike'], categoryTerms: ['دراجات', 'bicycles'] },
-  { icon: Brush, tone: 'clay', nameTerms: ['فرشاة', 'مشط', 'brush', 'comb'], categoryTerms: ['عناية شخصية', 'personal care'] },
-  { icon: Gift, tone: 'gold', nameTerms: ['هدية', 'هدايا', 'gift'], categoryTerms: ['هدايا', 'gifts'] },
-];
-
-function normalizeProductText(value: string) {
-  return value.toLocaleLowerCase('ar')
-    .normalize('NFKD')
-    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/ى/g, 'ي')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-}
-
-const normalizedProductIconRules = productIconRules.map(rule => ({
-  ...rule,
-  nameTerms: rule.nameTerms.map(normalizeProductText),
-  categoryTerms: rule.categoryTerms.map(normalizeProductText),
-}));
-
-function getProductIcon(product: Product): { Icon: LucideIcon; tone: string } {
-  const name = normalizeProductText(product.name);
-  const category = normalizeProductText(product.category);
-  const byName = normalizedProductIconRules.find(rule => rule.nameTerms.some(term => name.includes(term)));
-  const byCategory = normalizedProductIconRules.find(rule => rule.categoryTerms.some(term => category.includes(term)));
-  const match = byName || byCategory;
-  return match ? { Icon: match.icon, tone: match.tone } : { Icon: Package, tone: 'sage' };
-}
-
 function PosPage() {
-  const qc=useQueryClient(), products=useListXStoreProducts(), held=useListXStoreHeldSales(), checkout=useCheckoutXStoreSale(), hold=useHoldXStoreSale(), release=useReleaseXStoreHeldSale(), exchange=useCreateXStoreExchange();
+  const qc=useQueryClient(), products=useListXStoreProducts(), held=useListXStoreHeldSales(), session=useGetXStoreSession(), checkout=useCheckoutXStoreSale(), hold=useHoldXStoreSale(), release=useReleaseXStoreHeldSale(), exchange=useCreateXStoreExchange();
   const money=useMoney(), currency=useContext(CurrencyContext);
+  const vatRate=session.data?.vatRate??.15;
   const [cart,setCart]=useState<Record<string,number>>({}),[term,setTerm]=useState(''),[discount,setDiscount]=useState('0'),[received,setReceived]=useState(''),[payment,setPayment]=useState<'cash'|'card'|'wallet'>('cash'),[heldOpen,setHeldOpen]=useState(false),[exchangeOpen,setExchangeOpen]=useState(false),[notice,setNotice]=useState('');
   const visible=(products.data||[]).filter(p=>`${p.name} ${p.sku} ${p.barcode||''}`.toLowerCase().includes(term.toLowerCase()));
   const cartLines=(products.data||[]).filter(p=>cart[p.id]).map(p=>({...p,count:cart[p.id]}));
-  const subtotal=cartLines.reduce((s,p)=>s+p.price*p.count,0), disc=Math.min(subtotal,Math.max(0,Number(discount)||0)), tax=(subtotal-disc)*.15, total=subtotal-disc+tax;
+  const subtotal=cartLines.reduce((s,p)=>s+p.price*p.count,0), disc=Math.min(subtotal,Math.max(0,Number(discount)||0)), tax=(subtotal-disc)*vatRate, total=subtotal-disc+tax;
   const add=(p:Product)=>setCart(c=>({...c,[p.id]:Math.min(p.quantity,(c[p.id]||0)+1)}));
   const mutateCart=(id:string,n:number)=>setCart(c=>{const value=(c[id]||0)+n;if(value<=0){const next={...c};delete next[id];return next}return {...c,[id]:value}});
-  function finish(){if(!cartLines.length)return;checkout.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,vatRate:.15,paymentMethod:payment,amountReceived:Number(received)||total}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
+  function finish(){if(!cartLines.length)return;checkout.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:Number(received)||total}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
   function park(){if(!cartLines.length)return;hold.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count}))}},{onSuccess:()=>{setCart({});qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice('تم حفظ الفاتورة المعلقة')}})}
-  function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);exchange.mutate({data:{invoiceNo:String(f.get('invoiceNo')),returnItems:[{productId:String(f.get('returnProduct')),quantity:Number(f.get('returnQuantity'))}],replacementItems:[{productId:String(f.get('replacementProduct')),quantity:Number(f.get('replacementQuantity'))}],discountAmount:0,vatRate:.15,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(f.get('amountReceived'))||0}},{onSuccess:r=>{setExchangeOpen(false);setNotice(`تم الاستبدال ذرياً · ${r.exchangeInvoiceNo}`);qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()})}})}
+  function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);exchange.mutate({data:{invoiceNo:String(f.get('invoiceNo')),returnItems:[{productId:String(f.get('returnProduct')),quantity:Number(f.get('returnQuantity'))}],replacementItems:[{productId:String(f.get('replacementProduct')),quantity:Number(f.get('replacementQuantity'))}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(f.get('amountReceived'))||0}},{onSuccess:r=>{setExchangeOpen(false);setNotice(`تم الاستبدال ذرياً · ${r.exchangeInvoiceNo}`);qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()})}})}
   return <>
     <div className="pos-page">
       <PageTitle eyebrow="نقطة البيع" title="صندوق البيع" desc="أضف المنتجات وأكمل الدفع بخطوات قليلة."
@@ -753,8 +715,8 @@ function PosPage() {
             : products.isError
               ? <StateBlock loading={false} error onRetry={()=>products.refetch()} empty={false}/>
               : visible.length
-                ? <div className="product-grid">{visible.map(p=>{const {Icon,tone}=getProductIcon(p);return <button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} aria-label={`إضافة ${p.name} إلى الفاتورة`} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
-                    <span className={`product-art art-${tone}`}><Icon size={25}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
+                ? <div className="product-grid">{visible.map(p=>{const {Icon,tone,kind}=getProductIcon(p);return <button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} aria-label={`إضافة ${p.name} إلى الفاتورة`} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
+                    <span className={`product-art art-${tone}`} data-product-icon={kind}><Icon size={26} strokeWidth={1.8}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
                     <span className="tile-category">{p.category}</span><b>{p.name}</b><small className="ltr-id">{p.sku}</small>
                     <span className="tile-bottom"><strong>{money(p.price)}</strong><span>متاح {fmt(p.quantity)}</span></span>
                   </button>})}</div>
@@ -764,8 +726,8 @@ function PosPage() {
         <aside className="cart-panel">
           <div className="cart-head"><div><h2>الطلب الحالي</h2><span>{fmt(cartLines.reduce((a,p)=>a+p.count,0))} أصناف</span></div><button className="table-action" onClick={()=>setCart({})} disabled={!cartLines.length}><Trash2 size={14}/> تفريغ</button></div>
           <div className="cart-lines">
-            {cartLines.map(p=>{const {Icon,tone}=getProductIcon(p);return <div className="cart-line" key={p.id}>
-              <span className={`cart-line-art art-${tone}`}><Icon size={17}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div>
+            {cartLines.map(p=>{const {Icon,tone,kind}=getProductIcon(p);return <div className="cart-line" key={p.id}>
+              <span className={`cart-line-art art-${tone}`} data-product-icon={kind}><Icon size={17} strokeWidth={1.8}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div>
               <div className="stepper"><button onClick={()=>mutateCart(p.id,-1)} aria-label="إنقاص"><Minus size={13}/></button><b>{p.count}</b><button onClick={()=>mutateCart(p.id,1)} aria-label="زيادة" disabled={p.count>=p.quantity}><Plus size={13}/></button></div>
               <strong>{money(p.price*p.count)}</strong>
             </div>})}
@@ -774,7 +736,7 @@ function PosPage() {
           <div className="cart-calculation">
             <div><span>المجموع الفرعي</span><b>{money(subtotal)}</b></div>
             <label><span>الخصم</span><div className="discount-input"><input aria-label="قيمة الخصم" type="number" min="0" value={discount} onChange={e=>setDiscount(e.target.value)} disabled={!cartLines.length}/><span>{currencyShortLabels[currency]}</span></div></label>
-            <div><span>ضريبة القيمة المضافة · ١٥٪</span><b>{money(tax)}</b></div><div className="cart-total"><span>الإجمالي</span><b>{money(total)}</b></div>
+            <div><span>ضريبة القيمة المضافة · {fmt(vatRate*100)}٪</span><b>{money(tax)}</b></div><div className="cart-total"><span>الإجمالي</span><b>{money(total)}</b></div>
           </div>
           <div className="payment-tabs">{(['cash','card','wallet'] as const).map((m,i)=>{const I=[Banknote,CreditCard,Wallet][i];return <button key={m} onClick={()=>setPayment(m)} className={payment===m?'payment-active':''}><I size={16}/>{paymentName(m)}</button>})}</div>
           {payment==='cash'&&<label className="received-field"><span>المبلغ المستلم</span><div><input type="number" min={total} value={received} onChange={e=>setReceived(e.target.value)} placeholder={fmt(total)}/><small>الباقي {money(Math.max(0,(Number(received)||total)-total))}</small></div></label>}
@@ -863,7 +825,7 @@ function AuditRows({logs}:{logs:any[]}) {
 }
 
 function Routed() {
-  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
+  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
 }
 function App() {
   return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><Routed/></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;

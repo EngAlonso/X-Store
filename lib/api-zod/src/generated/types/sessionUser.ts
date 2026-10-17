@@ -21,4 +21,10 @@ export interface SessionUser {
   tenantName: string | null;
   /** @nullable */
   currency: SessionUserCurrency;
+  /**
+     * @minimum 0
+     * @maximum 1
+     * @nullable
+     */
+  vatRate: number | null;
 }

@@ -28,6 +28,9 @@ export const xstoreTenants = pgTable("xstore_tenants", {
   email: text("email"),
   businessType: text("business_type").notNull(),
   currency: text("currency").notNull().default("SAR"),
+  vatRate: numeric("vat_rate", { precision: 5, scale: 4 })
+    .notNull()
+    .default("0.15"),
   status: text("status").notNull().default("trial"),
   plan: text("plan").notNull().default("monthly"),
   subscriptionEndsAt: date("subscription_ends_at", { mode: "string" }),

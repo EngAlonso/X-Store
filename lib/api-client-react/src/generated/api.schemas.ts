@@ -52,6 +52,29 @@ export interface SessionUser {
   tenantName: string | null;
   /** @nullable */
   currency: SessionUserCurrency;
+  /**
+     * @minimum 0
+     * @maximum 1
+     * @nullable
+     */
+  vatRate: number | null;
+}
+
+export interface StoreSettings {
+  /**
+     * @minimum 0
+     * @maximum 1
+     */
+  vatRate: number;
+}
+
+export interface StoreSettingsInput {
+  /**
+     * VAT rate as a fraction; 0.15 means 15%.
+     * @minimum 0
+     * @maximum 1
+     */
+  vatRate: number;
 }
 
 export interface AuthStatus {
@@ -513,11 +536,6 @@ export interface SaleInput {
   items: SaleLineInput[];
   /** @minimum 0 */
   discountAmount: number;
-  /**
-     * @minimum 0
-     * @maximum 1
-     */
-  vatRate: number;
   paymentMethod: SaleInputPaymentMethod;
   /** @minimum 0 */
   amountReceived: number;
@@ -589,11 +607,6 @@ export interface ExchangeInput {
   replacementItems: SaleLineInput[];
   /** @minimum 0 */
   discountAmount: number;
-  /**
-     * @minimum 0
-     * @maximum 1
-     */
-  vatRate: number;
   paymentMethod: ExchangeInputPaymentMethod;
   /** @minimum 0 */
   amountReceived: number;

@@ -44,6 +44,8 @@ export * from './sessionUser';
 export * from './sessionUserCurrency';
 export * from './sessionUserRole';
 export * from './storeCurrency';
+export * from './storeSettings';
+export * from './storeSettingsInput';
 export * from './subscriptionPayment';
 export * from './subscriptionPaymentInput';
 export * from './subscriptionPaymentInputPaymentMethod';

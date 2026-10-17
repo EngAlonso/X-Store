@@ -49,6 +49,8 @@ import type {
   Sale,
   SaleInput,
   SessionUser,
+  StoreSettings,
+  StoreSettingsInput,
   SubscriptionPayment,
   SubscriptionPaymentInput,
   TeamMember,
@@ -568,6 +570,94 @@ export function useGetXStoreSession<TData = Awaited<ReturnType<typeof getXStoreS
 
 
 
+
+export const getUpdateXStoreStoreSettingsUrl = () => {
+
+
+
+
+  return `/api/xstore/store-settings`
+}
+
+/**
+ * @summary Update the current store's VAT rate
+ */
+export const updateXStoreStoreSettings = async (storeSettingsInput: StoreSettingsInput, options?: Parameters<typeof customFetch>[1]): Promise<StoreSettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<StoreSettings>(getUpdateXStoreStoreSettingsUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(storeSettingsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateXStoreStoreSettingsMutationKey = () => ['updateXStoreStoreSettings'] as const;
+
+export const getUpdateXStoreStoreSettingsMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateXStoreStoreSettings>>, TError,UpdateXStoreStoreSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateXStoreStoreSettings>>, TError,UpdateXStoreStoreSettingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateXStoreStoreSettingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateXStoreStoreSettings>>, UpdateXStoreStoreSettingsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateXStoreStoreSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateXStoreStoreSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateXStoreStoreSettings>>>
+    export type UpdateXStoreStoreSettingsMutationBody = BodyType<StoreSettingsInput>
+    export type UpdateXStoreStoreSettingsMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type UpdateXStoreStoreSettingsMutationVariables = {data: BodyType<StoreSettingsInput>}
+
+    /**
+ * @summary Update the current store's VAT rate
+ */
+export const useUpdateXStoreStoreSettings = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateXStoreStoreSettings>>, TError,UpdateXStoreStoreSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateXStoreStoreSettings>>,
+        TError,
+        UpdateXStoreStoreSettingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateXStoreStoreSettingsMutationOptions(options));
+    }
 
 export const getGetXStoreDashboardUrl = () => {
 

@@ -16,11 +16,6 @@ export interface ExchangeInput {
   replacementItems: SaleLineInput[];
   /** @minimum 0 */
   discountAmount: number;
-  /**
-     * @minimum 0
-     * @maximum 1
-     */
-  vatRate: number;
   paymentMethod: ExchangeInputPaymentMethod;
   /** @minimum 0 */
   amountReceived: number;

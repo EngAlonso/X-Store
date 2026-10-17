@@ -64,6 +64,8 @@ import {
   UpdateXStoreTenantCredentialsResponse,
   UpdateXStoreContactSettingsBody,
   UpdateXStoreContactSettingsResponse,
+  UpdateXStoreStoreSettingsBody,
+  UpdateXStoreStoreSettingsResponse,
 } from "@workspace/api-zod";
 import {
   db,
@@ -148,6 +150,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
         .select({
           name: xstoreTenants.name,
           currency: xstoreTenants.currency,
+          vatRate: xstoreTenants.vatRate,
         })
         .from(xstoreTenants)
         .where(eq(xstoreTenants.id, user.tenantId))
@@ -162,7 +165,17 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     tenantId: user.tenantId,
     tenantName: tenant?.name ?? null,
     currency: tenant?.currency ?? null,
+    vatRate: tenant ? toNumber(tenant.vatRate) : null,
   };
+}
+
+async function getTenantVatRate(tenantId: string): Promise<number | null> {
+  const [tenant] = await db
+    .select({ vatRate: xstoreTenants.vatRate })
+    .from(xstoreTenants)
+    .where(eq(xstoreTenants.id, tenantId))
+    .limit(1);
+  return tenant ? toNumber(tenant.vatRate) : null;
 }
 
 async function contactSettingsDto() {
@@ -558,6 +571,43 @@ router.get("/xstore/session", async (_req, res): Promise<void> => {
   const user = getXStoreUser(res);
   res.json(
     GetXStoreSessionResponse.parse(await sessionUserDto(user)),
+  );
+});
+
+router.patch("/xstore/store-settings", async (req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (actor.role !== "tenant_admin") {
+    res.status(403).json({ error: "Only the store owner can change VAT settings." });
+    return;
+  }
+  const tenantId = requireTenant(res, actor);
+  if (!tenantId) return;
+  const parsed = UpdateXStoreStoreSettingsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [tenant] = await db
+    .update(xstoreTenants)
+    .set({ vatRate: String(parsed.data.vatRate) })
+    .where(eq(xstoreTenants.id, tenantId))
+    .returning({ id: xstoreTenants.id, vatRate: xstoreTenants.vatRate });
+  if (!tenant) {
+    res.status(404).json({ error: "Store settings not found." });
+    return;
+  }
+  await audit(
+    actor,
+    "tenant.vat_rate_updated",
+    tenant.id,
+    "tenant",
+    tenant.id,
+    `Updated VAT rate to ${(toNumber(tenant.vatRate) * 100).toFixed(2)}%`,
+  );
+  res.json(
+    UpdateXStoreStoreSettingsResponse.parse({
+      vatRate: toNumber(tenant.vatRate),
+    }),
   );
 });
 
@@ -1653,6 +1703,11 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const vatRate = await getTenantVatRate(tenantId);
+  if (vatRate === null) {
+    res.status(404).json({ error: "Store settings not found." });
+    return;
+  }
   try {
     const sale = await db.transaction(async (tx) => {
       const lines = mergedLines(parsed.data.items);
@@ -1696,7 +1751,7 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
         roundMoney(parsed.data.discountAmount),
       );
       const taxAmount = roundMoney(
-        (subtotal - discountAmount) * parsed.data.vatRate,
+        (subtotal - discountAmount) * vatRate,
       );
       const total = roundMoney(subtotal - discountAmount + taxAmount);
       if (
@@ -2027,6 +2082,11 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const vatRate = await getTenantVatRate(tenantId);
+  if (vatRate === null) {
+    res.status(404).json({ error: "Store settings not found." });
+    return;
+  }
   try {
     const exchange = await db.transaction(async (tx) => {
       const [original] = await tx
@@ -2165,7 +2225,7 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
         ),
       );
       const discount = Math.min(subtotal, parsed.data.discountAmount);
-      const tax = roundMoney((subtotal - discount) * parsed.data.vatRate);
+      const tax = roundMoney((subtotal - discount) * vatRate);
       const replacementTotal = roundMoney(subtotal - discount + tax);
       const balanceDue = roundMoney(replacementTotal - refundAmount);
       const changeAmount =

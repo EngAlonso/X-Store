@@ -51,6 +51,11 @@ export const CreateInitialPlatformOwnerBody = zod.object({
   "setupSecret": zod.string().min(1).max(createInitialPlatformOwnerBodySetupSecretMax)
 })
 
+export const createInitialPlatformOwnerResponseVatRateMin = 0;
+export const createInitialPlatformOwnerResponseVatRateMax = 1;
+
+
+
 export const CreateInitialPlatformOwnerResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -59,7 +64,8 @@ export const CreateInitialPlatformOwnerResponse = zod.object({
   "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable(),
-  "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable()
+  "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
+  "vatRate": zod.number().min(createInitialPlatformOwnerResponseVatRateMin).max(createInitialPlatformOwnerResponseVatRateMax).nullable()
 })
 
 
@@ -78,6 +84,11 @@ export const LoginXStoreWithPhoneBody = zod.object({
   "password": zod.string().min(1).max(loginXStoreWithPhoneBodyPasswordMax)
 })
 
+export const loginXStoreWithPhoneResponseVatRateMin = 0;
+export const loginXStoreWithPhoneResponseVatRateMax = 1;
+
+
+
 export const LoginXStoreWithPhoneResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -86,7 +97,8 @@ export const LoginXStoreWithPhoneResponse = zod.object({
   "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable(),
-  "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable()
+  "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
+  "vatRate": zod.number().min(loginXStoreWithPhoneResponseVatRateMin).max(loginXStoreWithPhoneResponseVatRateMax).nullable()
 })
 
 
@@ -99,6 +111,11 @@ export const LogoutXStoreResponse = zod.void()
 /**
  * @summary Get the signed-in user's X-Store role
  */
+export const getXStoreSessionResponseVatRateMin = 0;
+export const getXStoreSessionResponseVatRateMax = 1;
+
+
+
 export const GetXStoreSessionResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -107,7 +124,30 @@ export const GetXStoreSessionResponse = zod.object({
   "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable(),
-  "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable()
+  "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
+  "vatRate": zod.number().min(getXStoreSessionResponseVatRateMin).max(getXStoreSessionResponseVatRateMax).nullable()
+})
+
+
+/**
+ * @summary Update the current store's VAT rate
+ */
+export const updateXStoreStoreSettingsBodyVatRateMin = 0;
+export const updateXStoreStoreSettingsBodyVatRateMax = 1;
+
+
+
+export const UpdateXStoreStoreSettingsBody = zod.object({
+  "vatRate": zod.number().min(updateXStoreStoreSettingsBodyVatRateMin).max(updateXStoreStoreSettingsBodyVatRateMax).describe('VAT rate as a fraction; 0.15 means 15%.')
+})
+
+export const updateXStoreStoreSettingsResponseVatRateMin = 0;
+export const updateXStoreStoreSettingsResponseVatRateMax = 1;
+
+
+
+export const UpdateXStoreStoreSettingsResponse = zod.object({
+  "vatRate": zod.number().min(updateXStoreStoreSettingsResponseVatRateMin).max(updateXStoreStoreSettingsResponseVatRateMax)
 })
 
 
@@ -582,9 +622,6 @@ export const GetXStoreProfitLossReportResponse = zod.object({
 
 export const checkoutXStoreSaleBodyDiscountAmountMin = 0;
 
-export const checkoutXStoreSaleBodyVatRateMin = 0;
-export const checkoutXStoreSaleBodyVatRateMax = 1;
-
 export const checkoutXStoreSaleBodyAmountReceivedMin = 0;
 
 
@@ -595,7 +632,6 @@ export const CheckoutXStoreSaleBody = zod.object({
   "quantity": zod.number().int().min(1)
 })).min(1),
   "discountAmount": zod.number().min(checkoutXStoreSaleBodyDiscountAmountMin),
-  "vatRate": zod.number().min(checkoutXStoreSaleBodyVatRateMin).max(checkoutXStoreSaleBodyVatRateMax),
   "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
   "amountReceived": zod.number().min(checkoutXStoreSaleBodyAmountReceivedMin)
 })
@@ -717,9 +753,6 @@ export const CreateXStoreReturnResponse = zod.object({
 
 export const createXStoreExchangeBodyDiscountAmountMin = 0;
 
-export const createXStoreExchangeBodyVatRateMin = 0;
-export const createXStoreExchangeBodyVatRateMax = 1;
-
 export const createXStoreExchangeBodyAmountReceivedMin = 0;
 
 
@@ -735,7 +768,6 @@ export const CreateXStoreExchangeBody = zod.object({
   "quantity": zod.number().int().min(1)
 })),
   "discountAmount": zod.number().min(createXStoreExchangeBodyDiscountAmountMin),
-  "vatRate": zod.number().min(createXStoreExchangeBodyVatRateMin).max(createXStoreExchangeBodyVatRateMax),
   "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
   "amountReceived": zod.number().min(createXStoreExchangeBodyAmountReceivedMin)
 })
