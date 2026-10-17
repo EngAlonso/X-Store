@@ -145,7 +145,10 @@ function tenantDto(tenant: XStoreTenant) {
 async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
   const [tenant] = user.tenantId
     ? await db
-        .select({ name: xstoreTenants.name })
+        .select({
+          name: xstoreTenants.name,
+          currency: xstoreTenants.currency,
+        })
         .from(xstoreTenants)
         .where(eq(xstoreTenants.id, user.tenantId))
         .limit(1)
@@ -158,6 +161,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     role: user.role,
     tenantId: user.tenantId,
     tenantName: tenant?.name ?? null,
+    currency: tenant?.currency ?? null,
   };
 }
 
@@ -875,6 +879,7 @@ router.post("/xstore/tenants", async (req, res): Promise<void> => {
           phone,
           email: input.email?.trim().toLowerCase() || null,
           businessType: input.businessType,
+          currency: input.currency,
           status: "trial",
           plan: input.plan,
           subscriptionEndsAt,

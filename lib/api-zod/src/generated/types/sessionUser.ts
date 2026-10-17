@@ -5,6 +5,7 @@
  * X-Store point-of-sale and inventory API
  * OpenAPI spec version: 0.1.0
  */
+import type { SessionUserCurrency } from './sessionUserCurrency';
 import type { SessionUserRole } from './sessionUserRole';
 
 export interface SessionUser {
@@ -18,4 +19,6 @@ export interface SessionUser {
   tenantId: string | null;
   /** @nullable */
   tenantName: string | null;
+  /** @nullable */
+  currency: SessionUserCurrency;
 }

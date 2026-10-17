@@ -5,6 +5,7 @@
  * X-Store point-of-sale and inventory API
  * OpenAPI spec version: 0.1.0
  */
+import type { StoreCurrency } from './storeCurrency';
 import type { TenantPlan } from './tenantPlan';
 import type { TenantStatus } from './tenantStatus';
 
@@ -17,6 +18,7 @@ export interface Tenant {
   /** @nullable */
   email: string | null;
   businessType: string;
+  currency: StoreCurrency;
   status: TenantStatus;
   plan: TenantPlan;
   /** @nullable */

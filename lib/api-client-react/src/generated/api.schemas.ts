@@ -24,6 +24,21 @@ export const SessionUserRole = {
   accountant: 'accountant',
 } as const;
 
+/**
+ * @nullable
+ */
+export type SessionUserCurrency = typeof SessionUserCurrency[keyof typeof SessionUserCurrency] | null;
+
+
+export const SessionUserCurrency = {
+  EGP: 'EGP',
+  SAR: 'SAR',
+  AED: 'AED',
+  USD: 'USD',
+  EUR: 'EUR',
+  GBP: 'GBP',
+} as const;
+
 export interface SessionUser {
   id: string;
   name: string;
@@ -35,6 +50,8 @@ export interface SessionUser {
   tenantId: string | null;
   /** @nullable */
   tenantName: string | null;
+  /** @nullable */
+  currency: SessionUserCurrency;
 }
 
 export interface AuthStatus {
@@ -110,6 +127,18 @@ export interface ContactSettingsInput {
   supportEmail: string | null;
 }
 
+export type StoreCurrency = typeof StoreCurrency[keyof typeof StoreCurrency];
+
+
+export const StoreCurrency = {
+  EGP: 'EGP',
+  SAR: 'SAR',
+  AED: 'AED',
+  USD: 'USD',
+  EUR: 'EUR',
+  GBP: 'GBP',
+} as const;
+
 export type TenantStatus = typeof TenantStatus[keyof typeof TenantStatus];
 
 
@@ -138,6 +167,7 @@ export interface Tenant {
   /** @nullable */
   email: string | null;
   businessType: string;
+  currency: StoreCurrency;
   status: TenantStatus;
   plan: TenantPlan;
   /** @nullable */
@@ -240,6 +270,7 @@ export interface TenantInput {
   email?: string | null;
   /** @minLength 1 */
   businessType: string;
+  currency: StoreCurrency;
   plan: TenantInputPlan;
   /** @nullable */
   subscriptionEndsAt?: string | null;
@@ -278,6 +309,7 @@ export const TenantUpdatePlan = {
 } as const;
 
 export interface TenantUpdate {
+  currency?: StoreCurrency;
   status?: TenantUpdateStatus;
   plan?: TenantUpdatePlan;
   /** @nullable */

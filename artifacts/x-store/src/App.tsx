@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -66,7 +66,27 @@ const appearance = {
 };
 
 const fmt = (n: number) => new Intl.NumberFormat('ar-SA', { maximumFractionDigits: 2 }).format(n);
-const money = (n: number) => `${fmt(n)} ر.س`;
+type StoreCurrency = 'EGP' | 'SAR' | 'AED' | 'USD' | 'EUR' | 'GBP';
+const currencyOptions: { value: StoreCurrency; label: string; shortLabel: string }[] = [
+  { value: 'EGP', label: 'الجنيه المصري (EGP)', shortLabel: 'ج.م.' },
+  { value: 'SAR', label: 'الريال السعودي (SAR)', shortLabel: 'ر.س' },
+  { value: 'AED', label: 'الدرهم الإماراتي (AED)', shortLabel: 'د.إ' },
+  { value: 'USD', label: 'الدولار الأمريكي (USD)', shortLabel: '$' },
+  { value: 'EUR', label: 'اليورو (EUR)', shortLabel: '€' },
+  { value: 'GBP', label: 'الجنيه الإسترليني (GBP)', shortLabel: '£' },
+];
+const currencyLabels = Object.fromEntries(currencyOptions.map(({ value, label }) => [value, label])) as Record<StoreCurrency, string>;
+const currencyShortLabels = Object.fromEntries(currencyOptions.map(({ value, shortLabel }) => [value, shortLabel])) as Record<StoreCurrency, string>;
+const CurrencyContext = createContext<StoreCurrency>('SAR');
+function useMoney() {
+  const currency = useContext(CurrencyContext);
+  return useCallback((amount: number) => new Intl.NumberFormat('ar-EG', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount), [currency]);
+}
 const dateLabel = (d?: string | null) => d ? new Intl.DateTimeFormat('ar-SA', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(d)) : '—';
 const roleNames: Record<string, string> = { platform_admin: 'مالك المنصة', tenant_admin: 'مالك المتجر', cashier: 'أمين الصندوق', warehouse_manager: 'مدير المخزون', accountant: 'محاسب' };
 const statusNames: Record<string, string> = { active: 'نشط', trial: 'تجريبي', suspended: 'موقوف', completed: 'مكتملة', partially_returned: 'مستردة جزئياً', returned: 'مستردة', monthly: 'شهري', half_yearly: 'نصف سنوي', annual: 'سنوي', lifetime: 'مدى الحياة' };
@@ -279,11 +299,11 @@ function AppShell({ children }: { children: ReactNode }) {
   if (isLoading) return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if (isError || !user) return <div className="auth-required" dir="rtl"><div className="empty-symbol"><ShieldCheck/></div><h2>يلزم تسجيل الدخول</h2><p>سجّل الدخول باستخدام حساب X-Store للوصول إلى مساحة العمل.</p><Link href="/sign-in" className="button button-primary">تسجيل الدخول</Link><button className="button button-quiet" onClick={()=>refetch()}>إعادة المحاولة</button></div>;
   const items = nav.filter(n=>n.roles.includes('all') || n.roles.includes(user.role));
-  return <div dir="rtl" className="app-frame">
+   return <CurrencyContext.Provider value={(user.currency as StoreCurrency | null) || 'SAR'}><div dir="rtl" className="app-frame">
      <aside className={`sidebar ${open?'sidebar-open':''}`}><div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={()=>setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div><div className="store-chip"><span className="store-avatar">{(user.tenantName||user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{roleNames[user.role]||user.role}</small></span><ChevronDown size={15}/></div><div className="nav-caption">القائمة الرئيسية</div><nav className="side-nav">{items.map(item=><Link key={item.href} href={item.href} onClick={()=>setOpen(false)} className={`nav-link ${location===item.href?'nav-active':''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location===item.href&&<i/>}</Link>)}</nav><div className="sidebar-bottom"><div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div><div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.phone}</small></span><button className="icon-button" onClick={()=>{void logoutXStore().then(async()=>{qc.clear();try{await signOut({redirectUrl:basePath||'/'})}catch{setLocation('/sign-in')}}).catch(()=>window.alert('تعذر تسجيل الخروج. تحقق من الاتصال وحاول مرة أخرى.'))}} title="تسجيل الخروج" data-testid="button-sign-out"><LogOut size={17}/></button></div></div></aside>
     {open&&<button aria-label="إغلاق القائمة" className="mobile-scrim" onClick={()=>setOpen(false)}/>}
     <div className="workspace"><header className="topbar"><button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={()=>setOpen(true)}><Menu size={20}/></button><div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i=>i.href===location)?.label||'لوحة التحكم'}</b></div><div className="topbar-tools"><span className="today"><CalendarDays size={15}/> {new Intl.DateTimeFormat('ar-SA',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span><button className="icon-button notification" aria-label="الإشعارات"><Bell size={18}/><i/></button><span className="top-avatar">{user.name.slice(0,1)}</span></div></header><main className="main-content">{children}</main><footer className="workspace-footer"><span>X-Store</span><span>مساحة عمل موثوقة لمتجرك</span><span>© ٢٠٢٥</span></footer></div>
-  </div>;
+   </div></CurrencyContext.Provider>;
 }
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
@@ -317,6 +337,7 @@ function StateBlock({loading,error,onRetry,empty,emptyTitle='لا توجد بي�
 }
 function DashboardPage() {
   const {data:session}=useGetXStoreSession(); const dash=useGetXStoreDashboard();
+  const money=useMoney();
   const d=dash.data; const isPlatform=session?.role==='platform_admin'; const isCashier=session?.role==='cashier';
   return <><PageTitle eyebrow="نظرة عامة" title={isPlatform?'صورة المنصة اليوم':'أهلاً بك في متجرك'} desc={isPlatform?'متابعة حالة المتاجر والاشتراكات ونشاط المنصة.':'ملخص عمل متجرك — كل التفاصيل المهمة في نظرة واحدة.'} action={<Link href={isPlatform?'/tenants':'/pos'} className="button button-primary">{isPlatform?'إدارة المتاجر':'بدء عملية بيع'} <ArrowUpLeft size={16}/></Link>}/>
     {dash.isLoading?<div className="stat-grid">{[1,2,3,4].map(x=><div className="stat-card stat-skeleton" key={x}/>)}</div>:dash.isError?<StateBlock loading={false} error onRetry={()=>dash.refetch()} empty={false}/>:d&&<>
@@ -328,14 +349,16 @@ function DashboardPage() {
 }
 function TenantTable({tenants,compact=false}:{tenants:Tenant[];compact?:boolean}) {
   if(!tenants.length)return <div className="empty-inline">لا توجد متاجر لعرضها.</div>;
-  return <div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th>{!compact&&<th>نوع النشاط</th>}<th>الحالة</th><th>الخطة</th>{!compact&&<th>الفروع</th>}</tr></thead><tbody>{tenants.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone||'—'}</small></td><td>{t.ownerName}</td>{!compact&&<td>{t.businessType}</td>}<td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td>{!compact&&<td>{fmt(t.branchCount)}</td>}</tr>)}</tbody></table></div>;
+  return <div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th>{!compact&&<th>نوع النشاط</th>}<th>العملة</th><th>الحالة</th><th>الخطة</th>{!compact&&<th>الفروع</th>}</tr></thead><tbody>{tenants.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone||'—'}</small></td><td>{t.ownerName}</td>{!compact&&<td>{t.businessType}</td>}<td>{currencyLabels[t.currency as StoreCurrency] || t.currency}</td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td>{!compact&&<td>{fmt(t.branchCount)}</td>}</tr>)}</tbody></table></div>;
 }
 function SalesTable({sales,compact=false,onReturn,onPrint,showAmounts=true}:{sales:Sale[];compact?:boolean;onReturn?:(s:Sale)=>void;onPrint?:(s:Sale)=>void;showAmounts?:boolean}) {
+  const money=useMoney();
   if(!sales.length)return <div className="empty-inline">لا توجد عمليات بيع لعرضها.</div>;
   return <div className="table-wrap"><table><thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>الأصناف</th>{!compact&&<th>الدفع</th>}{showAmounts&&<th>الإجمالي</th>}<th>الحالة</th>{(onReturn||onPrint)&&<th>إجراء</th>}</tr></thead><tbody>{sales.map(s=><tr key={s.id}><td className="ltr-id">{s.invoiceNo}</td><td>{dateLabel(s.createdAt)}</td><td>{fmt(s.itemCount)}</td>{!compact&&<td>{paymentName(s.paymentMethod)}</td>}{showAmounts&&<td><b>{money(s.total)}</b></td>}<td><span className={`status-pill status-${s.status}`}>{statusNames[s.status]}</span></td>{(onReturn||onPrint)&&<td className="table-actions-cell">{onPrint&&<button className="table-action" onClick={()=>onPrint(s)} data-testid={`button-print-${s.id}`}><Printer size={14}/> إيصال</button>}{onReturn&&<button className="table-action" onClick={()=>onReturn(s)} data-testid={`button-return-${s.id}`}><RotateCcw size={14}/> مرتجع</button>}</td>}</tr>)}</tbody></table></div>;
 }
 function paymentName(p:string) { return p==='cash'?'نقداً':p==='card'?'بطاقة':'محفظة'; }
 function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
+  const money=useMoney();
   return <div className="modal-backdrop receipt-backdrop"><section className="modal receipt-modal" role="dialog" aria-modal="true" dir="rtl"><div className="receipt-brand"><img src={`${basePath}/x-store-mark.png`} alt=""/><b>X-Store</b><span>إيصال بيع</span></div><div className="receipt-number"><span>رقم الفاتورة</span><b className="ltr-id">{sale.invoiceNo}</b></div><div className="receipt-detail"><span>التاريخ</span><b>{dateLabel(sale.createdAt)}</b></div><div className="receipt-detail"><span>عدد الأصناف</span><b>{fmt(sale.itemCount)}</b></div><div className="receipt-detail"><span>طريقة الدفع</span><b>{paymentName(sale.paymentMethod)}</b></div><div className="receipt-divider"/><div className="receipt-detail"><span>المجموع الفرعي</span><b>{money(sale.subtotal)}</b></div><div className="receipt-detail"><span>الخصم</span><b>{money(sale.discountAmount)}</b></div><div className="receipt-detail"><span>الضريبة</span><b>{money(sale.taxAmount)}</b></div><div className="receipt-grand"><span>الإجمالي</span><b>{money(sale.total)}</b></div><div className="receipt-detail"><span>المبلغ المستلم</span><b>{money(sale.amountReceived)}</b></div><div className="receipt-detail"><span>الباقي</span><b>{money(sale.changeAmount)}</b></div><p className="receipt-thanks">شكراً لزيارتكم</p><div className="modal-actions receipt-actions"><button className="button button-quiet" onClick={close}>إغلاق</button><button className="button button-primary" onClick={()=>window.print()}><Printer size={16}/> طباعة الإيصال</button></div></section></div>;
 }
 function TenantsPage() {
@@ -350,6 +373,14 @@ function TenantsPage() {
   const [notice,setNotice]=useState('');
   const filtered=useMemo(()=> (tenants.data||[]).filter(t=>`${t.name} ${t.ownerName} ${t.phone} ${t.email||''}`.toLowerCase().includes(search.toLowerCase())),[tenants.data,search]);
   function refreshTenants(){qc.invalidateQueries({queryKey:getListXStoreTenantsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});}
+  function changeCurrency(tenant:Tenant, currency:StoreCurrency, select:HTMLSelectElement) {
+    if(currency===tenant.currency)return;
+    if(!window.confirm('تغيير العملة لن يحوّل أسعار المنتجات أو المبيعات القديمة؛ ستظهر الأرقام كما هي بالعملة الجديدة. هل تريد المتابعة؟')) {
+      select.value=tenant.currency;
+      return;
+    }
+    update.mutate({tenantId:tenant.id,data:{currency}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث العملة الأساسية لمتجر ${tenant.name}`);},onError:error=>{select.value=tenant.currency;setNotice(apiErrorMessage(error,'تعذر تحديث عملة المتجر.'))}});
+  }
   function submit(e:FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f=new FormData(e.currentTarget);
@@ -360,6 +391,7 @@ function TenantsPage() {
       ownerPassword:String(f.get('ownerPassword')),
       email:String(f.get('email')||'').trim()||null,
       businessType:String(f.get('businessType')),
+       currency:String(f.get('currency')) as StoreCurrency,
       plan:String(f.get('plan')) as 'monthly'|'annual'|'half_yearly'|'lifetime',
     }},{onSuccess:()=>{refreshTenants();setDialog(false);setNotice('تم إنشاء المتجر وحساب المالك');}});
   }
@@ -373,7 +405,7 @@ function TenantsPage() {
     <div className="tenant-summary"><span><Store size={17}/> {fmt(filtered.length)} متجر</span><span><CircleCheck size={17}/> {fmt(filtered.filter(t=>t.status==='active').length)} نشط</span><span><Clock3 size={17}/> {fmt(filtered.filter(t=>t.status==='trial').length)} تجريبي</span></div>
     <Card><SectionHead title="قائمة المتاجر" detail="تحديث الحالة وتغيير بيانات دخول المالك مسجلان في سجل التدقيق."/>
       <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم المتجر أو المالك أو الهاتف" data-testid="input-search-tenants"/></label><span className="result-count">{fmt(filtered.length)} نتيجة</span></div>
-      {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع النشاط</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td>{t.businessType}</td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></td></tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
+      {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع النشاط</th><th>العملة الأساسية</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td>{t.businessType}</td><td><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></td></tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
     </Card>
     {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
     {dialog&&<Modal title="إضافة متجر وحساب مالكه" close={()=>setDialog(false)}><form className="form-grid" onSubmit={submit}>
@@ -382,7 +414,9 @@ function TenantsPage() {
       <Field label="كلمة مرور المالك" name="ownerPassword" type="password" required placeholder="10 أحرف على الأقل"/>
       <Field label="البريد الإلكتروني (اختياري)" name="email" type="email"/>
       <Field label="نوع النشاط" name="businessType" required placeholder="مثال: ملابس"/>
+       <label className="field"><span>العملة الأساسية</span><select name="currency" defaultValue="SAR">{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></label>
       <label className="field"><span>الخطة</span><select name="plan"><option value="monthly">شهري</option><option value="half_yearly">نصف سنوي</option><option value="annual">سنوي</option><option value="lifetime">مدى الحياة</option></select></label>
+       <div className="role-hint field-wide"><Banknote size={16}/><span>ستُستخدم العملة لعرض أسعار المنتجات والمبيعات والتقارير. تغييرها لاحقاً لا يحوّل الأرقام المحفوظة.</span></div>
       <div className="role-hint field-wide"><ShieldCheck size={16}/><span>سيتم حفظ كلمة المرور مشفّرة فقط، ولن تظهر مرة أخرى بعد إنشاء الحساب.</span></div>
       {create.isError&&<div className="form-error">{apiErrorMessage(create.error,'تعذر إضافة المتجر. تحقق من الهاتف وكلمة المرور.')}</div>}
       <div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setDialog(false)}>إلغاء</button><button className="button button-primary" disabled={create.isPending}>{create.isPending?'جارٍ الحفظ…':'إنشاء المتجر والحساب'}</button></div>
@@ -459,6 +493,7 @@ function PlatformSettingsPage() {
 }
 function SubscriptionsPage() {
   const qc=useQueryClient(), tenants=useListXStoreTenants(), payments=useListXStoreSubscriptionPayments(), update=useUpdateXStoreTenant(), createPayment=useCreateXStoreSubscriptionPayment();
+  const money=useMoney();
   const [renewTenant,setRenewTenant]=useState<Tenant|null>(null),[paymentOpen,setPaymentOpen]=useState(false),[notice,setNotice]=useState('');
   function saveRenewal(e:FormEvent<HTMLFormElement>){e.preventDefault();if(!renewTenant)return;const f=new FormData(e.currentTarget);update.mutate({tenantId:renewTenant.id,data:{plan:String(f.get('plan')) as 'monthly'|'half_yearly'|'annual'|'lifetime',subscriptionEndsAt:String(f.get('subscriptionEndsAt')),status:'active'}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreTenantsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setRenewTenant(null);setNotice('تم تحديث الخطة وتاريخ التجديد للمتجر المحدد')}})}
   function savePayment(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);createPayment.mutate({data:{tenantId:String(f.get('tenantId')),amount:Number(f.get('amount')),plan:String(f.get('plan')) as 'monthly'|'half_yearly'|'annual'|'lifetime',paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'transfer'}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreSubscriptionPaymentsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setPaymentOpen(false);setNotice('تم تسجيل الدفعة يدوياً')}})}
@@ -474,6 +509,7 @@ function InventoryPage() {
   const create = useCreateXStoreProduct();
   const update = useUpdateXStoreProduct();
   const session = useGetXStoreSession();
+  const money=useMoney();
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(false);
   const [edit, setEdit] = useState<Product | null>(null);
@@ -600,6 +636,7 @@ function InventoryPage() {
 }
 function PosPage() {
   const qc=useQueryClient(), products=useListXStoreProducts(), held=useListXStoreHeldSales(), checkout=useCheckoutXStoreSale(), hold=useHoldXStoreSale(), release=useReleaseXStoreHeldSale(), exchange=useCreateXStoreExchange();
+  const money=useMoney(), currency=useContext(CurrencyContext);
   const [cart,setCart]=useState<Record<string,number>>({}),[term,setTerm]=useState(''),[discount,setDiscount]=useState('0'),[received,setReceived]=useState(''),[payment,setPayment]=useState<'cash'|'card'|'wallet'>('cash'),[heldOpen,setHeldOpen]=useState(false),[exchangeOpen,setExchangeOpen]=useState(false),[notice,setNotice]=useState('');
   const visible=(products.data||[]).filter(p=>`${p.name} ${p.sku} ${p.barcode||''}`.toLowerCase().includes(term.toLowerCase()));
   const cartLines=(products.data||[]).filter(p=>cart[p.id]).map(p=>({...p,count:cart[p.id]}));
@@ -609,10 +646,75 @@ function PosPage() {
   function finish(){if(!cartLines.length)return;checkout.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,vatRate:.15,paymentMethod:payment,amountReceived:Number(received)||total}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
   function park(){if(!cartLines.length)return;hold.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count}))}},{onSuccess:()=>{setCart({});qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice('تم حفظ الفاتورة المعلقة')}})}
   function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);exchange.mutate({data:{invoiceNo:String(f.get('invoiceNo')),returnItems:[{productId:String(f.get('returnProduct')),quantity:Number(f.get('returnQuantity'))}],replacementItems:[{productId:String(f.get('replacementProduct')),quantity:Number(f.get('replacementQuantity'))}],discountAmount:0,vatRate:.15,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(f.get('amountReceived'))||0}},{onSuccess:r=>{setExchangeOpen(false);setNotice(`تم الاستبدال ذرياً · ${r.exchangeInvoiceNo}`);qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()})}})}
-  return <div className="pos-page"><PageTitle eyebrow="نقطة البيع" title="صندوق البيع" desc="أضف المنتجات وأكمل الدفع بخطوات قليلة." action={<div className="pos-head-actions"><button className="button button-quiet" onClick={()=>setExchangeOpen(true)}><ArrowLeftRight size={16}/> استبدال</button><button className="button button-quiet held-toggle" onClick={()=>setHeldOpen(!heldOpen)}><Pause size={16}/> فواتير معلقة <span className="count-bubble">{held.data?.length||0}</span></button></div>}/><div className="pos-layout"><section className="pos-products"><label className="search-box pos-search"><Search size={18}/><input autoFocus value={term} onChange={e=>setTerm(e.target.value)} placeholder="ابحث عن منتج أو امسح الباركود..." data-testid="input-pos-search"/><kbd>⌘ K</kbd></label>{products.isLoading?<div className="product-grid">{[1,2,3,4].map(i=><div className="product-skeleton" key={i}/>)}</div>:products.isError?<StateBlock loading={false} error onRetry={()=>products.refetch()} empty={false}/>:visible.length?<div className="product-grid">{visible.map((p,i)=><button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}><span className={`product-art art-${i%5}`}><Package size={25}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span><span className="tile-category">{p.category}</span><b>{p.name}</b><small className="ltr-id">{p.sku}</small><span className="tile-bottom"><strong>{money(p.price)}</strong><span>متاح {fmt(p.quantity)}</span></span></button>)}</div>:<div className="state-box"><div className="empty-symbol"><Package/></div><b>{term?'لا توجد نتائج':'لا توجد منتجات'}</b><span>{term?'جرّب البحث بكلمة مختلفة.':'أضف المنتجات إلى المخزون لتبدأ البيع.'}</span></div>}</section>
-      <aside className="cart-panel"><div className="cart-head"><div><h2>الطلب الحالي</h2><span>{fmt(cartLines.reduce((a,p)=>a+p.count,0))} أصناف</span></div><button className="table-action" onClick={()=>setCart({})} disabled={!cartLines.length}><Trash2 size={14}/> تفريغ</button></div><div className="cart-lines">{cartLines.map(p=><div className="cart-line" key={p.id}><span className="cart-line-art"><Package size={17}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div><div className="stepper"><button onClick={()=>mutateCart(p.id,-1)} aria-label="إنقاص"><Minus size={13}/></button><b>{p.count}</b><button onClick={()=>mutateCart(p.id,1)} aria-label="زيادة" disabled={p.count>=p.quantity}><Plus size={13}/></button></div><strong>{money(p.price*p.count)}</strong></div>)}{!cartLines.length&&<div className="cart-empty"><div className="cart-empty-icon"><ShoppingCart size={20}/></div><b>السلة فارغة</b><span>اختر منتجاً لإضافته إلى الفاتورة.</span></div>}</div><div className="cart-calculation"><div><span>المجموع الفرعي</span><b>{money(subtotal)}</b></div><label><span>الخصم</span><div className="discount-input"><input aria-label="قيمة الخصم" type="number" min="0" value={discount} onChange={e=>setDiscount(e.target.value)} disabled={!cartLines.length}/><span>ر.س</span></div></label><div><span>ضريبة القيمة المضافة · ١٥٪</span><b>{money(tax)}</b></div><div className="cart-total"><span>الإجمالي</span><b>{money(total)}</b></div></div><div className="payment-tabs">{(['cash','card','wallet'] as const).map((m,i)=>{const I=[Banknote,CreditCard,Wallet][i];return <button key={m} onClick={()=>setPayment(m)} className={payment===m?'payment-active':''}><I size={16}/>{paymentName(m)}</button>})}</div>{payment==='cash'&&<label className="received-field"><span>المبلغ المستلم</span><div><input type="number" min={total} value={received} onChange={e=>setReceived(e.target.value)} placeholder={fmt(total)} /><small>الباقي {money(Math.max(0,(Number(received)||total)-total))}</small></div></label>}<div className="cart-actions"><button className="button button-quiet" onClick={park} disabled={!cartLines.length||hold.isPending}><Pause size={15}/>{hold.isPending?'جارٍ الحفظ':'تعليق'}</button><button className="button button-confirm" onClick={finish} disabled={!cartLines.length||checkout.isPending|| (payment==='cash'&&Number(received)>0&&Number(received)<total)}>{checkout.isPending?'جارٍ إتمام البيع':<><CircleCheck size={17}/> إتمام البيع</>}</button></div>{(checkout.isError||hold.isError)&&<div className="form-error">تعذر تنفيذ العملية. أعد المحاولة.</div>}</aside></div>{notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}{heldOpen&&<Modal title="الفواتير المعلقة" close={()=>setHeldOpen(false)}><div className="held-list">{held.isLoading?<div className="skeleton-table"><span/><span/></div>:held.isError?<StateBlock loading={false} error onRetry={()=>held.refetch()} empty={false}/>:held.data?.length?held.data.map(h=><div className="held-item" key={h.id}><div><b className="ltr-id">{h.reference}</b><small>{h.customerName||'عميل نقدي'} · {fmt(h.itemCount)} أصناف</small></div><strong>{money(h.estimatedTotal)}</strong><button className="button button-primary button-small" onClick={()=>release.mutate({heldSaleId:h.id},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setHeldOpen(false);setNotice('تم استعادة الفاتورة')}})}><Play size={14}/> استعادة</button></div>):<div className="empty-inline">لا توجد فواتير معلقة.</div>}</div></Modal>}{exchangeOpen&&<Modal title="استبدال منتج" close={()=>setExchangeOpen(false)}><form className="form-grid" onSubmit={submitExchange}><Field label="رقم الفاتورة الأصلية" name="invoiceNo" required placeholder="X-2048"/><label className="field"><span>المنتج المرتجع</span><select name="returnProduct" defaultValue="" required><option value="" disabled>اختر المنتج المرتجع</option>{products.data?.map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku}</option>)}</select></label><Field label="كمية المرتجع" name="returnQuantity" type="number" required defaultValue="1"/><label className="field"><span>المنتج البديل</span><select name="replacementProduct" defaultValue="" required><option value="" disabled>اختر المنتج البديل</option>{products.data?.filter(p=>p.quantity>0).map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku} · {money(p.price)}</option>)}</select></label><Field label="كمية المنتج البديل" name="replacementQuantity" type="number" required defaultValue="1"/><label className="field"><span>طريقة الدفع / التسوية</span><select name="paymentMethod"><option value="cash">نقداً</option><option value="card">بطاقة</option><option value="wallet">محفظة</option></select></label><Field label="المبلغ المستلم" name="amountReceived" type="number" defaultValue="0"/><div className="role-hint field-wide"><ArrowLeftRight size={17}/><span>يُسجل المرتجع والمنتج البديل كعملية واحدة ذرية؛ لا يتم حفظ نصف العملية.</span></div>{exchange.isError&&<div className="form-error">تعذر إتمام الاستبدال. تحقق من الفاتورة والكميات.</div>}<div className="modal-actions"><button type="button" className="button button-quiet" onClick={()=>setExchangeOpen(false)}>إلغاء</button><button className="button button-confirm" disabled={exchange.isPending}>{exchange.isPending?'جارٍ تنفيذ الاستبدال…':'تأكيد الاستبدال'}</button></div></form></Modal>}</div>;
+  return <>
+    <div className="pos-page">
+      <PageTitle eyebrow="نقطة البيع" title="صندوق البيع" desc="أضف المنتجات وأكمل الدفع بخطوات قليلة."
+        action={<div className="pos-head-actions">
+          <button className="button button-quiet" onClick={()=>setExchangeOpen(true)}><ArrowLeftRight size={16}/> استبدال</button>
+          <button className="button button-quiet held-toggle" onClick={()=>setHeldOpen(!heldOpen)}><Pause size={16}/> فواتير معلقة <span className="count-bubble">{held.data?.length||0}</span></button>
+        </div>}
+      />
+      <div className="pos-layout">
+        <section className="pos-products">
+          <label className="search-box pos-search"><Search size={18}/><input autoFocus value={term} onChange={e=>setTerm(e.target.value)} placeholder="ابحث عن منتج أو امسح الباركود..." data-testid="input-pos-search"/><kbd>⌘ K</kbd></label>
+          {products.isLoading
+            ? <div className="product-grid">{[1,2,3,4].map(i=><div className="product-skeleton" key={i}/>)}</div>
+            : products.isError
+              ? <StateBlock loading={false} error onRetry={()=>products.refetch()} empty={false}/>
+              : visible.length
+                ? <div className="product-grid">{visible.map((p,i)=><button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
+                    <span className={`product-art art-${i%5}`}><Package size={25}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
+                    <span className="tile-category">{p.category}</span><b>{p.name}</b><small className="ltr-id">{p.sku}</small>
+                    <span className="tile-bottom"><strong>{money(p.price)}</strong><span>متاح {fmt(p.quantity)}</span></span>
+                  </button>)}</div>
+                : <div className="state-box"><div className="empty-symbol"><Package/></div><b>{term?'لا توجد نتائج':'لا توجد منتجات'}</b><span>{term?'جرّب البحث بكلمة مختلفة.':'أضف المنتجات إلى المخزون لتبدأ البيع.'}</span></div>
+          }
+        </section>
+        <aside className="cart-panel">
+          <div className="cart-head"><div><h2>الطلب الحالي</h2><span>{fmt(cartLines.reduce((a,p)=>a+p.count,0))} أصناف</span></div><button className="table-action" onClick={()=>setCart({})} disabled={!cartLines.length}><Trash2 size={14}/> تفريغ</button></div>
+          <div className="cart-lines">
+            {cartLines.map(p=><div className="cart-line" key={p.id}>
+              <span className="cart-line-art"><Package size={17}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div>
+              <div className="stepper"><button onClick={()=>mutateCart(p.id,-1)} aria-label="إنقاص"><Minus size={13}/></button><b>{p.count}</b><button onClick={()=>mutateCart(p.id,1)} aria-label="زيادة" disabled={p.count>=p.quantity}><Plus size={13}/></button></div>
+              <strong>{money(p.price*p.count)}</strong>
+            </div>)}
+            {!cartLines.length&&<div className="cart-empty"><div className="cart-empty-icon"><ShoppingCart size={20}/></div><b>السلة فارغة</b><span>اختر منتجاً لإضافته إلى الفاتورة.</span></div>}
+          </div>
+          <div className="cart-calculation">
+            <div><span>المجموع الفرعي</span><b>{money(subtotal)}</b></div>
+            <label><span>الخصم</span><div className="discount-input"><input aria-label="قيمة الخصم" type="number" min="0" value={discount} onChange={e=>setDiscount(e.target.value)} disabled={!cartLines.length}/><span>{currencyShortLabels[currency]}</span></div></label>
+            <div><span>ضريبة القيمة المضافة · ١٥٪</span><b>{money(tax)}</b></div><div className="cart-total"><span>الإجمالي</span><b>{money(total)}</b></div>
+          </div>
+          <div className="payment-tabs">{(['cash','card','wallet'] as const).map((m,i)=>{const I=[Banknote,CreditCard,Wallet][i];return <button key={m} onClick={()=>setPayment(m)} className={payment===m?'payment-active':''}><I size={16}/>{paymentName(m)}</button>})}</div>
+          {payment==='cash'&&<label className="received-field"><span>المبلغ المستلم</span><div><input type="number" min={total} value={received} onChange={e=>setReceived(e.target.value)} placeholder={fmt(total)}/><small>الباقي {money(Math.max(0,(Number(received)||total)-total))}</small></div></label>}
+          <div className="cart-actions">
+            <button className="button button-quiet" onClick={park} disabled={!cartLines.length||hold.isPending}><Pause size={15}/>{hold.isPending?'جارٍ الحفظ':'تعليق'}</button>
+            <button className="button button-confirm" onClick={finish} disabled={!cartLines.length||checkout.isPending||(payment==='cash'&&Number(received)>0&&Number(received)<total)}>{checkout.isPending?'جارٍ إتمام البيع':<><CircleCheck size={17}/> إتمام البيع</>}</button>
+          </div>
+          {(checkout.isError||hold.isError)&&<div className="form-error">تعذر تنفيذ العملية. أعد المحاولة.</div>}
+        </aside>
+      </div>
+      {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
+      {heldOpen&&<Modal title="الفواتير المعلقة" close={()=>setHeldOpen(false)}><div className="held-list">
+        {held.isLoading?<div className="skeleton-table"><span/><span/></div>:held.isError?<StateBlock loading={false} error onRetry={()=>held.refetch()} empty={false}/>:held.data?.length?held.data.map(h=><div className="held-item" key={h.id}><div><b className="ltr-id">{h.reference}</b><small>{h.customerName||'عميل نقدي'} · {fmt(h.itemCount)} أصناف</small></div><strong>{money(h.estimatedTotal)}</strong><button className="button button-primary button-small" onClick={()=>release.mutate({heldSaleId:h.id},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setHeldOpen(false);setNotice('تم استعادة الفاتورة')}})}><Play size={14}/> استعادة</button></div>):<div className="empty-inline">لا توجد فواتير معلقة.</div>}
+      </div></Modal>}
+      {exchangeOpen&&<Modal title="استبدال منتج" close={()=>setExchangeOpen(false)}><form className="form-grid" onSubmit={submitExchange}>
+        <Field label="رقم الفاتورة الأصلية" name="invoiceNo" required placeholder="X-2048"/>
+        <label className="field"><span>المنتج المرتجع</span><select name="returnProduct" defaultValue="" required><option value="" disabled>اختر المنتج المرتجع</option>{products.data?.map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku}</option>)}</select></label>
+        <Field label="كمية المرتجع" name="returnQuantity" type="number" required defaultValue="1"/>
+        <label className="field"><span>المنتج البديل</span><select name="replacementProduct" defaultValue="" required><option value="" disabled>اختر المنتج البديل</option>{products.data?.filter(p=>p.quantity>0).map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku} · {money(p.price)}</option>)}</select></label>
+        <Field label="كمية المنتج البديل" name="replacementQuantity" type="number" required defaultValue="1"/>
+        <label className="field"><span>طريقة الدفع / التسوية</span><select name="paymentMethod"><option value="cash">نقداً</option><option value="card">بطاقة</option><option value="wallet">محفظة</option></select></label>
+        <Field label="المبلغ المستلم" name="amountReceived" type="number" defaultValue="0"/>
+        <div className="role-hint field-wide"><ArrowLeftRight size={17}/><span>يُسجل المرتجع والمنتج البديل كعملية واحدة ذرية؛ لا يتم حفظ نصف العملية.</span></div>
+        {exchange.isError&&<div className="form-error">تعذر إتمام الاستبدال. تحقق من الفاتورة والكميات.</div>}
+        <div className="modal-actions"><button type="button" className="button button-quiet" onClick={()=>setExchangeOpen(false)}>إلغاء</button><button className="button button-confirm" disabled={exchange.isPending}>{exchange.isPending?'جارٍ تنفيذ الاستبدال…':'تأكيد الاستبدال'}</button></div>
+      </form></Modal>}
+    </div>
+  </>;
 }
 function ReportsPage() {
+  const money=useMoney();
   const today = new Date().toISOString().slice(0, 10);
   const [from, setFrom] = useState(`${today.slice(0, 7)}-01`);
   const [to, setTo] = useState(today);
@@ -654,6 +756,7 @@ function ReportsPage() {
 
 function SalesPage() {
   const qc=useQueryClient(), sales=useListXStoreSales({limit:100}), products=useListXStoreProducts(), ret=useCreateXStoreReturn();
+  const money=useMoney();
   const isCashier=useGetXStoreSession().data?.role==='cashier';
   const [selected,setSelected]=useState<Sale|null>(null),[printTarget,setPrintTarget]=useState<Sale|null>(null),[notice,setNotice]=useState(''),[search,setSearch]=useState('');
   const rows=(sales.data||[]).filter(s=>s.invoiceNo.toLowerCase().includes(search.toLowerCase()));

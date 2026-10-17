@@ -56,7 +56,8 @@ export const CreateInitialPlatformOwnerResponse = zod.object({
   "email": zod.string().email().nullable(),
   "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
   "tenantId": zod.string().nullable(),
-  "tenantName": zod.string().nullable()
+  "tenantName": zod.string().nullable(),
+  "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable()
 })
 
 
@@ -82,7 +83,8 @@ export const LoginXStoreWithPhoneResponse = zod.object({
   "email": zod.string().email().nullable(),
   "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
   "tenantId": zod.string().nullable(),
-  "tenantName": zod.string().nullable()
+  "tenantName": zod.string().nullable(),
+  "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable()
 })
 
 
@@ -115,7 +117,8 @@ export const BootstrapXStorePlatformAdminResponse = zod.object({
   "email": zod.string().email().nullable(),
   "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
   "tenantId": zod.string().nullable(),
-  "tenantName": zod.string().nullable()
+  "tenantName": zod.string().nullable(),
+  "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable()
 })
 
 
@@ -129,7 +132,8 @@ export const GetXStoreSessionResponse = zod.object({
   "email": zod.string().email().nullable(),
   "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant']),
   "tenantId": zod.string().nullable(),
-  "tenantName": zod.string().nullable()
+  "tenantName": zod.string().nullable(),
+  "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable()
 })
 
 
@@ -154,6 +158,7 @@ export const GetXStoreDashboardResponse = zod.object({
   "phone": zod.string().nullable(),
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
+  "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
   "subscriptionEndsAt": zod.coerce.date().nullable(),
@@ -205,6 +210,7 @@ export const ListXStoreTenantsResponseItem = zod.object({
   "phone": zod.string().nullable(),
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
+  "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
   "subscriptionEndsAt": zod.coerce.date().nullable(),
@@ -235,6 +241,7 @@ export const CreateXStoreTenantBody = zod.object({
   "ownerPassword": zod.string().min(createXStoreTenantBodyOwnerPasswordMin).max(createXStoreTenantBodyOwnerPasswordMax),
   "email": zod.string().email().nullish(),
   "businessType": zod.string().min(1),
+  "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
   "subscriptionEndsAt": zod.coerce.date().nullish()
 })
@@ -246,6 +253,7 @@ export const CreateXStoreTenantResponse = zod.object({
   "phone": zod.string().nullable(),
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
+  "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
   "subscriptionEndsAt": zod.coerce.date().nullable(),
@@ -262,6 +270,7 @@ export const UpdateXStoreTenantParams = zod.object({
 })
 
 export const UpdateXStoreTenantBody = zod.object({
+  "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']).optional(),
   "status": zod.enum(['active', 'trial', 'suspended']).optional(),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']).optional(),
   "subscriptionEndsAt": zod.coerce.date().nullish()
@@ -274,6 +283,7 @@ export const UpdateXStoreTenantResponse = zod.object({
   "phone": zod.string().nullable(),
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
+  "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
   "subscriptionEndsAt": zod.coerce.date().nullable(),

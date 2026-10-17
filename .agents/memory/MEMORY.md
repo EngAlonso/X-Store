@@ -1,0 +1,1 @@
+- [Tenant currency meaning](tenant-currency.md) — changing a store's currency relabels its saved amounts; it does not convert them.

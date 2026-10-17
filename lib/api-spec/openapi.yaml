@@ -779,7 +779,10 @@ components:
           enum: [platform_admin, tenant_admin, cashier, warehouse_manager, accountant]
         tenantId: { type: ["string", "null"] }
         tenantName: { type: ["string", "null"] }
-      required: [id, name, phone, email, role, tenantId, tenantName]
+        currency:
+          type: ["string", "null"]
+          enum: [EGP, SAR, AED, USD, EUR, GBP, null]
+      required: [id, name, phone, email, role, tenantId, tenantName, currency]
     AuthStatus:
       type: object
       properties:
@@ -870,6 +873,7 @@ components:
         phone: { type: ["string", "null"] }
         email: { type: ["string", "null"], format: email }
         businessType: { type: string }
+        currency: { $ref: "#/components/schemas/StoreCurrency" }
         status:
           type: string
           enum: [active, trial, suspended]
@@ -886,6 +890,7 @@ components:
         - phone
         - email
         - businessType
+        - currency
         - status
         - plan
         - subscriptionEndsAt
@@ -900,11 +905,12 @@ components:
         ownerPassword: { type: string, minLength: 10, maxLength: 128 }
         email: { type: ["string", "null"], format: email }
         businessType: { type: string, minLength: 1 }
+        currency: { $ref: "#/components/schemas/StoreCurrency" }
         plan:
           type: string
           enum: [monthly, half_yearly, annual, lifetime]
         subscriptionEndsAt: { type: ["string", "null"], format: date }
-      required: [name, ownerName, phone, ownerPassword, businessType, plan]
+      required: [name, ownerName, phone, ownerPassword, businessType, currency, plan]
     TenantCredentialsInput:
       type: object
       properties:
@@ -914,6 +920,7 @@ components:
     TenantUpdate:
       type: object
       properties:
+        currency: { $ref: "#/components/schemas/StoreCurrency" }
         status:
           type: string
           enum: [active, trial, suspended]
@@ -921,6 +928,9 @@ components:
           type: string
           enum: [monthly, half_yearly, annual, lifetime]
         subscriptionEndsAt: { type: ["string", "null"], format: date }
+    StoreCurrency:
+      type: string
+      enum: [EGP, SAR, AED, USD, EUR, GBP]
     TeamMember:
       type: object
       properties:
