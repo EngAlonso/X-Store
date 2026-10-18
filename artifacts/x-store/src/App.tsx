@@ -53,6 +53,13 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 type SocialLinkKey = keyof AuthStatus['socialLinks'];
 type SocialLinkInputValues = Record<SocialLinkKey, string>;
+type PublicSocialMethod = {
+  key: SocialLinkKey | 'whatsapp';
+  label: string;
+  icon: IconType;
+  color: string;
+  href: string;
+};
 const SOCIAL_PLATFORMS: {
   key: SocialLinkKey;
   label: string;
@@ -62,7 +69,6 @@ const SOCIAL_PLATFORMS: {
 }[] = [
   { key: 'facebook', label: 'Facebook', icon: FaFacebook, color: '#1877F2', placeholder: 'https://facebook.com/your-page' },
   { key: 'instagram', label: 'Instagram', icon: FaInstagram, color: '#C13584', placeholder: 'https://instagram.com/your-page' },
-  { key: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp, color: '#25D366', placeholder: 'https://wa.me/201012345678' },
   { key: 'tiktok', label: 'TikTok', icon: FaTiktok, color: '#111827', placeholder: 'https://tiktok.com/@your-page' },
   { key: 'snapchat', label: 'Snapchat', icon: FaSnapchat, color: '#D7B600', placeholder: 'https://snapchat.com/add/your-page' },
   { key: 'x', label: 'X', icon: FaXTwitter, color: '#111111', placeholder: 'https://x.com/your-page' },
@@ -81,7 +87,6 @@ function nullableSocialLinks(links: SocialLinkInputValues): AuthStatus['socialLi
   return {
     facebook: links.facebook.trim() || null,
     instagram: links.instagram.trim() || null,
-    whatsapp: links.whatsapp.trim() || null,
     tiktok: links.tiktok.trim() || null,
     snapchat: links.snapchat.trim() || null,
     x: links.x.trim() || null,
@@ -318,13 +323,22 @@ function ContactMethods({status}:{status?:Pick<AuthStatus,'supportPhone'|'suppor
     status?.supportPhone&&{icon:Phone,label:'اتصال',href:`tel:${status.supportPhone}`,value:status.supportPhone},
     status?.supportEmail&&{icon:Mail,label:'البريد',href:`mailto:${status.supportEmail}`,value:status.supportEmail},
   ].filter(Boolean) as {icon:typeof Phone;label:string;href:string;value:string}[];
-  const socialMethods=SOCIAL_PLATFORMS.flatMap(platform=>{
-    const savedLink=status?.socialLinks?.[platform.key];
-    const whatsappFallback=platform.key==='whatsapp'&&status?.supportWhatsapp
-      ?`https://wa.me/${status.supportWhatsapp.replace(/\D/g,'')}`
-      :null;
-    const href=savedLink||whatsappFallback;
+  const socialMethods:PublicSocialMethod[]=SOCIAL_PLATFORMS.flatMap(platform=>{
+    const href=status?.socialLinks?.[platform.key];
     return href?[{...platform,href}]:[];
+  });
+  const whatsappDigits=getWhatsAppDigits(status?.supportWhatsapp)
+    ||status?.supportWhatsapp?.replace(/[٠-٩۰-۹]/g,digit=>{
+      const code=digit.charCodeAt(0);
+      return String(code>=0x660&&code<=0x669?code-0x660:code-0x6f0);
+    }).replace(/\D/g,'')
+    ||'';
+  if(whatsappDigits)socialMethods.splice(2,0,{
+    key:'whatsapp',
+    label:'WhatsApp',
+    icon:FaWhatsapp,
+    color:'#25D366',
+    href:`https://wa.me/${whatsappDigits}`,
   });
   if(!methods.length&&!socialMethods.length)return <div className="auth-contact-empty">لم تُضف إدارة المنصة معلومات التواصل بعد.</div>;
   return <div className="auth-contact-list">
@@ -583,7 +597,7 @@ function PlatformSettingsPage() {
     <Card className="settings-card"><SectionHead title="وسائل التواصل" detail="اترك الحقل فارغاً لإخفائه من صفحة اتصل بنا."/>
       {settings.isLoading?<StateBlock loading error={false} onRetry={()=>settings.refetch()} empty={false}/>:settings.isError?<StateBlock loading={false} error onRetry={()=>settings.refetch()} empty={false}/>:<form className="form-grid settings-form" onSubmit={submit}>
         <label className="field"><span>رقم هاتف الدعم</span><input type="tel" value={values.supportPhone} onChange={e=>setValues({...values,supportPhone:e.target.value})} placeholder="+20 10 1234 5678"/></label>
-        <label className="field"><span>رقم واتساب الدعم</span><input type="tel" value={values.supportWhatsapp} onChange={e=>setValues({...values,supportWhatsapp:e.target.value})} placeholder="+20 10 1234 5678"/></label>
+        <label className="field"><span>رقم واتساب</span><input type="tel" value={values.supportWhatsapp} onChange={e=>setValues({...values,supportWhatsapp:e.target.value})} placeholder="+20 10 1234 5678"/><small className="field-hint">أدخل الرقم مع رمز الدولة؛ سيظهر للزوار كرابط واتساب تلقائيًا.</small></label>
         <label className="field field-wide"><span>البريد الإلكتروني للدعم</span><input type="email" value={values.supportEmail} onChange={e=>setValues({...values,supportEmail:e.target.value})} placeholder="support@example.com"/></label>
         <div className="social-settings-block field-wide">
           <div className="social-settings-heading">

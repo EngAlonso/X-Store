@@ -101,7 +101,6 @@ export const xstorePlatformSettings = pgTable("xstore_platform_settings", {
     .default({
       facebook: null,
       instagram: null,
-      whatsapp: null,
       tiktok: null,
       snapchat: null,
       x: null,
@@ -119,7 +118,6 @@ export const xstorePlatformSettings = pgTable("xstore_platform_settings", {
 export type XStoreSocialLinks = {
   facebook: string | null;
   instagram: string | null;
-  whatsapp: string | null;
   tiktok: string | null;
   snapchat: string | null;
   x: string | null;

@@ -917,7 +917,6 @@ components:
       properties:
         facebook: { type: ["string", "null"], format: uri, maxLength: 2048 }
         instagram: { type: ["string", "null"], format: uri, maxLength: 2048 }
-        whatsapp: { type: ["string", "null"], format: uri, maxLength: 2048 }
         tiktok: { type: ["string", "null"], format: uri, maxLength: 2048 }
         snapchat: { type: ["string", "null"], format: uri, maxLength: 2048 }
         x: { type: ["string", "null"], format: uri, maxLength: 2048 }
@@ -926,7 +925,7 @@ components:
         telegram: { type: ["string", "null"], format: uri, maxLength: 2048 }
         threads: { type: ["string", "null"], format: uri, maxLength: 2048 }
         pinterest: { type: ["string", "null"], format: uri, maxLength: 2048 }
-      required: [facebook, instagram, whatsapp, tiktok, snapchat, x, youtube, linkedin, telegram, threads, pinterest]
+      required: [facebook, instagram, tiktok, snapchat, x, youtube, linkedin, telegram, threads, pinterest]
     DashboardSummary:
       type: object
       properties:

@@ -179,6 +179,27 @@ async function getTenantVatRate(tenantId: string): Promise<number | null> {
   return tenant ? toNumber(tenant.vatRate) : null;
 }
 
+function legacyWhatsappNumber(link: string | null | undefined): string | null {
+  if (!link) return null;
+  try {
+    const url = new URL(link);
+    let phone: string | null = null;
+    if (url.hostname === "wa.me" || url.hostname === "www.wa.me") {
+      phone = url.pathname.split("/").filter(Boolean)[0] ?? null;
+    } else if (
+      url.hostname === "api.whatsapp.com" ||
+      url.hostname === "web.whatsapp.com" ||
+      url.hostname === "whatsapp.com"
+    ) {
+      phone = url.searchParams.get("phone");
+    }
+    const digits = phone?.replace(/\D/g, "") ?? "";
+    return /^\d{8,15}$/.test(digits) ? `+${digits}` : null;
+  } catch {
+    return null;
+  }
+}
+
 async function contactSettingsDto() {
   const [settings] = await db
     .select()
@@ -187,12 +208,16 @@ async function contactSettingsDto() {
     .limit(1);
   return {
     supportPhone: settings?.supportPhone ?? null,
-    supportWhatsapp: settings?.supportWhatsapp ?? null,
+    supportWhatsapp:
+      settings?.supportWhatsapp?.trim() ||
+      legacyWhatsappNumber(
+        (settings?.socialLinks as (XStoreSocialLinks & { whatsapp?: string | null }) | undefined)
+          ?.whatsapp,
+      ),
     supportEmail: settings?.supportEmail ?? null,
     socialLinks: {
       facebook: settings?.socialLinks?.facebook ?? null,
       instagram: settings?.socialLinks?.instagram ?? null,
-      whatsapp: settings?.socialLinks?.whatsapp ?? null,
       tiktok: settings?.socialLinks?.tiktok ?? null,
       snapchat: settings?.socialLinks?.snapchat ?? null,
       x: settings?.socialLinks?.x ?? null,
@@ -208,7 +233,6 @@ async function contactSettingsDto() {
 const socialLinkLabels: Record<keyof XStoreSocialLinks, string> = {
   facebook: "Facebook",
   instagram: "Instagram",
-  whatsapp: "WhatsApp",
   tiktok: "TikTok",
   snapchat: "Snapchat",
   x: "X",

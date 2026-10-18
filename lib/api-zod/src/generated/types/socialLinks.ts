@@ -21,11 +21,6 @@ export interface SocialLinks {
      * @maxLength 2048
      * @nullable
      */
-  whatsapp: string | null;
-  /**
-     * @maxLength 2048
-     * @nullable
-     */
   tiktok: string | null;
   /**
      * @maxLength 2048
