@@ -216,6 +216,21 @@ function Home() {
     <section className="landing-ribbon"><span>مصمم لروتين المتجر الحقيقي</span><b>من أول مسح للمنتج</b><i/><b>حتى إغلاق الوردية</b><i/><b>كل شيء واضح</b></section>
     <section className="feature-section"><div className="section-heading"><div className="eyebrow">أدوات يومية، بدون تعقيد</div><h2>تركيز على ما يحتاجه<br/>متجرك فعلاً.</h2><p>واجهة عربية مريحة وسير عمل مترابط يقلل الخطوات ويترك لك مساحة للاهتمام بعملائك.</p></div><div className="feature-grid"><article className="feature feature-large"><span className="feature-icon"><ShoppingCart size={21}/></span><div><h3>بيع أسرع عند الصندوق</h3><p>ابحث أو امسح الباركود، أضف الخصم واختر طريقة الدفع. شاشة واضحة تبقى سهلة القراءة طوال الوردية.</p><span className="feature-foot">نقطة بيع سريعة <ArrowUpLeft size={15}/></span></div><div className="feature-receipt"><div className="receipt-head">X-Store <span>فاتورة</span></div><div className="receipt-line">قميص قطني <b>١٢٠ ر.س</b></div><div className="receipt-line">حزام جلدي <b>٨٥ ر.س</b></div><div className="receipt-total">الإجمالي <b>٢٠٥ ر.س</b></div><span className="receipt-mark">تم الدفع</span></div></article><article className="feature"><span className="feature-icon feature-icon-gold"><Boxes size={21}/></span><h3>مخزون يعرف تفاصيله</h3><p>تابع المقاسات والألوان والكميات وتواريخ الصلاحية من قائمة واحدة.</p><div className="stock-preview"><span><i/> حذاء رياضي · ٣ ألوان</span><b>١٨ قطعة</b></div></article><article className="feature"><span className="feature-icon feature-icon-red"><Activity size={21}/></span><h3>صورة صادقة عن الأداء</h3><p>اطّلع على المبيعات والاشتراكات ونشاط المتجر حسب صلاحيتك.</p><div className="mini-metrics"><span>المبيعات <b>١٢٨</b></span><span>متاجر نشطة <b>٢٤</b></span></div></article></div></section>
     <section className="landing-quote"><div className="quote-mark">“</div><blockquote>عندما تكون الأرقام واضحة،<br/>تكون قرارات اليوم أسهل.</blockquote><span>صُمم لأصحاب المتاجر الذين يديرون التفاصيل كل يوم.</span><div className="quote-seal"><img src={`${basePath}/x-store-mark.png`} alt=""/></div></section>
+    <section className="store-fit-section" aria-labelledby="store-fit-title">
+      <div className="store-fit-inner">
+        <div className="store-fit-heading">
+          <span className="eyebrow">مجالات مختلفة، إدارة واحدة</span>
+          <h2 id="store-fit-title">متجرك أيًا كان مجاله،<br/>إدارته أسهل.</h2>
+          <p>من متابعة المخزون إلى تسجيل المبيعات، X-Store يرتّب شغل اليوم في مساحة واحدة.</p>
+        </div>
+        <div className="store-fit-grid">
+          <article className="store-fit-card"><span className="store-fit-icon"><Package size={20}/></span><div><h3>الملابس والأحذية</h3><p>تابع الأصناف والمقاسات والألوان من المخزون إلى نقطة البيع.</p></div></article>
+          <article className="store-fit-card"><span className="store-fit-icon store-fit-icon-sage"><ShoppingCart size={20}/></span><div><h3>البقالة والسوبرماركت</h3><p>نظّم الكميات وسجّل حركة المبيعات اليومية بسهولة.</p></div></article>
+          <article className="store-fit-card"><span className="store-fit-icon store-fit-icon-gold"><Smartphone size={20}/></span><div><h3>الإلكترونيات والإكسسوارات</h3><p>تابع الأصناف ومبيعاتها وتقاريرها بوضوح.</p></div></article>
+          <article className="store-fit-card"><span className="store-fit-icon store-fit-icon-rose"><Boxes size={20}/></span><div><h3>العطور والتجميل</h3><p>رتّب المنتجات والمخزون وراقب حركتها اليومية.</p></div></article>
+        </div>
+      </div>
+    </section>
   </main>
   </>;
 }
