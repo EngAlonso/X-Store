@@ -3,6 +3,10 @@ type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/pos-redesign/CalmCounter.tsx": () => import("../components/mockups/pos-redesign/CalmCounter.tsx"),
   "./components/mockups/pos-redesign/Current.tsx": () => import("../components/mockups/pos-redesign/Current.tsx"),
+  "./components/mockups/xstore-contact/Current.tsx": () => import("../components/mockups/xstore-contact/Current.tsx"),
+  "./components/mockups/xstore-contact/Refreshed.tsx": () => import("../components/mockups/xstore-contact/Refreshed.tsx"),
+  "./components/mockups/xstore-contact-footer/Current.tsx": () => import("../components/mockups/xstore-contact-footer/Current.tsx"),
+  "./components/mockups/xstore-contact-footer/Refreshed.tsx": () => import("../components/mockups/xstore-contact-footer/Refreshed.tsx"),
   "./components/mockups/xstore-login/Current.tsx": () => import("../components/mockups/xstore-login/Current.tsx"),
   "./components/mockups/xstore-login/Unified.tsx": () => import("../components/mockups/xstore-login/Unified.tsx"),
   "./components/mockups/xstore-login-desktop/Current.tsx": () => import("../components/mockups/xstore-login-desktop/Current.tsx"),
