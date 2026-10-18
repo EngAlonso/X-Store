@@ -647,7 +647,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { 
 .contact-page-state-error .contact-state-icon { background:#f9eded;color:#ae5d63; }
 .contact-page-state-error .button { margin-top:8px; }
 .contact-page-empty { margin-top:21px; }
-.site-footer { position:relative;isolation:isolate;flex-shrink:0;overflow:hidden;width:100%;margin-top:auto;padding:0 32px;border-top:5px solid #bdd3c0;background:linear-gradient(112deg,#123b1f 0%,#0b4619 62%,#164b25 100%);box-shadow:0 -12px 32px #081d0e22;color:#fff; }
+.site-footer { position:relative;isolation:isolate;flex-shrink:0;overflow:hidden;width:100%;margin-top:auto;padding:0 32px;background:linear-gradient(112deg,#0B4619 0%,#105d29 48%,#1d7d38 100%);color:#fff; }
 .site-footer-inner { position:relative;z-index:1;width:min(100%,1180px);display:grid;grid-template-columns:minmax(0,1.25fr) minmax(150px,.7fr) minmax(250px,.9fr);gap:54px;margin:auto;padding:43px 0 36px; }
 .site-footer-brand .brand { color:#fff;font-size:20px; }
 .site-footer-brand .brand img { width:37px;height:37px;border:1px solid #ffffff2e;border-radius:11px; }
