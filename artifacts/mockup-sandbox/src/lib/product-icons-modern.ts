@@ -65,7 +65,9 @@ export type ProductIconKind =
   | "display"
   | "electronics"
   | "shoes"
+  | "sneakers"
   | "pants"
+  | "jacket"
   | "clothing"
   | "watch"
   | "books"
@@ -265,12 +267,26 @@ const productIconRules: ProductIconRule[] = [
     categoryTerms: ["إلكترونيات", "الكترونيات", "إلكتروني", "أجهزة كهربائية", "اكسسوارات", "electronics", "electronic accessories"],
   },
   {
+    kind: "sneakers",
+    Icon: createLucideIcon("Sneakers", [
+      ["path", { d: "M3 15.5c2.7 0 4.5-1.1 5.6-4 .3-.8 1.3-1 1.9-.4l2.5 2.4c1.1 1 2.5 1.5 4 1.5H18a3 3 0 0 1 3 3v3H3v-5.5Z", key: "sneaker-outline" }],
+      ["path", { d: "M3 18h18M8.5 13l1.5 1M10.5 12l1.5 1", key: "sneaker-sole-and-laces" }],
+    ]),
+    tone: "clay",
+    nameTerms: [
+      "كوتشي", "كوتشيات", "كوتشي رياضي", "كوتشي جري", "سنيكر", "سنيكرز",
+      "جزمة رياضية", "حذاء رياضي", "حذاء جري", "حذاء للجري", "شوز رياضي",
+      "sneaker", "sneakers", "trainer", "trainers", "running shoes", "athletic shoes", "sports shoes",
+    ],
+    categoryTerms: ["أحذية رياضية", "أحذية جري", "سنيكرز", "كوتشي", "sneakers", "trainers", "athletic shoes"],
+  },
+  {
     kind: "shoes",
     Icon: Footprints,
     tone: "clay",
     nameTerms: [
-      "حذاء", "أحذية", "جزمة", "كوتشي", "شوز", "شبشب", "نعال", "شحاطة", "صندل", "سليبر", "بوط", "كروكس",
-      "shoe", "sneaker", "sneakers", "sandal", "slippers", "footwear", "boots", "crocs",
+      "حذاء", "أحذية", "جزمة", "شوز", "شبشب", "نعال", "شحاطة", "صندل", "سليبر", "بوط", "كروكس",
+      "shoe", "sandal", "slippers", "footwear", "boots", "crocs",
     ],
     categoryTerms: ["أحذية", "احذية", "شوز", "نعال", "shoes", "footwear"],
   },
@@ -289,13 +305,26 @@ const productIconRules: ProductIconRule[] = [
     categoryTerms: ["بناطيل", "بنطلونات", "سراويل", "pants", "trousers", "jeans", "bottoms"],
   },
   {
+    kind: "jacket",
+    Icon: createLucideIcon("Jacket", [
+      ["path", { d: "m8 3 4 3 4-3 3 2 2 8-4 1-1-3v10H8V11l-1 3-4-1 2-8 3-2Z", key: "jacket-outline" }],
+      ["path", { d: "M12 6v15M9 5.5l3 3 3-3M7 12l1-1M17 11l1 1", key: "jacket-zipper-and-collar" }],
+    ]),
+    tone: "sage",
+    nameTerms: [
+      "جاكيت", "جاكت", "جاكيتات", "جاكتات", "جكيت", "معطف",
+      "jacket", "jackets", "coat", "coats", "windbreaker", "parka", "outerwear", "blazer",
+    ],
+    categoryTerms: ["جاكيتات", "معاطف", "ملابس خارجية", "outerwear", "jackets", "coats"],
+  },
+  {
     kind: "clothing",
     Icon: Shirt,
     tone: "sage",
     nameTerms: [
       "قميص", "تيشيرت", "تيشرت", "تي شيرت", "بلوزة", "فستان",
-      "جاكيت", "جاكت", "عباية", "عبايه", "عباءة", "جلابية", "دشداشة", "ثوب", "هدوم", "ملابس", "شراب", "جوارب",
-      "شورت", "shirt", "t shirt", "tee", "hoodie", "jacket", "clothing", "dress", "apparel",
+      "عباية", "عبايه", "عباءة", "جلابية", "دشداشة", "ثوب", "هدوم", "ملابس", "شراب", "جوارب",
+      "شورت", "shirt", "t shirt", "tee", "hoodie", "clothing", "dress", "apparel",
     ],
     categoryTerms: ["ملابس", "أزياء", "clothing", "apparel", "fashion"],
   },
@@ -522,7 +551,8 @@ const normalizedProductIconRules = productIconRules.map(rule => ({
 const genericIcon = { kind: "general", Icon: Package, tone: "sage" } as const;
 
 const relatedProductIconKinds: Partial<Record<ProductIconKind, ProductIconKind[]>> = {
-  clothing: ["pants"],
+  clothing: ["pants", "jacket"],
+  shoes: ["sneakers"],
   bakery: ["pizza"],
 };
 
@@ -537,12 +567,17 @@ function firstPhrasePosition(tokens: Set<string>[], phrase: string[]): number | 
 function bestRuleFor(tokens: Set<string>[], field: "nameTerms" | "categoryTerms") {
   let bestRule: (typeof normalizedProductIconRules)[number] | undefined;
   let bestPosition = Number.POSITIVE_INFINITY;
+  let bestTermLength = 0;
   for (const rule of normalizedProductIconRules) {
     for (const term of rule[field]) {
       const position = firstPhrasePosition(tokens, term);
-      if (position !== null && position < bestPosition) {
+      if (
+        position !== null &&
+        (position < bestPosition || (position === bestPosition && term.length > bestTermLength))
+      ) {
         bestRule = rule;
         bestPosition = position;
+        bestTermLength = term.length;
       }
     }
   }
