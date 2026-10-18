@@ -14,5 +14,7 @@ export const modules: ModuleMap = {
   "./components/mockups/xstore-product-form/Branded.tsx": () => import("../components/mockups/xstore-product-form/Branded.tsx"),
   "./components/mockups/xstore-product-form/Current.tsx": () => import("../components/mockups/xstore-product-form/Current.tsx"),
   "./components/mockups/xstore-product-icons/Current.tsx": () => import("../components/mockups/xstore-product-icons/Current.tsx"),
-  "./components/mockups/xstore-product-icons/Modern.tsx": () => import("../components/mockups/xstore-product-icons/Modern.tsx")
+  "./components/mockups/xstore-product-icons/Modern.tsx": () => import("../components/mockups/xstore-product-icons/Modern.tsx"),
+  "./components/mockups/xstore-store-fit/Current.tsx": () => import("../components/mockups/xstore-store-fit/Current.tsx"),
+  "./components/mockups/xstore-store-fit/Refined.tsx": () => import("../components/mockups/xstore-store-fit/Refined.tsx")
 };
