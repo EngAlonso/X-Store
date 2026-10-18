@@ -4,11 +4,11 @@ import { getProductIcon as getModernProductIcon } from "@/lib/product-icons-mode
 const samples = [
   { name: "قهوة عربية", category: "عام" },
   { name: "موية زمزم", category: "عام" },
-  { name: "دشداشة خليجية", category: "عام" },
+  { name: "بنطلون جينز", category: "عام" },
   { name: "جوال سامسونج", category: "عام" },
   { name: "شوز رياضي", category: "عام" },
   { name: "AirPods Pro", category: "عام" },
-  { name: "خبز صامولي", category: "عام" },
+  { name: "بيتزا مارجريتا", category: "عام" },
   { name: "جنطة جلدية", category: "عام" },
 ];
 

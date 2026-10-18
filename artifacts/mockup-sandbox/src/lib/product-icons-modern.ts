@@ -13,6 +13,7 @@ import {
   CookingPot,
   Cookie,
   Croissant,
+  createLucideIcon,
   CupSoda,
   Dog,
   Drumstick,
@@ -28,6 +29,7 @@ import {
   NotebookPen,
   Package,
   Pill,
+  Pizza,
   Plug,
   Shirt,
   ShoppingBag,
@@ -47,6 +49,7 @@ export type ProductIconTone = "sage" | "gold" | "mauve" | "blue" | "clay" | "ros
 export type ProductIconKind =
   | "coffee"
   | "drinks"
+  | "pizza"
   | "bakery"
   | "snacks"
   | "produce"
@@ -62,6 +65,7 @@ export type ProductIconKind =
   | "display"
   | "electronics"
   | "shoes"
+  | "pants"
   | "clothing"
   | "watch"
   | "books"
@@ -117,6 +121,17 @@ const productIconRules: ProductIconRule[] = [
       "juice", "water", "soda", "cola", "soft drink", "sparkling water", "energy drink", "bottled water",
     ],
     categoryTerms: ["مشروبات", "مشروب", "عصائر", "عصاير", "مياه", "موية", "مويه", "مشروبات غازية", "beverage", "drinks", "soft drinks"],
+  },
+  {
+    kind: "pizza",
+    Icon: Pizza,
+    tone: "gold",
+    nameTerms: [
+      "بيتزا", "بيتسا", "بيتزا مارجريتا", "بيتزا مارغريتا", "بيتزا سجق", "بيتزا فراخ",
+      "بيتزا خضار", "بيتزا جبنة", "pizza", "pizzas", "pepperoni pizza", "margherita pizza",
+      "frozen pizza",
+    ],
+    categoryTerms: ["بيتزا", "بيتسا", "pizzeria", "pizza", "pizzas"],
   },
   {
     kind: "snacks",
@@ -260,13 +275,27 @@ const productIconRules: ProductIconRule[] = [
     categoryTerms: ["أحذية", "احذية", "شوز", "نعال", "shoes", "footwear"],
   },
   {
+    kind: "pants",
+    Icon: createLucideIcon("Pants", [
+      ["path", { d: "M7 3h10l1.5 18h-5l-1.5-7-1.5 7h-5L7 3Z", key: "pants-outline" }],
+      ["path", { d: "M7.5 7h9M12 3v11", key: "pants-seams" }],
+    ]),
+    tone: "blue",
+    nameTerms: [
+      "بنطلون", "بنطلونات", "بنطال", "بناطيل", "سروال", "سراويل", "جينز", "بنطلون جينز",
+      "بنطلون قماش", "بنطلون رياضي", "بنطلون رجالي", "بنطلون نسائي", "ليجنز", "ليقنز",
+      "pants", "trouser", "trousers", "jeans", "leggings", "slacks",
+    ],
+    categoryTerms: ["بناطيل", "بنطلونات", "سراويل", "pants", "trousers", "jeans", "bottoms"],
+  },
+  {
     kind: "clothing",
     Icon: Shirt,
     tone: "sage",
     nameTerms: [
-      "قميص", "تيشيرت", "تيشرت", "تي شيرت", "بلوزة", "بنطلون", "سروال", "فستان",
+      "قميص", "تيشيرت", "تيشرت", "تي شيرت", "بلوزة", "فستان",
       "جاكيت", "جاكت", "عباية", "عبايه", "عباءة", "جلابية", "دشداشة", "ثوب", "هدوم", "ملابس", "شراب", "جوارب",
-      "شورت", "جينز", "shirt", "t shirt", "tee", "hoodie", "jacket", "clothing", "dress", "trousers", "pants", "jeans", "apparel",
+      "شورت", "shirt", "t shirt", "tee", "hoodie", "jacket", "clothing", "dress", "apparel",
     ],
     categoryTerms: ["ملابس", "أزياء", "clothing", "apparel", "fashion"],
   },
@@ -492,6 +521,11 @@ const normalizedProductIconRules = productIconRules.map(rule => ({
 
 const genericIcon = { kind: "general", Icon: Package, tone: "sage" } as const;
 
+const relatedProductIconKinds: Partial<Record<ProductIconKind, ProductIconKind[]>> = {
+  clothing: ["pants"],
+  bakery: ["pizza"],
+};
+
 function firstPhrasePosition(tokens: Set<string>[], phrase: string[]): number | null {
   if (!phrase.length || phrase.length > tokens.length) return null;
   for (let start = 0; start <= tokens.length - phrase.length; start += 1) {
@@ -566,5 +600,7 @@ export function matchesProductSearch(product: ProductSearchTarget, query: string
   const isCategoryOnlyQuery = queryTokens.every((token) =>
     [...token].some((variant) => ruleVocabulary.includes(variant)),
   );
-  return isCategoryOnlyQuery && getProductIcon(product).kind === queryRule.kind;
+  const productKind = getProductIcon(product).kind;
+  const matchingKinds = [queryRule.kind, ...(relatedProductIconKinds[queryRule.kind] ?? [])];
+  return isCategoryOnlyQuery && matchingKinds.includes(productKind);
 }
