@@ -152,6 +152,58 @@ const nav = [
 function Logo({ compact = false }: { compact?: boolean }) {
   return <Link href="/" className="brand" data-testid="link-brand"><img src={`${basePath}/x-store-mark.png`} alt="" /><span>X-Store</span>{!compact && <small>نظام إدارة متجرك</small>}</Link>;
 }
+function SiteFooter() {
+  const { data: status } = useGetXStoreAuthStatus();
+  const whatsappDigits = getWhatsAppDigits(status?.supportWhatsapp)
+    || status?.supportWhatsapp?.replace(/[٠-٩۰-۹]/g, digit => {
+      const code = digit.charCodeAt(0);
+      return String(code >= 0x660 && code <= 0x669 ? code - 0x660 : code - 0x6f0);
+    }).replace(/\D/g, '')
+    || '';
+  const socialLinks: { key: string; label: string; icon: IconType; color: string; href?: string | null }[] = [
+    { key: 'facebook', label: 'فيسبوك', icon: FaFacebook, color: '#1877F2', href: status?.socialLinks?.facebook },
+    { key: 'whatsapp', label: 'واتساب', icon: FaWhatsapp, color: '#25D366', href: whatsappDigits ? `https://wa.me/${whatsappDigits}` : undefined },
+    { key: 'instagram', label: 'إنستغرام', icon: FaInstagram, color: '#E4405F', href: status?.socialLinks?.instagram },
+  ];
+
+  return <footer className="site-footer" dir="rtl">
+    <div className="site-footer-inner">
+      <div className="site-footer-brand">
+        <Logo compact/>
+        <p>أدوات متجرك اليومية، في مساحة عمل واحدة واضحة.</p>
+        <span className="site-footer-note"><ShieldCheck size={15}/> نظام إدارة متجرك</span>
+        <div className="site-footer-social">
+          <b>تابعنا على منصات التواصل</b>
+          <div className="site-footer-social-links" aria-label="حسابات X-Store على منصات التواصل">
+            {socialLinks.map(({ key, label, icon: Icon, color, href }) => href
+              ? <a key={key} className="site-footer-social-link" href={href} target="_blank" rel="noopener noreferrer" aria-label={`X-Store على ${label}`} title={label}>
+                  <Icon size={18} aria-hidden="true" style={{ color }}/>
+                </a>
+              : <span key={key} className="site-footer-social-link site-footer-social-link-disabled" aria-label={`رابط ${label} غير مضاف`} title={`أضف رابط ${label} من إعدادات التواصل`}>
+                  <Icon size={18} aria-hidden="true" style={{ color }}/>
+                </span>)}
+          </div>
+        </div>
+      </div>
+      <nav className="site-footer-nav" aria-label="روابط سريعة">
+        <b>روابط سريعة</b>
+        <Link href="/">الرئيسية</Link>
+        <Link href="/contact">اتصل بنا</Link>
+        <Link href="/sign-in">تسجيل الدخول</Link>
+      </nav>
+      <div className="site-footer-account">
+        <span>مساحة عملك</span>
+        <b>كل متجرك، في مكان واحد.</b>
+        <Link href="/sign-in">دخول الحساب <ArrowUpLeft size={16}/></Link>
+      </div>
+    </div>
+    <div className="site-footer-bottom">
+      <span>© {new Date().getFullYear()} X-Store. جميع الحقوق محفوظة.</span>
+      <span>إدارة أوضح. متجر أقوى.</span>
+    </div>
+    <span className="site-footer-glow" aria-hidden="true"/>
+  </footer>;
+}
 function Home() {
   const [, go] = useLocation();
   return <>
@@ -164,7 +216,6 @@ function Home() {
     <section className="landing-ribbon"><span>مصمم لروتين المتجر الحقيقي</span><b>من أول مسح للمنتج</b><i/><b>حتى إغلاق الوردية</b><i/><b>كل شيء واضح</b></section>
     <section className="feature-section"><div className="section-heading"><div className="eyebrow">أدوات يومية، بدون تعقيد</div><h2>تركيز على ما يحتاجه<br/>متجرك فعلاً.</h2><p>واجهة عربية مريحة وسير عمل مترابط يقلل الخطوات ويترك لك مساحة للاهتمام بعملائك.</p></div><div className="feature-grid"><article className="feature feature-large"><span className="feature-icon"><ShoppingCart size={21}/></span><div><h3>بيع أسرع عند الصندوق</h3><p>ابحث أو امسح الباركود، أضف الخصم واختر طريقة الدفع. شاشة واضحة تبقى سهلة القراءة طوال الوردية.</p><span className="feature-foot">نقطة بيع سريعة <ArrowUpLeft size={15}/></span></div><div className="feature-receipt"><div className="receipt-head">X-Store <span>فاتورة</span></div><div className="receipt-line">قميص قطني <b>١٢٠ ر.س</b></div><div className="receipt-line">حزام جلدي <b>٨٥ ر.س</b></div><div className="receipt-total">الإجمالي <b>٢٠٥ ر.س</b></div><span className="receipt-mark">تم الدفع</span></div></article><article className="feature"><span className="feature-icon feature-icon-gold"><Boxes size={21}/></span><h3>مخزون يعرف تفاصيله</h3><p>تابع المقاسات والألوان والكميات وتواريخ الصلاحية من قائمة واحدة.</p><div className="stock-preview"><span><i/> حذاء رياضي · ٣ ألوان</span><b>١٨ قطعة</b></div></article><article className="feature"><span className="feature-icon feature-icon-red"><Activity size={21}/></span><h3>صورة صادقة عن الأداء</h3><p>اطّلع على المبيعات والاشتراكات ونشاط المتجر حسب صلاحيتك.</p><div className="mini-metrics"><span>المبيعات <b>١٢٨</b></span><span>متاجر نشطة <b>٢٤</b></span></div></article></div></section>
     <section className="landing-quote"><div className="quote-mark">“</div><blockquote>عندما تكون الأرقام واضحة،<br/>تكون قرارات اليوم أسهل.</blockquote><span>صُمم لأصحاب المتاجر الذين يديرون التفاصيل كل يوم.</span><div className="quote-seal"><img src={`${basePath}/x-store-mark.png`} alt=""/></div></section>
-    <footer className="landing-footer"><Logo compact/><span>إدارة أوضح. متجر أقوى.</span><Link href="/contact">اتصل بنا <ArrowUpLeft size={15}/></Link><Link href="/sign-in">تسجيل الدخول <ArrowUpLeft size={15}/></Link></footer>
   </main>
   </>;
 }
@@ -212,31 +263,6 @@ function ContactPage() {
         <Link href="/sign-in" className="contact-login-link">الذهاب لتسجيل الدخول <ArrowUpLeft size={16}/></Link>
       </aside>
     </section>
-    <footer className="contact-footer">
-      <div className="contact-footer-inner">
-        <div className="contact-footer-brand">
-          <Logo compact/>
-          <p>أدوات متجرك اليومية، في مساحة عمل واحدة واضحة.</p>
-          <span className="contact-footer-note"><ShieldCheck size={15}/> نظام إدارة متجرك</span>
-        </div>
-        <nav className="contact-footer-nav" aria-label="روابط سريعة">
-          <b>روابط سريعة</b>
-          <Link href="/">الرئيسية</Link>
-          <Link href="/contact">اتصل بنا</Link>
-          <Link href="/sign-in">تسجيل الدخول</Link>
-        </nav>
-        <div className="contact-footer-account">
-          <span>مساحة عملك</span>
-          <b>كل متجرك، في مكان واحد.</b>
-          <Link href="/sign-in">دخول الحساب <ArrowUpLeft size={16}/></Link>
-        </div>
-      </div>
-      <div className="contact-footer-bottom">
-        <span>© {new Date().getFullYear()} X-Store. جميع الحقوق محفوظة.</span>
-        <span>إدارة أوضح. متجر أقوى.</span>
-      </div>
-      <span className="contact-footer-glow" aria-hidden="true"/>
-    </footer>
   </main>;
 }
 function AuthPage({ kind }: { kind: 'in' | 'up' }) {
@@ -468,7 +494,7 @@ function AppShell({ children }: { children: ReactNode }) {
    return <CurrencyContext.Provider value={(user.currency as StoreCurrency | null) || 'SAR'}><div dir="rtl" className="app-frame">
      <aside className={`sidebar ${open?'sidebar-open':''}`}><div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={()=>setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div><div className="store-chip"><span className="store-avatar">{(user.tenantName||user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{roleNames[user.role]||user.role}</small></span><ChevronDown size={15}/></div><div className="nav-caption">القائمة الرئيسية</div><nav className="side-nav">{items.map(item=><Link key={item.href} href={item.href} onClick={()=>setOpen(false)} className={`nav-link ${location===item.href?'nav-active':''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location===item.href&&<i/>}</Link>)}</nav><div className="sidebar-bottom"><div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div><div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.phone}</small></span><button type="button" className="icon-button" onClick={()=>void handleLogout()} disabled={loggingOut} title={loggingOut?'جارٍ تسجيل الخروج…':'تسجيل الخروج'} aria-label={loggingOut?'جارٍ تسجيل الخروج':'تسجيل الخروج'} data-testid="button-sign-out"><LogOut size={17}/></button></div></div></aside>
     {open&&<button aria-label="إغلاق القائمة" className="mobile-scrim" onClick={()=>setOpen(false)}/>}
-    <div className="workspace"><header className="topbar"><button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={()=>setOpen(true)}><Menu size={20}/></button><div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i=>i.href===location)?.label||'لوحة التحكم'}</b></div><div className="topbar-tools"><span className="today"><CalendarDays size={15}/> {new Intl.DateTimeFormat('ar-SA',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span><button className="icon-button notification" aria-label="الإشعارات"><Bell size={18}/><i/></button><span className="top-avatar">{user.name.slice(0,1)}</span></div></header><main className="main-content">{children}</main><footer className="workspace-footer"><span>X-Store</span><span>مساحة عمل موثوقة لمتجرك</span><span>© ٢٠٢٥</span></footer></div>
+    <div className="workspace"><header className="topbar"><button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={()=>setOpen(true)}><Menu size={20}/></button><div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i=>i.href===location)?.label||'لوحة التحكم'}</b></div><div className="topbar-tools"><span className="today"><CalendarDays size={15}/> {new Intl.DateTimeFormat('ar-SA',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span><button className="icon-button notification" aria-label="الإشعارات"><Bell size={18}/><i/></button><span className="top-avatar">{user.name.slice(0,1)}</span></div></header><main className="main-content">{children}</main></div>
    </div></CurrencyContext.Provider>;
 }
 function ProtectedLayout() {
@@ -1093,6 +1119,6 @@ function Routed() {
   return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
 }
 function App() {
-  return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><Routed/></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;
+  return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><div className="site-layout"><div className="site-route"><Routed/></div><SiteFooter/></div></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;
 }
 export default App;
