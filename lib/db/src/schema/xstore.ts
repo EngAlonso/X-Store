@@ -177,6 +177,7 @@ export const xstoreSales = pgTable(
       .notNull()
       .references(() => xstoreUsers.id),
     invoiceNo: text("invoice_no").notNull(),
+    customerPhone: text("customer_phone"),
     itemCount: integer("item_count").notNull(),
     subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
     discountAmount: numeric("discount_amount", {

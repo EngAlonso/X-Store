@@ -183,6 +183,7 @@ export const GetXStoreDashboardResponse = zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
   "invoiceNo": zod.string(),
+  "customerPhone": zod.string().nullable(),
   "itemCount": zod.number().int(),
   "subtotal": zod.number(),
   "discountAmount": zod.number(),
@@ -575,6 +576,7 @@ export const ListXStoreSalesResponseItem = zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
   "invoiceNo": zod.string(),
+  "customerPhone": zod.string().nullable(),
   "itemCount": zod.number().int(),
   "subtotal": zod.number(),
   "discountAmount": zod.number(),
@@ -624,6 +626,8 @@ export const checkoutXStoreSaleBodyDiscountAmountMin = 0;
 
 export const checkoutXStoreSaleBodyAmountReceivedMin = 0;
 
+export const checkoutXStoreSaleBodyCustomerPhoneMax = 30;
+
 
 
 export const CheckoutXStoreSaleBody = zod.object({
@@ -633,13 +637,15 @@ export const CheckoutXStoreSaleBody = zod.object({
 })).min(1),
   "discountAmount": zod.number().min(checkoutXStoreSaleBodyDiscountAmountMin),
   "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
-  "amountReceived": zod.number().min(checkoutXStoreSaleBodyAmountReceivedMin)
+  "amountReceived": zod.number().min(checkoutXStoreSaleBodyAmountReceivedMin),
+  "customerPhone": zod.string().max(checkoutXStoreSaleBodyCustomerPhoneMax).nullish()
 })
 
 export const CheckoutXStoreSaleResponse = zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
   "invoiceNo": zod.string(),
+  "customerPhone": zod.string().nullable(),
   "itemCount": zod.number().int(),
   "subtotal": zod.number(),
   "discountAmount": zod.number(),

@@ -213,6 +213,8 @@ export interface Sale {
   id: string;
   tenantId: string;
   invoiceNo: string;
+  /** @nullable */
+  customerPhone: string | null;
   itemCount: number;
   subtotal: number;
   discountAmount: number;
@@ -539,6 +541,11 @@ export interface SaleInput {
   paymentMethod: SaleInputPaymentMethod;
   /** @minimum 0 */
   amountReceived: number;
+  /**
+     * @maxLength 30
+     * @nullable
+     */
+  customerPhone?: string | null;
 }
 
 export interface ProfitLossReport {

@@ -23,6 +23,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { getProductIcon, matchesProductSearch } from '@/lib/product-icons';
+import { createWhatsAppInvoiceUrl, getWhatsAppDigits } from '@/lib/whatsapp-invoice';
 import './auth-unified.css';
 import {
   LayoutDashboard, Store, Package, ShoppingCart, ReceiptText, ScrollText, Search, Plus,
@@ -359,7 +360,21 @@ function SalesTable({sales,compact=false,onReturn,onPrint,showAmounts=true}:{sal
 function paymentName(p:string) { return p==='cash'?'نقداً':p==='card'?'بطاقة':'محفظة'; }
 function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
   const money=useMoney();
-  return <div className="modal-backdrop receipt-backdrop"><section className="modal receipt-modal" role="dialog" aria-modal="true" dir="rtl"><div className="receipt-brand"><img src={`${basePath}/x-store-mark.png`} alt=""/><b>X-Store</b><span>إيصال بيع</span></div><div className="receipt-number"><span>رقم الفاتورة</span><b className="ltr-id">{sale.invoiceNo}</b></div><div className="receipt-detail"><span>التاريخ</span><b>{dateLabel(sale.createdAt)}</b></div><div className="receipt-detail"><span>عدد الأصناف</span><b>{fmt(sale.itemCount)}</b></div><div className="receipt-detail"><span>طريقة الدفع</span><b>{paymentName(sale.paymentMethod)}</b></div><div className="receipt-divider"/><div className="receipt-detail"><span>المجموع الفرعي</span><b>{money(sale.subtotal)}</b></div><div className="receipt-detail"><span>الخصم</span><b>{money(sale.discountAmount)}</b></div><div className="receipt-detail"><span>الضريبة</span><b>{money(sale.taxAmount)}</b></div><div className="receipt-grand"><span>الإجمالي</span><b>{money(sale.total)}</b></div><div className="receipt-detail"><span>المبلغ المستلم</span><b>{money(sale.amountReceived)}</b></div><div className="receipt-detail"><span>الباقي</span><b>{money(sale.changeAmount)}</b></div><p className="receipt-thanks">شكراً لزيارتكم</p><div className="modal-actions receipt-actions"><button className="button button-quiet" onClick={close}>إغلاق</button><button className="button button-primary" onClick={()=>window.print()}><Printer size={16}/> طباعة الإيصال</button></div></section></div>;
+  const whatsappMessage=[
+    `فاتورة بيع رقم ${sale.invoiceNo}`,
+    `التاريخ: ${dateLabel(sale.createdAt)}`,
+    `عدد الأصناف: ${fmt(sale.itemCount)}`,
+    `طريقة الدفع: ${paymentName(sale.paymentMethod)}`,
+    `المجموع الفرعي: ${money(sale.subtotal)}`,
+    `الخصم: ${money(sale.discountAmount)}`,
+    `الضريبة: ${money(sale.taxAmount)}`,
+    `الإجمالي: ${money(sale.total)}`,
+    `المبلغ المستلم: ${money(sale.amountReceived)}`,
+    `الباقي: ${money(sale.changeAmount)}`,
+    'شكراً لزيارتكم',
+  ].join('\n');
+  const whatsappUrl=createWhatsAppInvoiceUrl(sale.customerPhone,whatsappMessage);
+  return <div className="modal-backdrop receipt-backdrop"><section className="modal receipt-modal" role="dialog" aria-modal="true" dir="rtl"><div className="receipt-brand"><img src={`${basePath}/x-store-mark.png`} alt=""/><b>X-Store</b><span>إيصال بيع</span></div><div className="receipt-number"><span>رقم الفاتورة</span><b className="ltr-id">{sale.invoiceNo}</b></div><div className="receipt-detail"><span>التاريخ</span><b>{dateLabel(sale.createdAt)}</b></div><div className="receipt-detail"><span>رقم هاتف العميل</span><b className="ltr-id">{sale.customerPhone||'—'}</b></div><div className="receipt-detail"><span>عدد الأصناف</span><b>{fmt(sale.itemCount)}</b></div><div className="receipt-detail"><span>طريقة الدفع</span><b>{paymentName(sale.paymentMethod)}</b></div><div className="receipt-divider"/><div className="receipt-detail"><span>المجموع الفرعي</span><b>{money(sale.subtotal)}</b></div><div className="receipt-detail"><span>الخصم</span><b>{money(sale.discountAmount)}</b></div><div className="receipt-detail"><span>الضريبة</span><b>{money(sale.taxAmount)}</b></div><div className="receipt-grand"><span>الإجمالي</span><b>{money(sale.total)}</b></div><div className="receipt-detail"><span>المبلغ المستلم</span><b>{money(sale.amountReceived)}</b></div><div className="receipt-detail"><span>الباقي</span><b>{money(sale.changeAmount)}</b></div><p className="receipt-thanks">شكراً لزيارتكم</p><div className="modal-actions receipt-actions"><button className="button button-quiet" onClick={close}>إغلاق</button>{whatsappUrl&&<a className="button button-whatsapp" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><MessageCircle size={16}/> إرسال عبر واتساب</a>}<button className="button button-primary" onClick={()=>window.print()}><Printer size={16}/> طباعة الإيصال</button></div></section></div>;
 }
 function TenantsPage() {
   const qc=useQueryClient();
@@ -727,13 +742,17 @@ function PosPage() {
   const money=useMoney(), currency=useContext(CurrencyContext);
   const vatRate=session.data?.vatRate??.15;
   const [cart,setCart]=useState<Record<string,number>>({}),[term,setTerm]=useState(''),[discount,setDiscount]=useState('0'),[received,setReceived]=useState(''),[payment,setPayment]=useState<'cash'|'card'|'wallet'>('cash'),[heldOpen,setHeldOpen]=useState(false),[exchangeOpen,setExchangeOpen]=useState(false),[notice,setNotice]=useState('');
+  const [customerPhone,setCustomerPhone]=useState(''),[receiptSale,setReceiptSale]=useState<Sale|null>(null);
+  const customerWhatsappNumber=getWhatsAppDigits(customerPhone);
+  const customerPhoneInvalid=Boolean(customerPhone.trim()&&!customerWhatsappNumber);
   const visible=(products.data||[]).filter(p=>matchesProductSearch(p,term));
   const cartLines=(products.data||[]).filter(p=>cart[p.id]).map(p=>({...p,count:cart[p.id]}));
+  useEffect(()=>{if(!cartLines.length&&customerPhone)setCustomerPhone('')},[cartLines.length,customerPhone]);
   const subtotal=cartLines.reduce((s,p)=>s+p.price*p.count,0), disc=Math.min(subtotal,Math.max(0,Number(discount)||0)), tax=(subtotal-disc)*vatRate, total=subtotal-disc+tax;
   const add=(p:Product)=>setCart(c=>({...c,[p.id]:Math.min(p.quantity,(c[p.id]||0)+1)}));
   const mutateCart=(id:string,n:number)=>setCart(c=>{const value=(c[id]||0)+n;if(value<=0){const next={...c};delete next[id];return next}return {...c,[id]:value}});
-  function finish(){if(!cartLines.length)return;checkout.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:Number(received)||total}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
-  function park(){if(!cartLines.length)return;hold.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count}))}},{onSuccess:()=>{setCart({});qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice('تم حفظ الفاتورة المعلقة')}})}
+  function finish(){if(!cartLines.length||customerPhoneInvalid)return;checkout.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:Number(received)||total,customerPhone:customerPhone.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setCustomerPhone('');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
+  function park(){if(!cartLines.length)return;hold.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count}))}},{onSuccess:()=>{setCart({});setCustomerPhone('');qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice('تم حفظ الفاتورة المعلقة')}})}
   function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);exchange.mutate({data:{invoiceNo:String(f.get('invoiceNo')),returnItems:[{productId:String(f.get('returnProduct')),quantity:Number(f.get('returnQuantity'))}],replacementItems:[{productId:String(f.get('replacementProduct')),quantity:Number(f.get('replacementQuantity'))}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(f.get('amountReceived'))||0}},{onSuccess:r=>{setExchangeOpen(false);setNotice(`تم الاستبدال ذرياً · ${r.exchangeInvoiceNo}`);qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()})}})}
   return <>
     <div className="pos-page">
@@ -760,7 +779,7 @@ function PosPage() {
           }
         </section>
         <aside className="cart-panel">
-          <div className="cart-head"><div><h2>الطلب الحالي</h2><span>{fmt(cartLines.reduce((a,p)=>a+p.count,0))} أصناف</span></div><button className="table-action" onClick={()=>setCart({})} disabled={!cartLines.length}><Trash2 size={14}/> تفريغ</button></div>
+          <div className="cart-head"><div><h2>الطلب الحالي</h2><span>{fmt(cartLines.reduce((a,p)=>a+p.count,0))} أصناف</span></div><button className="table-action" onClick={()=>{setCart({});setCustomerPhone('')}} disabled={!cartLines.length}><Trash2 size={14}/> تفريغ</button></div>
           <div className="cart-lines">
             {cartLines.map(p=>{const {Icon,tone,kind}=getProductIcon(p);return <div className="cart-line" key={p.id}>
               <span className={`cart-line-art art-${tone}`} data-product-icon={kind}><Icon size={17} strokeWidth={1.8}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div>
@@ -776,14 +795,16 @@ function PosPage() {
           </div>
           <div className="payment-tabs">{(['cash','card','wallet'] as const).map((m,i)=>{const I=[Banknote,CreditCard,Wallet][i];return <button key={m} onClick={()=>setPayment(m)} className={payment===m?'payment-active':''}><I size={16}/>{paymentName(m)}</button>})}</div>
           {payment==='cash'&&<label className="received-field"><span>المبلغ المستلم</span><div><input type="number" min={total} value={received} onChange={e=>setReceived(e.target.value)} placeholder={fmt(total)}/><small>الباقي {money(Math.max(0,(Number(received)||total)-total))}</small></div></label>}
+          <label className="customer-phone-field"><span><Phone size={14}/> رقم هاتف العميل على الفاتورة <em>اختياري</em></span><input type="tel" inputMode="tel" autoComplete="tel" dir="ltr" value={customerPhone} onChange={e=>setCustomerPhone(e.target.value)} placeholder="+20 10 1234 5678" aria-label="رقم هاتف العميل على الفاتورة" data-testid="input-customer-phone" disabled={!cartLines.length}/><small>اكتب الرقم بمفتاح الدولة لتفعيل الإرسال عبر واتساب.</small>{customerPhoneInvalid&&<small className="customer-phone-error" role="alert">تأكد من كتابة الرقم الدولي مع مفتاح الدولة، مثل +20.</small>}</label>
           <div className="cart-actions">
             <button className="button button-quiet" onClick={park} disabled={!cartLines.length||hold.isPending}><Pause size={15}/>{hold.isPending?'جارٍ الحفظ':'تعليق'}</button>
-            <button className="button button-confirm" onClick={finish} disabled={!cartLines.length||checkout.isPending||(payment==='cash'&&Number(received)>0&&Number(received)<total)}>{checkout.isPending?'جارٍ إتمام البيع':<><CircleCheck size={17}/> إتمام البيع</>}</button>
+            <button className="button button-confirm" onClick={finish} disabled={!cartLines.length||checkout.isPending||customerPhoneInvalid||(payment==='cash'&&Number(received)>0&&Number(received)<total)}>{checkout.isPending?'جارٍ إتمام البيع':<><CircleCheck size={17}/> إتمام البيع</>}</button>
           </div>
           {(checkout.isError||hold.isError)&&<div className="form-error">تعذر تنفيذ العملية. أعد المحاولة.</div>}
         </aside>
       </div>
       {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
+      {receiptSale&&<ReceiptModal sale={receiptSale} close={()=>setReceiptSale(null)}/>}
       {heldOpen&&<Modal title="الفواتير المعلقة" close={()=>setHeldOpen(false)}><div className="held-list">
         {held.isLoading?<div className="skeleton-table"><span/><span/></div>:held.isError?<StateBlock loading={false} error onRetry={()=>held.refetch()} empty={false}/>:held.data?.length?held.data.map(h=><div className="held-item" key={h.id}><div><b className="ltr-id">{h.reference}</b><small>{h.customerName||'عميل نقدي'} · {fmt(h.itemCount)} أصناف</small></div><strong>{money(h.estimatedTotal)}</strong><button className="button button-primary button-small" onClick={()=>release.mutate({heldSaleId:h.id},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setHeldOpen(false);setNotice('تم استعادة الفاتورة')}})}><Play size={14}/> استعادة</button></div>):<div className="empty-inline">لا توجد فواتير معلقة.</div>}
       </div></Modal>}

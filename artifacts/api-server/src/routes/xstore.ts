@@ -1723,6 +1723,21 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  let customerPhone: string | null = null;
+  if (parsed.data.customerPhone?.trim()) {
+    try {
+      customerPhone = normalizePhone(parsed.data.customerPhone);
+    } catch {
+      res.status(400).json({ error: "Enter a valid customer phone number." });
+      return;
+    }
+    if (!/^\+[1-9]\d{7,14}$/.test(customerPhone)) {
+      res.status(400).json({
+        error: "Include the country calling code, such as +20.",
+      });
+      return;
+    }
+  }
   const vatRate = await getTenantVatRate(tenantId);
   if (vatRate === null) {
     res.status(404).json({ error: "Store settings not found." });
@@ -1786,6 +1801,7 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
           tenantId,
           cashierUserId: actor.id,
           invoiceNo: invoiceNumber(),
+          customerPhone,
           itemCount: priced.reduce((sum, line) => sum + line.quantity, 0),
           subtotal: String(subtotal),
           discountAmount: String(discountAmount),

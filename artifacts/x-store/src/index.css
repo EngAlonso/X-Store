@@ -1801,3 +1801,72 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 @media (prefers-reduced-motion:reduce) {
   .product-art,.product-tile:hover .product-art { transition:none;transform:none; }
 }
+
+.pos-page .customer-phone-field {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:12px;
+  color:#53685b;
+  font-size:12px;
+}
+.pos-page .customer-phone-field>span {
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.pos-page .customer-phone-field>span em {
+  margin-inline-start:auto;
+  color:#8b968e;
+  font-size:10px;
+  font-style:normal;
+}
+.pos-page .customer-phone-field input {
+  width:100%;
+  height:40px;
+  border:1px solid #dfe7dd;
+  border-radius:9px;
+  background:#fffefa;
+  color:#405b4a;
+  font-size:14px;
+  padding:0 11px;
+}
+.pos-page .customer-phone-field input:focus {
+  border-color:#7fa58a;
+  outline:2px solid rgba(85,133,98,.15);
+}
+.pos-page .customer-phone-field input:disabled {
+  background:#f4f6f1;
+  cursor:not-allowed;
+}
+.pos-page .customer-phone-field small {
+  color:#738078;
+  font-size:10px;
+  line-height:1.5;
+}
+.pos-page .customer-phone-field .customer-phone-error {
+  color:#a3473d;
+  font-weight:600;
+}
+.receipt-actions {
+  gap:8px;
+  flex-wrap:wrap;
+}
+.receipt-actions .button-whatsapp {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  border:1px solid #1e7048;
+  border-radius:8px;
+  background:#1e7048;
+  color:#fff;
+  text-decoration:none;
+}
+.receipt-actions .button-whatsapp:hover {
+  background:#185c3b;
+}
+
+@media (max-width:767px) {
+  .receipt-actions { justify-content:center; }
+}

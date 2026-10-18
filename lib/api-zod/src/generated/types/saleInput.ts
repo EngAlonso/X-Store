@@ -16,4 +16,9 @@ export interface SaleInput {
   paymentMethod: SaleInputPaymentMethod;
   /** @minimum 0 */
   amountReceived: number;
+  /**
+     * @maxLength 30
+     * @nullable
+     */
+  customerPhone?: string | null;
 }

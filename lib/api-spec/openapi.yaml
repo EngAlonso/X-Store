@@ -1070,6 +1070,7 @@ components:
           type: string
           enum: [cash, card, wallet]
         amountReceived: { type: number, minimum: 0 }
+        customerPhone: { type: ["string", "null"], maxLength: 30 }
       required: [items, discountAmount, paymentMethod, amountReceived]
     Sale:
       type: object
@@ -1077,6 +1078,7 @@ components:
         id: { type: string }
         tenantId: { type: string }
         invoiceNo: { type: string }
+        customerPhone: { type: ["string", "null"] }
         itemCount: { type: integer }
         subtotal: { type: number }
         discountAmount: { type: number }
@@ -1094,6 +1096,7 @@ components:
         - id
         - tenantId
         - invoiceNo
+        - customerPhone
         - itemCount
         - subtotal
         - discountAmount

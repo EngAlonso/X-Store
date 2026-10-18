@@ -12,6 +12,8 @@ export interface Sale {
   id: string;
   tenantId: string;
   invoiceNo: string;
+  /** @nullable */
+  customerPhone: string | null;
   itemCount: number;
   subtotal: number;
   discountAmount: number;
