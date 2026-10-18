@@ -805,3 +805,63 @@ export const ListXStoreAuditLogsResponseItem = zod.object({
 export const ListXStoreAuditLogsResponse = zod.array(ListXStoreAuditLogsResponseItem)
 
 
+/**
+ * @summary Get the tables and record counts included in a platform backup
+ */
+export const GetXStorePlatformBackupSummaryResponse = zod.object({
+  "tableCount": zod.number().int(),
+  "rowCount": zod.number().int(),
+  "tables": zod.array(zod.object({
+  "name": zod.string(),
+  "rowCount": zod.number().int()
+}))
+})
+
+
+/**
+ * @summary Download a complete backup of platform database tables
+ */
+export const DownloadXStorePlatformBackupResponse = zod.object({
+  "format": zod.enum(['xstore-platform-backup']),
+  "version": zod.literal(1),
+  "createdAt": zod.coerce.date(),
+  "tableCount": zod.number().int(),
+  "rowCount": zod.number().int(),
+  "tables": zod.array(zod.object({
+  "name": zod.string(),
+  "columns": zod.array(zod.string()),
+  "rows": zod.array(zod.record(zod.string(), zod.unknown()))
+}))
+})
+
+
+/**
+ * @summary Replace all platform database records from a backup after confirmation
+ */
+export const restoreXStorePlatformBackupBodyConfirmationMax = 64;
+
+
+
+export const RestoreXStorePlatformBackupBody = zod.object({
+  "backup": zod.object({
+  "format": zod.enum(['xstore-platform-backup']),
+  "version": zod.literal(1),
+  "createdAt": zod.coerce.date(),
+  "tableCount": zod.number().int(),
+  "rowCount": zod.number().int(),
+  "tables": zod.array(zod.object({
+  "name": zod.string(),
+  "columns": zod.array(zod.string()),
+  "rows": zod.array(zod.record(zod.string(), zod.unknown()))
+}))
+}),
+  "confirmation": zod.string().min(1).max(restoreXStorePlatformBackupBodyConfirmationMax)
+})
+
+export const RestoreXStorePlatformBackupResponse = zod.object({
+  "restoredTableCount": zod.number().int(),
+  "restoredRowCount": zod.number().int(),
+  "restoredAt": zod.coerce.date()
+})
+
+

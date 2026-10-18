@@ -725,6 +725,79 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /xstore/platform-backup/summary:
+    get:
+      operationId: getXStorePlatformBackupSummary
+      tags: [xstore]
+      summary: Get the tables and record counts included in a platform backup
+      responses:
+        "200":
+          description: Current backup scope
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/XStorePlatformBackupSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /xstore/platform-backup:
+    get:
+      operationId: downloadXStorePlatformBackup
+      tags: [xstore]
+      summary: Download a complete backup of platform database tables
+      responses:
+        "200":
+          description: Portable JSON backup file
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+              description: Download filename
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/XStorePlatformBackup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /xstore/platform-backup/restore:
+    post:
+      operationId: restoreXStorePlatformBackup
+      tags: [xstore]
+      summary: Replace all platform database records from a backup after confirmation
+      requestBody:
+        required: true
+        content:
+          application/vnd.xstore.platform-backup+json:
+            schema:
+              $ref: "#/components/schemas/XStorePlatformBackupRestoreInput"
+      responses:
+        "200":
+          description: Platform data restored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/XStorePlatformBackupRestoreResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Backup does not match the current database schema
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "413":
+          description: Backup file exceeds the accepted upload size
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
 components:
   responses:
     BadRequest:
@@ -1228,4 +1301,71 @@ components:
         - entityId
         - details
         - createdAt
+    XStorePlatformBackupSummary:
+      type: object
+      properties:
+        tableCount: { type: integer }
+        rowCount: { type: integer }
+        tables:
+          type: array
+          items:
+            $ref: "#/components/schemas/XStorePlatformBackupTableSummary"
+      required: [tableCount, rowCount, tables]
+    XStorePlatformBackupTableSummary:
+      type: object
+      properties:
+        name: { type: string }
+        rowCount: { type: integer }
+      required: [name, rowCount]
+    XStorePlatformBackup:
+      type: object
+      properties:
+        format:
+          type: string
+          enum: [xstore-platform-backup]
+        version:
+          type: integer
+          enum: [1]
+        createdAt:
+          type: string
+          format: date-time
+        tableCount: { type: integer }
+        rowCount: { type: integer }
+        tables:
+          type: array
+          items:
+            $ref: "#/components/schemas/XStorePlatformBackupTable"
+      required: [format, version, createdAt, tableCount, rowCount, tables]
+    XStorePlatformBackupTable:
+      type: object
+      properties:
+        name: { type: string }
+        columns:
+          type: array
+          items: { type: string }
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      required: [name, columns, rows]
+    XStorePlatformBackupRestoreInput:
+      type: object
+      properties:
+        backup:
+          $ref: "#/components/schemas/XStorePlatformBackup"
+        confirmation:
+          type: string
+          minLength: 1
+          maxLength: 64
+      required: [backup, confirmation]
+    XStorePlatformBackupRestoreResult:
+      type: object
+      properties:
+        restoredTableCount: { type: integer }
+        restoredRowCount: { type: integer }
+        restoredAt:
+          type: string
+          format: date-time
+      required: [restoredTableCount, restoredRowCount, restoredAt]
 

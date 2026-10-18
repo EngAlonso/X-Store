@@ -59,7 +59,11 @@ import type {
   TenantCredentialsInput,
   TenantInput,
   TenantUpdate,
-  UnauthorizedResponse
+  UnauthorizedResponse,
+  XStorePlatformBackup,
+  XStorePlatformBackupRestoreInput,
+  XStorePlatformBackupRestoreResult,
+  XStorePlatformBackupSummary
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -2589,4 +2593,246 @@ export function useListXStoreAuditLogs<TData = Awaited<ReturnType<typeof listXSt
 
 
 
+
+export const getGetXStorePlatformBackupSummaryUrl = () => {
+
+
+
+
+  return `/api/xstore/platform-backup/summary`
+}
+
+/**
+ * @summary Get the tables and record counts included in a platform backup
+ */
+export const getXStorePlatformBackupSummary = async ( options?: Parameters<typeof customFetch>[1]): Promise<XStorePlatformBackupSummary> => {
+
+  return customFetch<XStorePlatformBackupSummary>(getGetXStorePlatformBackupSummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetXStorePlatformBackupSummaryQueryKey = () => {
+    return [
+    `/api/xstore/platform-backup/summary`
+    ] as const;
+    }
+
+
+export const getGetXStorePlatformBackupSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getXStorePlatformBackupSummary>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getXStorePlatformBackupSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetXStorePlatformBackupSummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getXStorePlatformBackupSummary>>> = ({ signal }) => getXStorePlatformBackupSummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getXStorePlatformBackupSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetXStorePlatformBackupSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getXStorePlatformBackupSummary>>>
+export type GetXStorePlatformBackupSummaryQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Get the tables and record counts included in a platform backup
+ */
+
+export function useGetXStorePlatformBackupSummary<TData = Awaited<ReturnType<typeof getXStorePlatformBackupSummary>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getXStorePlatformBackupSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetXStorePlatformBackupSummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDownloadXStorePlatformBackupUrl = () => {
+
+
+
+
+  return `/api/xstore/platform-backup`
+}
+
+/**
+ * @summary Download a complete backup of platform database tables
+ */
+export const downloadXStorePlatformBackup = async ( options?: Parameters<typeof customFetch>[1]): Promise<XStorePlatformBackup> => {
+
+  return customFetch<XStorePlatformBackup>(getDownloadXStorePlatformBackupUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadXStorePlatformBackupQueryKey = () => {
+    return [
+    `/api/xstore/platform-backup`
+    ] as const;
+    }
+
+
+export const getDownloadXStorePlatformBackupQueryOptions = <TData = Awaited<ReturnType<typeof downloadXStorePlatformBackup>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadXStorePlatformBackup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadXStorePlatformBackupQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadXStorePlatformBackup>>> = ({ signal }) => downloadXStorePlatformBackup({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadXStorePlatformBackup>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadXStorePlatformBackupQueryResult = NonNullable<Awaited<ReturnType<typeof downloadXStorePlatformBackup>>>
+export type DownloadXStorePlatformBackupQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary Download a complete backup of platform database tables
+ */
+
+export function useDownloadXStorePlatformBackup<TData = Awaited<ReturnType<typeof downloadXStorePlatformBackup>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadXStorePlatformBackup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadXStorePlatformBackupQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRestoreXStorePlatformBackupUrl = () => {
+
+
+
+
+  return `/api/xstore/platform-backup/restore`
+}
+
+/**
+ * @summary Replace all platform database records from a backup after confirmation
+ */
+export const restoreXStorePlatformBackup = async (xStorePlatformBackupRestoreInput: XStorePlatformBackupRestoreInput, options?: Parameters<typeof customFetch>[1]): Promise<XStorePlatformBackupRestoreResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<XStorePlatformBackupRestoreResult>(getRestoreXStorePlatformBackupUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/vnd.xstore.platform-backup+json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(xStorePlatformBackupRestoreInput)
+  }
+);}
+
+
+
+
+
+export const getRestoreXStorePlatformBackupMutationKey = () => ['restoreXStorePlatformBackup'] as const;
+
+export const getRestoreXStorePlatformBackupMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreXStorePlatformBackup>>, TError,RestoreXStorePlatformBackupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreXStorePlatformBackup>>, TError,RestoreXStorePlatformBackupMutationVariables, TContext> => {
+
+const mutationKey = getRestoreXStorePlatformBackupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreXStorePlatformBackup>>, RestoreXStorePlatformBackupMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  restoreXStorePlatformBackup(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreXStorePlatformBackupMutationResult = NonNullable<Awaited<ReturnType<typeof restoreXStorePlatformBackup>>>
+    export type RestoreXStorePlatformBackupMutationBody = BodyType<XStorePlatformBackupRestoreInput>
+    export type RestoreXStorePlatformBackupMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ApiError>
+    export type RestoreXStorePlatformBackupMutationVariables = {data: BodyType<XStorePlatformBackupRestoreInput>}
+
+    /**
+ * @summary Replace all platform database records from a backup after confirmation
+ */
+export const useRestoreXStorePlatformBackup = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreXStorePlatformBackup>>, TError,RestoreXStorePlatformBackupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restoreXStorePlatformBackup>>,
+        TError,
+        RestoreXStorePlatformBackupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRestoreXStorePlatformBackupMutationOptions(options));
+    }
 

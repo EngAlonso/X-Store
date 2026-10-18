@@ -629,6 +629,63 @@ export interface ExchangeResult {
   createdAt: string;
 }
 
+export interface XStorePlatformBackupTableSummary {
+  name: string;
+  rowCount: number;
+}
+
+export interface XStorePlatformBackupSummary {
+  tableCount: number;
+  rowCount: number;
+  tables: XStorePlatformBackupTableSummary[];
+}
+
+export type XStorePlatformBackupFormat = typeof XStorePlatformBackupFormat[keyof typeof XStorePlatformBackupFormat];
+
+
+export const XStorePlatformBackupFormat = {
+  'xstore-platform-backup': 'xstore-platform-backup',
+} as const;
+
+export type XStorePlatformBackupVersion = typeof XStorePlatformBackupVersion[keyof typeof XStorePlatformBackupVersion];
+
+
+export const XStorePlatformBackupVersion = {
+  NUMBER_1: 1,
+} as const;
+
+export type XStorePlatformBackupTableRowsItem = { [key: string]: unknown };
+
+export interface XStorePlatformBackupTable {
+  name: string;
+  columns: string[];
+  rows: XStorePlatformBackupTableRowsItem[];
+}
+
+export interface XStorePlatformBackup {
+  format: XStorePlatformBackupFormat;
+  version: XStorePlatformBackupVersion;
+  createdAt: string;
+  tableCount: number;
+  rowCount: number;
+  tables: XStorePlatformBackupTable[];
+}
+
+export interface XStorePlatformBackupRestoreInput {
+  backup: XStorePlatformBackup;
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  confirmation: string;
+}
+
+export interface XStorePlatformBackupRestoreResult {
+  restoredTableCount: number;
+  restoredRowCount: number;
+  restoredAt: string;
+}
+
 /**
  * Invalid request
  */

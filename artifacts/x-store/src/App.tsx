@@ -30,8 +30,9 @@ import {
   Bell, LogOut, Menu, X, ArrowUpLeft, ChevronLeft, ChevronDown, CreditCard, Banknote,
   Wallet, CircleCheck, Clock3, AlertTriangle, RotateCcw,
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
-  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone,
+  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone, Database,
 } from 'lucide-react';
+import PlatformBackupPage from '@/pages/platform-backup';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -81,6 +82,7 @@ const nav = [
   { href: '/reports', label: 'التقارير المالية', icon: Activity, roles: ['platform_admin', 'tenant_admin', 'accountant'] },
   { href: '/sales', label: 'المبيعات', icon: ReceiptText, roles: ['tenant_admin', 'cashier', 'accountant'] },
   { href: '/audit-log', label: 'سجل التدقيق', icon: ScrollText, roles: ['platform_admin'] },
+  { href: '/platform-backup', label: 'النسخ الاحتياطي', icon: Database, roles: ['platform_admin'] },
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
@@ -307,7 +309,7 @@ function AppShell({ children }: { children: ReactNode }) {
 }
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
-  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/settings':['platform_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   if(session.data&&allowed[location]&&!allowed[location].includes(session.data.role))return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
@@ -318,6 +320,7 @@ function ProtectedLayout() {
     <Route path="/pos" component={PosPage}/><Route path="/inventory" component={InventoryPage}/>
     <Route path="/reports" component={ReportsPage}/><Route path="/sales" component={SalesPage}/><Route path="/audit-log" component={AuditPage}/>
     <Route path="/settings" component={PlatformSettingsPage}/>
+     <Route path="/platform-backup" component={PlatformBackupPage}/>
     <Route path="/store-settings" component={StoreSettingsPage}/>
     <Route component={NotFound}/>
   </Switch></AppShell>;
@@ -882,7 +885,7 @@ function AuditRows({logs}:{logs:any[]}) {
 }
 
 function Routed() {
-  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
+  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
 }
 function App() {
   return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><Routed/></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;
