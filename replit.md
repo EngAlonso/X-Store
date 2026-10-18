@@ -13,7 +13,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/db run migrate` — apply pending migrations to an existing PostgreSQL database
 - Required env: `DATABASE_URL` — Postgres connection string
 
-For external hosting, start the API with `pnpm --filter @workspace/api-server run start`; it applies pending migrations before listening. The PostgreSQL database itself must already exist, and `DATABASE_URL` must point to it with permission to create/alter tables. A fresh database gets empty X-Store tables; this does not copy founder accounts or business data. Existing X-Store tables without a Drizzle migration tracking table are rejected rather than overwritten and must be baselined separately. In Replit development, first startup applies migrations to an empty database; an existing untracked X-Store schema is left unchanged. Later development schema changes use the existing post-merge setup, and Replit production schema changes use Publish.
+For external hosting, start the API with `pnpm --filter @workspace/api-server run start`; it applies pending migrations before listening. The PostgreSQL database itself must already exist, and `DATABASE_URL` must point to it with permission to create/alter tables. A fresh database gets empty X-Store tables; this does not copy founder accounts or business data. Existing X-Store tables without a Drizzle migration tracking table are rejected rather than overwritten and must be baselined separately. In Replit development, first startup applies committed migrations to an empty database; later development schema changes are applied by the post-merge setup. Replit production schema changes use Publish.
 
 ### Every new Replit import
 

@@ -15,6 +15,13 @@
       "when": 1792268520768,
       "tag": "0001_yummy_echo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792341200564,
+      "tag": "0002_productive_venus",
+      "breakpoints": true
     }
   ]
 }
