@@ -1880,9 +1880,10 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
         (subtotal - discountAmount) * vatRate,
       );
       const total = roundMoney(subtotal - discountAmount + taxAmount);
+      const amountReceived = roundMoney(parsed.data.amountReceived);
       if (
         parsed.data.paymentMethod === "cash" &&
-        parsed.data.amountReceived < total
+        amountReceived < total
       ) {
         throw new DomainError("The amount received is less than the total.", 400);
       }
@@ -1899,9 +1900,9 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
           taxAmount: String(taxAmount),
           total: String(total),
           paymentMethod: parsed.data.paymentMethod,
-          amountReceived: String(parsed.data.amountReceived),
+          amountReceived: String(amountReceived),
           changeAmount: String(
-            roundMoney(Math.max(0, parsed.data.amountReceived - total)),
+            roundMoney(Math.max(0, amountReceived - total)),
           ),
           status: "completed",
         })

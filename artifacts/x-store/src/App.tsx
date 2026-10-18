@@ -120,6 +120,30 @@ function useMoney() {
     maximumFractionDigits: 2,
   }).format(amount), [currency]);
 }
+const roundMoney = (amount: number) => Math.round((amount + Number.EPSILON) * 100) / 100;
+function checkoutErrorMessage(error: unknown): string {
+  const data = error && typeof error === 'object' && 'data' in error
+    ? (error as { data?: unknown }).data
+    : null;
+  const serverMessage = data && typeof data === 'object' && 'error' in data && typeof data.error === 'string'
+    ? data.error
+    : '';
+  if (serverMessage === 'The amount received is less than the total.') {
+    return 'المبلغ المستلم أقل من إجمالي الفاتورة.';
+  }
+  if (serverMessage === 'A product is no longer available.') {
+    return 'أحد المنتجات لم يعد متاحاً. حدّث قائمة المنتجات وحاول مرة أخرى.';
+  }
+  if (serverMessage === 'Store settings not found.') {
+    return 'تعذر العثور على إعدادات المتجر. راجع إعدادات المتجر وحاول مرة أخرى.';
+  }
+  const stockError = serverMessage.match(/^Not enough stock for (.+)\. Available: (\d+)\.$/);
+  if (stockError) {
+    return `الكمية المتاحة من ${stockError[1]} هي ${stockError[2]} فقط. قلّل الكمية أو حدّث المخزون.`;
+  }
+  if (serverMessage) return `تعذر إتمام البيع: ${serverMessage}`;
+  return 'تعذر إتمام البيع. تحقق من الاتصال والبيانات ثم حاول مرة أخرى.';
+}
 const dateLabel = (d?: string | null) => d ? new Intl.DateTimeFormat('ar-SA', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(d)) : '—';
 const roleNames: Record<string, string> = { platform_admin: 'مالك المنصة', tenant_admin: 'مالك المتجر', cashier: 'أمين الصندوق', warehouse_manager: 'مدير المخزون', accountant: 'محاسب' };
 const statusNames: Record<string, string> = { active: 'نشط', trial: 'تجريبي', suspended: 'موقوف', completed: 'مكتملة', partially_returned: 'مستردة جزئياً', returned: 'مستردة', monthly: 'شهري', half_yearly: 'نصف سنوي', annual: 'سنوي', lifetime: 'مدى الحياة' };
@@ -999,10 +1023,10 @@ function PosPage() {
   const visible=(products.data||[]).filter(p=>matchesProductSearch(p,term));
   const cartLines=(products.data||[]).filter(p=>cart[p.id]).map(p=>({...p,count:cart[p.id]}));
   useEffect(()=>{if(!cartLines.length&&customerPhone)setCustomerPhone('')},[cartLines.length,customerPhone]);
-  const subtotal=cartLines.reduce((s,p)=>s+p.price*p.count,0), disc=Math.min(subtotal,Math.max(0,Number(discount)||0)), tax=(subtotal-disc)*vatRate, total=subtotal-disc+tax;
+  const subtotal=roundMoney(cartLines.reduce((s,p)=>s+p.price*p.count,0)), disc=Math.min(subtotal,roundMoney(Math.max(0,Number(discount)||0))), tax=roundMoney((subtotal-disc)*vatRate), total=roundMoney(subtotal-disc+tax);
   const add=(p:Product)=>setCart(c=>({...c,[p.id]:Math.min(p.quantity,(c[p.id]||0)+1)}));
   const mutateCart=(id:string,n:number)=>setCart(c=>{const value=(c[id]||0)+n;if(value<=0){const next={...c};delete next[id];return next}return {...c,[id]:value}});
-  function finish(){if(!cartLines.length||customerPhoneInvalid)return;checkout.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:Number(received)||total,customerPhone:customerPhone.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setCustomerPhone('');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
+  function finish(){if(!cartLines.length||customerPhoneInvalid)return;checkout.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:roundMoney(Number(received)||total),customerPhone:customerPhone.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setCustomerPhone('');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
   function park(){if(!cartLines.length)return;hold.mutate({data:{items:cartLines.map(p=>({productId:p.id,quantity:p.count}))}},{onSuccess:()=>{setCart({});setCustomerPhone('');qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice('تم حفظ الفاتورة المعلقة')}})}
   function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);exchange.mutate({data:{invoiceNo:String(f.get('invoiceNo')),returnItems:[{productId:String(f.get('returnProduct')),quantity:Number(f.get('returnQuantity'))}],replacementItems:[{productId:String(f.get('replacementProduct')),quantity:Number(f.get('replacementQuantity'))}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(f.get('amountReceived'))||0}},{onSuccess:r=>{setExchangeOpen(false);setNotice(`تم الاستبدال ذرياً · ${r.exchangeInvoiceNo}`);qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()})}})}
   return <>
@@ -1049,9 +1073,10 @@ function PosPage() {
           <label className="customer-phone-field"><span><Phone size={14}/> رقم هاتف العميل على الفاتورة <em>اختياري</em></span><input type="tel" inputMode="tel" autoComplete="tel" dir="ltr" value={customerPhone} onChange={e=>setCustomerPhone(e.target.value)} placeholder="+20 10 1234 5678" aria-label="رقم هاتف العميل على الفاتورة" data-testid="input-customer-phone" disabled={!cartLines.length}/><small>اكتب الرقم بمفتاح الدولة لتفعيل الإرسال عبر واتساب.</small>{customerPhoneInvalid&&<small className="customer-phone-error" role="alert">تأكد من كتابة الرقم الدولي مع مفتاح الدولة، مثل +20.</small>}</label>
           <div className="cart-actions">
             <button className="button button-quiet" onClick={park} disabled={!cartLines.length||hold.isPending}><Pause size={15}/>{hold.isPending?'جارٍ الحفظ':'تعليق'}</button>
-            <button className="button button-confirm" onClick={finish} disabled={!cartLines.length||checkout.isPending||customerPhoneInvalid||(payment==='cash'&&Number(received)>0&&Number(received)<total)}>{checkout.isPending?'جارٍ إتمام البيع':<><CircleCheck size={17}/> إتمام البيع</>}</button>
+            <button className="button button-confirm" onClick={finish} disabled={!cartLines.length||checkout.isPending||customerPhoneInvalid||(payment==='cash'&&Number(received)>0&&roundMoney(Number(received))<total)}>{checkout.isPending?'جارٍ إتمام البيع':<><CircleCheck size={17}/> إتمام البيع</>}</button>
           </div>
-          {(checkout.isError||hold.isError)&&<div className="form-error">تعذر تنفيذ العملية. أعد المحاولة.</div>}
+          {checkout.isError&&<div className="form-error" role="alert">{checkoutErrorMessage(checkout.error)}</div>}
+          {hold.isError&&<div className="form-error" role="alert">تعذر حفظ الفاتورة المعلقة. تحقق من الاتصال وحاول مرة أخرى.</div>}
         </aside>
       </div>
       {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
