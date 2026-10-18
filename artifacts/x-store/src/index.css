@@ -552,7 +552,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { 
 .store-fit-heading { max-width:620px;margin:0 0 31px; }
 .store-fit-heading h2 { margin:12px 0 9px;color:#203e2a;font-size:34px;line-height:1.45;letter-spacing:-.035em; }
 .store-fit-heading>p { max-width:540px;margin:0;color:#778279;font-size:13px;line-height:1.9; }
-.store-fit-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px; }
+.store-fit-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px; }
 .store-fit-card { min-width:0;min-height:156px;display:flex;align-items:flex-start;gap:12px;padding:20px 17px;border:1px solid #e2eae3;border-radius:13px;background:#fff;box-shadow:0 8px 24px #17371f08;transition:transform .18s,border-color .18s,box-shadow .18s; }
 .store-fit-card:hover { transform:translateY(-2px);border-color:#c7dacb;box-shadow:0 12px 28px #17371f10; }
 .store-fit-icon { width:40px;height:40px;flex:0 0 auto;display:grid;place-items:center;border-radius:12px;background:#e8f2ea;color:#1a6531; }

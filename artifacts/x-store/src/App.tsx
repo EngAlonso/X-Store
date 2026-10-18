@@ -30,7 +30,7 @@ import {
   Bell, LogOut, Menu, X, ArrowUpLeft, ChevronLeft, ChevronDown, CreditCard, Banknote,
   Wallet, CircleCheck, Clock3, AlertTriangle, RotateCcw,
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
-  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone, Database,
+  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone, Database, Coffee, Utensils,
 } from 'lucide-react';
 import {
   FaFacebook,
@@ -228,6 +228,8 @@ function Home() {
           <article className="store-fit-card"><span className="store-fit-icon store-fit-icon-sage"><ShoppingCart size={20}/></span><div><h3>البقالة والسوبرماركت</h3><p>نظّم الكميات وسجّل حركة المبيعات اليومية بسهولة.</p></div></article>
           <article className="store-fit-card"><span className="store-fit-icon store-fit-icon-gold"><Smartphone size={20}/></span><div><h3>الإلكترونيات والإكسسوارات</h3><p>تابع الأصناف ومبيعاتها وتقاريرها بوضوح.</p></div></article>
           <article className="store-fit-card"><span className="store-fit-icon store-fit-icon-rose"><Boxes size={20}/></span><div><h3>العطور والتجميل</h3><p>رتّب المنتجات والمخزون وراقب حركتها اليومية.</p></div></article>
+          <article className="store-fit-card"><span className="store-fit-icon store-fit-icon-gold"><Coffee size={20}/></span><div><h3>الكافيهات</h3><p>سجّل المبيعات وتابع الأصناف والمخزون اليومي بسهولة.</p></div></article>
+          <article className="store-fit-card"><span className="store-fit-icon store-fit-icon-sage"><Utensils size={20}/></span><div><h3>المطاعم</h3><p>تابع حركة المبيعات والأصناف من نقطة البيع.</p></div></article>
         </div>
       </div>
     </section>
