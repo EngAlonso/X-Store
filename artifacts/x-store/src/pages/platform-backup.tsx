@@ -58,6 +58,9 @@ function parseBackup(value: unknown): XStorePlatformBackup {
     !Number.isInteger(backup.tableCount) ||
     !Number.isInteger(backup.rowCount)
   ) throw new Error('أعداد الجداول أو السجلات لا تطابق محتوى الملف.');
+  if (new Set(backup.tables.map(table => table.name)).size !== backup.tables.length) {
+    throw new Error('الملف يحتوي أسماء جداول مكررة.');
+  }
 
   return backup as XStorePlatformBackup;
 }
@@ -96,7 +99,7 @@ export default function PlatformBackupPage() {
       download.dataUpdatedAt === lastDownloadedAt.current
     ) return;
     lastDownloadedAt.current = download.dataUpdatedAt;
-    const blob = new Blob([JSON.stringify(download.data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(download.data)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -124,13 +127,29 @@ export default function PlatformBackupPage() {
     setTypedConfirmation('');
     setRestoreSuccess('');
     if (!file) return;
-    if (file.size > 128 * 1024 * 1024) {
-      setFileError('حجم الملف يتجاوز الحد المسموح به (128 ميجابايت).');
+    const currentSummary = summary.data;
+    const maxBackupBytes = currentSummary?.maxBackupBytes;
+    if (!currentSummary || !maxBackupBytes) {
+      setFileError('تعذر تحميل حد حجم النسخة. أعد تحميل نطاق النسخ ثم حاول مرة أخرى.');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > maxBackupBytes) {
+      setFileError(`حجم الملف يتجاوز الحد المسموح به (${fmt(Math.ceil(maxBackupBytes / (1024 * 1024)))} ميبيبايت).`);
+      event.target.value = '';
       return;
     }
     try {
       const parsed: unknown = JSON.parse(await file.text());
       const validBackup = parseBackup(parsed);
+      const currentTableNames = new Set(currentSummary.tables.map(table => table.name));
+      const backupTableNames = new Set(validBackup.tables.map(table => table.name));
+      if (
+        backupTableNames.size !== currentTableNames.size ||
+        Array.from(currentTableNames).some(tableName => !backupTableNames.has(tableName))
+      ) {
+        throw new Error('النسخة لا تحتوي جميع جداول قاعدة البيانات الحالية. لم يتم تغيير أي بيانات.');
+      }
       setSelectedBackup(validBackup);
       setFileName(file.name);
     } catch (error) {
@@ -226,7 +245,7 @@ export default function PlatformBackupPage() {
         <button type="button" className="button button-primary backup-download-button" onClick={requestDownload} disabled={downloadRequested || download.isFetching} data-testid="button-download-platform-backup">
           <HardDriveDownload size={17}/>{downloadRequested || download.isFetching ? 'جارٍ تجهيز النسخة…' : 'إنشاء وتنزيل ملف النسخة'}
         </button>
-        {download.isError && <div className="backup-inline-error" role="alert" data-testid="status-backup-download-error">تعذر إنشاء الملف. <button type="button" onClick={requestDownload} data-testid="button-retry-backup-download">أعد المحاولة</button></div>}
+        {download.isError && <div className="backup-inline-error" role="alert" data-testid="status-backup-download-error">{getErrorMessage(download.error, 'تعذر إنشاء الملف.')} <button type="button" onClick={requestDownload} data-testid="button-retry-backup-download">أعد المحاولة</button></div>}
         {downloadMessage && <div className="backup-inline-success" role="status" data-testid="status-backup-download-success"><CheckCircle2 size={15}/>{downloadMessage}</div>}
         <div className="backup-meta"><LockKeyhole size={13}/> يتضمن بيانات الحسابات وكلمات المرور المشفّرة وسجلات المبيعات؛ احفظه في مكان آمن</div>
       </section>
@@ -240,13 +259,13 @@ export default function PlatformBackupPage() {
         <p>اختر ملف X-Store JSON صالحاً لعرض تفاصيله قبل بدء الاستعادة.</p>
         <label className="backup-file-picker" htmlFor="platform-backup-file" data-testid="label-backup-file-picker">
           <span className="backup-file-icon"><FileJson2 size={20}/></span>
-          <span><b>{fileName || 'اختر ملف النسخة الاحتياطية'}</b><small>امتداد JSON · تتم قراءة الملف محلياً للتحقق منه</small></span>
+          <span><b>{fileName || 'اختر ملف النسخة الاحتياطية'}</b><small>JSON · الحد الأقصى {summary.data ? fmt(Math.ceil(summary.data.maxBackupBytes / (1024 * 1024))) : '—'} ميبيبايت</small></span>
           <span className="button button-quiet button-small">استعراض الملفات</span>
-          <input id="platform-backup-file" type="file" accept=".json,application/json" onChange={handleFileChange} data-testid="input-platform-backup-file"/>
+          <input id="platform-backup-file" type="file" accept=".json,application/json" onChange={handleFileChange} disabled={!summary.data} data-testid="input-platform-backup-file"/>
         </label>
         {fileError && <div className="backup-inline-error" role="alert" data-testid="status-backup-file-error">{fileError}</div>}
         {selectedBackup && <div className="backup-selected-file" data-testid="content-selected-backup">
-          <div className="backup-selected-heading"><CheckCircle2 size={16}/><b>تم التحقق من الملف</b><span>{fileName}</span></div>
+            <div className="backup-selected-heading"><CheckCircle2 size={16}/><b>تم التحقق من التنسيق ونطاق الجداول</b><span>{fileName}</span></div>
           <div className="backup-file-facts">
             <div><Clock3 size={14}/><span>تاريخ اللقطة</span><b data-testid="text-selected-backup-date">{dateLabel(selectedBackup.createdAt)}</b></div>
             <div><Database size={14}/><span>عدد الجداول</span><b data-testid="text-selected-backup-table-count">{fmt(selectedBackup.tableCount)}</b></div>
@@ -286,12 +305,12 @@ export default function PlatformBackupPage() {
   </div>;
 }
 
-function getErrorMessage(error: unknown): string {
+function getErrorMessage(error: unknown, fallback = 'تعذرت استعادة بيانات المنصة. تحقق من الملف وحاول مرة أخرى.'): string {
   if (typeof error === 'object' && error !== null && 'data' in error) {
     const data = (error as { data?: unknown }).data;
     if (typeof data === 'object' && data !== null && 'error' in data && typeof (data as { error?: unknown }).error === 'string') {
       return (data as { error: string }).error;
     }
   }
-  return 'تعذرت استعادة بيانات المنصة. تحقق من الملف وحاول مرة أخرى.';
+  return fallback;
 }

@@ -77,6 +77,64 @@ export interface StoreSettingsInput {
   vatRate: number;
 }
 
+export interface SocialLinks {
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  facebook: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  instagram: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  whatsapp: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  tiktok: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  snapchat: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  x: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  youtube: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  linkedin: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  telegram: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  threads: string | null;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  pinterest: string | null;
+}
+
 export interface AuthStatus {
   bootstrapRequired: boolean;
   founderSetupRequired: boolean;
@@ -86,6 +144,7 @@ export interface AuthStatus {
   supportWhatsapp: string | null;
   /** @nullable */
   supportEmail: string | null;
+  socialLinks: SocialLinks;
 }
 
 export interface PhoneLoginInput {
@@ -131,6 +190,7 @@ export interface ContactSettings {
   supportWhatsapp: string | null;
   /** @nullable */
   supportEmail: string | null;
+  socialLinks: SocialLinks;
 }
 
 export interface ContactSettingsInput {
@@ -140,6 +200,7 @@ export interface ContactSettingsInput {
   supportWhatsapp: string | null;
   /** @nullable */
   supportEmail: string | null;
+  socialLinks: SocialLinks;
 }
 
 export type StoreCurrency = typeof StoreCurrency[keyof typeof StoreCurrency];
@@ -637,6 +698,7 @@ export interface XStorePlatformBackupTableSummary {
 export interface XStorePlatformBackupSummary {
   tableCount: number;
   rowCount: number;
+  maxBackupBytes: number;
   tables: XStorePlatformBackupTableSummary[];
 }
 

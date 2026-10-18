@@ -82,6 +82,7 @@ import {
   xstoreUsers,
   type XStoreLine,
   type XStoreProduct,
+  type XStoreSocialLinks,
   type XStoreTenant,
 } from "@workspace/db";
 import {
@@ -188,7 +189,62 @@ async function contactSettingsDto() {
     supportPhone: settings?.supportPhone ?? null,
     supportWhatsapp: settings?.supportWhatsapp ?? null,
     supportEmail: settings?.supportEmail ?? null,
+    socialLinks: {
+      facebook: settings?.socialLinks?.facebook ?? null,
+      instagram: settings?.socialLinks?.instagram ?? null,
+      whatsapp: settings?.socialLinks?.whatsapp ?? null,
+      tiktok: settings?.socialLinks?.tiktok ?? null,
+      snapchat: settings?.socialLinks?.snapchat ?? null,
+      x: settings?.socialLinks?.x ?? null,
+      youtube: settings?.socialLinks?.youtube ?? null,
+      linkedin: settings?.socialLinks?.linkedin ?? null,
+      telegram: settings?.socialLinks?.telegram ?? null,
+      threads: settings?.socialLinks?.threads ?? null,
+      pinterest: settings?.socialLinks?.pinterest ?? null,
+    },
   };
+}
+
+const socialLinkLabels: Record<keyof XStoreSocialLinks, string> = {
+  facebook: "Facebook",
+  instagram: "Instagram",
+  whatsapp: "WhatsApp",
+  tiktok: "TikTok",
+  snapchat: "Snapchat",
+  x: "X",
+  youtube: "YouTube",
+  linkedin: "LinkedIn",
+  telegram: "Telegram",
+  threads: "Threads",
+  pinterest: "Pinterest",
+};
+
+function normalizeSocialLinks(links: XStoreSocialLinks): XStoreSocialLinks {
+  const normalized = { ...links };
+  for (const key of Object.keys(normalized) as (keyof XStoreSocialLinks)[]) {
+    const value = normalized[key]?.trim() || null;
+    if (!value) {
+      normalized[key] = null;
+      continue;
+    }
+
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new Error(`أدخل رابطاً صالحاً لمنصة ${socialLinkLabels[key]}.`);
+    }
+    if (
+      (url.protocol !== "https:" && url.protocol !== "http:") ||
+      !url.hostname ||
+      url.username ||
+      url.password
+    ) {
+      throw new Error(`يجب أن يبدأ رابط ${socialLinkLabels[key]} بـ http:// أو https://.`);
+    }
+    normalized[key] = url.toString();
+  }
+  return normalized;
 }
 
 function rateLimitLogin(req: Request, phone: string) {
@@ -651,10 +707,20 @@ router.put("/xstore/settings/contact", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  let socialLinks: XStoreSocialLinks;
+  try {
+    socialLinks = normalizeSocialLinks(parsed.data.socialLinks);
+  } catch (error) {
+    res.status(400).json({
+      error: error instanceof Error ? error.message : "تحقق من روابط التواصل الاجتماعي.",
+    });
+    return;
+  }
   const update = {
     supportPhone: parsed.data.supportPhone?.trim() || null,
     supportWhatsapp: parsed.data.supportWhatsapp?.trim() || null,
     supportEmail: parsed.data.supportEmail?.trim().toLowerCase() || null,
+    socialLinks,
     updatedAt: new Date(),
   };
   const [settings] = await db
@@ -671,13 +737,14 @@ router.put("/xstore/settings/contact", async (req, res): Promise<void> => {
     null,
     "platform_settings",
     "global",
-    "Updated the public support contact details.",
+    "Updated the public support contact details and social media links.",
   );
   res.json(
     UpdateXStoreContactSettingsResponse.parse({
       supportPhone: settings?.supportPhone ?? null,
       supportWhatsapp: settings?.supportWhatsapp ?? null,
       supportEmail: settings?.supportEmail ?? null,
+      socialLinks: settings?.socialLinks ?? socialLinks,
     }),
   );
 });

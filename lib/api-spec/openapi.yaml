@@ -877,7 +877,9 @@ components:
         supportPhone: { type: ["string", "null"] }
         supportWhatsapp: { type: ["string", "null"] }
         supportEmail: { type: ["string", "null"], format: email }
-      required: [bootstrapRequired, founderSetupRequired, supportPhone, supportWhatsapp, supportEmail]
+        socialLinks:
+          $ref: "#/components/schemas/SocialLinks"
+      required: [bootstrapRequired, founderSetupRequired, supportPhone, supportWhatsapp, supportEmail, socialLinks]
     PhoneLoginInput:
       type: object
       properties:
@@ -898,14 +900,33 @@ components:
         supportPhone: { type: ["string", "null"] }
         supportWhatsapp: { type: ["string", "null"] }
         supportEmail: { type: ["string", "null"], format: email }
-      required: [supportPhone, supportWhatsapp, supportEmail]
+        socialLinks:
+          $ref: "#/components/schemas/SocialLinks"
+      required: [supportPhone, supportWhatsapp, supportEmail, socialLinks]
     ContactSettingsInput:
       type: object
       properties:
         supportPhone: { type: ["string", "null"] }
         supportWhatsapp: { type: ["string", "null"] }
         supportEmail: { type: ["string", "null"], format: email }
-      required: [supportPhone, supportWhatsapp, supportEmail]
+        socialLinks:
+          $ref: "#/components/schemas/SocialLinks"
+      required: [supportPhone, supportWhatsapp, supportEmail, socialLinks]
+    SocialLinks:
+      type: object
+      properties:
+        facebook: { type: ["string", "null"], format: uri, maxLength: 2048 }
+        instagram: { type: ["string", "null"], format: uri, maxLength: 2048 }
+        whatsapp: { type: ["string", "null"], format: uri, maxLength: 2048 }
+        tiktok: { type: ["string", "null"], format: uri, maxLength: 2048 }
+        snapchat: { type: ["string", "null"], format: uri, maxLength: 2048 }
+        x: { type: ["string", "null"], format: uri, maxLength: 2048 }
+        youtube: { type: ["string", "null"], format: uri, maxLength: 2048 }
+        linkedin: { type: ["string", "null"], format: uri, maxLength: 2048 }
+        telegram: { type: ["string", "null"], format: uri, maxLength: 2048 }
+        threads: { type: ["string", "null"], format: uri, maxLength: 2048 }
+        pinterest: { type: ["string", "null"], format: uri, maxLength: 2048 }
+      required: [facebook, instagram, whatsapp, tiktok, snapchat, x, youtube, linkedin, telegram, threads, pinterest]
     DashboardSummary:
       type: object
       properties:
@@ -1306,11 +1327,12 @@ components:
       properties:
         tableCount: { type: integer }
         rowCount: { type: integer }
+        maxBackupBytes: { type: integer }
         tables:
           type: array
           items:
             $ref: "#/components/schemas/XStorePlatformBackupTableSummary"
-      required: [tableCount, rowCount, tables]
+      required: [tableCount, rowCount, maxBackupBytes, tables]
     XStorePlatformBackupTableSummary:
       type: object
       properties:

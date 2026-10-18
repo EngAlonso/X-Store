@@ -43,6 +43,7 @@ export * from './saleStatus';
 export * from './sessionUser';
 export * from './sessionUserCurrency';
 export * from './sessionUserRole';
+export * from './socialLinks';
 export * from './storeCurrency';
 export * from './storeSettings';
 export * from './storeSettingsInput';

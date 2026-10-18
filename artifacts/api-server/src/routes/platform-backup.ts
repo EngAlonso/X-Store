@@ -12,17 +12,18 @@ import { clearSessionCookie } from "../lib/xstore-session";
 import {
   createXStorePlatformBackup,
   getXStorePlatformBackupSummary,
+  MAX_XSTORE_PLATFORM_BACKUP_BYTES,
   PlatformBackupError,
   restoreXStorePlatformBackup,
 } from "../lib/xstore-platform-backup";
 
 const router = Router();
 const BACKUP_MEDIA_TYPE = "application/vnd.xstore.platform-backup+json";
-const MAX_BACKUP_BYTES = "128mb";
+const MAX_RESTORE_REQUEST_BYTES = MAX_XSTORE_PLATFORM_BACKUP_BYTES + 1024;
 const RESTORE_CONFIRMATION = "استعادة المنصة";
 const backupTextParser = express.text({
   type: BACKUP_MEDIA_TYPE,
-  limit: MAX_BACKUP_BYTES,
+  limit: MAX_RESTORE_REQUEST_BYTES,
 });
 
 router.use("/xstore/platform-backup", requireXStoreUser);
@@ -36,7 +37,7 @@ function parseBackupText(req: Request, res: Response, next: NextFunction): void 
     const parserError = error as { type?: string; status?: number };
     if (parserError.type === "entity.too.large" || parserError.status === 413) {
       res.status(413).json({
-        error: "ملف النسخة أكبر من الحد المسموح به وهو 128 ميجابايت.",
+        error: "ملف النسخة أكبر من الحد المسموح به وهو 128 ميبيبايت.",
       });
       return;
     }
@@ -121,6 +122,11 @@ router.get("/xstore/platform-backup", async (req, res) => {
     );
     res.json(backup);
   } catch (error) {
+    if (error instanceof PlatformBackupError) {
+      req.log.warn({ error }, "X-Store platform backup exceeds the download limit");
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
     req.log.error({ error }, "Unable to create X-Store platform backup");
     res.status(500).json({ error: "تعذر إنشاء النسخة الاحتياطية." });
   }

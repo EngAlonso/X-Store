@@ -20,12 +20,49 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary Get public sign-in status and support contacts
  */
+export const getXStoreAuthStatusResponseSocialLinksFacebookMax = 2048;
+
+export const getXStoreAuthStatusResponseSocialLinksInstagramMax = 2048;
+
+export const getXStoreAuthStatusResponseSocialLinksWhatsappMax = 2048;
+
+export const getXStoreAuthStatusResponseSocialLinksTiktokMax = 2048;
+
+export const getXStoreAuthStatusResponseSocialLinksSnapchatMax = 2048;
+
+export const getXStoreAuthStatusResponseSocialLinksXMax = 2048;
+
+export const getXStoreAuthStatusResponseSocialLinksYoutubeMax = 2048;
+
+export const getXStoreAuthStatusResponseSocialLinksLinkedinMax = 2048;
+
+export const getXStoreAuthStatusResponseSocialLinksTelegramMax = 2048;
+
+export const getXStoreAuthStatusResponseSocialLinksThreadsMax = 2048;
+
+export const getXStoreAuthStatusResponseSocialLinksPinterestMax = 2048;
+
+
+
 export const GetXStoreAuthStatusResponse = zod.object({
   "bootstrapRequired": zod.boolean(),
   "founderSetupRequired": zod.boolean(),
   "supportPhone": zod.string().nullable(),
   "supportWhatsapp": zod.string().nullable(),
-  "supportEmail": zod.string().email().nullable()
+  "supportEmail": zod.string().email().nullable(),
+  "socialLinks": zod.object({
+  "facebook": zod.string().url().max(getXStoreAuthStatusResponseSocialLinksFacebookMax).nullable(),
+  "instagram": zod.string().url().max(getXStoreAuthStatusResponseSocialLinksInstagramMax).nullable(),
+  "whatsapp": zod.string().url().max(getXStoreAuthStatusResponseSocialLinksWhatsappMax).nullable(),
+  "tiktok": zod.string().url().max(getXStoreAuthStatusResponseSocialLinksTiktokMax).nullable(),
+  "snapchat": zod.string().url().max(getXStoreAuthStatusResponseSocialLinksSnapchatMax).nullable(),
+  "x": zod.string().url().max(getXStoreAuthStatusResponseSocialLinksXMax).nullable(),
+  "youtube": zod.string().url().max(getXStoreAuthStatusResponseSocialLinksYoutubeMax).nullable(),
+  "linkedin": zod.string().url().max(getXStoreAuthStatusResponseSocialLinksLinkedinMax).nullable(),
+  "telegram": zod.string().url().max(getXStoreAuthStatusResponseSocialLinksTelegramMax).nullable(),
+  "threads": zod.string().url().max(getXStoreAuthStatusResponseSocialLinksThreadsMax).nullable(),
+  "pinterest": zod.string().url().max(getXStoreAuthStatusResponseSocialLinksPinterestMax).nullable()
+})
 })
 
 
@@ -331,26 +368,137 @@ export const UpdateXStoreTenantCredentialsResponse = zod.void()
 /**
  * @summary Get platform contact settings
  */
+export const getXStoreContactSettingsResponseSocialLinksFacebookMax = 2048;
+
+export const getXStoreContactSettingsResponseSocialLinksInstagramMax = 2048;
+
+export const getXStoreContactSettingsResponseSocialLinksWhatsappMax = 2048;
+
+export const getXStoreContactSettingsResponseSocialLinksTiktokMax = 2048;
+
+export const getXStoreContactSettingsResponseSocialLinksSnapchatMax = 2048;
+
+export const getXStoreContactSettingsResponseSocialLinksXMax = 2048;
+
+export const getXStoreContactSettingsResponseSocialLinksYoutubeMax = 2048;
+
+export const getXStoreContactSettingsResponseSocialLinksLinkedinMax = 2048;
+
+export const getXStoreContactSettingsResponseSocialLinksTelegramMax = 2048;
+
+export const getXStoreContactSettingsResponseSocialLinksThreadsMax = 2048;
+
+export const getXStoreContactSettingsResponseSocialLinksPinterestMax = 2048;
+
+
+
 export const GetXStoreContactSettingsResponse = zod.object({
   "supportPhone": zod.string().nullable(),
   "supportWhatsapp": zod.string().nullable(),
-  "supportEmail": zod.string().email().nullable()
+  "supportEmail": zod.string().email().nullable(),
+  "socialLinks": zod.object({
+  "facebook": zod.string().url().max(getXStoreContactSettingsResponseSocialLinksFacebookMax).nullable(),
+  "instagram": zod.string().url().max(getXStoreContactSettingsResponseSocialLinksInstagramMax).nullable(),
+  "whatsapp": zod.string().url().max(getXStoreContactSettingsResponseSocialLinksWhatsappMax).nullable(),
+  "tiktok": zod.string().url().max(getXStoreContactSettingsResponseSocialLinksTiktokMax).nullable(),
+  "snapchat": zod.string().url().max(getXStoreContactSettingsResponseSocialLinksSnapchatMax).nullable(),
+  "x": zod.string().url().max(getXStoreContactSettingsResponseSocialLinksXMax).nullable(),
+  "youtube": zod.string().url().max(getXStoreContactSettingsResponseSocialLinksYoutubeMax).nullable(),
+  "linkedin": zod.string().url().max(getXStoreContactSettingsResponseSocialLinksLinkedinMax).nullable(),
+  "telegram": zod.string().url().max(getXStoreContactSettingsResponseSocialLinksTelegramMax).nullable(),
+  "threads": zod.string().url().max(getXStoreContactSettingsResponseSocialLinksThreadsMax).nullable(),
+  "pinterest": zod.string().url().max(getXStoreContactSettingsResponseSocialLinksPinterestMax).nullable()
+})
 })
 
 
 /**
  * @summary Update platform contact settings
  */
+export const updateXStoreContactSettingsBodySocialLinksFacebookMax = 2048;
+
+export const updateXStoreContactSettingsBodySocialLinksInstagramMax = 2048;
+
+export const updateXStoreContactSettingsBodySocialLinksWhatsappMax = 2048;
+
+export const updateXStoreContactSettingsBodySocialLinksTiktokMax = 2048;
+
+export const updateXStoreContactSettingsBodySocialLinksSnapchatMax = 2048;
+
+export const updateXStoreContactSettingsBodySocialLinksXMax = 2048;
+
+export const updateXStoreContactSettingsBodySocialLinksYoutubeMax = 2048;
+
+export const updateXStoreContactSettingsBodySocialLinksLinkedinMax = 2048;
+
+export const updateXStoreContactSettingsBodySocialLinksTelegramMax = 2048;
+
+export const updateXStoreContactSettingsBodySocialLinksThreadsMax = 2048;
+
+export const updateXStoreContactSettingsBodySocialLinksPinterestMax = 2048;
+
+
+
 export const UpdateXStoreContactSettingsBody = zod.object({
   "supportPhone": zod.string().nullable(),
   "supportWhatsapp": zod.string().nullable(),
-  "supportEmail": zod.string().email().nullable()
+  "supportEmail": zod.string().email().nullable(),
+  "socialLinks": zod.object({
+  "facebook": zod.string().url().max(updateXStoreContactSettingsBodySocialLinksFacebookMax).nullable(),
+  "instagram": zod.string().url().max(updateXStoreContactSettingsBodySocialLinksInstagramMax).nullable(),
+  "whatsapp": zod.string().url().max(updateXStoreContactSettingsBodySocialLinksWhatsappMax).nullable(),
+  "tiktok": zod.string().url().max(updateXStoreContactSettingsBodySocialLinksTiktokMax).nullable(),
+  "snapchat": zod.string().url().max(updateXStoreContactSettingsBodySocialLinksSnapchatMax).nullable(),
+  "x": zod.string().url().max(updateXStoreContactSettingsBodySocialLinksXMax).nullable(),
+  "youtube": zod.string().url().max(updateXStoreContactSettingsBodySocialLinksYoutubeMax).nullable(),
+  "linkedin": zod.string().url().max(updateXStoreContactSettingsBodySocialLinksLinkedinMax).nullable(),
+  "telegram": zod.string().url().max(updateXStoreContactSettingsBodySocialLinksTelegramMax).nullable(),
+  "threads": zod.string().url().max(updateXStoreContactSettingsBodySocialLinksThreadsMax).nullable(),
+  "pinterest": zod.string().url().max(updateXStoreContactSettingsBodySocialLinksPinterestMax).nullable()
 })
+})
+
+export const updateXStoreContactSettingsResponseSocialLinksFacebookMax = 2048;
+
+export const updateXStoreContactSettingsResponseSocialLinksInstagramMax = 2048;
+
+export const updateXStoreContactSettingsResponseSocialLinksWhatsappMax = 2048;
+
+export const updateXStoreContactSettingsResponseSocialLinksTiktokMax = 2048;
+
+export const updateXStoreContactSettingsResponseSocialLinksSnapchatMax = 2048;
+
+export const updateXStoreContactSettingsResponseSocialLinksXMax = 2048;
+
+export const updateXStoreContactSettingsResponseSocialLinksYoutubeMax = 2048;
+
+export const updateXStoreContactSettingsResponseSocialLinksLinkedinMax = 2048;
+
+export const updateXStoreContactSettingsResponseSocialLinksTelegramMax = 2048;
+
+export const updateXStoreContactSettingsResponseSocialLinksThreadsMax = 2048;
+
+export const updateXStoreContactSettingsResponseSocialLinksPinterestMax = 2048;
+
+
 
 export const UpdateXStoreContactSettingsResponse = zod.object({
   "supportPhone": zod.string().nullable(),
   "supportWhatsapp": zod.string().nullable(),
-  "supportEmail": zod.string().email().nullable()
+  "supportEmail": zod.string().email().nullable(),
+  "socialLinks": zod.object({
+  "facebook": zod.string().url().max(updateXStoreContactSettingsResponseSocialLinksFacebookMax).nullable(),
+  "instagram": zod.string().url().max(updateXStoreContactSettingsResponseSocialLinksInstagramMax).nullable(),
+  "whatsapp": zod.string().url().max(updateXStoreContactSettingsResponseSocialLinksWhatsappMax).nullable(),
+  "tiktok": zod.string().url().max(updateXStoreContactSettingsResponseSocialLinksTiktokMax).nullable(),
+  "snapchat": zod.string().url().max(updateXStoreContactSettingsResponseSocialLinksSnapchatMax).nullable(),
+  "x": zod.string().url().max(updateXStoreContactSettingsResponseSocialLinksXMax).nullable(),
+  "youtube": zod.string().url().max(updateXStoreContactSettingsResponseSocialLinksYoutubeMax).nullable(),
+  "linkedin": zod.string().url().max(updateXStoreContactSettingsResponseSocialLinksLinkedinMax).nullable(),
+  "telegram": zod.string().url().max(updateXStoreContactSettingsResponseSocialLinksTelegramMax).nullable(),
+  "threads": zod.string().url().max(updateXStoreContactSettingsResponseSocialLinksThreadsMax).nullable(),
+  "pinterest": zod.string().url().max(updateXStoreContactSettingsResponseSocialLinksPinterestMax).nullable()
+})
 })
 
 
@@ -811,6 +959,7 @@ export const ListXStoreAuditLogsResponse = zod.array(ListXStoreAuditLogsResponse
 export const GetXStorePlatformBackupSummaryResponse = zod.object({
   "tableCount": zod.number().int(),
   "rowCount": zod.number().int(),
+  "maxBackupBytes": zod.number().int(),
   "tables": zod.array(zod.object({
   "name": zod.string(),
   "rowCount": zod.number().int()

@@ -39,11 +39,12 @@ type ForeignKeyEdge = {
 
 const BINARY_BACKUP_FIELD = "$xstoreBinaryBase64";
 const RESTORE_LOCK_NAME = "xstore-platform-backup-restore";
+export const MAX_XSTORE_PLATFORM_BACKUP_BYTES = 128 * 1024 * 1024;
 
 export class PlatformBackupError extends Error {
   constructor(
     message: string,
-    readonly statusCode: 400 | 409,
+    readonly statusCode: 400 | 409 | 413,
   ) {
     super(message);
     this.name = "PlatformBackupError";
@@ -147,6 +148,7 @@ export async function getXStorePlatformBackupSummary(): Promise<XStorePlatformBa
       tableCount: tables.length,
       rowCount: tables.reduce((total, table) => total + table.rowCount, 0),
       tables,
+      maxBackupBytes: MAX_XSTORE_PLATFORM_BACKUP_BYTES,
     };
   } catch (error) {
     failed = true;
@@ -158,6 +160,40 @@ export async function getXStorePlatformBackupSummary(): Promise<XStorePlatformBa
       client.release();
     }
   }
+}
+
+function getSerializedBackupByteLength(backup: XStorePlatformBackup): number {
+  const envelopeBytes = Buffer.byteLength(
+    JSON.stringify({
+      format: backup.format,
+      version: backup.version,
+      createdAt: backup.createdAt,
+      tableCount: backup.tableCount,
+      rowCount: backup.rowCount,
+      tables: [],
+    }),
+    "utf8",
+  );
+
+  return backup.tables.reduce((total, table, tableIndex) => {
+    const emptyRowsTableBytes = Buffer.byteLength(
+      JSON.stringify({ ...table, rows: [] }),
+      "utf8",
+    );
+    const rowsBytes = table.rows.reduce(
+      (rowTotal, row, rowIndex) =>
+        rowTotal +
+        Buffer.byteLength(JSON.stringify(row), "utf8") +
+        (rowIndex === 0 ? 0 : 1),
+      0,
+    );
+    return (
+      total +
+      (tableIndex === 0 ? 0 : 1) +
+      emptyRowsTableBytes +
+      rowsBytes
+    );
+  }, envelopeBytes);
 }
 
 function encodeBinary(value: unknown): unknown {
@@ -208,6 +244,12 @@ export async function createXStorePlatformBackup(): Promise<XStorePlatformBackup
       rowCount: tables.reduce((total, table) => total + table.rows.length, 0),
       tables,
     };
+    if (getSerializedBackupByteLength(backup) > MAX_XSTORE_PLATFORM_BACKUP_BYTES) {
+      throw new PlatformBackupError(
+        "حجم النسخة يتجاوز الحد الأقصى البالغ 128 ميبيبايت. لم يتم إنشاء ملف.",
+        413,
+      );
+    }
     return backup;
   } catch (error) {
     failed = true;
@@ -237,6 +279,12 @@ function assertBackupMatchesSchema(
   }
 
   const currentTables = new Set(tableNames);
+  if (backup.tables.length !== tableNames.length) {
+    throw new PlatformBackupError(
+      "النسخة لا تحتوي جميع جداول قاعدة البيانات الحالية. لم يتم تغيير أي بيانات.",
+      409,
+    );
+  }
   const backupTables = new Map<string, XStorePlatformBackup["tables"][number]>();
   for (const table of backup.tables) {
     if (backupTables.has(table.name)) {
@@ -258,7 +306,8 @@ function assertBackupMatchesSchema(
     const backupColumns = new Set(table.columns);
     if (
       backupColumns.size !== table.columns.length ||
-      table.columns.some((columnName) => !currentColumns.has(columnName))
+      backupColumns.size !== currentColumns.size ||
+      Array.from(currentColumns).some((columnName) => !backupColumns.has(columnName))
     ) {
       throw new PlatformBackupError(
         `أعمدة جدول ${table.name} لا تتطابق مع قاعدة البيانات الحالية.`,
@@ -279,6 +328,12 @@ function assertBackupMatchesSchema(
       }
     }
     backupTables.set(table.name, table);
+  }
+  if (tableNames.some((tableName) => !backupTables.has(tableName))) {
+    throw new PlatformBackupError(
+      "النسخة لا تحتوي جميع جداول قاعدة البيانات الحالية. لم يتم تغيير أي بيانات.",
+      409,
+    );
   }
   return backupTables;
 }

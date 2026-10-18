@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
-  getGetXStoreAuthStatusQueryKey, getGetXStoreDashboardQueryKey, getGetXStoreSessionQueryKey,
+  getGetXStoreAuthStatusQueryKey, getGetXStoreContactSettingsQueryKey, getGetXStoreDashboardQueryKey, getGetXStoreSessionQueryKey,
   getListXStoreHeldSalesQueryKey, getListXStoreProductsQueryKey,
   getListXStoreSalesQueryKey, getListXStoreTeamQueryKey, getListXStoreTenantsQueryKey,
   getListXStoreSubscriptionPaymentsQueryKey,
@@ -15,7 +15,7 @@ import {
   useGetXStoreProfitLossReport, useListXStoreSubscriptionPayments, useListXStoreTeam, useListXStoreTenants, useReleaseXStoreHeldSale, useUpdateXStoreProduct,
   useUpdateXStoreTenant, useUpdateXStoreTenantCredentials, useUpdateXStoreContactSettings, useUpdateXStoreStoreSettings, useCheckoutXStoreSale,
 } from '@workspace/api-client-react';
-import type { Product, Tenant, Sale } from '@workspace/api-client-react';
+import type { AuthStatus, Product, Tenant, Sale } from '@workspace/api-client-react';
 import { Route, Switch, Redirect, Link, useLocation, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -32,10 +32,66 @@ import {
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
   Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone, Database,
 } from 'lucide-react';
+import {
+  FaFacebook,
+  FaInstagram,
+  FaLinkedin,
+  FaPinterest,
+  FaSnapchat,
+  FaTelegram,
+  FaThreads,
+  FaTiktok,
+  FaWhatsapp,
+  FaXTwitter,
+  FaYoutube,
+} from 'react-icons/fa6';
+import type { IconType } from 'react-icons';
 import PlatformBackupPage from '@/pages/platform-backup';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+type SocialLinkKey = keyof AuthStatus['socialLinks'];
+type SocialLinkInputValues = Record<SocialLinkKey, string>;
+const SOCIAL_PLATFORMS: {
+  key: SocialLinkKey;
+  label: string;
+  icon: IconType;
+  color: string;
+  placeholder: string;
+}[] = [
+  { key: 'facebook', label: 'Facebook', icon: FaFacebook, color: '#1877F2', placeholder: 'https://facebook.com/your-page' },
+  { key: 'instagram', label: 'Instagram', icon: FaInstagram, color: '#C13584', placeholder: 'https://instagram.com/your-page' },
+  { key: 'whatsapp', label: 'WhatsApp', icon: FaWhatsapp, color: '#25D366', placeholder: 'https://wa.me/201012345678' },
+  { key: 'tiktok', label: 'TikTok', icon: FaTiktok, color: '#111827', placeholder: 'https://tiktok.com/@your-page' },
+  { key: 'snapchat', label: 'Snapchat', icon: FaSnapchat, color: '#D7B600', placeholder: 'https://snapchat.com/add/your-page' },
+  { key: 'x', label: 'X', icon: FaXTwitter, color: '#111111', placeholder: 'https://x.com/your-page' },
+  { key: 'youtube', label: 'YouTube', icon: FaYoutube, color: '#FF0033', placeholder: 'https://youtube.com/@your-channel' },
+  { key: 'linkedin', label: 'LinkedIn', icon: FaLinkedin, color: '#0A66C2', placeholder: 'https://linkedin.com/company/your-page' },
+  { key: 'telegram', label: 'Telegram', icon: FaTelegram, color: '#229ED9', placeholder: 'https://t.me/your-page' },
+  { key: 'threads', label: 'Threads', icon: FaThreads, color: '#111111', placeholder: 'https://threads.net/@your-page' },
+  { key: 'pinterest', label: 'Pinterest', icon: FaPinterest, color: '#BD081C', placeholder: 'https://pinterest.com/your-page' },
+];
+
+function socialLinkInputs(links?: AuthStatus['socialLinks']): SocialLinkInputValues {
+  return Object.fromEntries(SOCIAL_PLATFORMS.map(({ key }) => [key, links?.[key] ?? ''])) as SocialLinkInputValues;
+}
+
+function nullableSocialLinks(links: SocialLinkInputValues): AuthStatus['socialLinks'] {
+  return {
+    facebook: links.facebook.trim() || null,
+    instagram: links.instagram.trim() || null,
+    whatsapp: links.whatsapp.trim() || null,
+    tiktok: links.tiktok.trim() || null,
+    snapchat: links.snapchat.trim() || null,
+    x: links.x.trim() || null,
+    youtube: links.youtube.trim() || null,
+    linkedin: links.linkedin.trim() || null,
+    telegram: links.telegram.trim() || null,
+    threads: links.threads.trim() || null,
+    pinterest: links.pinterest.trim() || null,
+  };
+}
 
 const fmt = (n: number) => new Intl.NumberFormat('ar-SA', { maximumFractionDigits: 2 }).format(n);
 type StoreCurrency = 'EGP' | 'SAR' | 'AED' | 'USD' | 'EUR' | 'GBP';
@@ -257,14 +313,29 @@ function FounderSetupForm({ recoveringExistingOwner }: { recoveringExistingOwner
     </Form>
   </>;
 }
-function ContactMethods({status}:{status?:{supportPhone:string|null;supportWhatsapp:string|null;supportEmail:string|null}}) {
+function ContactMethods({status}:{status?:Pick<AuthStatus,'supportPhone'|'supportWhatsapp'|'supportEmail'|'socialLinks'>}) {
   const methods=[
     status?.supportPhone&&{icon:Phone,label:'اتصال',href:`tel:${status.supportPhone}`,value:status.supportPhone},
-    status?.supportWhatsapp&&{icon:MessageCircle,label:'واتساب',href:`https://wa.me/${status.supportWhatsapp.replace(/\D/g,'')}`,value:status.supportWhatsapp},
     status?.supportEmail&&{icon:Mail,label:'البريد',href:`mailto:${status.supportEmail}`,value:status.supportEmail},
   ].filter(Boolean) as {icon:typeof Phone;label:string;href:string;value:string}[];
-  if(!methods.length)return <div className="auth-contact-empty">لم تُضف إدارة المنصة معلومات التواصل بعد.</div>;
-  return <div className="auth-contact-list"><span>تحتاج مساعدة؟ تواصل مع إدارة المنصة</span>{methods.map(item=><a key={item.label} href={item.href} target={item.label==='واتساب'?'_blank':undefined} rel={item.label==='واتساب'?'noreferrer':undefined}><item.icon size={15}/><b>{item.label}</b><span>{item.value}</span></a>)}</div>;
+  const socialMethods=SOCIAL_PLATFORMS.flatMap(platform=>{
+    const savedLink=status?.socialLinks?.[platform.key];
+    const whatsappFallback=platform.key==='whatsapp'&&status?.supportWhatsapp
+      ?`https://wa.me/${status.supportWhatsapp.replace(/\D/g,'')}`
+      :null;
+    const href=savedLink||whatsappFallback;
+    return href?[{...platform,href}]:[];
+  });
+  if(!methods.length&&!socialMethods.length)return <div className="auth-contact-empty">لم تُضف إدارة المنصة معلومات التواصل بعد.</div>;
+  return <div className="auth-contact-list">
+    <span>تحتاج مساعدة؟ تواصل مع إدارة المنصة</span>
+    {methods.map(item=><a key={item.label} href={item.href}><item.icon size={15}/><b>{item.label}</b><span>{item.value}</span></a>)}
+    {!!socialMethods.length&&<div className="auth-social-links" aria-label="حساباتنا على منصات التواصل">
+      {socialMethods.map(item=><a key={item.key} href={item.href} target="_blank" rel="noopener noreferrer" aria-label={`تابعنا على ${item.label}`} title={item.label}>
+        <item.icon size={17} aria-hidden="true" style={{color:item.color}}/><span>{item.label}</span>
+      </a>)}
+    </div>}
+  </div>;
 }
 function apiErrorMessage(error:unknown,fallback:string):string {
   if(typeof error==='object'&&error!==null&&'data' in error) {
@@ -477,15 +548,22 @@ function TeamPage() {
   </>;
 }
 function PlatformSettingsPage() {
+  const queryClient=useQueryClient();
   const settings=useGetXStoreContactSettings();
   const update=useUpdateXStoreContactSettings();
-  const [values,setValues]=useState({supportPhone:'',supportWhatsapp:'',supportEmail:''});
+  const [values,setValues]=useState({
+    supportPhone:'',
+    supportWhatsapp:'',
+    supportEmail:'',
+    socialLinks:socialLinkInputs(),
+  });
   const [notice,setNotice]=useState('');
   useEffect(()=>{
     if(settings.data)setValues({
       supportPhone:settings.data.supportPhone||'',
       supportWhatsapp:settings.data.supportWhatsapp||'',
       supportEmail:settings.data.supportEmail||'',
+      socialLinks:socialLinkInputs(settings.data.socialLinks),
     });
   },[settings.data]);
   function submit(e:FormEvent<HTMLFormElement>){
@@ -494,7 +572,12 @@ function PlatformSettingsPage() {
       supportPhone:values.supportPhone.trim()||null,
       supportWhatsapp:values.supportWhatsapp.trim()||null,
       supportEmail:values.supportEmail.trim().toLowerCase()||null,
-    }},{onSuccess:()=>setNotice('تم تحديث معلومات التواصل التي تظهر للزوار.')});
+      socialLinks:nullableSocialLinks(values.socialLinks),
+    }},{onSuccess:result=>{
+      queryClient.setQueryData(getGetXStoreContactSettingsQueryKey(),result);
+      void queryClient.invalidateQueries({queryKey:getGetXStoreAuthStatusQueryKey()});
+      setNotice('تم تحديث معلومات التواصل وروابط التواصل الاجتماعي التي تظهر للزوار.');
+    }});
   }
   return <><PageTitle eyebrow="إعدادات المنصة" title="معلومات التواصل" desc="تظهر هذه البيانات للزوار في زر اتصل بنا وصفحة تسجيل الدخول."/>
     <Card className="settings-card"><SectionHead title="وسائل التواصل" detail="اترك الحقل فارغاً لإخفائه من صفحة اتصل بنا."/>
@@ -502,6 +585,35 @@ function PlatformSettingsPage() {
         <label className="field"><span>رقم هاتف الدعم</span><input type="tel" value={values.supportPhone} onChange={e=>setValues({...values,supportPhone:e.target.value})} placeholder="+20 10 1234 5678"/></label>
         <label className="field"><span>رقم واتساب الدعم</span><input type="tel" value={values.supportWhatsapp} onChange={e=>setValues({...values,supportWhatsapp:e.target.value})} placeholder="+20 10 1234 5678"/></label>
         <label className="field field-wide"><span>البريد الإلكتروني للدعم</span><input type="email" value={values.supportEmail} onChange={e=>setValues({...values,supportEmail:e.target.value})} placeholder="support@example.com"/></label>
+        <div className="social-settings-block field-wide">
+          <div className="social-settings-heading">
+            <div><b>روابط صفحات التواصل الاجتماعي</b><span>أضف رابط الصفحة، وسيظهر للزوار باسم المنصة وأيقونتها.</span></div>
+            <span className="social-links-count">{SOCIAL_PLATFORMS.length} منصة</span>
+          </div>
+          <div className="social-settings-grid">
+            {SOCIAL_PLATFORMS.map(platform=>{
+              const Icon=platform.icon;
+              return <label className="social-link-field" key={platform.key}>
+                <span className="social-link-label">
+                  <i className="social-brand-icon" style={{color:platform.color}}><Icon size={16} aria-hidden="true"/></i>
+                  {platform.label}
+                </span>
+                <input
+                  type="url"
+                  value={values.socialLinks[platform.key]}
+                  onChange={e=>setValues(current=>({
+                    ...current,
+                    socialLinks:{...current.socialLinks,[platform.key]:e.target.value},
+                  }))}
+                  placeholder={platform.placeholder}
+                  maxLength={2048}
+                  aria-label={`رابط صفحة ${platform.label}`}
+                  data-testid={`input-social-link-${platform.key}`}
+                />
+              </label>;
+            })}
+          </div>
+        </div>
         {update.isError&&<div className="form-error">{apiErrorMessage(update.error,'تعذر حفظ معلومات التواصل.')}</div>}
         {notice&&<div className="settings-success"><CircleCheck size={16}/>{notice}</div>}
         <div className="modal-actions"><button className="button button-primary" disabled={update.isPending}>{update.isPending?'جارٍ الحفظ…':'حفظ معلومات التواصل'}</button></div>

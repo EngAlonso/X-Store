@@ -95,10 +95,40 @@ export const xstorePlatformSettings = pgTable("xstore_platform_settings", {
   supportPhone: text("support_phone"),
   supportWhatsapp: text("support_whatsapp"),
   supportEmail: text("support_email"),
+  socialLinks: jsonb("social_links")
+    .$type<XStoreSocialLinks>()
+    .notNull()
+    .default({
+      facebook: null,
+      instagram: null,
+      whatsapp: null,
+      tiktok: null,
+      snapchat: null,
+      x: null,
+      youtube: null,
+      linkedin: null,
+      telegram: null,
+      threads: null,
+      pinterest: null,
+    }),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
+
+export type XStoreSocialLinks = {
+  facebook: string | null;
+  instagram: string | null;
+  whatsapp: string | null;
+  tiktok: string | null;
+  snapchat: string | null;
+  x: string | null;
+  youtube: string | null;
+  linkedin: string | null;
+  telegram: string | null;
+  threads: string | null;
+  pinterest: string | null;
+};
 
 export const xstoreSubscriptionPayments = pgTable(
   "xstore_subscription_payments",

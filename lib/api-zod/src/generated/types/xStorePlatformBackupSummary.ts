@@ -10,5 +10,6 @@ import type { XStorePlatformBackupTableSummary } from './xStorePlatformBackupTab
 export interface XStorePlatformBackupSummary {
   tableCount: number;
   rowCount: number;
+  maxBackupBytes: number;
   tables: XStorePlatformBackupTableSummary[];
 }

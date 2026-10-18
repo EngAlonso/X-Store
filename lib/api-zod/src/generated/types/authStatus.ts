@@ -5,6 +5,7 @@
  * X-Store point-of-sale and inventory API
  * OpenAPI spec version: 0.1.0
  */
+import type { SocialLinks } from './socialLinks';
 
 export interface AuthStatus {
   bootstrapRequired: boolean;
@@ -15,4 +16,5 @@ export interface AuthStatus {
   supportWhatsapp: string | null;
   /** @nullable */
   supportEmail: string | null;
+  socialLinks: SocialLinks;
 }
