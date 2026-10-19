@@ -31,7 +31,6 @@ import {
   Wallet, CircleCheck, Clock3, AlertTriangle, RotateCcw,
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
   Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone, Database, Coffee, Utensils,
-  Shirt, ShoppingBasket, Sparkles,
 } from 'lucide-react';
 import {
   FaFacebook,
@@ -254,12 +253,12 @@ function Home() {
           </div>
         </div>
         <div className="store-fit-grid">
-          <article className="store-fit-card"><div className="store-fit-card-top"><span className="store-fit-icon"><Shirt size={22} strokeWidth={1.8}/></span><span className="store-fit-index">01</span></div><h3>الملابس والأحذية</h3><p>تابع الأصناف والمقاسات والألوان من المخزون إلى نقطة البيع.</p></article>
-          <article className="store-fit-card"><div className="store-fit-card-top"><span className="store-fit-icon store-fit-icon-sage"><ShoppingBasket size={22} strokeWidth={1.8}/></span><span className="store-fit-index">02</span></div><h3>البقالة والسوبرماركت</h3><p>نظّم الكميات وسجّل حركة المبيعات اليومية بسهولة.</p></article>
-          <article className="store-fit-card"><div className="store-fit-card-top"><span className="store-fit-icon store-fit-icon-gold"><Smartphone size={21}/></span><span className="store-fit-index">03</span></div><h3>الإلكترونيات والإكسسوارات</h3><p>تابع الأصناف ومبيعاتها وتقاريرها بوضوح.</p></article>
-          <article className="store-fit-card"><div className="store-fit-card-top"><span className="store-fit-icon store-fit-icon-rose"><Sparkles size={22} strokeWidth={1.8}/></span><span className="store-fit-index">04</span></div><h3>العطور والتجميل</h3><p>رتّب المنتجات والمخزون وراقب حركتها اليومية.</p></article>
-          <article className="store-fit-card"><div className="store-fit-card-top"><span className="store-fit-icon store-fit-icon-gold"><Coffee size={21}/></span><span className="store-fit-index">05</span></div><h3>الكافيهات</h3><p>سجّل المبيعات وتابع الأصناف والمخزون اليومي بسهولة.</p></article>
-          <article className="store-fit-card"><div className="store-fit-card-top"><span className="store-fit-icon store-fit-icon-sage"><Utensils size={21}/></span><span className="store-fit-index">06</span></div><h3>المطاعم</h3><p>تابع حركة المبيعات والأصناف من نقطة البيع.</p></article>
+          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">👕</span><h3>الملابس والأحذية</h3></article>
+          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">🛒</span><h3>البقالة والسوبرماركت</h3></article>
+          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">📱</span><h3>الإلكترونيات والإكسسوارات</h3></article>
+          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">💄</span><h3>العطور والتجميل</h3></article>
+          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">☕</span><h3>الكافيهات</h3></article>
+          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">🍽️</span><h3>المطاعم</h3></article>
         </div>
       </div>
     </section>
