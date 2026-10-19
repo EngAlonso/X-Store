@@ -49,16 +49,31 @@ export type ProductIconTone = "sage" | "gold" | "mauve" | "blue" | "clay" | "ros
 export type ProductIconKind =
   | "coffee"
   | "drinks"
+  | "tea"
+  | "juice"
+  | "water"
+  | "syrup"
+  | "canned-drinks"
+  | "energy-drinks"
+  | "socks"
   | "pizza"
+  | "pasta"
   | "bakery"
   | "snacks"
   | "produce"
+  | "vegetables"
   | "poultry"
   | "seafood"
   | "meat"
   | "dairy"
+  | "eggs"
+  | "rice-grains"
+  | "spices"
+  | "oils"
+  | "canned-food"
   | "groceries"
   | "phone"
+  | "phone-case"
   | "computer"
   | "audio"
   | "camera"
@@ -93,18 +108,33 @@ export type ProductIconKind =
   | "general";
 
 const productSymbols: Record<ProductIconKind, string> = {
-  coffee: "☕︎",
+  coffee: "☕",
   drinks: "🥤",
+  tea: "🍵",
+  juice: "🧃",
+  water: "💧",
+  syrup: "🍹",
+  "canned-drinks": "🥫",
+  "energy-drinks": "⚡",
+  socks: "🧦",
   pizza: "🍕",
+  pasta: "🍝",
   bakery: "🥐",
   snacks: "🍪",
   produce: "🍎",
+  vegetables: "🥕",
   poultry: "🍗",
   seafood: "🐟",
   meat: "🥩",
   dairy: "🥛",
+  eggs: "🥚",
+  "rice-grains": "🍚",
+  spices: "🧂",
+  oils: "🫒",
+  "canned-food": "🥫",
   groceries: "🧺",
   phone: "📱",
+  "phone-case": "📱",
   computer: "💻",
   audio: "🎧",
   camera: "📷",
@@ -149,27 +179,88 @@ type ProductIconRule = {
 
 const productIconRules: ProductIconRule[] = [
   {
+    kind: "tea",
+    Icon: Coffee,
+    tone: "sage",
+    nameTerms: [
+      "شاي", "شاهي", "شاى", "شاي اخضر", "شاي احمر", "شاي اسود", "شاي اعشاب",
+      "tea", "green tea", "black tea", "herbal tea", "chai",
+    ],
+    categoryTerms: ["شاي", "شاهي", "مشروبات ساخنة", "مشروبات دافئة", "tea", "hot tea"],
+  },
+  {
     kind: "coffee",
     Icon: Coffee,
     tone: "clay",
     nameTerms: [
-      "قهوة", "قهوه", "بن", "بن مطحون", "بن محوج", "شاي", "شاهي", "شاي اخضر", "شاي احمر",
+      "قهوة", "قهوه", "بن", "بن مطحون", "بن محوج",
       "نسكافيه", "كابتشينو", "قهوة عربي", "قهوة عربية", "قهوة تركي", "قهوة فرنساوي", "اسبرسو", "موكا",
-      "coffee", "espresso", "tea", "cappuccino", "americano", "latte", "matcha",
+      "coffee", "espresso", "cappuccino", "americano", "latte", "matcha",
     ],
-    categoryTerms: ["قهوة", "بن", "شاي", "شاهي", "مشروبات ساخنة", "مشروبات دافئة", "coffee", "tea", "hot drinks"],
+    categoryTerms: ["قهوة", "بن", "مشروبات ساخنة", "مشروبات دافئة", "coffee", "hot drinks"],
+  },
+  {
+    kind: "juice",
+    Icon: CupSoda,
+    tone: "gold",
+    nameTerms: [
+      "عصير", "عصاير", "عصائر", "عصير فريش", "عصير طازج", "عصير مانجو", "عصير برتقال",
+      "عصير تفاح", "عصير فراولة", "juice", "fruit juice", "fresh juice", "orange juice",
+      "apple juice", "mango juice",
+    ],
+    categoryTerms: ["عصائر", "عصاير", "عصير", "juices", "juice"],
+  },
+  {
+    kind: "water",
+    Icon: CupSoda,
+    tone: "blue",
+    nameTerms: [
+      "مياه", "ماء", "مية", "ميه", "مايه", "موية", "مويه", "ماي", "ازازة مياه",
+      "مياه غازية", "مياه معدنية", "water", "bottled water", "sparkling water", "mineral water",
+    ],
+    categoryTerms: ["مياه", "ماء", "موية", "مويه", "water", "bottled water"],
+  },
+  {
+    kind: "syrup",
+    Icon: CupSoda,
+    tone: "rose",
+    nameTerms: [
+      "شربات", "شربات فواكه", "شراب فواكه", "شراب مركز", "عصير مركز", "سيرب",
+      "sherbet", "syrup", "fruit syrup", "drink concentrate", "cordial",
+    ],
+    categoryTerms: ["شربات", "شراب مركز", "سيرب", "syrups", "sherbet", "cordial"],
+  },
+  {
+    kind: "canned-drinks",
+    Icon: CupSoda,
+    tone: "gold",
+    nameTerms: [
+      "كانز", "كنز", "كانات", "مشروب معلب", "مشروبات معلبة", "علبة بيبسي", "علبة كولا",
+      "بيبسي كانز", "كوكاكولا كانز", "كوكا كولا كانز", "فانتا كانز", "سبرايت كانز",
+      "canned drink", "canned soda", "soda can", "drink can",
+    ],
+    categoryTerms: ["كانز", "مشروبات معلبة", "canned drinks", "soda cans"],
+  },
+  {
+    kind: "energy-drinks",
+    Icon: CupSoda,
+    tone: "gold",
+    nameTerms: [
+      "مشروب طاقة", "مشروبات طاقة", "ريد بول", "ريدبول", "مونستر", "ريد بول كانز",
+      "energy drink", "energy drinks", "red bull", "monster energy",
+    ],
+    categoryTerms: ["مشروبات طاقة", "مشروب طاقة", "energy drinks"],
   },
   {
     kind: "drinks",
     Icon: CupSoda,
     tone: "blue",
     nameTerms: [
-      "مشروب", "عصير", "عصاير", "مية", "ميه", "مايه", "مياه", "ماء", "موية", "مويه", "ماي", "ازازة مياه",
-      "مياه غازية", "مياه معدنية", "بيبسي", "كوكاكولا", "كوكا كولا", "كولا",
-      "فانتا", "سفن اب", "سبن اب", "سبرايت", "كانز", "شربات", "مشروب طاقة", "drink", "beverage",
-      "juice", "water", "soda", "cola", "soft drink", "sparkling water", "energy drink", "bottled water",
+      "مشروب", "مشروبات", "بيبسي", "كوكاكولا", "كوكا كولا", "كولا",
+      "فانتا", "سفن اب", "سبن اب", "سبرايت", "صودا", "drink", "beverage",
+      "soda", "cola", "soft drink", "soft drinks",
     ],
-    categoryTerms: ["مشروبات", "مشروب", "عصائر", "عصاير", "مياه", "موية", "مويه", "مشروبات غازية", "beverage", "drinks", "soft drinks"],
+    categoryTerms: ["مشروبات", "مشروب", "مشروبات غازية", "beverage", "drinks", "soft drinks"],
   },
   {
     kind: "pizza",
@@ -181,6 +272,17 @@ const productIconRules: ProductIconRule[] = [
       "frozen pizza",
     ],
     categoryTerms: ["بيتزا", "بيتسا", "pizzeria", "pizza", "pizzas"],
+  },
+  {
+    kind: "pasta",
+    Icon: CookingPot,
+    tone: "gold",
+    nameTerms: [
+      "مكرونة", "مكرونه", "مكروني", "معكرونة", "معكرونه", "باستا", "مكرونة قلم",
+      "مكرونة اسباجتي", "مكرونة بشاميل", "لسان عصفور", "اندومي", "نودلز",
+      "pasta", "macaroni", "spaghetti", "penne", "fusilli", "noodles", "ramen", "lasagna",
+    ],
+    categoryTerms: ["مكرونة", "معكرونة", "باستا", "pasta", "noodles"],
   },
   {
     kind: "snacks",
@@ -207,17 +309,26 @@ const productIconRules: ProductIconRule[] = [
     categoryTerms: ["مخبوزات", "مخبز", "مخبزات", "معجنات", "bakery", "bread", "pastry", "baked goods"],
   },
   {
+    kind: "vegetables",
+    Icon: Apple,
+    tone: "sage",
+    nameTerms: [
+      "خضار", "خضروات", "طماطم", "بندورة", "بطاطس", "بطاطا", "بصل", "خيار", "فلفل",
+      "كوسة", "جزر", "باذنجان", "ملوخية", "بامية", "ليمون", "ثوم", "خضرة",
+      "vegetable", "vegetables", "tomato", "potato", "onion",
+    ],
+    categoryTerms: ["خضار", "خضروات", "vegetables"],
+  },
+  {
     kind: "produce",
     Icon: Apple,
     tone: "sage",
     nameTerms: [
-      "فاكهة", "فواكه", "فاكهه", "خضار", "تفاح", "موز", "برتقال", "برتقان",
-      "يوسفي", "عنب", "فراولة", "مانجا", "مانجو", "جوافة", "خوخ", "كمثرى",
-      "بطيخ", "شمام", "طماطم", "بندورة", "بطاطس", "بطاطا", "بصل", "خيار",
-      "فلفل", "كوسة", "جزر", "باذنجان", "ملوخية", "بامية", "ليمون", "ثوم", "خضرة",
-      "produce", "fruit", "fruits", "vegetable", "vegetables", "tomato", "potato", "onion",
+      "فاكهة", "فواكه", "فاكهه", "تفاح", "موز", "برتقال", "برتقان", "يوسفي", "عنب",
+      "فراولة", "مانجا", "مانجو", "جوافة", "خوخ", "كمثرى", "بطيخ", "شمام",
+      "produce", "fruit", "fruits",
     ],
-    categoryTerms: ["خضار", "خضروات", "فاكهة", "فواكه", "produce", "fruit", "vegetables"],
+    categoryTerms: ["فاكهة", "فواكه", "produce", "fruit", "fruits"],
   },
   {
     kind: "poultry",
@@ -251,6 +362,55 @@ const productIconRules: ProductIconRule[] = [
     categoryTerms: ["لحوم", "لحمة", "لحوم حمراء", "meat", "beef"],
   },
   {
+    kind: "eggs",
+    Icon: Apple,
+    tone: "gold",
+    nameTerms: ["بيض", "بيضة", "بيض بلدي", "بيض ابيض", "بيض احمر", "eggs", "egg"],
+    categoryTerms: ["بيض", "بيضيات", "eggs"],
+  },
+  {
+    kind: "rice-grains",
+    Icon: CookingPot,
+    tone: "gold",
+    nameTerms: [
+      "ارز", "رز", "ارز بسمتي", "رز بسمتي", "عدس", "فول", "حمص", "برغل", "دقيق",
+      "طحين", "شوفان", "ذرة", "حبوب", "rice", "lentils", "beans", "chickpeas", "flour",
+      "oats", "grains", "cereal",
+    ],
+    categoryTerms: ["ارز", "رز", "حبوب", "بقوليات", "دقيق", "grains", "rice", "legumes", "flour"],
+  },
+  {
+    kind: "spices",
+    Icon: Sparkles,
+    tone: "gold",
+    nameTerms: [
+      "بهارات", "توابل", "كمون", "كركم", "كزبرة ناشفة", "فلفل اسود", "قرفة", "ملح",
+      "spice", "spices", "seasoning", "seasonings", "salt", "pepper", "cumin",
+    ],
+    categoryTerms: ["بهارات", "توابل", "تتبيلات", "spices", "seasonings"],
+  },
+  {
+    kind: "oils",
+    Icon: CookingPot,
+    tone: "sage",
+    nameTerms: [
+      "زيت", "زيوت", "زيت زيتون", "زيت ذرة", "زيت عباد الشمس", "خل", "olive oil",
+      "cooking oil", "vegetable oil", "oil", "vinegar",
+    ],
+    categoryTerms: ["زيوت", "زيت", "خل", "oils", "cooking oil"],
+  },
+  {
+    kind: "canned-food",
+    Icon: ShoppingBasket,
+    tone: "gold",
+    nameTerms: [
+      "معلبات", "طعام معلب", "غذاء معلب", "خضار معلب", "فول معلب", "تونة معلبة",
+      "تونه معلبه", "ذرة معلبة", "صلصة معلبة", "canned food", "canned tuna",
+      "canned vegetables", "canned beans", "canned corn", "tin food",
+    ],
+    categoryTerms: ["معلبات", "أطعمة معلبة", "اغذية معلبة", "canned food", "canned foods"],
+  },
+  {
     kind: "dairy",
     Icon: Milk,
     tone: "blue",
@@ -260,6 +420,17 @@ const productIconRules: ProductIconRule[] = [
       "milk", "cheese", "yogurt", "yoghurt", "dairy", "butter", "cream", "ice cream",
     ],
     categoryTerms: ["ألبان", "البان", "منتجات الألبان", "dairy"],
+  },
+  {
+    kind: "phone-case",
+    Icon: Smartphone,
+    tone: "blue",
+    nameTerms: [
+      "جراب", "جراب موبايل", "جراب تليفون", "جراب جوال", "كفر موبايل", "كفر تليفون",
+      "كفر جوال", "حافظة موبايل", "حافظة هاتف", "غطاء هاتف", "واقي موبايل",
+      "phone case", "mobile case", "phone cover", "mobile cover", "protective case",
+    ],
+    categoryTerms: ["جرابات", "جراب", "كفرات موبايل", "حافظات هواتف", "phone cases", "mobile cases"],
   },
   {
     kind: "phone",
@@ -308,8 +479,8 @@ const productIconRules: ProductIconRule[] = [
     tone: "blue",
     nameTerms: [
       "شاحن", "كابل", "وصلة", "محول", "فلاشة", "فلاش ميموري", "كيبورد",
-      "ماوس", "فارة", "جراب", "كفر", "باور بانك", "اكسسوارات جوال", "شاحن متنقل",
-      "charger", "cable", "keyboard", "mouse", "power bank", "phone case", "electronics",
+      "ماوس", "فارة", "باور بانك", "اكسسوارات جوال", "شاحن متنقل",
+      "charger", "cable", "keyboard", "mouse", "power bank", "electronics",
     ],
     categoryTerms: ["إلكترونيات", "الكترونيات", "إلكتروني", "أجهزة كهربائية", "اكسسوارات", "electronics", "electronic accessories"],
   },
@@ -365,12 +536,22 @@ const productIconRules: ProductIconRule[] = [
     categoryTerms: ["جاكيتات", "معاطف", "ملابس خارجية", "outerwear", "jackets", "coats"],
   },
   {
+    kind: "socks",
+    Icon: Shirt,
+    tone: "blue",
+    nameTerms: [
+      "شراب", "شرابات", "جوارب", "جورب", "جوارب قطن", "شراب رجالي", "شرابات نسائي",
+      "sock", "socks", "stockings",
+    ],
+    categoryTerms: ["شرابات", "جوارب", "جورب", "socks", "stockings"],
+  },
+  {
     kind: "clothing",
     Icon: Shirt,
     tone: "sage",
     nameTerms: [
       "قميص", "تيشيرت", "تيشرت", "تي شيرت", "بلوزة", "فستان",
-      "عباية", "عبايه", "عباءة", "جلابية", "دشداشة", "ثوب", "هدوم", "ملابس", "شراب", "جوارب",
+      "عباية", "عبايه", "عباءة", "جلابية", "دشداشة", "ثوب", "هدوم", "ملابس",
       "شورت", "shirt", "t shirt", "tee", "hoodie", "clothing", "dress", "apparel",
     ],
     categoryTerms: ["ملابس", "أزياء", "clothing", "apparel", "fashion"],
@@ -431,7 +612,11 @@ const productIconRules: ProductIconRule[] = [
     kind: "medicine",
     Icon: Pill,
     tone: "rose",
-    nameTerms: ["دواء", "علاج", "فيتامين", "حبوب", "مسكن", "بانادول", "مضاد حيوي", "دواء صيدلية", "medicine", "vitamin", "pharmacy", "medicine", "drug", "supplement"],
+    nameTerms: [
+      "دواء", "علاج", "فيتامين", "حبوب", "مسكن", "بانادول", "مضاد حيوي", "دواء صيدلية",
+      "شراب كحة", "شراب دواء", "شراب اطفال", "دواء شراب",
+      "medicine", "vitamin", "pharmacy", "drug", "supplement",
+    ],
     categoryTerms: ["أدوية", "ادوية", "صيدلية", "pharmacy", "medicine"],
   },
   {
@@ -598,7 +783,23 @@ const normalizedProductIconRules = productIconRules.map(rule => ({
 const genericIcon = { kind: "general", Icon: Package, tone: "sage" } as const;
 
 const relatedProductIconKinds: Partial<Record<ProductIconKind, ProductIconKind[]>> = {
-  clothing: ["pants", "jacket"],
+  coffee: ["tea"],
+  tea: ["coffee"],
+  drinks: ["juice", "water", "syrup", "canned-drinks", "energy-drinks", "coffee", "tea"],
+  juice: ["drinks", "syrup"],
+  water: ["drinks"],
+  syrup: ["drinks", "juice"],
+  "canned-drinks": ["drinks"],
+  "energy-drinks": ["drinks"],
+  groceries: [
+    "pasta", "vegetables", "produce", "poultry", "seafood", "meat", "dairy",
+    "eggs", "rice-grains", "spices", "oils", "canned-food", "snacks", "bakery", "pizza",
+  ],
+  produce: ["vegetables"],
+  vegetables: ["produce"],
+  phone: ["phone-case"],
+  electronics: ["phone-case"],
+  clothing: ["pants", "jacket", "socks"],
   shoes: ["sneakers"],
   bakery: ["pizza"],
 };

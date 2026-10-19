@@ -22,7 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import { getProductIcon, matchesProductSearch } from '@/lib/product-icons';
+import { getProductIcon, matchesProductSearch, type ProductIconKind } from '@/lib/product-icons';
 import { createWhatsAppInvoiceUrl, getWhatsAppDigits } from '@/lib/whatsapp-invoice';
 import './auth-unified.css';
 import {
@@ -111,6 +111,20 @@ const currencyOptions: { value: StoreCurrency; label: string; shortLabel: string
 const currencyLabels = Object.fromEntries(currencyOptions.map(({ value, label }) => [value, label])) as Record<StoreCurrency, string>;
 const currencyShortLabels = Object.fromEntries(currencyOptions.map(({ value, shortLabel }) => [value, shortLabel])) as Record<StoreCurrency, string>;
 const CurrencyContext = createContext<StoreCurrency>('SAR');
+function ProductIconSymbol({ symbol, kind }: { symbol: string; kind: ProductIconKind }) {
+  if (kind === 'jacket') {
+    return <svg className="product-symbol product-symbol-jacket" viewBox="0 0 32 32" aria-hidden="true">
+      <path d="m11.5 4.5 4.5 2.7 4.5-2.7 3.8 2 3.1 9-4.2 1.5-2-4.1V28H10.8V13.1l-2 4.1-4.2-1.5 3.1-9 3.8-2Z" fill="#71866a" stroke="#405744" strokeWidth="1.25" strokeLinejoin="round"/>
+      <path d="m11.5 4.5 4.5 4 4.5-4M16 8.5V28" fill="none" stroke="#eee6cf" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M10.9 18h4v4h-4zM17.1 18h4v4h-4z" fill="#819579" stroke="#405744" strokeWidth=".75" strokeLinejoin="round"/>
+      <circle cx="16" cy="13" r=".65" fill="#eee6cf"/>
+    </svg>;
+  }
+  return <span className="product-symbol" aria-hidden="true">
+    {symbol}
+    {kind === 'phone-case' && <small className="phone-case-badge">🛡️</small>}
+  </span>;
+}
 function useMoney() {
   const currency = useContext(CurrencyContext);
   return useCallback((amount: number) => new Intl.NumberFormat('ar-EG', {
@@ -940,7 +954,7 @@ function InventoryPage() {
                 <div className="table-wrap inventory-table-wrap"><table className="inventory-table">
                   <thead><tr><th>المنتج</th><th>رمز المنتج</th><th>التصنيف</th><th>المواصفات</th>{!isWarehouseManager && <th>سعر البيع</th>}<th>الرصيد</th>{canManage && <th>تحديث الكمية</th>}</tr></thead>
                   <tbody>{rows.map(p=>{const {symbol,tone,kind}=getProductIcon(p);return <tr key={p.id} data-testid={`row-inventory-product-${p.id}`}>
-                    <td><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><span className="product-symbol" aria-hidden="true">{symbol}</span></span><span className="inventory-product-copy"><b>{p.name}</b><small>{p.partNumber?`رقم القطعة: ${p.partNumber}`:p.barcode?`باركود: ${p.barcode}`:'—'}</small></span></div></td>
+                    <td><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><ProductIconSymbol symbol={symbol} kind={kind}/></span><span className="inventory-product-copy"><b>{p.name}</b><small>{p.partNumber?`رقم القطعة: ${p.partNumber}`:p.barcode?`باركود: ${p.barcode}`:'—'}</small></span></div></td>
                     <td className="ltr-id inventory-sku">{p.sku}</td>
                     <td><span className="inventory-category-chip">{p.category}</span></td>
                     <td><div className="inventory-variants">{p.color&&<span>{p.color}</span>}{p.size&&<span>{p.size}</span>}{!p.color&&!p.size&&<small>—</small>}</div></td>
@@ -956,7 +970,7 @@ function InventoryPage() {
               </div>
               <div className="inventory-mobile-list">
                 {rows.map(p=>{const {symbol,tone,kind}=getProductIcon(p);return <article className="inventory-mobile-card" key={p.id} data-testid={`card-inventory-product-${p.id}`}>
-                  <div className="inventory-mobile-head"><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><span className="product-symbol" aria-hidden="true">{symbol}</span></span><span className="inventory-product-copy"><b>{p.name}</b><small className="ltr-id">{p.sku}</small></span></div><span className={`inventory-stock-status ${p.quantity<=0?'is-out':p.quantity<=5?'is-low':'is-available'}`}>{p.quantity<=0?'نفد المخزون':p.quantity<=5?'رصيد منخفض':'متاح'}</span></div>
+                  <div className="inventory-mobile-head"><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><ProductIconSymbol symbol={symbol} kind={kind}/></span><span className="inventory-product-copy"><b>{p.name}</b><small className="ltr-id">{p.sku}</small></span></div><span className={`inventory-stock-status ${p.quantity<=0?'is-out':p.quantity<=5?'is-low':'is-available'}`}>{p.quantity<=0?'نفد المخزون':p.quantity<=5?'رصيد منخفض':'متاح'}</span></div>
                   <div className="inventory-mobile-details">
                     <div><small>التصنيف</small><b>{p.category}</b></div>
                     {!isWarehouseManager&&<div><small>سعر البيع</small><b>{money(p.price)}</b></div>}
@@ -1051,7 +1065,7 @@ function PosPage() {
               ? <StateBlock loading={false} error onRetry={()=>products.refetch()} empty={false}/>
               : visible.length
                 ? <div className="product-grid">{visible.map(p=>{const {symbol,tone,kind}=getProductIcon(p);return <button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} aria-label={`إضافة ${p.name} إلى الفاتورة`} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
-                    <span className={`product-art art-${tone}`} data-product-icon={kind}><span className="product-symbol" aria-hidden="true">{symbol}</span>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
+                    <span className={`product-art art-${tone}`} data-product-icon={kind}><ProductIconSymbol symbol={symbol} kind={kind}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
                     <span className="tile-category">{p.category}</span><b>{p.name}</b><small className="ltr-id">{p.sku}</small>
                     <span className="tile-bottom"><strong>{money(p.price)}</strong><span>متاح {fmt(p.quantity)}</span></span>
                   </button>})}</div>
@@ -1062,7 +1076,7 @@ function PosPage() {
           <div className="cart-head"><div><h2>الطلب الحالي</h2><span>{fmt(cartLines.reduce((a,p)=>a+p.count,0))} أصناف</span></div><button className="table-action" onClick={()=>{setCart({});setCustomerPhone('')}} disabled={!cartLines.length}><Trash2 size={14}/> تفريغ</button></div>
           <div className="cart-lines">
             {cartLines.map(p=>{const {symbol,tone,kind}=getProductIcon(p);return <div className="cart-line" key={p.id}>
-              <span className={`cart-line-art art-${tone}`} data-product-icon={kind}><span className="product-symbol" aria-hidden="true">{symbol}</span></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div>
+              <span className={`cart-line-art art-${tone}`} data-product-icon={kind}><ProductIconSymbol symbol={symbol} kind={kind}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div>
               <div className="stepper"><button onClick={()=>mutateCart(p.id,-1)} aria-label="إنقاص"><Minus size={13}/></button><b>{p.count}</b><button onClick={()=>mutateCart(p.id,1)} aria-label="زيادة" disabled={p.count>=p.quantity}><Plus size={13}/></button></div>
               <strong>{money(p.price*p.count)}</strong>
             </div>})}
