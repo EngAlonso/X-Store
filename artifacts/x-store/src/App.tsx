@@ -939,8 +939,8 @@ function InventoryPage() {
               <div className="inventory-desktop-view">
                 <div className="table-wrap inventory-table-wrap"><table className="inventory-table">
                   <thead><tr><th>المنتج</th><th>رمز المنتج</th><th>التصنيف</th><th>المواصفات</th>{!isWarehouseManager && <th>سعر البيع</th>}<th>الرصيد</th>{canManage && <th>تحديث الكمية</th>}</tr></thead>
-                  <tbody>{rows.map(p=>{const {Icon,tone,kind}=getProductIcon(p);return <tr key={p.id} data-testid={`row-inventory-product-${p.id}`}>
-                    <td><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><Icon size={20} strokeWidth={1.8}/></span><span className="inventory-product-copy"><b>{p.name}</b><small>{p.partNumber?`رقم القطعة: ${p.partNumber}`:p.barcode?`باركود: ${p.barcode}`:'—'}</small></span></div></td>
+                  <tbody>{rows.map(p=>{const {symbol,tone,kind}=getProductIcon(p);return <tr key={p.id} data-testid={`row-inventory-product-${p.id}`}>
+                    <td><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><span className="product-symbol" aria-hidden="true">{symbol}</span></span><span className="inventory-product-copy"><b>{p.name}</b><small>{p.partNumber?`رقم القطعة: ${p.partNumber}`:p.barcode?`باركود: ${p.barcode}`:'—'}</small></span></div></td>
                     <td className="ltr-id inventory-sku">{p.sku}</td>
                     <td><span className="inventory-category-chip">{p.category}</span></td>
                     <td><div className="inventory-variants">{p.color&&<span>{p.color}</span>}{p.size&&<span>{p.size}</span>}{!p.color&&!p.size&&<small>—</small>}</div></td>
@@ -955,8 +955,8 @@ function InventoryPage() {
                 </table></div>
               </div>
               <div className="inventory-mobile-list">
-                {rows.map(p=>{const {Icon,tone,kind}=getProductIcon(p);return <article className="inventory-mobile-card" key={p.id} data-testid={`card-inventory-product-${p.id}`}>
-                  <div className="inventory-mobile-head"><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><Icon size={20} strokeWidth={1.8}/></span><span className="inventory-product-copy"><b>{p.name}</b><small className="ltr-id">{p.sku}</small></span></div><span className={`inventory-stock-status ${p.quantity<=0?'is-out':p.quantity<=5?'is-low':'is-available'}`}>{p.quantity<=0?'نفد المخزون':p.quantity<=5?'رصيد منخفض':'متاح'}</span></div>
+                {rows.map(p=>{const {symbol,tone,kind}=getProductIcon(p);return <article className="inventory-mobile-card" key={p.id} data-testid={`card-inventory-product-${p.id}`}>
+                  <div className="inventory-mobile-head"><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><span className="product-symbol" aria-hidden="true">{symbol}</span></span><span className="inventory-product-copy"><b>{p.name}</b><small className="ltr-id">{p.sku}</small></span></div><span className={`inventory-stock-status ${p.quantity<=0?'is-out':p.quantity<=5?'is-low':'is-available'}`}>{p.quantity<=0?'نفد المخزون':p.quantity<=5?'رصيد منخفض':'متاح'}</span></div>
                   <div className="inventory-mobile-details">
                     <div><small>التصنيف</small><b>{p.category}</b></div>
                     {!isWarehouseManager&&<div><small>سعر البيع</small><b>{money(p.price)}</b></div>}
@@ -1050,8 +1050,8 @@ function PosPage() {
             : products.isError
               ? <StateBlock loading={false} error onRetry={()=>products.refetch()} empty={false}/>
               : visible.length
-                ? <div className="product-grid">{visible.map(p=>{const {Icon,tone,kind}=getProductIcon(p);return <button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} aria-label={`إضافة ${p.name} إلى الفاتورة`} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
-                    <span className={`product-art art-${tone}`} data-product-icon={kind}><Icon size={26} strokeWidth={1.8}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
+                ? <div className="product-grid">{visible.map(p=>{const {symbol,tone,kind}=getProductIcon(p);return <button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} aria-label={`إضافة ${p.name} إلى الفاتورة`} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
+                    <span className={`product-art art-${tone}`} data-product-icon={kind}><span className="product-symbol" aria-hidden="true">{symbol}</span>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
                     <span className="tile-category">{p.category}</span><b>{p.name}</b><small className="ltr-id">{p.sku}</small>
                     <span className="tile-bottom"><strong>{money(p.price)}</strong><span>متاح {fmt(p.quantity)}</span></span>
                   </button>})}</div>
@@ -1061,8 +1061,8 @@ function PosPage() {
         <aside className="cart-panel">
           <div className="cart-head"><div><h2>الطلب الحالي</h2><span>{fmt(cartLines.reduce((a,p)=>a+p.count,0))} أصناف</span></div><button className="table-action" onClick={()=>{setCart({});setCustomerPhone('')}} disabled={!cartLines.length}><Trash2 size={14}/> تفريغ</button></div>
           <div className="cart-lines">
-            {cartLines.map(p=>{const {Icon,tone,kind}=getProductIcon(p);return <div className="cart-line" key={p.id}>
-              <span className={`cart-line-art art-${tone}`} data-product-icon={kind}><Icon size={17} strokeWidth={1.8}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div>
+            {cartLines.map(p=>{const {symbol,tone,kind}=getProductIcon(p);return <div className="cart-line" key={p.id}>
+              <span className={`cart-line-art art-${tone}`} data-product-icon={kind}><span className="product-symbol" aria-hidden="true">{symbol}</span></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div>
               <div className="stepper"><button onClick={()=>mutateCart(p.id,-1)} aria-label="إنقاص"><Minus size={13}/></button><b>{p.count}</b><button onClick={()=>mutateCart(p.id,1)} aria-label="زيادة" disabled={p.count>=p.quantity}><Plus size={13}/></button></div>
               <strong>{money(p.price*p.count)}</strong>
             </div>})}

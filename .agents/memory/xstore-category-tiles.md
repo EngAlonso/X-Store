@@ -1,10 +1,10 @@
 ---
-name: X-Store category tiles
-description: The user's visual preference for the public landing page's store-type section.
+name: X-Store natural icons
+description: The user's visual preference for familiar, natural symbols across X-Store categories and products.
 ---
 
-Keep the store-type section compact, with small square tiles and familiar, natural object symbols. Avoid oversized cards that dominate the page and avoid decorative or abstract icon artwork.
+Use familiar, natural object symbols for store categories and products, with restrained monochrome styling so the interface does not feel cartoonish. Keep store-type tiles compact and square.
 
-**Why:** The user explicitly corrected a design that used large square cards and stylized icons, saying both were the opposite of what they requested.
+**Why:** The user explicitly rejected oversized tiles, decorative icon artwork, and a cartoonish look.
 
-**How to apply:** Favor a compact responsive grid, recognizable symbols, and short category labels so this section does not consume excessive page height.
+**How to apply:** Prefer recognizable object symbols, muted colors, and compact tile sizing across the landing page, inventory, and checkout UI.

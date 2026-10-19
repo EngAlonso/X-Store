@@ -92,6 +92,53 @@ export type ProductIconKind =
   | "gifts"
   | "general";
 
+const productSymbols: Record<ProductIconKind, string> = {
+  coffee: "☕︎",
+  drinks: "🥤",
+  pizza: "🍕",
+  bakery: "🥐",
+  snacks: "🍪",
+  produce: "🍎",
+  poultry: "🍗",
+  seafood: "🐟",
+  meat: "🥩",
+  dairy: "🥛",
+  groceries: "🧺",
+  phone: "📱",
+  computer: "💻",
+  audio: "🎧",
+  camera: "📷",
+  display: "📺",
+  electronics: "🔌",
+  shoes: "👟",
+  sneakers: "👟",
+  pants: "👖",
+  jacket: "🧥",
+  clothing: "👕",
+  watch: "⌚",
+  books: "📚",
+  stationery: "✏️",
+  beauty: "💄",
+  cleaning: "🧹",
+  medicine: "💊",
+  bags: "👜",
+  jewelry: "💍",
+  furniture: "🛋️",
+  cookware: "🍳",
+  tableware: "🍽️",
+  sports: "⚽",
+  toys: "🧸",
+  baby: "🍼",
+  dog: "🐕",
+  cat: "🐈",
+  automotive: "🚗",
+  tools: "🔧",
+  bikes: "🚲",
+  "personal-care": "🧴",
+  gifts: "🎁",
+  general: "▣",
+};
+
 type ProductIconRule = {
   kind: Exclude<ProductIconKind, "general">;
   Icon: LucideIcon;
@@ -591,8 +638,8 @@ export function getProductIcon(product: { name?: string | null; category?: strin
   const byCategory = bestRuleFor(categoryTokens, "categoryTerms");
   const match = byName ?? byCategory;
   return match
-    ? { kind: match.kind, Icon: match.Icon, tone: match.tone }
-    : genericIcon;
+    ? { kind: match.kind, Icon: match.Icon, tone: match.tone, symbol: productSymbols[match.kind] }
+    : { ...genericIcon, symbol: productSymbols.general };
 }
 
 type ProductSearchTarget = {
