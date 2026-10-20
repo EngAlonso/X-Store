@@ -1252,6 +1252,10 @@ components:
         changeAmount: { type: number }
         status: { type: string, enum: [completed, partially_returned, returned] }
         createdAt: { type: string, format: date-time }
+        exchangeEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/SaleExchangeEvent"
       required:
         - id
         - tenantId
@@ -1270,6 +1274,45 @@ components:
         - changeAmount
         - status
         - createdAt
+        - exchangeEvents
+    ExchangeEventItem:
+      type: object
+      properties:
+        productId: { type: string }
+        name: { type: string }
+        sku: { type: string }
+        quantity: { type: integer }
+      required: [productId, name, sku, quantity]
+    SaleExchangeEvent:
+      type: object
+      properties:
+        originalInvoiceNo: { type: string }
+        exchangeInvoiceNo: { type: string }
+        returnedItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExchangeEventItem"
+        replacementItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExchangeEventItem"
+        refundAmount: { type: ["number", "null"] }
+        replacementTotal: { type: ["number", "null"] }
+        balanceDue: { type: ["number", "null"] }
+        performedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        detailsAvailable: { type: boolean }
+      required:
+        - originalInvoiceNo
+        - exchangeInvoiceNo
+        - returnedItems
+        - replacementItems
+        - refundAmount
+        - replacementTotal
+        - balanceDue
+        - performedBy
+        - createdAt
+        - detailsAvailable
     SaleInvoiceItem:
       type: object
       properties:
@@ -1277,10 +1320,11 @@ components:
         name: { type: string }
         sku: { type: string }
         unitPrice: { type: number }
+        refundUnitAmount: { type: number }
         quantity: { type: integer }
         returnedQuantity: { type: integer }
         returnableQuantity: { type: integer }
-      required: [productId, name, sku, unitPrice, quantity, returnedQuantity, returnableQuantity]
+      required: [productId, name, sku, unitPrice, refundUnitAmount, quantity, returnedQuantity, returnableQuantity]
     ProfitLossReport:
       type: object
       properties:

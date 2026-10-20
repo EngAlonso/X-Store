@@ -265,6 +265,29 @@ export const SaleStatus = {
   returned: 'returned',
 } as const;
 
+export interface ExchangeEventItem {
+  productId: string;
+  name: string;
+  sku: string;
+  quantity: number;
+}
+
+export interface SaleExchangeEvent {
+  originalInvoiceNo: string;
+  exchangeInvoiceNo: string;
+  returnedItems: ExchangeEventItem[];
+  replacementItems: ExchangeEventItem[];
+  /** @nullable */
+  refundAmount: number | null;
+  /** @nullable */
+  replacementTotal: number | null;
+  /** @nullable */
+  balanceDue: number | null;
+  performedBy: string;
+  createdAt: string;
+  detailsAvailable: boolean;
+}
+
 export interface Sale {
   id: string;
   tenantId: string;
@@ -286,6 +309,7 @@ export interface Sale {
   changeAmount: number;
   status: SaleStatus;
   createdAt: string;
+  exchangeEvents: SaleExchangeEvent[];
 }
 
 export interface AuditLog {
@@ -623,6 +647,7 @@ export interface SaleInvoiceItem {
   name: string;
   sku: string;
   unitPrice: number;
+  refundUnitAmount: number;
   quantity: number;
   returnedQuantity: number;
   returnableQuantity: number;

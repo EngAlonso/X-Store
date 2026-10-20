@@ -230,7 +230,29 @@ export const GetXStoreDashboardResponse = zod.object({
   "amountReceived": zod.number(),
   "changeAmount": zod.number(),
   "status": zod.enum(['completed', 'partially_returned', 'returned']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "exchangeEvents": zod.array(zod.object({
+  "originalInvoiceNo": zod.string(),
+  "exchangeInvoiceNo": zod.string(),
+  "returnedItems": zod.array(zod.object({
+  "productId": zod.string(),
+  "name": zod.string(),
+  "sku": zod.string(),
+  "quantity": zod.number().int()
+})),
+  "replacementItems": zod.array(zod.object({
+  "productId": zod.string(),
+  "name": zod.string(),
+  "sku": zod.string(),
+  "quantity": zod.number().int()
+})),
+  "refundAmount": zod.number().nullable(),
+  "replacementTotal": zod.number().nullable(),
+  "balanceDue": zod.number().nullable(),
+  "performedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "detailsAvailable": zod.boolean()
+}))
 })),
   "latestAuditLogs": zod.array(zod.object({
   "id": zod.string(),
@@ -727,7 +749,29 @@ export const ListXStoreSalesResponseItem = zod.object({
   "amountReceived": zod.number(),
   "changeAmount": zod.number(),
   "status": zod.enum(['completed', 'partially_returned', 'returned']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "exchangeEvents": zod.array(zod.object({
+  "originalInvoiceNo": zod.string(),
+  "exchangeInvoiceNo": zod.string(),
+  "returnedItems": zod.array(zod.object({
+  "productId": zod.string(),
+  "name": zod.string(),
+  "sku": zod.string(),
+  "quantity": zod.number().int()
+})),
+  "replacementItems": zod.array(zod.object({
+  "productId": zod.string(),
+  "name": zod.string(),
+  "sku": zod.string(),
+  "quantity": zod.number().int()
+})),
+  "refundAmount": zod.number().nullable(),
+  "replacementTotal": zod.number().nullable(),
+  "balanceDue": zod.number().nullable(),
+  "performedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "detailsAvailable": zod.boolean()
+}))
 })
 export const ListXStoreSalesResponse = zod.array(ListXStoreSalesResponseItem)
 
@@ -781,7 +825,29 @@ export const CheckoutXStoreSaleResponse = zod.object({
   "amountReceived": zod.number(),
   "changeAmount": zod.number(),
   "status": zod.enum(['completed', 'partially_returned', 'returned']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "exchangeEvents": zod.array(zod.object({
+  "originalInvoiceNo": zod.string(),
+  "exchangeInvoiceNo": zod.string(),
+  "returnedItems": zod.array(zod.object({
+  "productId": zod.string(),
+  "name": zod.string(),
+  "sku": zod.string(),
+  "quantity": zod.number().int()
+})),
+  "replacementItems": zod.array(zod.object({
+  "productId": zod.string(),
+  "name": zod.string(),
+  "sku": zod.string(),
+  "quantity": zod.number().int()
+})),
+  "refundAmount": zod.number().nullable(),
+  "replacementTotal": zod.number().nullable(),
+  "balanceDue": zod.number().nullable(),
+  "performedBy": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "detailsAvailable": zod.boolean()
+}))
 })
 
 
@@ -800,6 +866,7 @@ export const GetXStoreSaleInvoiceItemsResponseItem = zod.object({
   "name": zod.string(),
   "sku": zod.string(),
   "unitPrice": zod.number(),
+  "refundUnitAmount": zod.number(),
   "quantity": zod.number().int(),
   "returnedQuantity": zod.number().int(),
   "returnableQuantity": zod.number().int()

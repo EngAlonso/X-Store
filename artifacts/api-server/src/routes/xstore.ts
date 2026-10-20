@@ -344,10 +344,12 @@ function saleDto(
   role: string,
   grossProfit: number | null = null,
   cashierName = "—",
+  exchangeEvents: XStoreExchangeEvent[] = [],
 ) {
   return {
     ...sale,
     cashierName,
+    exchangeEvents,
     subtotal: toNumber(sale.subtotal),
     discountAmount: toNumber(sale.discountAmount),
     taxAmount: toNumber(sale.taxAmount),
@@ -356,6 +358,86 @@ function saleDto(
     amountReceived: toNumber(sale.amountReceived),
     changeAmount: toNumber(sale.changeAmount),
     createdAt: iso(sale.createdAt),
+  };
+}
+
+type XStoreExchangeEvent = {
+  originalInvoiceNo: string;
+  exchangeInvoiceNo: string;
+  returnedItems: Array<{
+    productId: string;
+    name: string;
+    sku: string;
+    quantity: number;
+  }>;
+  replacementItems: Array<{
+    productId: string;
+    name: string;
+    sku: string;
+    quantity: number;
+  }>;
+  refundAmount: number | null;
+  replacementTotal: number | null;
+  balanceDue: number | null;
+  performedBy: string;
+  createdAt: string;
+  detailsAvailable: boolean;
+};
+
+function exchangeEventFromAudit(log: {
+  entityId: string | null;
+  details: string;
+  actorName: string;
+  createdAt: Date;
+}): XStoreExchangeEvent | null {
+  let payload: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = JSON.parse(log.details);
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      payload = parsed as Record<string, unknown>;
+    }
+  } catch {
+    // Older exchange records used a human-readable details string.
+  }
+
+  const legacyOriginalInvoice = log.details.match(/^Exchange for (.+)$/)?.[1];
+  const originalInvoiceNo =
+    typeof payload.originalInvoiceNo === "string"
+      ? payload.originalInvoiceNo
+      : legacyOriginalInvoice;
+  if (!originalInvoiceNo || !log.entityId) return null;
+
+  const toItems = (value: unknown) => {
+    if (!Array.isArray(value)) return [];
+    return value.filter((item): item is XStoreExchangeEvent["returnedItems"][number] => {
+      if (typeof item !== "object" || item === null) return false;
+      const line = item as Record<string, unknown>;
+      return typeof line.productId === "string"
+        && typeof line.name === "string"
+        && typeof line.sku === "string"
+        && typeof line.quantity === "number";
+    });
+  };
+  const returnedItems = toItems(payload.returnedItems);
+  const replacementItems = toItems(payload.replacementItems);
+  const detailsAvailable = returnedItems.length > 0 && replacementItems.length > 0;
+
+  return {
+    originalInvoiceNo,
+    exchangeInvoiceNo: log.entityId,
+    returnedItems,
+    replacementItems,
+    refundAmount:
+      typeof payload.refundAmount === "number" ? payload.refundAmount : null,
+    replacementTotal:
+      typeof payload.replacementTotal === "number"
+        ? payload.replacementTotal
+        : null,
+    balanceDue:
+      typeof payload.balanceDue === "number" ? payload.balanceDue : null,
+    performedBy: log.actorName,
+    createdAt: iso(log.createdAt),
+    detailsAvailable,
   };
 }
 
@@ -1712,6 +1794,35 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
   const refunds = new Map(
     returnsBySale.map((row) => [row.saleId, toNumber(row.amount)]),
   );
+  const exchangeAuditRows = saleIds.length
+    ? await db
+        .select({
+          entityId: xstoreAuditLogs.entityId,
+          details: xstoreAuditLogs.details,
+          actorName: xstoreAuditLogs.actorName,
+          createdAt: xstoreAuditLogs.createdAt,
+        })
+        .from(xstoreAuditLogs)
+        .where(
+          and(
+            eq(xstoreAuditLogs.action, "sale.exchange"),
+            scopedTenant
+              ? eq(xstoreAuditLogs.tenantId, scopedTenant)
+              : undefined,
+          ),
+        )
+        .orderBy(desc(xstoreAuditLogs.createdAt))
+        .limit(500)
+    : [];
+  const invoiceNumbers = new Set(rows.map(({ sale }) => sale.invoiceNo));
+  const exchangeEvents = exchangeAuditRows
+    .map(exchangeEventFromAudit)
+    .filter(
+      (event): event is XStoreExchangeEvent =>
+        event !== null &&
+        (invoiceNumbers.has(event.originalInvoiceNo) ||
+          invoiceNumbers.has(event.exchangeInvoiceNo)),
+    );
   res.json(
     ListXStoreSalesResponse.parse(
       rows.map(({ sale, cashierName }) =>
@@ -1725,6 +1836,11 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
               (costs.get(sale.id) ?? 0),
           ),
           cashierName,
+          exchangeEvents.filter(
+            (event) =>
+              event.originalInvoiceNo === sale.invoiceNo ||
+              event.exchangeInvoiceNo === sale.invoiceNo,
+          ),
         ),
       ),
     ),
@@ -1761,6 +1877,32 @@ router.get(
       res.status(404).json({ error: "Invoice not found." });
       return;
     }
+    const [saleTotals] = await db
+      .select({
+        subtotal: xstoreSales.subtotal,
+        discountAmount: xstoreSales.discountAmount,
+        taxAmount: xstoreSales.taxAmount,
+      })
+      .from(xstoreSales)
+      .where(eq(xstoreSales.id, sale.id))
+      .limit(1);
+    if (!saleTotals) {
+      res.status(404).json({ error: "Invoice not found." });
+      return;
+    }
+    const originalSubtotal = toNumber(saleTotals.subtotal);
+    const discountedSubtotal = Math.max(
+      0,
+      originalSubtotal - toNumber(saleTotals.discountAmount),
+    );
+    const discountRate =
+      originalSubtotal > 0
+        ? toNumber(saleTotals.discountAmount) / originalSubtotal
+        : 0;
+    const taxRate =
+      discountedSubtotal > 0
+        ? toNumber(saleTotals.taxAmount) / discountedSubtotal
+        : 0;
 
     const items = await db
       .select({
@@ -1782,6 +1924,10 @@ router.get(
         items.map((item) => ({
           ...item,
           unitPrice: toNumber(item.unitPrice),
+          refundUnitAmount:
+            toNumber(item.unitPrice) *
+            (1 - discountRate) *
+            (1 + taxRate),
           returnableQuantity: Math.max(
             0,
             item.quantity - item.returnedQuantity,

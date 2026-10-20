@@ -11,6 +11,7 @@ export interface SaleInvoiceItem {
   name: string;
   sku: string;
   unitPrice: number;
+  refundUnitAmount: number;
   quantity: number;
   returnedQuantity: number;
   returnableQuantity: number;

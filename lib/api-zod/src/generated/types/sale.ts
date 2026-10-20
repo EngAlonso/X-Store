@@ -5,6 +5,7 @@
  * X-Store point-of-sale and inventory API
  * OpenAPI spec version: 0.1.0
  */
+import type { SaleExchangeEvent } from './saleExchangeEvent';
 import type { SalePaymentMethod } from './salePaymentMethod';
 import type { SaleStatus } from './saleStatus';
 
@@ -29,4 +30,5 @@ export interface Sale {
   changeAmount: number;
   status: SaleStatus;
   createdAt: Date;
+  exchangeEvents: SaleExchangeEvent[];
 }
