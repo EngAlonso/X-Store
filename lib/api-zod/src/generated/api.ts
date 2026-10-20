@@ -217,6 +217,7 @@ export const GetXStoreDashboardResponse = zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
   "invoiceNo": zod.string(),
+  "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
   "itemCount": zod.number().int(),
   "subtotal": zod.number(),
@@ -712,6 +713,7 @@ export const ListXStoreSalesResponseItem = zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
   "invoiceNo": zod.string(),
+  "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
   "itemCount": zod.number().int(),
   "subtotal": zod.number(),
@@ -758,9 +760,15 @@ export const GetXStoreProfitLossReportResponse = zod.object({
  */
 
 
+export const checkoutXStoreSaleBodyInvoiceNoMax = 80;
+
+
+export const checkoutXStoreSaleBodyInvoiceNoRegExp = new RegExp('^[A-Za-z0-9_-]+$');
 export const checkoutXStoreSaleBodyDiscountAmountMin = 0;
 
 export const checkoutXStoreSaleBodyAmountReceivedMin = 0;
+
+export const checkoutXStoreSaleBodyCustomerNameMax = 150;
 
 export const checkoutXStoreSaleBodyCustomerPhoneMax = 30;
 
@@ -771,9 +779,11 @@ export const CheckoutXStoreSaleBody = zod.object({
   "productId": zod.string(),
   "quantity": zod.number().int().min(1)
 })).min(1),
+  "invoiceNo": zod.string().min(1).max(checkoutXStoreSaleBodyInvoiceNoMax).regex(checkoutXStoreSaleBodyInvoiceNoRegExp).optional(),
   "discountAmount": zod.number().min(checkoutXStoreSaleBodyDiscountAmountMin),
   "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
   "amountReceived": zod.number().min(checkoutXStoreSaleBodyAmountReceivedMin),
+  "customerName": zod.string().max(checkoutXStoreSaleBodyCustomerNameMax).nullish(),
   "customerPhone": zod.string().max(checkoutXStoreSaleBodyCustomerPhoneMax).nullish()
 })
 
@@ -781,6 +791,7 @@ export const CheckoutXStoreSaleResponse = zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
   "invoiceNo": zod.string(),
+  "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
   "itemCount": zod.number().int(),
   "subtotal": zod.number(),
@@ -800,6 +811,8 @@ export const CheckoutXStoreSaleResponse = zod.object({
  * @summary List held carts in the current tenant
  */
 
+export const listXStoreHeldSalesResponseItemsItemUnitPriceMin = 0;
+
 
 
 export const ListXStoreHeldSalesResponseItem = zod.object({
@@ -807,12 +820,17 @@ export const ListXStoreHeldSalesResponseItem = zod.object({
   "tenantId": zod.string(),
   "reference": zod.string(),
   "customerName": zod.string().nullable(),
+  "customerPhone": zod.string().nullable(),
   "items": zod.array(zod.object({
   "productId": zod.string(),
-  "quantity": zod.number().int().min(1)
+  "quantity": zod.number().int().min(1),
+  "unitPrice": zod.number().min(listXStoreHeldSalesResponseItemsItemUnitPriceMin)
 })),
   "itemCount": zod.number().int(),
   "estimatedTotal": zod.number(),
+  "discountAmount": zod.number(),
+  "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
+  "amountReceived": zod.number(),
   "createdAt": zod.coerce.date()
 })
 export const ListXStoreHeldSalesResponse = zod.array(ListXStoreHeldSalesResponseItem)
@@ -821,18 +839,35 @@ export const ListXStoreHeldSalesResponse = zod.array(ListXStoreHeldSalesResponse
 /**
  * @summary Save a cart for later checkout
  */
+export const holdXStoreSaleBodyReferenceMax = 80;
 
+
+
+export const holdXStoreSaleBodyCustomerNameMax = 150;
+
+export const holdXStoreSaleBodyCustomerPhoneMax = 30;
+
+export const holdXStoreSaleBodyDiscountAmountMin = 0;
+
+export const holdXStoreSaleBodyAmountReceivedMin = 0;
 
 
 
 export const HoldXStoreSaleBody = zod.object({
+  "reference": zod.string().min(1).max(holdXStoreSaleBodyReferenceMax).optional(),
   "items": zod.array(zod.object({
   "productId": zod.string(),
   "quantity": zod.number().int().min(1)
 })).min(1),
-  "customerName": zod.string().nullish()
+  "customerName": zod.string().max(holdXStoreSaleBodyCustomerNameMax).nullish(),
+  "customerPhone": zod.string().max(holdXStoreSaleBodyCustomerPhoneMax).nullish(),
+  "discountAmount": zod.number().min(holdXStoreSaleBodyDiscountAmountMin).optional(),
+  "paymentMethod": zod.enum(['cash', 'card', 'wallet']).optional(),
+  "amountReceived": zod.number().min(holdXStoreSaleBodyAmountReceivedMin).optional()
 })
 
+
+export const holdXStoreSaleResponseItemsItemUnitPriceMin = 0;
 
 
 
@@ -841,12 +876,17 @@ export const HoldXStoreSaleResponse = zod.object({
   "tenantId": zod.string(),
   "reference": zod.string(),
   "customerName": zod.string().nullable(),
+  "customerPhone": zod.string().nullable(),
   "items": zod.array(zod.object({
   "productId": zod.string(),
-  "quantity": zod.number().int().min(1)
+  "quantity": zod.number().int().min(1),
+  "unitPrice": zod.number().min(holdXStoreSaleResponseItemsItemUnitPriceMin)
 })),
   "itemCount": zod.number().int(),
   "estimatedTotal": zod.number(),
+  "discountAmount": zod.number(),
+  "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
+  "amountReceived": zod.number(),
   "createdAt": zod.coerce.date()
 })
 

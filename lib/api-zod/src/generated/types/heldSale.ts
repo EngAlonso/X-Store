@@ -5,7 +5,8 @@
  * X-Store point-of-sale and inventory API
  * OpenAPI spec version: 0.1.0
  */
-import type { SaleLineInput } from './saleLineInput';
+import type { HeldSaleLine } from './heldSaleLine';
+import type { HeldSalePaymentMethod } from './heldSalePaymentMethod';
 
 export interface HeldSale {
   id: string;
@@ -13,8 +14,13 @@ export interface HeldSale {
   reference: string;
   /** @nullable */
   customerName: string | null;
-  items: SaleLineInput[];
+  /** @nullable */
+  customerPhone: string | null;
+  items: HeldSaleLine[];
   itemCount: number;
   estimatedTotal: number;
+  discountAmount: number;
+  paymentMethod: HeldSalePaymentMethod;
+  amountReceived: number;
   createdAt: Date;
 }

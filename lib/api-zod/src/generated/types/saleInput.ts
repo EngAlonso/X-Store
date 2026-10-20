@@ -11,11 +11,22 @@ import type { SaleLineInput } from './saleLineInput';
 export interface SaleInput {
   /** @minItems 1 */
   items: SaleLineInput[];
+  /**
+     * @minLength 1
+     * @maxLength 80
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  invoiceNo?: string;
   /** @minimum 0 */
   discountAmount: number;
   paymentMethod: SaleInputPaymentMethod;
   /** @minimum 0 */
   amountReceived: number;
+  /**
+     * @maxLength 150
+     * @nullable
+     */
+  customerName?: string | null;
   /**
      * @maxLength 30
      * @nullable

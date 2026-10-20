@@ -5,3 +5,4 @@
 - [POS long-shift comfort](pos-long-shift-comfort.md) — X-Store's checkout should stay legible, calm and engaging during extended shifts.
 - [Drizzle migration output path](drizzle-migration-output-path.md) — keep `out` relative to the database package; an absolute output path can be prefixed incorrectly during generation.
 - [X-Store natural icons](xstore-category-tiles.md) — use compact, familiar object symbols with restrained color to avoid a cartoonish interface.
+- [X-Store invoice lifecycle](xstore-invoice-lifecycle.md) — keep customer identity and invoice number through hold, restore, payment, and WhatsApp sharing.

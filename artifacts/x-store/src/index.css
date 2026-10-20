@@ -1723,6 +1723,8 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 .pos-page .cart-head { padding-bottom:15px;border-color:#e8eee6; }
 .pos-page .cart-head h2 { color:#30463a;font-size:16px; }
 .pos-page .cart-head span { color:#718177;font-size:11px; }
+.pos-page .cart-invoice-number { display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0 2px;padding:10px 12px;border:1px solid #e4ebe1;border-radius:9px;background:#f5f8f2;color:#66796d;font-size:11px; }
+.pos-page .cart-invoice-number b { color:#365b44;font-size:13px;letter-spacing:.02em; }
 .pos-page .table-action { min-height:34px;padding:0 8px;border-radius:8px;color:#65766b;font-size:11px; }
 .pos-page .table-action:hover:not(:disabled) { color:#9a615a;background:#f7eeeb; }
 .pos-page .cart-lines { min-height:145px;max-height:240px;scrollbar-color:#d5e0d4 transparent;scrollbar-width:thin; }
@@ -1762,10 +1764,15 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 .pos-page .cart-actions .button-confirm:hover:not(:disabled) { background:var(--pos-jade-deep); }
 .pos-page .form-error:not(.modal .form-error) { color:#8f4647;background:#fbf0ed;border-color:#eed9d4;font-size:12px; }
 .pos-page .held-list { gap:10px; }
-.pos-page .held-item { gap:12px;padding:13px;border-color:#e1e9df;border-radius:11px;background:#fffefa; }
-.pos-page .held-item>div>b,
+.pos-page .held-item { gap:12px;flex-wrap:wrap;padding:13px;border-color:#e1e9df;border-radius:11px;background:#fffefa; }
+.pos-page .held-item-main { min-width:120px;display:flex;flex:1;flex-direction:column;gap:5px; }
+.pos-page .held-item-main>b,
 .pos-page .held-item>strong { color:#40584a;font-size:12px; }
 .pos-page .held-item small { color:#78897f;font-size:11px; }
+.pos-page .held-item .held-status { color:#967447; }
+.pos-page .held-actions { display:flex;align-items:center;gap:7px;flex-wrap:wrap; }
+.pos-page .held-actions .button-whatsapp { display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid #b7d6bf;border-radius:8px;background:#eef7ee;color:#2d6844;text-decoration:none; }
+.pos-page .held-restore-hint { padding:10px 12px;border:1px solid #e8dfc6;border-radius:9px;background:#faf6e9;color:#776844;font-size:11px;line-height:1.6; }
 .pos-page .modal { border:1px solid #e1e9df;border-radius:16px;background:#fcfdf9; }
 .pos-page .modal-head h2 { color:#30463a;font-size:18px; }
 .pos-page .form-grid .field { color:#5e7165;font-size:12px; }
@@ -2097,6 +2104,7 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   color:#a3473d;
   font-weight:600;
 }
+.pos-page .customer-name-field { margin-top:12px; }
 .receipt-actions {
   gap:8px;
   flex-wrap:wrap;

@@ -205,6 +205,7 @@ export const xstoreSales = pgTable(
       .notNull()
       .references(() => xstoreUsers.id),
     invoiceNo: text("invoice_no").notNull(),
+    customerName: text("customer_name"),
     customerPhone: text("customer_phone"),
     itemCount: integer("item_count").notNull(),
     subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
@@ -275,12 +276,22 @@ export const xstoreHeldSales = pgTable(
       .references(() => xstoreUsers.id),
     reference: text("reference").notNull(),
     customerName: text("customer_name"),
+    customerPhone: text("customer_phone"),
     items: jsonb("items").$type<XStoreLine[]>().notNull(),
     itemCount: integer("item_count").notNull(),
     estimatedTotal: numeric("estimated_total", {
       precision: 12,
       scale: 2,
     }).notNull(),
+    discountAmount: numeric("discount_amount", {
+      precision: 12,
+      scale: 2,
+    }).notNull().default("0"),
+    paymentMethod: text("payment_method").notNull().default("cash"),
+    amountReceived: numeric("amount_received", {
+      precision: 12,
+      scale: 2,
+    }).notNull().default("0"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

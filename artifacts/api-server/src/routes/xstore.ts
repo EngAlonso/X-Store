@@ -519,7 +519,6 @@ router.post("/xstore/auth/founder", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-
   const name = parsed.data.name.trim();
   if (name.length < 2) {
     res.status(400).json({ error: "Enter the founder's name." });
@@ -1814,6 +1813,11 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const requestedInvoiceNo = parsed.data.invoiceNo?.trim();
+  if (requestedInvoiceNo && !/^[A-Za-z0-9_-]{1,80}$/.test(requestedInvoiceNo)) {
+    res.status(400).json({ error: "Enter a valid invoice number." });
+    return;
+  }
   let customerPhone: string | null = null;
   if (parsed.data.customerPhone?.trim()) {
     try {
@@ -1892,7 +1896,8 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
         .values({
           tenantId,
           cashierUserId: actor.id,
-          invoiceNo: invoiceNumber(),
+          invoiceNo: requestedInvoiceNo || invoiceNumber(),
+          customerName: parsed.data.customerName?.trim() || null,
           customerPhone,
           itemCount: priced.reduce((sum, line) => sum + line.quantity, 0),
           subtotal: String(subtotal),
@@ -1972,8 +1977,28 @@ router.post("/xstore/held-sales", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  let customerPhone: string | null = null;
+  if (parsed.data.customerPhone?.trim()) {
+    try {
+      customerPhone = normalizePhone(parsed.data.customerPhone);
+    } catch {
+      res.status(400).json({ error: "Enter a valid customer phone number." });
+      return;
+    }
+    if (!/^\+[1-9]\d{7,14}$/.test(customerPhone)) {
+      res.status(400).json({
+        error: "Include the country calling code, such as +20.",
+      });
+      return;
+    }
+  }
+  const vatRate = await getTenantVatRate(tenantId);
+  if (vatRate === null) {
+    res.status(404).json({ error: "Store settings not found." });
+    return;
+  }
   const priced: XStoreLine[] = [];
-  let estimatedTotal = 0;
+  let subtotal = 0;
   for (const line of mergedLines(parsed.data.items)) {
     const [product] = await db
       .select()
@@ -1994,18 +2019,31 @@ router.post("/xstore/held-sales", async (req, res): Promise<void> => {
       quantity: line.quantity,
       unitPrice: toNumber(product.price),
     });
-    estimatedTotal += toNumber(product.price) * line.quantity;
+    subtotal += toNumber(product.price) * line.quantity;
   }
+  subtotal = roundMoney(subtotal);
+  const discountAmount = Math.min(
+    subtotal,
+    roundMoney(Math.max(0, parsed.data.discountAmount ?? 0)),
+  );
+  const taxAmount = roundMoney((subtotal - discountAmount) * vatRate);
+  const estimatedTotal = roundMoney(subtotal - discountAmount + taxAmount);
   const [held] = await db
     .insert(xstoreHeldSales)
     .values({
       tenantId,
       cashierUserId: actor.id,
-      reference: `H-${crypto.randomUUID().slice(0, 6).toUpperCase()}`,
-      customerName: parsed.data.customerName ?? null,
+      reference:
+        parsed.data.reference?.trim() ||
+        `H-${crypto.randomUUID().slice(0, 6).toUpperCase()}`,
+      customerName: parsed.data.customerName?.trim() || null,
+      customerPhone,
       items: priced,
       itemCount: priced.reduce((sum, line) => sum + line.quantity, 0),
-      estimatedTotal: String(roundMoney(estimatedTotal)),
+      estimatedTotal: String(estimatedTotal),
+      discountAmount: String(discountAmount),
+      paymentMethod: parsed.data.paymentMethod ?? "cash",
+      amountReceived: String(roundMoney(parsed.data.amountReceived ?? 0)),
     })
     .returning();
   if (!held) {
@@ -2016,6 +2054,8 @@ router.post("/xstore/held-sales", async (req, res): Promise<void> => {
     HoldXStoreSaleResponse.parse({
       ...held,
       estimatedTotal: toNumber(held.estimatedTotal),
+      discountAmount: toNumber(held.discountAmount),
+      amountReceived: toNumber(held.amountReceived),
       createdAt: iso(held.createdAt),
     }),
   );

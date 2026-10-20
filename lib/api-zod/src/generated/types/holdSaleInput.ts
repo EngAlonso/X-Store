@@ -5,11 +5,30 @@
  * X-Store point-of-sale and inventory API
  * OpenAPI spec version: 0.1.0
  */
+import type { HoldSaleInputPaymentMethod } from './holdSaleInputPaymentMethod';
 import type { SaleLineInput } from './saleLineInput';
 
 export interface HoldSaleInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  reference?: string;
   /** @minItems 1 */
   items: SaleLineInput[];
-  /** @nullable */
+  /**
+     * @maxLength 150
+     * @nullable
+     */
   customerName?: string | null;
+  /**
+     * @maxLength 30
+     * @nullable
+     */
+  customerPhone?: string | null;
+  /** @minimum 0 */
+  discountAmount?: number;
+  paymentMethod?: HoldSaleInputPaymentMethod;
+  /** @minimum 0 */
+  amountReceived?: number;
 }

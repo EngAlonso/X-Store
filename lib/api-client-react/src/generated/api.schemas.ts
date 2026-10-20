@@ -270,6 +270,8 @@ export interface Sale {
   tenantId: string;
   invoiceNo: string;
   /** @nullable */
+  customerName: string | null;
+  /** @nullable */
   customerPhone: string | null;
   itemCount: number;
   subtotal: number;
@@ -592,11 +594,22 @@ export const SaleInputPaymentMethod = {
 export interface SaleInput {
   /** @minItems 1 */
   items: SaleLineInput[];
+  /**
+     * @minLength 1
+     * @maxLength 80
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  invoiceNo?: string;
   /** @minimum 0 */
   discountAmount: number;
   paymentMethod: SaleInputPaymentMethod;
   /** @minimum 0 */
   amountReceived: number;
+  /**
+     * @maxLength 150
+     * @nullable
+     */
+  customerName?: string | null;
   /**
      * @maxLength 30
      * @nullable
@@ -615,12 +628,56 @@ export interface ProfitLossReport {
   grossProfit: number;
 }
 
+export type HoldSaleInputPaymentMethod = typeof HoldSaleInputPaymentMethod[keyof typeof HoldSaleInputPaymentMethod];
+
+
+export const HoldSaleInputPaymentMethod = {
+  cash: 'cash',
+  card: 'card',
+  wallet: 'wallet',
+} as const;
+
 export interface HoldSaleInput {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  reference?: string;
   /** @minItems 1 */
   items: SaleLineInput[];
-  /** @nullable */
+  /**
+     * @maxLength 150
+     * @nullable
+     */
   customerName?: string | null;
+  /**
+     * @maxLength 30
+     * @nullable
+     */
+  customerPhone?: string | null;
+  /** @minimum 0 */
+  discountAmount?: number;
+  paymentMethod?: HoldSaleInputPaymentMethod;
+  /** @minimum 0 */
+  amountReceived?: number;
 }
+
+export interface HeldSaleLine {
+  productId: string;
+  /** @minimum 1 */
+  quantity: number;
+  /** @minimum 0 */
+  unitPrice: number;
+}
+
+export type HeldSalePaymentMethod = typeof HeldSalePaymentMethod[keyof typeof HeldSalePaymentMethod];
+
+
+export const HeldSalePaymentMethod = {
+  cash: 'cash',
+  card: 'card',
+  wallet: 'wallet',
+} as const;
 
 export interface HeldSale {
   id: string;
@@ -628,9 +685,14 @@ export interface HeldSale {
   reference: string;
   /** @nullable */
   customerName: string | null;
-  items: SaleLineInput[];
+  /** @nullable */
+  customerPhone: string | null;
+  items: HeldSaleLine[];
   itemCount: number;
   estimatedTotal: number;
+  discountAmount: number;
+  paymentMethod: HeldSalePaymentMethod;
+  amountReceived: number;
   createdAt: string;
 }
 
