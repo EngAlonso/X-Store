@@ -1958,6 +1958,8 @@ router.get("/xstore/held-sales", async (_req, res): Promise<void> => {
       rows.map((held) => ({
         ...held,
         estimatedTotal: toNumber(held.estimatedTotal),
+        discountAmount: toNumber(held.discountAmount),
+        amountReceived: toNumber(held.amountReceived),
         createdAt: iso(held.createdAt),
       })),
     ),

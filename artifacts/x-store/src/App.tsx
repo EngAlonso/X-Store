@@ -1073,7 +1073,7 @@ function PosPage() {
       <PageTitle eyebrow="نقطة البيع" title="صندوق البيع" desc="أضف المنتجات وأكمل الدفع بخطوات قليلة."
         action={<div className="pos-head-actions">
           <button className="button button-quiet" onClick={()=>setExchangeOpen(true)}><ArrowLeftRight size={16}/> استبدال منتج</button>
-          <button className="button button-quiet held-toggle" onClick={()=>setHeldOpen(!heldOpen)}><Pause size={16}/> الفواتير المعلّقة <span className="count-bubble">{held.data?.length||0}</span></button>
+          <button className="button button-quiet held-toggle" onClick={()=>{const nextOpen=!heldOpen;setHeldOpen(nextOpen);if(nextOpen)void held.refetch()}}><Pause size={16}/> الفواتير المعلّقة <span className="count-bubble">{held.data?.length||0}</span></button>
         </div>}
       />
       <div className="pos-layout">
