@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from 'react';
+import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -610,7 +610,57 @@ function TenantTable({tenants,compact=false}:{tenants:Tenant[];compact?:boolean}
 function SalesTable({sales,compact=false,onReturn,onPrint,showAmounts=true}:{sales:Sale[];compact?:boolean;onReturn?:(s:Sale)=>void;onPrint?:(s:Sale)=>void;showAmounts?:boolean}) {
   const money=useMoney();
   if(!sales.length)return <div className="empty-inline">لا توجد عمليات بيع لعرضها.</div>;
-  return <div className="table-wrap"><table><thead><tr><th>رقم الفاتورة</th><th>التاريخ والوقت</th><th>الأصناف</th>{!compact&&<th>الدفع</th>}{showAmounts&&<th>الإجمالي</th>}<th>الحالة</th>{(onReturn||onPrint)&&<th>إجراء</th>}</tr></thead><tbody>{sales.map(s=><tr key={s.id}><td className="ltr-id">{s.invoiceNo}</td><td>{dateTimeLabel(s.createdAt)}</td><td>{fmt(s.itemCount)}</td>{!compact&&<td>{paymentName(s.paymentMethod)}</td>}{showAmounts&&<td><b>{money(s.total)}</b></td>}<td><span className={`status-pill status-${s.status}`}>{statusNames[s.status]}</span></td>{(onReturn||onPrint)&&<td className="table-actions-cell">{onPrint&&<button className="table-action" onClick={()=>onPrint(s)} data-testid={`button-print-${s.id}`}><Printer size={14}/> إيصال</button>}{onReturn&&<button className="table-action" onClick={()=>onReturn(s)} data-testid={`button-return-${s.id}`}><RotateCcw size={14}/> مرتجع</button>}</td>}</tr>)}</tbody></table></div>;
+  const columnCount=3+Number(!compact)+Number(showAmounts)+1+Number(Boolean(onReturn||onPrint));
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead><tr><th>رقم الفاتورة</th><th>التاريخ والوقت</th><th>الأصناف</th>{!compact&&<th>الدفع</th>}{showAmounts&&<th>الإجمالي</th>}<th>الحالة</th>{(onReturn||onPrint)&&<th>إجراء</th>}</tr></thead>
+        <tbody>
+          {sales.map(sale=>(
+            <Fragment key={sale.id}>
+              <tr>
+                <td className="ltr-id">{sale.invoiceNo}{sale.exchangeEvents.length>0&&<span className="sale-exchange-badge"><ArrowLeftRight size={12}/> استبدال</span>}</td>
+                <td>{dateTimeLabel(sale.createdAt)}</td>
+                <td>{fmt(sale.itemCount)}</td>
+                {!compact&&<td>{paymentName(sale.paymentMethod)}</td>}
+                {showAmounts&&<td><b>{money(sale.total)}</b></td>}
+                <td><span className={`status-pill status-${sale.status}`}>{statusNames[sale.status]}</span></td>
+                {(onReturn||onPrint)&&<td className="table-actions-cell">{onPrint&&<button className="table-action" onClick={()=>onPrint(sale)} data-testid={`button-print-${sale.id}`}><Printer size={14}/> إيصال</button>}{onReturn&&<button className="table-action" onClick={()=>onReturn(sale)} data-testid={`button-return-${sale.id}`}><RotateCcw size={14}/> مرتجع</button>}</td>}
+              </tr>
+              {sale.exchangeEvents.map((event,index)=>(
+                <tr className="sale-exchange-row" key={`${sale.id}-${event.exchangeInvoiceNo}-${index}`}>
+                  <td colSpan={columnCount}>
+                    <article className="sale-exchange-detail">
+                      <header>
+                        <b><ArrowLeftRight size={15}/> عملية استبدال مرتبطة بالفاتورة</b>
+                        <span>الأصلية: <strong className="ltr-id">{event.originalInvoiceNo}</strong></span>
+                        <span>فاتورة البديل: <strong className="ltr-id">{event.exchangeInvoiceNo}</strong></span>
+                        <span>{dateTimeLabel(event.createdAt)}</span>
+                        <span>نفّذ العملية: <strong>{event.performedBy}</strong></span>
+                      </header>
+                      {event.detailsAvailable?<>
+                        <div className="sale-exchange-items">
+                          <div><b>الأصناف المرتجعة</b><ul>{event.returnedItems.map(item=><li key={item.productId}>{item.name} <span>× {fmt(item.quantity)}</span></li>)}</ul></div>
+                          <div><b>الأصناف البديلة</b><ul>{event.replacementItems.map(item=><li key={item.productId}>{item.name} <span>× {fmt(item.quantity)}</span></li>)}</ul></div>
+                        </div>
+                        <div className="sale-exchange-amounts">
+                          <span>قيمة المرتجع: <b>{event.refundAmount===null?'—':money(event.refundAmount)}</b></span>
+                          <span>قيمة البديل: <b>{event.replacementTotal===null?'—':money(event.replacementTotal)}</b></span>
+                          <strong className={event.balanceDue===null?'':event.balanceDue>0?'exchange-due':'exchange-refund'}>
+                            {event.balanceDue===null?'فرق السعر غير متوفر':event.balanceDue>0?`على العميل ${money(event.balanceDue)}`:event.balanceDue<0?`مستحق للعميل ${money(Math.abs(event.balanceDue))}؛ يُرد من المتجر`:'لا يوجد فرق سعر'}
+                          </strong>
+                        </div>
+                      </>:<p className="sale-exchange-legacy">الاستبدال مسجّل، لكن تفاصيل الأصناف غير متوفرة في السجلات القديمة.</p>}
+                    </article>
+                  </td>
+                </tr>
+              ))}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 function paymentName(p:string) { return p==='cash'?'نقداً':p==='card'?'بطاقة':'محفظة'; }
 function createHeldInvoiceReference() { return `XS-${new Date().toISOString().slice(0,10).replaceAll('-','')}-${crypto.randomUUID().slice(0,7).toUpperCase()}`; }
@@ -1097,6 +1147,8 @@ function PosPage() {
   const vatRate=session.data?.vatRate??.15;
   const [cart,setCart]=useState<Record<string,number>>({}),[term,setTerm]=useState(''),[discount,setDiscount]=useState('0'),[received,setReceived]=useState(''),[payment,setPayment]=useState<'cash'|'card'|'wallet'>('cash'),[heldOpen,setHeldOpen]=useState(false),[exchangeOpen,setExchangeOpen]=useState(false),[notice,setNotice]=useState('');
   const [exchangeInvoiceNo,setExchangeInvoiceNo]=useState(''),[exchangeLoadedInvoiceNo,setExchangeLoadedInvoiceNo]=useState(''),[exchangeReturnItems,setExchangeReturnItems]=useState<Record<string,number>>({});
+  const [exchangeReplacementProductId,setExchangeReplacementProductId]=useState(''),[exchangeReplacementQuantity,setExchangeReplacementQuantity]=useState(1);
+  const exchangeInvoiceItems=useGetXStoreSaleInvoiceItems(exchangeLoadedInvoiceNo,{query:{queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo),enabled:Boolean(exchangeLoadedInvoiceNo)}});
   const [customerName,setCustomerName]=useState(''),[customerPhone,setCustomerPhone]=useState(''),[invoiceReference,setInvoiceReference]=useState(createHeldInvoiceReference),[receiptSale,setReceiptSale]=useState<Sale|null>(null);
   const customerWhatsappNumber=getWhatsAppDigits(customerPhone);
   const customerPhoneInvalid=Boolean(customerPhone.trim()&&!customerWhatsappNumber);
@@ -1104,17 +1156,26 @@ function PosPage() {
   const cartLines=(products.data||[]).filter(p=>cart[p.id]).map(p=>({...p,count:cart[p.id]}));
   useEffect(()=>{if(!cartLines.length){if(customerPhone)setCustomerPhone('');if(customerName)setCustomerName('')}},[cartLines.length,customerPhone,customerName]);
   const subtotal=roundMoney(cartLines.reduce((s,p)=>s+p.price*p.count,0)), disc=Math.min(subtotal,roundMoney(Math.max(0,Number(discount)||0))), tax=roundMoney((subtotal-disc)*vatRate), total=roundMoney(subtotal-disc+tax);
+  const exchangeReturnedAmount=roundMoney(Object.entries(exchangeReturnItems).reduce((sum,[productId,quantity])=>{
+    const item=exchangeInvoiceItems.data?.find(line=>line.productId===productId);
+    return sum+(item?item.refundUnitAmount*quantity:0);
+  },0));
+  const exchangeReplacementProduct=(products.data||[]).find(product=>product.id===exchangeReplacementProductId);
+  const exchangeReplacementSubtotal=roundMoney((exchangeReplacementProduct?.price||0)*exchangeReplacementQuantity);
+  const exchangeReplacementTotal=roundMoney(exchangeReplacementSubtotal+roundMoney(exchangeReplacementSubtotal*vatRate));
+  const exchangeBalanceDue=roundMoney(exchangeReplacementTotal-exchangeReturnedAmount);
   const add=(p:Product)=>setCart(c=>({...c,[p.id]:Math.min(p.quantity,(c[p.id]||0)+1)}));
   const mutateCart=(id:string,n:number)=>setCart(c=>{const value=(c[id]||0)+n;if(value<=0){const next={...c};delete next[id];return next}return {...c,[id]:value}});
   function finish(){if(!cartLines.length||customerPhoneInvalid)return;checkout.mutate({data:{invoiceNo:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:roundMoney(Number(received)||total),customerName:customerName.trim()||null,customerPhone:customerPhone.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference());setPayment('cash');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
   function park(){if(!cartLines.length||customerPhoneInvalid)return;hold.mutate({data:{reference:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),customerName:customerName.trim()||null,customerPhone:customerPhone.trim()||null,discountAmount:disc,paymentMethod:payment,amountReceived:roundMoney(Number(received)||0)}},{onSuccess:heldSale=>{setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference());setPayment('cash');qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice(`تم تعليق الفاتورة ${heldSale.reference}`)}})}
   function clearCurrentCart(){setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference())}
-  function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const returnItems=Object.entries(exchangeReturnItems).map(([productId,quantity])=>({productId,quantity}));if(!exchangeLoadedInvoiceNo||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()||!returnItems.length)return;exchange.mutate({data:{invoiceNo:exchangeLoadedInvoiceNo,returnItems,replacementItems:[{productId:String(f.get('replacementProduct')),quantity:Number(f.get('replacementQuantity'))}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(f.get('amountReceived'))||0}},{onSuccess:r=>{setExchangeOpen(false);setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setNotice(`تم الاستبدال ذرياً · ${r.exchangeInvoiceNo}`);qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo)})}})}
+  function closeExchange(){setExchangeOpen(false);setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setExchangeReplacementProductId('');setExchangeReplacementQuantity(1)}
+  function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const returnItems=Object.entries(exchangeReturnItems).map(([productId,quantity])=>({productId,quantity}));if(!exchangeLoadedInvoiceNo||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()||!returnItems.length||!exchangeReplacementProductId)return;exchange.mutate({data:{invoiceNo:exchangeLoadedInvoiceNo,returnItems,replacementItems:[{productId:exchangeReplacementProductId,quantity:exchangeReplacementQuantity}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(f.get('amountReceived'))||0}},{onSuccess:r=>{closeExchange();setNotice(`تم الاستبدال · ${r.exchangeInvoiceNo}`);qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo)})}})}
   return <>
     <div className="pos-page">
       <PageTitle eyebrow="نقطة البيع" title="صندوق البيع" desc="أضف المنتجات وأكمل الدفع بخطوات قليلة."
         action={<div className="pos-head-actions">
-          <button className="button button-quiet" onClick={()=>{setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setExchangeOpen(true)}}><ArrowLeftRight size={16}/> استبدال منتج</button>
+          <button className="button button-quiet" onClick={()=>{closeExchange();setExchangeOpen(true)}}><ArrowLeftRight size={16}/> استبدال منتج</button>
           <button className="button button-quiet held-toggle" onClick={()=>{const nextOpen=!heldOpen;setHeldOpen(nextOpen);if(nextOpen)void held.refetch()}}><Pause size={16}/> الفواتير المعلّقة <span className="count-bubble">{held.data?.length||0}</span></button>
         </div>}
       />
@@ -1194,15 +1255,16 @@ function PosPage() {
         }):<div className="empty-inline">لا توجد فواتير معلّقة.</div>}
         {release.isError&&<div className="form-error" role="alert">تعذر استعادة الفاتورة. حاول مرة أخرى.</div>}
       </div></Modal>}
-      {exchangeOpen&&<Modal title="استبدال منتج" close={()=>setExchangeOpen(false)}><form className="form-grid" onSubmit={submitExchange}>
+      {exchangeOpen&&<Modal title="استبدال منتج" close={closeExchange}><form className="form-grid" onSubmit={submitExchange}>
         <InvoiceReturnPicker invoiceNo={exchangeInvoiceNo} setInvoiceNo={setExchangeInvoiceNo} loadedInvoiceNo={exchangeLoadedInvoiceNo} setLoadedInvoiceNo={setExchangeLoadedInvoiceNo} selectedItems={exchangeReturnItems} setSelectedItems={setExchangeReturnItems} testIdPrefix="exchange"/>
-        <label className="field"><span>المنتج البديل</span><select name="replacementProduct" defaultValue="" required><option value="" disabled>اختر المنتج البديل</option>{products.data?.filter(p=>p.quantity>0).map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku} · {money(p.price)}</option>)}</select></label>
-        <Field label="كمية المنتج البديل" name="replacementQuantity" type="number" required defaultValue="1"/>
+        <label className="field"><span>المنتج البديل</span><select name="replacementProduct" value={exchangeReplacementProductId} onChange={event=>setExchangeReplacementProductId(event.target.value)} required><option value="" disabled>اختر المنتج البديل</option>{products.data?.filter(p=>p.quantity>0).map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku} · {money(p.price)}</option>)}</select></label>
+        <label className="field"><span>كمية المنتج البديل</span><input name="replacementQuantity" type="number" min={1} max={exchangeReplacementProduct?.quantity||1} step={1} value={exchangeReplacementQuantity} onChange={event=>setExchangeReplacementQuantity(Math.max(1,Math.min(exchangeReplacementProduct?.quantity||1,Number(event.target.value)||1)))} required/></label>
         <label className="field"><span>طريقة الدفع / التسوية</span><select name="paymentMethod"><option value="cash">نقداً</option><option value="card">بطاقة</option><option value="wallet">محفظة</option></select></label>
-        <Field label="المبلغ المستلم" name="amountReceived" type="number" defaultValue="0"/>
+        {exchangeLoadedInvoiceNo&&exchangeReplacementProduct&&Object.keys(exchangeReturnItems).length>0&&<div className="exchange-price-summary field-wide" aria-live="polite"><div><span>قيمة المنتجات المرتجعة</span><b>{money(exchangeReturnedAmount)}</b></div><div><span>قيمة المنتج البديل شامل الضريبة</span><b>{money(exchangeReplacementTotal)}</b></div><div className={`exchange-price-difference ${exchangeBalanceDue>0?'exchange-due':exchangeBalanceDue<0?'exchange-refund':''}`}><span>فرق السعر</span><strong>{exchangeBalanceDue>0?`على العميل ${money(exchangeBalanceDue)}`:exchangeBalanceDue<0?`على المتجر رد ${money(Math.abs(exchangeBalanceDue))} للعميل`:'لا يوجد فرق سعر'}</strong></div></div>}
+        {exchangeBalanceDue>0&&<label className="field field-wide"><span>المبلغ المستلم من العميل</span><input key={exchangeBalanceDue} name="amountReceived" type="number" min={0} step="0.01" defaultValue={exchangeBalanceDue}/></label>}
         <div className="role-hint field-wide"><ArrowLeftRight size={17}/><span>يُسجل المرتجع والمنتج البديل كعملية واحدة ذرية؛ لا يتم حفظ نصف العملية.</span></div>
         {exchange.isError&&<div className="form-error">تعذر إتمام الاستبدال. تحقق من الفاتورة والكميات.</div>}
-        <div className="modal-actions"><button type="button" className="button button-quiet" onClick={()=>setExchangeOpen(false)}>إلغاء</button><button className="button button-confirm" disabled={exchange.isPending||!Object.keys(exchangeReturnItems).length||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()}>{exchange.isPending?'جارٍ تنفيذ الاستبدال…':'تأكيد الاستبدال'}</button></div>
+        <div className="modal-actions"><button type="button" className="button button-quiet" onClick={closeExchange}>إلغاء</button><button className="button button-confirm" disabled={exchange.isPending||!Object.keys(exchangeReturnItems).length||!exchangeReplacementProductId||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()}>{exchange.isPending?'جارٍ تنفيذ الاستبدال…':'تأكيد الاستبدال'}</button></div>
       </form></Modal>}
     </div>
   </>;
@@ -1290,7 +1352,21 @@ function AuditPage() {
   return <><PageTitle eyebrow="الشفافية والمساءلة" title="سجل التدقيق" desc="سجل موحد للإجراءات الحساسة — يعرض الفاعل والمتجر والكيان والتفاصيل." action={<button className="button button-quiet" onClick={()=>logs.refetch()}><RefreshCw size={15}/> تحديث السجل</button>}/><Card><SectionHead title="الإجراءات الأخيرة" detail="سجل للقراءة فقط · كل الأوقات بالتوقيت المحلي"/>{logs.isLoading?<StateBlock loading error={false} onRetry={()=>logs.refetch()} empty={false}/>:logs.isError?<StateBlock loading={false} error onRetry={()=>logs.refetch()} empty={false}/>:logs.data?.length?<AuditRows logs={logs.data}/>:<div className="state-box"><div className="empty-symbol"><ScrollText/></div><b>لا توجد إجراءات مسجلة</b><span>ستظهر هنا عمليات الإدارة الحساسة عند تنفيذها.</span></div>}</Card><div className="audit-privacy"><ShieldCheck size={18}/><span><b>سجل موثوق</b><small>هذا العرض للقراءة فقط. لا يمكن تعديل أو حذف السجلات من الواجهة.</small></span></div></>;
 }
 function AuditRows({logs}:{logs:any[]}) {
-  return <div className="audit-list">{logs.map((log:any,i)=><div className="audit-row" key={log.id||i}><span className={`audit-icon audit-icon-${i%4}`}><Activity size={17}/></span><div className="audit-main"><b>{log.action}</b><small>{log.actorName} · {log.tenantName||'المنصة'} · {log.entityType}{log.entityId?` · ${log.entityId}`:''}</small><span>{log.details}</span></div><time>{dateLabel(log.createdAt)}</time></div>)}</div>;
+  return <div className="audit-list">{logs.map((log:any,i)=><div className="audit-row" key={log.id||i}><span className={`audit-icon audit-icon-${i%4}`}><Activity size={17}/></span><div className="audit-main"><b>{log.action}</b><small>{log.actorName} · {log.tenantName||'المنصة'} · {log.entityType}{log.entityId?` · ${log.entityId}`:''}</small><span>{auditDetailsLabel(log.action,log.details)}</span></div><time>{dateLabel(log.createdAt)}</time></div>)}</div>;
+}
+function auditDetailsLabel(action:string,details:string) {
+  if(action!=='sale.exchange')return details;
+  try{
+    const payload=JSON.parse(details) as {originalInvoiceNo?:string;returnedItems?:{name:string;quantity:number}[];replacementItems?:{name:string;quantity:number}[];balanceDue?:number};
+    const items=(rows:{name:string;quantity:number}[]|undefined)=>rows?.map(item=>`${item.name} × ${fmt(item.quantity)}`).join('، ')||'—';
+    const balance=typeof payload.balanceDue==='number'?payload.balanceDue>0?`فرق السعر على العميل ${moneyLabel(payload.balanceDue)}`:payload.balanceDue<0?`مستحق للعميل ${moneyLabel(Math.abs(payload.balanceDue))}`:'لا يوجد فرق سعر':'';
+    return [`استبدال الفاتورة ${payload.originalInvoiceNo||'—'}`,`المرتجع: ${items(payload.returnedItems)}`,`البديل: ${items(payload.replacementItems)}`,balance].filter(Boolean).join(' · ');
+  }catch{
+    return details.replace(/^Exchange for /,'استبدال الفاتورة ');
+  }
+}
+function moneyLabel(amount:number) {
+  return new Intl.NumberFormat('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2}).format(amount);
 }
 
 function Routed() {

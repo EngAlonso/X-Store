@@ -26,3 +26,9 @@ For returns and exchanges, load selectable return items from the entered invoice
 **Why:** the user asked for invoice-only item selection with multiple items for returns and exchanges.
 
 **How to apply:** fetch invoice lines by invoice number, display each line's remaining returnable quantity, and validate the selected lines together before applying stock and return changes.
+
+For exchanges, show the price difference before confirmation and label whether the customer owes the store or the store owes a refund. Persist the exchanged items, quantities, actor, timestamp, and amounts so invoice history explains the exchange.
+
+**Why:** the user asked to see the price difference and later identify what was exchanged and who performed it.
+
+**How to apply:** derive the preview from invoice and replacement prices using the store's VAT, then keep the exchange details attached to both related invoice numbers in the audit-backed history.

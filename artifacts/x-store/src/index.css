@@ -1795,11 +1795,36 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 .invoice-item-quantity { display:flex;align-items:center;gap:7px;color:#63766a;font-size:10px; }
 .invoice-item-quantity input { width:68px;min-height:34px;padding:5px 7px;border:1px solid #dfe7dc;border-radius:8px;background:#fff;text-align:center; }
 .pos-page .form-grid .role-hint { color:#64786a;background:#edf3e9;border-color:#e0e9dd;font-size:11px; }
+.exchange-price-summary { display:grid;gap:8px;padding:12px;border:1px solid #dce7d8;border-radius:10px;background:#f4f8f1;color:#596e5f;font-size:12px; }
+.exchange-price-summary>div { display:flex;justify-content:space-between;align-items:center;gap:12px; }
+.exchange-price-summary b { color:#314a3a;font-variant-numeric:tabular-nums; }
+.exchange-price-difference { margin-top:2px;padding-top:9px;border-top:1px solid #dfe9dc;font-weight:700; }
+.exchange-price-difference strong { text-align:left; }
+.exchange-due { color:#8b632c!important; }
+.exchange-refund { color:#276646!important; }
+.sale-exchange-badge { display:flex;align-items:center;gap:4px;width:max-content;margin-top:5px;padding:3px 7px;border:1px solid #d9e6d8;border-radius:999px;background:#f0f6ed;color:#4c7052;font-family:var(--app-font-sans);font-size:10px;font-weight:700;direction:rtl; }
+.sale-exchange-row>td { padding:0!important;background:#f8faf6; }
+.sale-exchange-detail { margin:8px 12px;padding:12px;border:1px solid #e0e9dc;border-radius:10px;background:#fffefa;color:#617268;font-size:11px; }
+.sale-exchange-detail>header { display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-bottom:9px;border-bottom:1px solid #edf1ea; }
+.sale-exchange-detail>header>b { display:inline-flex;align-items:center;gap:5px;color:#3f6749; }
+.sale-exchange-detail>header>span { color:#7d8980; }
+.sale-exchange-detail>header strong { color:#42584a; }
+.sale-exchange-items { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:10px 0; }
+.sale-exchange-items>div>b { color:#566b5c; }
+.sale-exchange-items ul { display:flex;flex-wrap:wrap;gap:5px 14px;margin:6px 0 0;padding:0;list-style:none; }
+.sale-exchange-items li { color:#40574a; }
+.sale-exchange-items li span { color:#77877d; }
+.sale-exchange-amounts { display:flex;align-items:center;gap:10px 18px;flex-wrap:wrap;padding-top:9px;border-top:1px solid #edf1ea; }
+.sale-exchange-amounts>span b { color:#3e5547; }
+.sale-exchange-amounts>strong { margin-inline-start:auto; }
+.sale-exchange-legacy { margin:9px 0 0;color:#8b7447; }
 
 @media (max-width:520px) {
   .invoice-search-control { flex-direction:column; }
   .invoice-item-option { align-items:flex-start; }
   .invoice-item-quantity { flex-direction:column;align-items:flex-start; }
+  .sale-exchange-items { grid-template-columns:1fr;gap:9px; }
+  .sale-exchange-amounts>strong { margin-inline-start:0; }
 }
 
 @media (max-width:1080px) {

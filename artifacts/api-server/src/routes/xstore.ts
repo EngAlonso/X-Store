@@ -2674,6 +2674,7 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
       if (!original) throw new DomainError("Invoice not found.", 404);
 
       let refundAmount = 0;
+      const returnedItems: XStoreExchangeEvent["returnedItems"] = [];
       for (const line of mergedLines(parsed.data.returnItems)) {
         const [saleItem] = await tx
           .select()
@@ -2727,6 +2728,12 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
             (1 + taxRate),
         );
         refundAmount += lineRefund;
+        returnedItems.push({
+          productId: product.id,
+          name: product.name,
+          sku: product.sku,
+          quantity: line.quantity,
+        });
         await tx
           .update(xstoreSaleItems)
           .set({
@@ -2848,6 +2855,13 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
       return {
         originalInvoiceNo: original.invoiceNo,
         exchangeInvoiceNo,
+        returnedItems,
+        replacementItems: replacementLines.map(({ product, quantity }) => ({
+          productId: product.id,
+          name: product.name,
+          sku: product.sku,
+          quantity,
+        })),
         refundAmount: roundMoney(refundAmount),
         replacementTotal,
         balanceDue,
@@ -2861,7 +2875,14 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
       tenantId,
       "sale",
       exchange.exchangeInvoiceNo,
-      `Exchange for ${exchange.originalInvoiceNo}`,
+      JSON.stringify({
+        originalInvoiceNo: exchange.originalInvoiceNo,
+        returnedItems: exchange.returnedItems,
+        replacementItems: exchange.replacementItems,
+        refundAmount: exchange.refundAmount,
+        replacementTotal: exchange.replacementTotal,
+        balanceDue: exchange.balanceDue,
+      }),
     );
     res.status(201).json(
       CreateXStoreExchangeResponse.parse({
