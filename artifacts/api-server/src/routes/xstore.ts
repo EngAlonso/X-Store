@@ -339,9 +339,11 @@ function saleDto(
   sale: typeof xstoreSales.$inferSelect,
   role: string,
   grossProfit: number | null = null,
+  cashierName = "—",
 ) {
   return {
     ...sale,
+    cashierName,
     subtotal: toNumber(sale.subtotal),
     discountAmount: toNumber(sale.discountAmount),
     taxAmount: toNumber(sale.taxAmount),
@@ -851,8 +853,15 @@ router.get("/xstore/dashboard", async (req, res): Promise<void> => {
     : [];
   const latestSales = isFinancial
     ? await db
-        .select()
+        .select({
+          sale: xstoreSales,
+          cashierName: xstoreUsers.name,
+        })
         .from(xstoreSales)
+        .innerJoin(
+          xstoreUsers,
+          eq(xstoreSales.cashierUserId, xstoreUsers.id),
+        )
         .where(saleWhere)
         .orderBy(desc(xstoreSales.createdAt))
         .limit(5)
@@ -902,7 +911,9 @@ router.get("/xstore/dashboard", async (req, res): Promise<void> => {
     activeSubscriptions: activeTenants,
     expiringSubscriptions: Number(expiringCount[0]?.total ?? 0),
     latestTenants: latestTenants.map(tenantDto),
-    latestSales: latestSales.map((sale) => saleDto(sale, user.role)),
+    latestSales: latestSales.map(({ sale, cashierName }) =>
+      saleDto(sale, user.role, null, cashierName),
+    ),
     latestAuditLogs: latestLogs.map((log) => ({
       ...log,
       tenantName: log.tenantName ?? null,
@@ -1660,12 +1671,16 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
   }
   const scopedTenant = tenantIdFor(user, parsed.data.tenantId);
   const rows = await db
-    .select()
+    .select({
+      sale: xstoreSales,
+      cashierName: xstoreUsers.name,
+    })
     .from(xstoreSales)
+    .innerJoin(xstoreUsers, eq(xstoreSales.cashierUserId, xstoreUsers.id))
     .where(scopedTenant ? eq(xstoreSales.tenantId, scopedTenant) : undefined)
     .orderBy(desc(xstoreSales.createdAt))
     .limit(parsed.data.limit ?? 50);
-  const saleIds = rows.map((sale) => sale.id);
+  const saleIds = rows.map(({ sale }) => sale.id);
   const costsBySale = saleIds.length
     ? await db
         .select({
@@ -1695,7 +1710,7 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
   );
   res.json(
     ListXStoreSalesResponse.parse(
-      rows.map((sale) =>
+      rows.map(({ sale, cashierName }) =>
         saleDto(
           sale,
           user.role,
@@ -1705,6 +1720,7 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
               (refunds.get(sale.id) ?? 0) -
               (costs.get(sale.id) ?? 0),
           ),
+          cashierName,
         ),
       ),
     ),
@@ -1930,7 +1946,11 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
     });
     res
       .status(201)
-      .json(CheckoutXStoreSaleResponse.parse(saleDto(sale, actor.role)));
+      .json(
+        CheckoutXStoreSaleResponse.parse(
+          saleDto(sale, actor.role, null, actor.name),
+        ),
+      );
   } catch (error) {
     if (error instanceof DomainError) {
       res.status(error.statusCode).json({ error: error.message });

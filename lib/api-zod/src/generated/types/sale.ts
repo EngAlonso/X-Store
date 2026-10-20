@@ -12,6 +12,7 @@ export interface Sale {
   id: string;
   tenantId: string;
   invoiceNo: string;
+  cashierName: string;
   /** @nullable */
   customerName: string | null;
   /** @nullable */

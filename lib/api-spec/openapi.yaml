@@ -519,6 +519,35 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: checkoutXStoreSale
+      tags: [xstore]
+      summary: Complete a sale and decrement stock atomically
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaleInput"
+      responses:
+        "201":
+          description: Completed sale
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sale"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          description: Insufficient stock or product is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /xstore/reports/profit-loss:
     get:
       operationId: getXStoreProfitLossReport
@@ -553,35 +582,6 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-    post:
-      operationId: checkoutXStoreSale
-      tags: [xstore]
-      summary: Complete a sale and decrement stock atomically
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SaleInput"
-      responses:
-        "201":
-          description: Completed sale
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Sale"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "409":
-          description: Insufficient stock or product is unavailable
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiError"
   /xstore/held-sales:
     get:
       operationId: listXStoreHeldSales
@@ -1177,6 +1177,7 @@ components:
         id: { type: string }
         tenantId: { type: string }
         invoiceNo: { type: string }
+        cashierName: { type: string }
         customerName: { type: ["string", "null"] }
         customerPhone: { type: ["string", "null"] }
         itemCount: { type: integer }
@@ -1196,6 +1197,7 @@ components:
         - id
         - tenantId
         - invoiceNo
+        - cashierName
         - customerName
         - customerPhone
         - itemCount
