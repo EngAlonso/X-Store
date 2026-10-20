@@ -786,6 +786,28 @@ export const CheckoutXStoreSaleResponse = zod.object({
 
 
 /**
+ * @summary Get the products and remaining returnable quantities for an invoice
+ */
+
+
+
+export const GetXStoreSaleInvoiceItemsParams = zod.object({
+  "invoiceNo": zod.coerce.string().min(1)
+})
+
+export const GetXStoreSaleInvoiceItemsResponseItem = zod.object({
+  "productId": zod.string(),
+  "name": zod.string(),
+  "sku": zod.string(),
+  "unitPrice": zod.number(),
+  "quantity": zod.number().int(),
+  "returnedQuantity": zod.number().int(),
+  "returnableQuantity": zod.number().int()
+})
+export const GetXStoreSaleInvoiceItemsResponse = zod.array(GetXStoreSaleInvoiceItemsResponseItem)
+
+
+/**
  * @summary Get role-scoped gross profit and loss totals
  */
 export const getXStoreProfitLossReportQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
@@ -924,6 +946,36 @@ export const CreateXStoreReturnResponse = zod.object({
   "invoiceNo": zod.string(),
   "productId": zod.string(),
   "quantity": zod.number().int(),
+  "refundAmount": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Return multiple items from an original invoice atomically
+ */
+
+
+
+
+
+
+export const CreateXStoreReturnBatchBody = zod.object({
+  "invoiceNo": zod.string().min(1),
+  "items": zod.array(zod.object({
+  "productId": zod.string(),
+  "quantity": zod.number().int().min(1)
+})).min(1),
+  "reason": zod.string().min(1)
+})
+
+export const CreateXStoreReturnBatchResponse = zod.object({
+  "invoiceNo": zod.string(),
+  "items": zod.array(zod.object({
+  "productId": zod.string(),
+  "quantity": zod.number().int(),
+  "refundAmount": zod.number()
+})),
   "refundAmount": zod.number(),
   "createdAt": zod.coerce.date()
 })

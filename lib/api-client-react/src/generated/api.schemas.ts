@@ -618,6 +618,16 @@ export interface SaleInput {
   customerPhone?: string | null;
 }
 
+export interface SaleInvoiceItem {
+  productId: string;
+  name: string;
+  sku: string;
+  unitPrice: number;
+  quantity: number;
+  returnedQuantity: number;
+  returnableQuantity: number;
+}
+
 export interface ProfitLossReport {
   from: string;
   to: string;
@@ -712,6 +722,28 @@ export interface ReturnResult {
   invoiceNo: string;
   productId: string;
   quantity: number;
+  refundAmount: number;
+  createdAt: string;
+}
+
+export interface ReturnBatchInput {
+  /** @minLength 1 */
+  invoiceNo: string;
+  /** @minItems 1 */
+  items: SaleLineInput[];
+  /** @minLength 1 */
+  reason: string;
+}
+
+export interface ReturnBatchLineResult {
+  productId: string;
+  quantity: number;
+  refundAmount: number;
+}
+
+export interface ReturnBatchResult {
+  invoiceNo: string;
+  items: ReturnBatchLineResult[];
   refundAmount: number;
   createdAt: string;
 }

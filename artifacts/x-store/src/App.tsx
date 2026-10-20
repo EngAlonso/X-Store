@@ -1,21 +1,22 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import {
   getGetXStoreAuthStatusQueryKey, getGetXStoreContactSettingsQueryKey, getGetXStoreDashboardQueryKey, getGetXStoreSessionQueryKey,
+  getGetXStoreSaleInvoiceItemsQueryKey,
   getListXStoreHeldSalesQueryKey, getListXStoreProductsQueryKey,
   getListXStoreSalesQueryKey, getListXStoreTeamQueryKey, getListXStoreTenantsQueryKey,
   getListXStoreSubscriptionPaymentsQueryKey,
-  logoutXStore, useAddXStoreTeamMember, useCreateInitialPlatformOwner, useCreateXStoreExchange, useCreateXStoreProduct, useCreateXStoreReturn,
+  logoutXStore, useAddXStoreTeamMember, useCreateInitialPlatformOwner, useCreateXStoreExchange, useCreateXStoreProduct, useCreateXStoreReturnBatch,
   useCreateXStoreSubscriptionPayment, useCreateXStoreTenant, useGetXStoreDashboard, useGetXStoreSession, useHoldXStoreSale,
-  useGetXStoreAuthStatus, useGetXStoreContactSettings, useLoginXStoreWithPhone,
+  useGetXStoreAuthStatus, useGetXStoreContactSettings, useGetXStoreSaleInvoiceItems, useLoginXStoreWithPhone,
   useListXStoreAuditLogs, useListXStoreHeldSales, useListXStoreProducts, useListXStoreSales,
   useGetXStoreProfitLossReport, useListXStoreSubscriptionPayments, useListXStoreTeam, useListXStoreTenants, useReleaseXStoreHeldSale, useUpdateXStoreProduct,
   useUpdateXStoreTenant, useUpdateXStoreTenantCredentials, useUpdateXStoreContactSettings, useUpdateXStoreStoreSettings, useCheckoutXStoreSale,
 } from '@workspace/api-client-react';
-import type { AuthStatus, HeldSale, Product, Tenant, Sale } from '@workspace/api-client-react';
+import type { AuthStatus, HeldSale, Product, Tenant, Sale, SaleInvoiceItem } from '@workspace/api-client-react';
 import { Route, Switch, Redirect, Link, useLocation, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -1052,11 +1053,50 @@ function InventoryPage() {
     {notice && <div className="toast-note" role="status">{notice}<button onClick={() => setNotice('')}><X size={14}/></button></div>}
   </div>;
 }
+function InvoiceReturnPicker({invoiceNo,setInvoiceNo,loadedInvoiceNo,setLoadedInvoiceNo,selectedItems,setSelectedItems,testIdPrefix}:{invoiceNo:string;setInvoiceNo:(value:string)=>void;loadedInvoiceNo:string;setLoadedInvoiceNo:(value:string)=>void;selectedItems:Record<string,number>;setSelectedItems:Dispatch<SetStateAction<Record<string,number>>>;testIdPrefix:string}) {
+  const invoiceItems=useGetXStoreSaleInvoiceItems(loadedInvoiceNo,{query:{queryKey:getGetXStoreSaleInvoiceItemsQueryKey(loadedInvoiceNo),enabled:Boolean(loadedInvoiceNo)}});
+  function searchInvoice(){
+    const normalized=invoiceNo.trim();
+    setSelectedItems({});
+    if(!normalized){setLoadedInvoiceNo('');return}
+    if(normalized===loadedInvoiceNo){void invoiceItems.refetch();return}
+    setLoadedInvoiceNo(normalized);
+  }
+  function updateInvoice(value:string){
+    setInvoiceNo(value);
+    if(value.trim()!==loadedInvoiceNo){setLoadedInvoiceNo('');setSelectedItems({})}
+  }
+  function toggleItem(item:SaleInvoiceItem,checked:boolean){
+    setSelectedItems(current=>{
+      const next={...current};
+      if(checked&&item.returnableQuantity>0)next[item.productId]=Math.min(1,item.returnableQuantity);
+      else delete next[item.productId];
+      return next;
+    });
+  }
+  return <div className="invoice-items-picker field-wide">
+    <label className="field"><span>رقم الفاتورة الأصلية</span><div className="invoice-search-control"><input value={invoiceNo} onChange={e=>updateInvoice(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();searchInvoice()}}} required placeholder="اكتب رقم الفاتورة" data-testid={`input-${testIdPrefix}-invoice`}/><button type="button" className="button button-quiet" onClick={searchInvoice} disabled={!invoiceNo.trim()||invoiceItems.isFetching} data-testid={`button-${testIdPrefix}-invoice-search`}>{invoiceItems.isFetching?'جارٍ البحث…':'عرض الفاتورة'}</button></div></label>
+    {loadedInvoiceNo&&invoiceItems.isLoading&&<div className="empty-inline">جارٍ تحميل أصناف الفاتورة…</div>}
+    {loadedInvoiceNo&&invoiceItems.isError&&<div className="form-error" role="alert">لم يتم العثور على الفاتورة أو تعذر تحميل أصنافها.</div>}
+    {loadedInvoiceNo&&invoiceItems.data&&<div className="invoice-items-list" data-testid={`${testIdPrefix}-invoice-items`}>
+      <div className="invoice-items-heading"><b>أصناف الفاتورة</b><span>حدد صنفاً أو أكثر وحدد الكمية</span></div>
+      {invoiceItems.data.length?invoiceItems.data.map(item=>{
+        const selected=Object.prototype.hasOwnProperty.call(selectedItems,item.productId);
+        return <div className={`invoice-item-option${selected?' is-selected':''}`} key={item.productId}>
+          <label className="invoice-item-label"><input type="checkbox" checked={selected} disabled={!item.returnableQuantity} onChange={e=>toggleItem(item,e.target.checked)} aria-label={`اختيار ${item.name}`} data-testid={`checkbox-${testIdPrefix}-item-${item.productId}`}/><span><b>{item.name}</b><small>{item.sku} · في الفاتورة {fmt(item.quantity)} · تم إرجاع {fmt(item.returnedQuantity)} · متاح للإرجاع {fmt(item.returnableQuantity)}</small></span></label>
+          {selected&&<label className="invoice-item-quantity"><span>الكمية</span><input type="number" min={1} max={item.returnableQuantity} step={1} value={selectedItems[item.productId]} onChange={e=>{const quantity=Math.max(1,Math.min(item.returnableQuantity,Number(e.target.value)||1));setSelectedItems(current=>({...current,[item.productId]:quantity}))}} aria-label={`كمية الإرجاع من ${item.name}`} data-testid={`input-${testIdPrefix}-quantity-${item.productId}`}/></label>}
+        </div>
+      }):<div className="empty-inline">لا توجد أصناف على هذه الفاتورة.</div>}
+    </div>}
+  </div>;
+}
+
 function PosPage() {
   const qc=useQueryClient(), products=useListXStoreProducts(), held=useListXStoreHeldSales(), session=useGetXStoreSession(), checkout=useCheckoutXStoreSale(), hold=useHoldXStoreSale(), release=useReleaseXStoreHeldSale(), exchange=useCreateXStoreExchange();
   const money=useMoney(), currency=useContext(CurrencyContext);
   const vatRate=session.data?.vatRate??.15;
   const [cart,setCart]=useState<Record<string,number>>({}),[term,setTerm]=useState(''),[discount,setDiscount]=useState('0'),[received,setReceived]=useState(''),[payment,setPayment]=useState<'cash'|'card'|'wallet'>('cash'),[heldOpen,setHeldOpen]=useState(false),[exchangeOpen,setExchangeOpen]=useState(false),[notice,setNotice]=useState('');
+  const [exchangeInvoiceNo,setExchangeInvoiceNo]=useState(''),[exchangeLoadedInvoiceNo,setExchangeLoadedInvoiceNo]=useState(''),[exchangeReturnItems,setExchangeReturnItems]=useState<Record<string,number>>({});
   const [customerName,setCustomerName]=useState(''),[customerPhone,setCustomerPhone]=useState(''),[invoiceReference,setInvoiceReference]=useState(createHeldInvoiceReference),[receiptSale,setReceiptSale]=useState<Sale|null>(null);
   const customerWhatsappNumber=getWhatsAppDigits(customerPhone);
   const customerPhoneInvalid=Boolean(customerPhone.trim()&&!customerWhatsappNumber);
@@ -1069,12 +1109,12 @@ function PosPage() {
   function finish(){if(!cartLines.length||customerPhoneInvalid)return;checkout.mutate({data:{invoiceNo:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:roundMoney(Number(received)||total),customerName:customerName.trim()||null,customerPhone:customerPhone.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference());setPayment('cash');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
   function park(){if(!cartLines.length||customerPhoneInvalid)return;hold.mutate({data:{reference:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),customerName:customerName.trim()||null,customerPhone:customerPhone.trim()||null,discountAmount:disc,paymentMethod:payment,amountReceived:roundMoney(Number(received)||0)}},{onSuccess:heldSale=>{setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference());setPayment('cash');qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice(`تم تعليق الفاتورة ${heldSale.reference}`)}})}
   function clearCurrentCart(){setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference())}
-  function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);exchange.mutate({data:{invoiceNo:String(f.get('invoiceNo')),returnItems:[{productId:String(f.get('returnProduct')),quantity:Number(f.get('returnQuantity'))}],replacementItems:[{productId:String(f.get('replacementProduct')),quantity:Number(f.get('replacementQuantity'))}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(f.get('amountReceived'))||0}},{onSuccess:r=>{setExchangeOpen(false);setNotice(`تم الاستبدال ذرياً · ${r.exchangeInvoiceNo}`);qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()})}})}
+  function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const returnItems=Object.entries(exchangeReturnItems).map(([productId,quantity])=>({productId,quantity}));if(!exchangeLoadedInvoiceNo||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()||!returnItems.length)return;exchange.mutate({data:{invoiceNo:exchangeLoadedInvoiceNo,returnItems,replacementItems:[{productId:String(f.get('replacementProduct')),quantity:Number(f.get('replacementQuantity'))}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(f.get('amountReceived'))||0}},{onSuccess:r=>{setExchangeOpen(false);setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setNotice(`تم الاستبدال ذرياً · ${r.exchangeInvoiceNo}`);qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo)})}})}
   return <>
     <div className="pos-page">
       <PageTitle eyebrow="نقطة البيع" title="صندوق البيع" desc="أضف المنتجات وأكمل الدفع بخطوات قليلة."
         action={<div className="pos-head-actions">
-          <button className="button button-quiet" onClick={()=>setExchangeOpen(true)}><ArrowLeftRight size={16}/> استبدال منتج</button>
+          <button className="button button-quiet" onClick={()=>{setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setExchangeOpen(true)}}><ArrowLeftRight size={16}/> استبدال منتج</button>
           <button className="button button-quiet held-toggle" onClick={()=>{const nextOpen=!heldOpen;setHeldOpen(nextOpen);if(nextOpen)void held.refetch()}}><Pause size={16}/> الفواتير المعلّقة <span className="count-bubble">{held.data?.length||0}</span></button>
         </div>}
       />
@@ -1155,16 +1195,14 @@ function PosPage() {
         {release.isError&&<div className="form-error" role="alert">تعذر استعادة الفاتورة. حاول مرة أخرى.</div>}
       </div></Modal>}
       {exchangeOpen&&<Modal title="استبدال منتج" close={()=>setExchangeOpen(false)}><form className="form-grid" onSubmit={submitExchange}>
-        <Field label="رقم الفاتورة الأصلية" name="invoiceNo" required placeholder="X-2048"/>
-        <label className="field"><span>المنتج المرتجع</span><select name="returnProduct" defaultValue="" required><option value="" disabled>اختر المنتج المرتجع</option>{products.data?.map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku}</option>)}</select></label>
-        <Field label="كمية المرتجع" name="returnQuantity" type="number" required defaultValue="1"/>
+        <InvoiceReturnPicker invoiceNo={exchangeInvoiceNo} setInvoiceNo={setExchangeInvoiceNo} loadedInvoiceNo={exchangeLoadedInvoiceNo} setLoadedInvoiceNo={setExchangeLoadedInvoiceNo} selectedItems={exchangeReturnItems} setSelectedItems={setExchangeReturnItems} testIdPrefix="exchange"/>
         <label className="field"><span>المنتج البديل</span><select name="replacementProduct" defaultValue="" required><option value="" disabled>اختر المنتج البديل</option>{products.data?.filter(p=>p.quantity>0).map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku} · {money(p.price)}</option>)}</select></label>
         <Field label="كمية المنتج البديل" name="replacementQuantity" type="number" required defaultValue="1"/>
         <label className="field"><span>طريقة الدفع / التسوية</span><select name="paymentMethod"><option value="cash">نقداً</option><option value="card">بطاقة</option><option value="wallet">محفظة</option></select></label>
         <Field label="المبلغ المستلم" name="amountReceived" type="number" defaultValue="0"/>
         <div className="role-hint field-wide"><ArrowLeftRight size={17}/><span>يُسجل المرتجع والمنتج البديل كعملية واحدة ذرية؛ لا يتم حفظ نصف العملية.</span></div>
         {exchange.isError&&<div className="form-error">تعذر إتمام الاستبدال. تحقق من الفاتورة والكميات.</div>}
-        <div className="modal-actions"><button type="button" className="button button-quiet" onClick={()=>setExchangeOpen(false)}>إلغاء</button><button className="button button-confirm" disabled={exchange.isPending}>{exchange.isPending?'جارٍ تنفيذ الاستبدال…':'تأكيد الاستبدال'}</button></div>
+        <div className="modal-actions"><button type="button" className="button button-quiet" onClick={()=>setExchangeOpen(false)}>إلغاء</button><button className="button button-confirm" disabled={exchange.isPending||!Object.keys(exchangeReturnItems).length||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()}>{exchange.isPending?'جارٍ تنفيذ الاستبدال…':'تأكيد الاستبدال'}</button></div>
       </form></Modal>}
     </div>
   </>;
@@ -1211,13 +1249,41 @@ function ReportsPage() {
 }
 
 function SalesPage() {
-  const qc=useQueryClient(), sales=useListXStoreSales({limit:100}), products=useListXStoreProducts(), ret=useCreateXStoreReturn();
+  const qc=useQueryClient(), sales=useListXStoreSales({limit:100}), ret=useCreateXStoreReturnBatch();
   const money=useMoney();
   const isCashier=useGetXStoreSession().data?.role==='cashier';
   const [selected,setSelected]=useState<Sale|null>(null),[printTarget,setPrintTarget]=useState<Sale|null>(null),[notice,setNotice]=useState(''),[search,setSearch]=useState('');
+  const [returnInvoiceNo,setReturnInvoiceNo]=useState(''),[returnLoadedInvoiceNo,setReturnLoadedInvoiceNo]=useState(''),[returnSelectedItems,setReturnSelectedItems]=useState<Record<string,number>>({});
   const rows=(sales.data||[]).filter(s=>s.invoiceNo.toLowerCase().includes(search.toLowerCase()));
-  function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);ret.mutate({data:{invoiceNo:String(f.get('invoiceNo')),productId:String(f.get('productId')),quantity:Number(f.get('quantity')),reason:String(f.get('reason'))}},{onSuccess:r=>{qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setSelected(null);setNotice(`تم تسجيل المرتجع · ${money(r.refundAmount)}`)}})}
-  return <><PageTitle eyebrow="حركة المتجر" title="المبيعات" desc="الفواتير الأخيرة وطرق الدفع والمرتجعات المسجلة." action={<button className="button button-quiet" onClick={()=>sales.refetch()}><RefreshCw size={15}/> تحديث القائمة</button>}/>{!isCashier&&<div className="stat-grid sales-stats"><StatCard label="عمليات ظاهرة" value={fmt(sales.data?.length||0)} detail="آخر ١٠٠ فاتورة" icon={ReceiptText}/><StatCard label="إجمالي المبيعات" value={money((sales.data||[]).reduce((a,s)=>a+s.total,0))} detail="حسب القائمة المحمّلة" icon={Banknote} tint="gold"/><StatCard label="نقداً" value={fmt((sales.data||[]).filter(s=>s.paymentMethod==='cash').length)} detail="عمليات نقدية" icon={Wallet} tint="sage"/><StatCard label="مرتجعة" value={fmt((sales.data||[]).filter(s=>s.status!=='completed').length)} detail="تتضمن استرداداً" icon={RotateCcw} tint="red"/></div>}<Card><SectionHead title="سجل الفواتير" detail="عرض الفواتير حسب الأحدث أولاً"/><div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث برقم الفاتورة" data-testid="input-search-sales"/></label><span className="result-count">{fmt(rows.length)} فاتورة</span></div>{sales.isLoading?<StateBlock loading error={false} onRetry={()=>sales.refetch()} empty={false}/>:sales.isError?<StateBlock loading={false} error onRetry={()=>sales.refetch()} empty={false}/>:rows.length?<SalesTable sales={rows} onReturn={s=>setSelected(s)} onPrint={s=>setPrintTarget(s)} showAmounts={!isCashier}/>:<div className="empty-inline">لا توجد فواتير تطابق البحث.</div>}</Card>{selected&&<Modal title={`تسجيل مرتجع · ${selected.invoiceNo}`} close={()=>setSelected(null)}><form className="form-grid" onSubmit={submit}><Field label="رقم الفاتورة" name="invoiceNo" defaultValue={selected.invoiceNo} required/><label className="field"><span>المنتج</span><select name="productId" required defaultValue=""><option value="" disabled>اختر المنتج</option>{products.data?.map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku}</option>)}</select></label><Field label="الكمية" name="quantity" type="number" required defaultValue="1"/><label className="field field-wide"><span>سبب الإرجاع</span><input name="reason" required placeholder="اكتب سبب الإرجاع"/></label>{ret.isError&&<div className="form-error">تعذر تسجيل المرتجع. تحقق من الفاتورة والمنتج.</div>}<div className="modal-actions"><button type="button" className="button button-quiet" onClick={()=>setSelected(null)}>إلغاء</button><button className="button button-primary" disabled={ret.isPending}>{ret.isPending?'جارٍ التسجيل…':'تأكيد المرتجع'}</button></div></form></Modal>}{printTarget&&<ReceiptModal sale={printTarget} close={()=>setPrintTarget(null)}/ >}{notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}</>;
+  function closeReturn(){setSelected(null);setReturnInvoiceNo('');setReturnLoadedInvoiceNo('');setReturnSelectedItems({})}
+  function openReturn(sale:Sale){setSelected(sale);setReturnInvoiceNo(sale.invoiceNo);setReturnLoadedInvoiceNo(sale.invoiceNo);setReturnSelectedItems({})}
+  function submit(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const form=new FormData(e.currentTarget);
+    const items=Object.entries(returnSelectedItems).map(([productId,quantity])=>({productId,quantity}));
+    if(!returnLoadedInvoiceNo||returnLoadedInvoiceNo!==returnInvoiceNo.trim()||!items.length)return;
+    ret.mutate({data:{invoiceNo:returnLoadedInvoiceNo,items,reason:String(form.get('reason'))}},{onSuccess:result=>{
+      qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});
+      qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});
+      qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});
+      qc.invalidateQueries({queryKey:getGetXStoreSaleInvoiceItemsQueryKey(returnLoadedInvoiceNo)});
+      closeReturn();
+      setNotice(`تم تسجيل المرتجع · ${money(result.refundAmount)}`);
+    }});
+  }
+  return <>
+    <PageTitle eyebrow="حركة المتجر" title="المبيعات" desc="الفواتير الأخيرة وطرق الدفع والمرتجعات المسجلة." action={<button className="button button-quiet" onClick={()=>sales.refetch()}><RefreshCw size={15}/> تحديث القائمة</button>}/>
+    {!isCashier&&<div className="stat-grid sales-stats"><StatCard label="عمليات ظاهرة" value={fmt(sales.data?.length||0)} detail="آخر ١٠٠ فاتورة" icon={ReceiptText}/><StatCard label="إجمالي المبيعات" value={money((sales.data||[]).reduce((a,s)=>a+s.total,0))} detail="حسب القائمة المحمّلة" icon={Banknote} tint="gold"/><StatCard label="نقداً" value={fmt((sales.data||[]).filter(s=>s.paymentMethod==='cash').length)} detail="عمليات نقدية" icon={Wallet} tint="sage"/><StatCard label="مرتجعة" value={fmt((sales.data||[]).filter(s=>s.status!=='completed').length)} detail="تتضمن استرداداً" icon={RotateCcw} tint="red"/></div>}
+    <Card><SectionHead title="سجل الفواتير" detail="عرض الفواتير حسب الأحدث أولاً"/><div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث برقم الفاتورة" data-testid="input-search-sales"/></label><span className="result-count">{fmt(rows.length)} فاتورة</span></div>{sales.isLoading?<StateBlock loading error={false} onRetry={()=>sales.refetch()} empty={false}/>:sales.isError?<StateBlock loading={false} error onRetry={()=>sales.refetch()} empty={false}/>:rows.length?<SalesTable sales={rows} onReturn={openReturn} onPrint={s=>setPrintTarget(s)} showAmounts={!isCashier}/>:<div className="empty-inline">لا توجد فواتير تطابق البحث.</div>}</Card>
+    {selected&&<Modal title="تسجيل مرتجع" close={closeReturn}><form className="form-grid" onSubmit={submit}>
+      <InvoiceReturnPicker invoiceNo={returnInvoiceNo} setInvoiceNo={setReturnInvoiceNo} loadedInvoiceNo={returnLoadedInvoiceNo} setLoadedInvoiceNo={setReturnLoadedInvoiceNo} selectedItems={returnSelectedItems} setSelectedItems={setReturnSelectedItems} testIdPrefix="return"/>
+      <label className="field field-wide"><span>سبب الإرجاع</span><input name="reason" required placeholder="اكتب سبب الإرجاع"/></label>
+      {ret.isError&&<div className="form-error" role="alert">تعذر تسجيل المرتجع. تحقق من الفاتورة والكميات المحددة.</div>}
+      <div className="modal-actions"><button type="button" className="button button-quiet" onClick={closeReturn}>إلغاء</button><button className="button button-primary" disabled={ret.isPending||!returnSelectedItems||!Object.keys(returnSelectedItems).length||returnLoadedInvoiceNo!==returnInvoiceNo.trim()}>{ret.isPending?'جارٍ التسجيل…':'تأكيد المرتجع'}</button></div>
+    </form></Modal>}
+    {printTarget&&<ReceiptModal sale={printTarget} close={()=>setPrintTarget(null)}/>}
+    {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
+  </>;
 }
 function AuditPage() {
   const logs=useListXStoreAuditLogs();

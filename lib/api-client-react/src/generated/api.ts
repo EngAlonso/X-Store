@@ -44,10 +44,13 @@ import type {
   ProductInput,
   ProductUpdate,
   ProfitLossReport,
+  ReturnBatchInput,
+  ReturnBatchResult,
   ReturnInput,
   ReturnResult,
   Sale,
   SaleInput,
+  SaleInvoiceItem,
   SessionUser,
   StoreSettings,
   StoreSettingsInput,
@@ -1972,7 +1975,7 @@ return customFetch<Sale>(getCheckoutXStoreSaleUrl(),
 
 export const getCheckoutXStoreSaleMutationKey = () => ['checkoutXStoreSale'] as const;
 
-export const getCheckoutXStoreSaleMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ApiError>,
+export const getCheckoutXStoreSaleMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkoutXStoreSale>>, TError,CheckoutXStoreSaleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof checkoutXStoreSale>>, TError,CheckoutXStoreSaleMutationVariables, TContext> => {
 
@@ -2001,13 +2004,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CheckoutXStoreSaleMutationResult = NonNullable<Awaited<ReturnType<typeof checkoutXStoreSale>>>
     export type CheckoutXStoreSaleMutationBody = BodyType<SaleInput>
-    export type CheckoutXStoreSaleMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ApiError>
+    export type CheckoutXStoreSaleMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>
     export type CheckoutXStoreSaleMutationVariables = {data: BodyType<SaleInput>}
 
     /**
  * @summary Complete a sale and decrement stock atomically
  */
-export const useCheckoutXStoreSale = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ApiError>,
+export const useCheckoutXStoreSale = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkoutXStoreSale>>, TError,CheckoutXStoreSaleMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof checkoutXStoreSale>>,
@@ -2017,6 +2020,83 @@ export const useCheckoutXStoreSale = <TError = ErrorType<BadRequestResponse | Un
       > => {
       return useMutation(getCheckoutXStoreSaleMutationOptions(options));
     }
+
+export const getGetXStoreSaleInvoiceItemsUrl = (invoiceNo: string,) => {
+
+
+
+
+  return `/api/xstore/sales/${invoiceNo}/items`
+}
+
+/**
+ * @summary Get the products and remaining returnable quantities for an invoice
+ */
+export const getXStoreSaleInvoiceItems = async (invoiceNo: string, options?: Parameters<typeof customFetch>[1]): Promise<SaleInvoiceItem[]> => {
+
+  return customFetch<SaleInvoiceItem[]>(getGetXStoreSaleInvoiceItemsUrl(invoiceNo),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetXStoreSaleInvoiceItemsQueryKey = (invoiceNo: string,) => {
+    return [
+    `/api/xstore/sales/${invoiceNo}/items`
+    ] as const;
+    }
+
+
+export const getGetXStoreSaleInvoiceItemsQueryOptions = <TData = Awaited<ReturnType<typeof getXStoreSaleInvoiceItems>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>>(invoiceNo: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getXStoreSaleInvoiceItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetXStoreSaleInvoiceItemsQueryKey(invoiceNo);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getXStoreSaleInvoiceItems>>> = ({ signal }) => getXStoreSaleInvoiceItems(invoiceNo, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: invoiceNo !== null && invoiceNo !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getXStoreSaleInvoiceItems>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetXStoreSaleInvoiceItemsQueryResult = NonNullable<Awaited<ReturnType<typeof getXStoreSaleInvoiceItems>>>
+export type GetXStoreSaleInvoiceItemsQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>
+
+
+/**
+ * @summary Get the products and remaining returnable quantities for an invoice
+ */
+
+export function useGetXStoreSaleInvoiceItems<TData = Awaited<ReturnType<typeof getXStoreSaleInvoiceItems>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>>(
+ invoiceNo: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getXStoreSaleInvoiceItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetXStoreSaleInvoiceItemsQueryOptions(invoiceNo,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetXStoreProfitLossReportUrl = (params?: GetXStoreProfitLossReportParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -2427,6 +2507,94 @@ export const useCreateXStoreReturn = <TError = ErrorType<BadRequestResponse | Un
         TContext
       > => {
       return useMutation(getCreateXStoreReturnMutationOptions(options));
+    }
+
+export const getCreateXStoreReturnBatchUrl = () => {
+
+
+
+
+  return `/api/xstore/returns/batch`
+}
+
+/**
+ * @summary Return multiple items from an original invoice atomically
+ */
+export const createXStoreReturnBatch = async (returnBatchInput: ReturnBatchInput, options?: Parameters<typeof customFetch>[1]): Promise<ReturnBatchResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ReturnBatchResult>(getCreateXStoreReturnBatchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(returnBatchInput)
+  }
+);}
+
+
+
+
+
+export const getCreateXStoreReturnBatchMutationKey = () => ['createXStoreReturnBatch'] as const;
+
+export const getCreateXStoreReturnBatchMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createXStoreReturnBatch>>, TError,CreateXStoreReturnBatchMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createXStoreReturnBatch>>, TError,CreateXStoreReturnBatchMutationVariables, TContext> => {
+
+const mutationKey = getCreateXStoreReturnBatchMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createXStoreReturnBatch>>, CreateXStoreReturnBatchMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createXStoreReturnBatch(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateXStoreReturnBatchMutationResult = NonNullable<Awaited<ReturnType<typeof createXStoreReturnBatch>>>
+    export type CreateXStoreReturnBatchMutationBody = BodyType<ReturnBatchInput>
+    export type CreateXStoreReturnBatchMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>
+    export type CreateXStoreReturnBatchMutationVariables = {data: BodyType<ReturnBatchInput>}
+
+    /**
+ * @summary Return multiple items from an original invoice atomically
+ */
+export const useCreateXStoreReturnBatch = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createXStoreReturnBatch>>, TError,CreateXStoreReturnBatchMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createXStoreReturnBatch>>,
+        TError,
+        CreateXStoreReturnBatchMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateXStoreReturnBatchMutationOptions(options));
     }
 
 export const getCreateXStoreExchangeUrl = () => {

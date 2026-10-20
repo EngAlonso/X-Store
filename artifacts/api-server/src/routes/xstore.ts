@@ -27,6 +27,8 @@ import {
   CreateXStoreProductResponse,
   CreateXStoreReturnBody,
   CreateXStoreReturnResponse,
+  CreateXStoreReturnBatchBody,
+  CreateXStoreReturnBatchResponse,
   CreateXStoreSubscriptionPaymentBody,
   CreateXStoreSubscriptionPaymentResponse,
   CreateXStoreTenantBody,
@@ -48,6 +50,8 @@ import {
   ListXStoreProductsResponse,
   ListXStoreSalesQueryParams,
   ListXStoreSalesResponse,
+  GetXStoreSaleInvoiceItemsParams,
+  GetXStoreSaleInvoiceItemsResponse,
   ListXStoreSubscriptionPaymentsResponse,
   ListXStoreTeamResponse,
   ListXStoreTenantsQueryParams,
@@ -1727,6 +1731,67 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
   );
 });
 
+router.get(
+  "/xstore/sales/:invoiceNo/items",
+  async (req, res): Promise<void> => {
+    const user = getXStoreUser(res);
+    if (!hasRole(user, saleHistoryRoles)) {
+      res.status(403).json({ error: "Sales history is not available to this role." });
+      return;
+    }
+    const params = GetXStoreSaleInvoiceItemsParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
+    const tenantId = requireTenant(res, user);
+    if (!tenantId) return;
+
+    const [sale] = await db
+      .select({ id: xstoreSales.id })
+      .from(xstoreSales)
+      .where(
+        and(
+          eq(xstoreSales.invoiceNo, params.data.invoiceNo),
+          eq(xstoreSales.tenantId, tenantId),
+        ),
+      )
+      .limit(1);
+    if (!sale) {
+      res.status(404).json({ error: "Invoice not found." });
+      return;
+    }
+
+    const items = await db
+      .select({
+        productId: xstoreSaleItems.productId,
+        name: xstoreProducts.name,
+        sku: xstoreProducts.sku,
+        unitPrice: xstoreSaleItems.unitPrice,
+        quantity: xstoreSaleItems.quantity,
+        returnedQuantity: xstoreSaleItems.returnedQuantity,
+      })
+      .from(xstoreSaleItems)
+      .innerJoin(
+        xstoreProducts,
+        eq(xstoreSaleItems.productId, xstoreProducts.id),
+      )
+      .where(eq(xstoreSaleItems.saleId, sale.id));
+    res.json(
+      GetXStoreSaleInvoiceItemsResponse.parse(
+        items.map((item) => ({
+          ...item,
+          unitPrice: toNumber(item.unitPrice),
+          returnableQuantity: Math.max(
+            0,
+            item.quantity - item.returnedQuantity,
+          ),
+        })),
+      ),
+    );
+  },
+);
+
 router.get("/xstore/reports/profit-loss", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
   if (!hasRole(user, reportRoles)) {
@@ -2247,6 +2312,177 @@ router.post("/xstore/returns", async (req, res): Promise<void> => {
         productId: result.productId,
         quantity: result.quantity,
         refundAmount: toNumber(result.refundAmount),
+        createdAt: iso(result.createdAt),
+      }),
+    );
+  } catch (error) {
+    if (error instanceof DomainError) {
+      res.status(error.statusCode).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
+});
+
+router.post("/xstore/returns/batch", async (req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (!hasRole(actor, cashierRoles)) {
+    res.status(403).json({ error: "This role cannot process returns." });
+    return;
+  }
+  const tenantId = requireTenant(res, actor);
+  if (!tenantId) return;
+  const parsed = CreateXStoreReturnBatchBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [sale] = await tx
+        .select()
+        .from(xstoreSales)
+        .where(
+          and(
+            eq(xstoreSales.invoiceNo, parsed.data.invoiceNo),
+            eq(xstoreSales.tenantId, tenantId),
+          ),
+        )
+        .limit(1);
+      if (!sale) throw new DomainError("Invoice not found.", 404);
+
+      const originalSubtotal = toNumber(sale.subtotal);
+      const discountedSubtotal = Math.max(
+        0,
+        originalSubtotal - toNumber(sale.discountAmount),
+      );
+      const discountRate =
+        originalSubtotal > 0
+          ? toNumber(sale.discountAmount) / originalSubtotal
+          : 0;
+      const taxRate =
+        discountedSubtotal > 0
+          ? toNumber(sale.taxAmount) / discountedSubtotal
+          : 0;
+      const returnedItems: Array<{
+        productId: string;
+        quantity: number;
+        refundAmount: number;
+      }> = [];
+      let createdAt: Date | null = null;
+
+      for (const line of mergedLines(parsed.data.items).sort((a, b) =>
+        a.productId.localeCompare(b.productId),
+      )) {
+        const [saleItem] = await tx
+          .select()
+          .from(xstoreSaleItems)
+          .where(
+            and(
+              eq(xstoreSaleItems.saleId, sale.id),
+              eq(xstoreSaleItems.productId, line.productId),
+            ),
+          )
+          .for("update")
+          .limit(1);
+        if (
+          !saleItem ||
+          saleItem.returnedQuantity + line.quantity > saleItem.quantity
+        ) {
+          throw new DomainError(
+            "The return quantity exceeds the quantity on this invoice.",
+            409,
+          );
+        }
+
+        const [product] = await tx
+          .select()
+          .from(xstoreProducts)
+          .where(
+            and(
+              eq(xstoreProducts.id, line.productId),
+              eq(xstoreProducts.tenantId, tenantId),
+            ),
+          )
+          .for("update")
+          .limit(1);
+        if (!product) throw new DomainError("Product not found.", 404);
+
+        const refundAmount = roundMoney(
+          toNumber(saleItem.unitPrice) *
+            line.quantity *
+            (1 - discountRate) *
+            (1 + taxRate),
+        );
+        const costAmount = roundMoney(
+          toNumber(saleItem.unitCost) * line.quantity,
+        );
+        const [createdReturn] = await tx
+          .insert(xstoreReturns)
+          .values({
+            saleId: sale.id,
+            productId: product.id,
+            quantity: line.quantity,
+            refundAmount: String(refundAmount),
+            costAmount: String(costAmount),
+            reason: parsed.data.reason,
+          })
+          .returning({ createdAt: xstoreReturns.createdAt });
+        if (!createdReturn) {
+          throw new DomainError("Unable to record this return.", 500);
+        }
+        createdAt ??= createdReturn.createdAt;
+        await tx
+          .update(xstoreSaleItems)
+          .set({
+            returnedQuantity: saleItem.returnedQuantity + line.quantity,
+          })
+          .where(eq(xstoreSaleItems.id, saleItem.id));
+        await tx
+          .update(xstoreProducts)
+          .set({ quantity: sql`${xstoreProducts.quantity} + ${line.quantity}` })
+          .where(eq(xstoreProducts.id, product.id));
+        returnedItems.push({
+          productId: product.id,
+          quantity: line.quantity,
+          refundAmount,
+        });
+      }
+
+      const allItems = await tx
+        .select()
+        .from(xstoreSaleItems)
+        .where(eq(xstoreSaleItems.saleId, sale.id));
+      const isFullyReturned = allItems.every(
+        (line) => line.returnedQuantity >= line.quantity,
+      );
+      await tx
+        .update(xstoreSales)
+        .set({ status: isFullyReturned ? "returned" : "partially_returned" })
+        .where(eq(xstoreSales.id, sale.id));
+
+      return {
+        items: returnedItems,
+        refundAmount: roundMoney(
+          returnedItems.reduce((sum, item) => sum + item.refundAmount, 0),
+        ),
+        createdAt: createdAt ?? new Date(),
+      };
+    });
+    await audit(
+      actor,
+      "sale.returned",
+      tenantId,
+      "sale",
+      parsed.data.invoiceNo,
+      `Returned ${result.items.reduce((sum, item) => sum + item.quantity, 0)} unit(s) from ${parsed.data.invoiceNo}`,
+    );
+    res.status(201).json(
+      CreateXStoreReturnBatchResponse.parse({
+        invoiceNo: parsed.data.invoiceNo,
+        items: result.items,
+        refundAmount: result.refundAmount,
         createdAt: iso(result.createdAt),
       }),
     );

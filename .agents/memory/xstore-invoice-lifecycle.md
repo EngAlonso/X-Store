@@ -20,3 +20,9 @@ When adding or moving an OpenAPI operation, verify that it is nested under the i
 **Why:** a misplaced checkout operation generated a client request to an unrelated endpoint and appeared to users as a generic sale failure.
 
 **How to apply:** after API-spec edits, regenerate clients and check the operation's concrete URL before testing the UI.
+
+For returns and exchanges, load selectable return items from the entered invoice, not the full inventory. Allow multiple invoice lines, cap each quantity at its unreturned balance, and record multi-line returns atomically.
+
+**Why:** the user asked for invoice-only item selection with multiple items for returns and exchanges.
+
+**How to apply:** fetch invoice lines by invoice number, display each line's remaining returnable quantity, and validate the selected lines together before applying stock and return changes.

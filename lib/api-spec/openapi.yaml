@@ -542,6 +542,33 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /xstore/sales/{invoiceNo}/items:
+    get:
+      operationId: getXStoreSaleInvoiceItems
+      tags: [xstore]
+      summary: Get the products and remaining returnable quantities for an invoice
+      parameters:
+        - name: invoiceNo
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Items on the invoice
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SaleInvoiceItem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "409":
           description: Insufficient stock or product is unavailable
           content:
@@ -661,6 +688,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReturnResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Requested return exceeds the remaining quantity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+  /xstore/returns/batch:
+    post:
+      operationId: createXStoreReturnBatch
+      tags: [xstore]
+      summary: Return multiple items from an original invoice atomically
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReturnBatchInput"
+      responses:
+        "201":
+          description: Recorded returns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnBatchResult"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -1211,6 +1270,17 @@ components:
         - changeAmount
         - status
         - createdAt
+    SaleInvoiceItem:
+      type: object
+      properties:
+        productId: { type: string }
+        name: { type: string }
+        sku: { type: string }
+        unitPrice: { type: number }
+        quantity: { type: integer }
+        returnedQuantity: { type: integer }
+        returnableQuantity: { type: integer }
+      required: [productId, name, sku, unitPrice, quantity, returnedQuantity, returnableQuantity]
     ProfitLossReport:
       type: object
       properties:
@@ -1298,6 +1368,35 @@ components:
         refundAmount: { type: number }
         createdAt: { type: string, format: date-time }
       required: [id, invoiceNo, productId, quantity, refundAmount, createdAt]
+    ReturnBatchInput:
+      type: object
+      properties:
+        invoiceNo: { type: string, minLength: 1 }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SaleLineInput"
+        reason: { type: string, minLength: 1 }
+      required: [invoiceNo, items, reason]
+    ReturnBatchLineResult:
+      type: object
+      properties:
+        productId: { type: string }
+        quantity: { type: integer }
+        refundAmount: { type: number }
+      required: [productId, quantity, refundAmount]
+    ReturnBatchResult:
+      type: object
+      properties:
+        invoiceNo: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnBatchLineResult"
+        refundAmount: { type: number }
+        createdAt: { type: string, format: date-time }
+      required: [invoiceNo, items, refundAmount, createdAt]
     ExchangeInput:
       type: object
       properties:
