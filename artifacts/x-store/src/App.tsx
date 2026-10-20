@@ -16,7 +16,7 @@ import {
   useGetXStoreProfitLossReport, useListXStoreSubscriptionPayments, useListXStoreTeam, useListXStoreTenants, useReleaseXStoreHeldSale, useUpdateXStoreProduct,
   useUpdateXStoreTenant, useUpdateXStoreTenantCredentials, useUpdateXStoreContactSettings, useUpdateXStoreStoreSettings, useCheckoutXStoreSale,
 } from '@workspace/api-client-react';
-import type { AuthStatus, HeldSale, Product, Tenant, Sale, SaleInvoiceItem } from '@workspace/api-client-react';
+import type { AuthStatus, HeldSale, Product, Tenant, Sale, SaleInvoiceItem, SessionUser, TeamPermission } from '@workspace/api-client-react';
 import { Route, Switch, Redirect, Link, useLocation, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -161,7 +161,23 @@ function checkoutErrorMessage(error: unknown): string {
 }
 const dateLabel = (d?: string | null) => d ? new Intl.DateTimeFormat('ar-SA', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(d)) : '—';
 const dateTimeLabel = (d?: string | null) => d ? new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(new Date(d)) : '—';
-const roleNames: Record<string, string> = { platform_admin: 'مالك المنصة', tenant_admin: 'مالك المتجر', cashier: 'أمين الصندوق', warehouse_manager: 'مدير المخزون', accountant: 'محاسب' };
+const roleNames: Record<string, string> = { platform_admin: 'مالك المنصة', tenant_admin: 'مالك المتجر', cashier: 'أمين الصندوق', warehouse_manager: 'مدير المخزون', accountant: 'محاسب', custom: 'دور مخصص' };
+const teamPermissionOptions: { value: TeamPermission; label: string; description: string }[] = [
+  { value: 'cashier', label: 'نقطة البيع والمبيعات', description: 'إتمام البيع، مراجعة الفواتير، والمرتجعات والاستبدال.' },
+  { value: 'warehouse_manager', label: 'إدارة المخزون', description: 'عرض المنتجات وتعديل الكميات دون تغيير أسعار المنتجات.' },
+  { value: 'accountant', label: 'التقارير المالية', description: 'عرض التقارير المالية والمبيعات المسجلة.' },
+];
+const teamPermissionNames = Object.fromEntries(
+  teamPermissionOptions.map(({ value, label }) => [value, label]),
+) as Record<TeamPermission, string>;
+function hasAppRole(user: SessionUser | null | undefined, roles: readonly string[]): boolean {
+  return Boolean(
+    user &&
+      (roles.includes(user.role) ||
+        (user.role === 'custom' &&
+          (user.permissions || []).some((permission) => roles.includes(permission)))),
+  );
+}
 const statusNames: Record<string, string> = { active: 'نشط', trial: 'تجريبي', suspended: 'موقوف', completed: 'مكتملة', partially_returned: 'مستردة جزئياً', returned: 'مستردة', monthly: 'شهري', half_yearly: 'نصف سنوي', annual: 'سنوي', lifetime: 'مدى الحياة' };
 const founderSetupSchema = z.object({
   name: z.string().trim().min(2, 'اكتب اسم المؤسس').max(100, 'الاسم طويل جدًا'),
@@ -176,10 +192,10 @@ const founderSetupSchema = z.object({
 type FounderSetupValues = z.infer<typeof founderSetupSchema>;
 const nav = [
   { href: '/dashboard', label: 'لوحة التحكم', icon: LayoutDashboard, roles: ['all'] },
-  { href: '/pos', label: 'نقطة البيع', icon: ShoppingCart, roles: ['tenant_admin', 'cashier'] },
+   { href: '/pos', label: 'نقطة البيع', icon: ShoppingCart, roles: ['tenant_admin', 'cashier'] },
   { href: '/tenants', label: 'المتاجر', icon: Store, roles: ['platform_admin'] },
   { href: '/subscriptions', label: 'الاشتراكات', icon: CreditCard, roles: ['platform_admin'] },
-  { href: '/inventory', label: 'المخزون', icon: Package, roles: ['tenant_admin', 'warehouse_manager'] },
+   { href: '/inventory', label: 'المخزون', icon: Package, roles: ['tenant_admin', 'warehouse_manager'] },
   { href: '/reports', label: 'التقارير المالية', icon: Activity, roles: ['platform_admin', 'tenant_admin', 'accountant'] },
   { href: '/sales', label: 'المبيعات', icon: ReceiptText, roles: ['tenant_admin', 'cashier', 'accountant'] },
   { href: '/audit-log', label: 'سجل التدقيق', icon: ScrollText, roles: ['platform_admin'] },
@@ -552,9 +568,9 @@ function AppShell({ children }: { children: ReactNode }) {
   }
   if (isLoading) return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if (isError || !user) return <div className="auth-required" dir="rtl"><div className="empty-symbol"><ShieldCheck/></div><h2>يلزم تسجيل الدخول</h2><p>سجّل الدخول باستخدام حساب X-Store للوصول إلى مساحة العمل.</p><Link href="/sign-in" className="button button-primary">تسجيل الدخول</Link><button className="button button-quiet" onClick={()=>refetch()}>إعادة المحاولة</button></div>;
-  const items = nav.filter(n=>n.roles.includes('all') || n.roles.includes(user.role));
-   return <CurrencyContext.Provider value={(user.currency as StoreCurrency | null) || 'SAR'}><div dir="rtl" className="app-frame">
-     <aside className={`sidebar ${open?'sidebar-open':''}`}><div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={()=>setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div><div className="store-chip"><span className="store-avatar">{(user.tenantName||user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{roleNames[user.role]||user.role}</small></span><ChevronDown size={15}/></div><div className="nav-caption">القائمة الرئيسية</div><nav className="side-nav">{items.map(item=><Link key={item.href} href={item.href} onClick={()=>setOpen(false)} className={`nav-link ${location===item.href?'nav-active':''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location===item.href&&<i/>}</Link>)}</nav><div className="sidebar-bottom"><div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div><div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.phone}</small></span><button type="button" className="icon-button" onClick={()=>void handleLogout()} disabled={loggingOut} title={loggingOut?'جارٍ تسجيل الخروج…':'تسجيل الخروج'} aria-label={loggingOut?'جارٍ تسجيل الخروج':'تسجيل الخروج'} data-testid="button-sign-out"><LogOut size={17}/></button></div></div></aside>
+  const items = nav.filter(n=>n.roles.includes('all') || hasAppRole(user, n.roles));
+     return <CurrencyContext.Provider value={(user.currency as StoreCurrency | null) || 'SAR'}><div dir="rtl" className="app-frame">
+      <aside className={`sidebar ${open?'sidebar-open':''}`}><div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={()=>setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div><div className="store-chip"><span className="store-avatar">{(user.tenantName||user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{user.roleName || roleNames[user.role] || user.role}</small></span><ChevronDown size={15}/></div><div className="nav-caption">القائمة الرئيسية</div><nav className="side-nav">{items.map(item=><Link key={item.href} href={item.href} onClick={()=>setOpen(false)} className={`nav-link ${location===item.href?'nav-active':''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location===item.href&&<i/>}</Link>)}</nav><div className="sidebar-bottom"><div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div><div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.phone}</small></span><button type="button" className="icon-button" onClick={()=>void handleLogout()} disabled={loggingOut} title={loggingOut?'جارٍ تسجيل الخروج…':'تسجيل الخروج'} aria-label={loggingOut?'جارٍ تسجيل الخروج':'تسجيل الخروج'} data-testid="button-sign-out"><LogOut size={17}/></button></div></div></aside>
     {open&&<button aria-label="إغلاق القائمة" className="mobile-scrim" onClick={()=>setOpen(false)}/>}
     <div className="workspace"><header className="topbar"><button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={()=>setOpen(true)}><Menu size={20}/></button><div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i=>i.href===location)?.label||'لوحة التحكم'}</b></div><div className="topbar-tools"><span className="today"><CalendarDays size={15}/> {new Intl.DateTimeFormat('ar-SA',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span><button className="icon-button notification" aria-label="الإشعارات"><Bell size={18}/><i/></button><span className="top-avatar">{user.name.slice(0,1)}</span></div></header><main className="main-content">{children}</main></div>
    </div></CurrencyContext.Provider>;
@@ -562,7 +578,7 @@ function AppShell({ children }: { children: ReactNode }) {
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
   const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
-  if(session.data&&allowed[location]&&!allowed[location].includes(session.data.role))return <Redirect to="/dashboard"/>;
+  if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
   return <AppShell><Switch>
@@ -594,7 +610,7 @@ function StateBlock({loading,error,onRetry,empty,emptyTitle='لا توجد بي�
 function DashboardPage() {
   const {data:session}=useGetXStoreSession(); const dash=useGetXStoreDashboard();
   const money=useMoney();
-  const d=dash.data; const isPlatform=session?.role==='platform_admin'; const isCashier=session?.role==='cashier';
+  const d=dash.data; const isPlatform=session?.role==='platform_admin'; const isCashier=hasAppRole(session,['cashier'])&&!hasAppRole(session,['accountant']);
   return <><PageTitle eyebrow="نظرة عامة" title={isPlatform?'صورة المنصة اليوم':'أهلاً بك في متجرك'} desc={isPlatform?'متابعة حالة المتاجر والاشتراكات ونشاط المنصة.':'ملخص عمل متجرك — كل التفاصيل المهمة في نظرة واحدة.'} action={<Link href={isPlatform?'/tenants':'/pos'} className="button button-primary">{isPlatform?'إدارة المتاجر':'بدء عملية بيع'} <ArrowUpLeft size={16}/></Link>}/>
     {dash.isLoading?<div className="stat-grid">{[1,2,3,4].map(x=><div className="stat-card stat-skeleton" key={x}/>)}</div>:dash.isError?<StateBlock loading={false} error onRetry={()=>dash.refetch()} empty={false}/>:d&&<>
       <div className="stat-grid">{isPlatform?<><StatCard label="المتاجر المسجلة" value={fmt(d.totalTenants)} detail={`${fmt(d.activeTenants)} متجر نشط`} icon={Store}/><StatCard label="الاشتراكات النشطة" value={fmt(d.activeSubscriptions)} detail={`${fmt(d.expiringSubscriptions)} تنتهي قريباً`} icon={Users} tint="gold"/><StatCard label="إيراد الاشتراكات" value={money(d.subscriptionRevenue)} detail="إجمالي الاشتراكات" icon={Banknote}/><StatCard label="متاجر موقوفة" value={fmt(d.suspendedTenants)} detail="تحتاج مراجعة" icon={AlertTriangle} tint="red"/></>:isCashier?<><StatCard label="عمليات اليوم" value={fmt(d.todaySales)} detail="فواتير مكتملة" icon={ReceiptText}/><StatCard label="نقطة البيع" value="جاهزة" detail="ابدأ عملية جديدة" icon={ShoppingCart} tint="sage"/><StatCard label="متجرك" value={session?.tenantName||'متجرك'} detail="مساحة عمل آمنة" icon={Store} tint="gold"/><StatCard label="مساعدة الصندوق" value="متاحة" detail="البيع والمرتجعات" icon={ShieldCheck}/></>:<><StatCard label="مبيعات اليوم" value={fmt(d.todaySales)} detail="عملية بيع مكتملة" icon={ReceiptText}/><StatCard label="إيراد اليوم" value={money(d.todayRevenue)} detail="إجمالي المبيعات اليوم" icon={Banknote} tint="gold"/><StatCard label="قيمة المخزون" value={money(d.inventoryValue)} detail={`${fmt(d.lowStockCount)} منتجات منخفضة`} icon={Boxes}/><StatCard label="الاشتراك" value={statusNames[session?.role||'']||'نشط'} detail={session?.tenantName||'متجرك'} icon={ShieldCheck} tint="sage"/></>}</div>
@@ -773,27 +789,48 @@ function TenantsPage() {
 function TeamPage() {
   const qc=useQueryClient(), team=useListXStoreTeam(), add=useAddXStoreTeamMember();
   const [dialog,setDialog]=useState(false),[search,setSearch]=useState(''),[notice,setNotice]=useState('');
-  const roleTitle:Record<string,string>={cashier:'أمين الصندوق',warehouse_manager:'مدير المخزون',accountant:'محاسب'};
-  const members=(team.data||[]).filter(m=>`${m.name} ${m.phone} ${m.email||''}`.toLowerCase().includes(search.toLowerCase()));
-  function submit(e:FormEvent<HTMLFormElement>){
-    e.preventDefault();const f=new FormData(e.currentTarget);
-    add.mutate({data:{name:String(f.get('name')),phone:String(f.get('phone')),password:String(f.get('password')),email:String(f.get('email')||'').trim()||null,role:String(f.get('role')) as 'cashier'|'warehouse_manager'|'accountant'}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreTeamQueryKey()});setDialog(false);setNotice('تم حفظ حساب عضو الفريق');}});
+  const [selectedPermissions,setSelectedPermissions]=useState<TeamPermission[]>([]);
+  const roleTitle:Record<string,string>={tenant_admin:'مالك المتجر',cashier:'أمين الصندوق',warehouse_manager:'مدير المخزون',accountant:'محاسب',custom:'دور مخصص'};
+  const members=(team.data||[]).filter(m=>`${m.name} ${m.phone} ${m.email||''} ${m.roleName||''} ${(m.permissions||[]).join(' ')}`.toLowerCase().includes(search.toLowerCase()));
+  function openDialog(){setSelectedPermissions([]);setDialog(true)}
+  function closeDialog(){setDialog(false);setSelectedPermissions([])}
+  function togglePermission(permission:TeamPermission){
+    setSelectedPermissions(current=>current.includes(permission)?current.filter(item=>item!==permission):[...current,permission]);
   }
-  return <><PageTitle eyebrow="إدارة الصلاحيات" title="فريق العمل" desc="أنشئ حسابات الفريق برقم الهاتف وكلمة المرور وحدد دور كل شخص." action={<button className="button button-primary" onClick={()=>setDialog(true)} data-testid="button-add-team-member"><Plus size={17}/> إضافة عضو</button>}/>
-    <div className="team-summary"><div><span className="team-summary-icon"><Users size={18}/></span><b>{fmt(members.length)} عضو</b><small>ضمن فريق متجرك</small></div><div><span className="team-summary-icon team-sage"><ShieldCheck size={18}/></span><b>صلاحيات حسب الدور</b><small>كل شخص يرى ما يحتاجه فقط</small></div><div className="team-summary-note">إعادة استخدام رقم عضو في نفس المتجر تحدّث دوره وكلمة مروره.</div></div>
-    <Card><SectionHead title="أعضاء الفريق" detail="بيانات الدخول: رقم الهاتف وكلمة المرور التي تحددها لكل عضو."/>
-      <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم العضو أو الهاتف" data-testid="input-search-team"/></label><span className="result-count">{fmt(members.length)} عضو</span></div>
-      {team.isLoading?<StateBlock loading error={false} onRetry={()=>team.refetch()} empty={false}/>:team.isError?<StateBlock loading={false} error onRetry={()=>team.refetch()} empty={false}/>:members.length?<div className="table-wrap"><table><thead><tr><th>عضو الفريق</th><th>رقم الهاتف</th><th>البريد الإلكتروني</th><th>الدور</th><th>الحالة</th><th>تاريخ الإضافة</th></tr></thead><tbody>{members.map(m=><tr key={m.id}><td><div className="member-name"><span>{m.name.slice(0,1)}</span><b>{m.name}</b></div></td><td dir="ltr">{m.phone}</td><td>{m.email||'—'}</td><td>{roleTitle[m.role]||m.role}</td><td><span className={`status-pill ${m.status==='active'?'status-active':'status-trial'}`}>{m.status==='active'?'نشط':'دعوة مرسلة'}</span></td><td>{dateLabel(m.createdAt)}</td></tr>)}</tbody></table></div>:<div className="state-box"><div className="empty-symbol"><Users/></div><b>ابدأ ببناء فريقك</b><span>أضف أمين صندوق أو مدير مخزون أو محاسب.</span><button className="button button-primary" onClick={()=>setDialog(true)}><Plus size={16}/> إضافة عضو</button></div>}
+  function memberPermissionSummary(role:string,permissions:TeamPermission[]){
+    const assigned=role==='custom'?permissions:teamPermissionOptions.filter(option=>option.value===role).map(option=>option.value);
+    return assigned.map(permission=>teamPermissionNames[permission]).join(' · ')||'صلاحيات مالك المتجر';
+  }
+  function submit(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    const f=new FormData(e.currentTarget);
+    const roleName=String(f.get('roleName')||'').trim();
+    if(!roleName||!selectedPermissions.length)return;
+    add.mutate({data:{name:String(f.get('name')),phone:String(f.get('phone')),password:String(f.get('password')),email:String(f.get('email')||'').trim()||null,roleName,permissions:selectedPermissions}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreTeamQueryKey()});closeDialog();setNotice('تم حفظ حساب عضو الفريق والصلاحيات المحددة');}});
+  }
+  return <><PageTitle eyebrow="إدارة الصلاحيات" title="فريق العمل" desc="أضف عضوًا، واكتب اسم دوره، ثم اختر الصلاحيات التي يحتاجها." action={<button className="button button-primary" onClick={openDialog} data-testid="button-add-team-member"><Plus size={17}/> إضافة عضو</button>}/>
+    <div className="team-summary"><div><span className="team-summary-icon"><Users size={18}/></span><b>{fmt(members.length)} عضو</b><small>ضمن فريق متجرك</small></div><div><span className="team-summary-icon team-sage"><ShieldCheck size={18}/></span><b>صلاحيات تختارها يدويًا</b><small>كل عضو حسب مهامه</small></div><div className="team-summary-note">تظل إعدادات المتجر وإدارة الفريق خاصة بمالك المتجر.</div></div>
+    <Card><SectionHead title="أعضاء الفريق" detail="يعرض الجدول الدور والصلاحيات المسجلة لكل عضو."/>
+      <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم العضو أو الدور" data-testid="input-search-team"/></label><span className="result-count">{fmt(members.length)} عضو</span></div>
+      {team.isLoading?<StateBlock loading error={false} onRetry={()=>team.refetch()} empty={false}/>:team.isError?<StateBlock loading={false} error onRetry={()=>team.refetch()} empty={false}/>:members.length?<div className="table-wrap"><table><thead><tr><th>عضو الفريق</th><th>رقم الهاتف</th><th>البريد الإلكتروني</th><th>الدور</th><th>الصلاحيات</th><th>الحالة</th><th>تاريخ الإضافة</th></tr></thead><tbody>{members.map(m=><tr key={m.id}><td><div className="member-name"><span>{m.name.slice(0,1)}</span><b>{m.name}</b></div></td><td dir="ltr">{m.phone}</td><td>{m.email||'—'}</td><td>{m.roleName||roleTitle[m.role]||m.role}</td><td>{memberPermissionSummary(m.role,m.permissions)}</td><td><span className={`status-pill ${m.status==='active'?'status-active':'status-trial'}`}>{m.status==='active'?'نشط':'دعوة مرسلة'}</span></td><td>{dateLabel(m.createdAt)}</td></tr>)}</tbody></table></div>:<div className="state-box"><div className="empty-symbol"><Users/></div><b>ابدأ ببناء فريقك</b><span>أضف عضوًا وحدد له الدور والصلاحيات المناسبة.</span><button className="button button-primary" onClick={openDialog}><Plus size={16}/> إضافة عضو</button></div>}
     </Card>
-    {dialog&&<Modal title="إضافة حساب لفريق العمل" close={()=>setDialog(false)}><form className="form-grid" onSubmit={submit}>
+    {dialog&&<Modal title="إضافة حساب لفريق العمل" close={closeDialog}><form className="form-grid" onSubmit={submit}>
       <Field label="اسم العضو" name="name" required/>
       <Field label="رقم هاتف الدخول" name="phone" type="tel" required placeholder="+20 10 1234 5678"/>
       <Field label="كلمة المرور" name="password" type="password" required maxLength={128} placeholder="اكتب كلمة المرور"/>
       <Field label="البريد الإلكتروني (اختياري)" name="email" type="email"/>
-      <label className="field field-wide"><span>الدور</span><select name="role"><option value="cashier">أمين الصندوق — البيع والمرتجعات</option><option value="warehouse_manager">مدير المخزون — إدارة المنتجات والكميات</option><option value="accountant">محاسب — متابعة المبيعات والتقارير المالية</option></select></label>
-      <div className="role-hint field-wide"><ShieldCheck size={17}/><span>الحساب الجديد لا يصل إلى إعدادات المنصة أو بيانات المتاجر الأخرى.</span></div>
+      <Field className="field-wide" label="اسم الدور" name="roleName" required maxLength={50} placeholder="مثال: مشرف الوردية"/>
+      <fieldset className="team-permission-list field-wide">
+        <legend>الصلاحيات — اختر واحدة أو أكثر</legend>
+        {teamPermissionOptions.map(({value,label,description})=><label key={value} className={`team-permission-option ${selectedPermissions.includes(value)?'is-selected':''}`}>
+          <input type="checkbox" checked={selectedPermissions.includes(value)} onChange={()=>togglePermission(value)}/>
+          <span className="team-permission-copy"><b>{label}</b><small>{description}</small></span>
+        </label>)}
+      </fieldset>
+      {!selectedPermissions.length&&<small className="team-permission-note field-wide">اختر صلاحية واحدة على الأقل قبل حفظ الحساب.</small>}
+      <div className="role-hint field-wide"><ShieldCheck size={17}/><span>يمكن جمع أكثر من صلاحية. لا تمنح هذه الخيارات إدارة الفريق أو إعدادات المتجر أو بيانات متاجر أخرى.</span></div>
       {add.isError&&<div className="form-error">{apiErrorMessage(add.error,'تعذر حفظ الحساب. تحقق من رقم الهاتف والصلاحيات.')}</div>}
-      <div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setDialog(false)}>إلغاء</button><button className="button button-primary" disabled={add.isPending}>{add.isPending?'جارٍ الحفظ…':'حفظ الحساب'}</button></div>
+      <div className="modal-actions"><button className="button button-quiet" type="button" onClick={closeDialog}>إلغاء</button><button className="button button-primary" disabled={add.isPending||!selectedPermissions.length}>{add.isPending?'جارٍ الحفظ…':'حفظ الحساب'}</button></div>
     </form></Modal>}
     {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
   </>;
@@ -929,7 +966,7 @@ function InventoryPage() {
   const [dialog, setDialog] = useState(false);
   const [edit, setEdit] = useState<Product | null>(null);
   const [notice, setNotice] = useState('');
-  const isWarehouseManager = session.data?.role === 'warehouse_manager';
+  const isWarehouseManager = hasAppRole(session.data, ['warehouse_manager']);
   const canManage = session.data?.role === 'tenant_admin' || isWarehouseManager;
   const allProducts = q.data || [];
   const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))]
@@ -1148,6 +1185,7 @@ function PosPage() {
   const [cart,setCart]=useState<Record<string,number>>({}),[term,setTerm]=useState(''),[discount,setDiscount]=useState('0'),[received,setReceived]=useState(''),[payment,setPayment]=useState<'cash'|'card'|'wallet'>('cash'),[heldOpen,setHeldOpen]=useState(false),[exchangeOpen,setExchangeOpen]=useState(false),[notice,setNotice]=useState('');
   const [exchangeInvoiceNo,setExchangeInvoiceNo]=useState(''),[exchangeLoadedInvoiceNo,setExchangeLoadedInvoiceNo]=useState(''),[exchangeReturnItems,setExchangeReturnItems]=useState<Record<string,number>>({});
   const [exchangeReplacementProductId,setExchangeReplacementProductId]=useState(''),[exchangeReplacementQuantity,setExchangeReplacementQuantity]=useState(1);
+  const [exchangeAmountReceived,setExchangeAmountReceived]=useState('');
   const exchangeInvoiceItems=useGetXStoreSaleInvoiceItems(exchangeLoadedInvoiceNo,{query:{queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo),enabled:Boolean(exchangeLoadedInvoiceNo)}});
   const [customerName,setCustomerName]=useState(''),[customerPhone,setCustomerPhone]=useState(''),[invoiceReference,setInvoiceReference]=useState(createHeldInvoiceReference),[receiptSale,setReceiptSale]=useState<Sale|null>(null);
   const customerWhatsappNumber=getWhatsAppDigits(customerPhone);
@@ -1164,13 +1202,15 @@ function PosPage() {
   const exchangeReplacementSubtotal=roundMoney((exchangeReplacementProduct?.price||0)*exchangeReplacementQuantity);
   const exchangeReplacementTotal=roundMoney(exchangeReplacementSubtotal+roundMoney(exchangeReplacementSubtotal*vatRate));
   const exchangeBalanceDue=roundMoney(exchangeReplacementTotal-exchangeReturnedAmount);
+  const exchangeChangeAmount=roundMoney(Math.max(0,(Number(exchangeAmountReceived)||0)-Math.max(0,exchangeBalanceDue)));
+  useEffect(()=>{setExchangeAmountReceived(exchangeBalanceDue>0?String(exchangeBalanceDue):'0')},[exchangeBalanceDue]);
   const add=(p:Product)=>setCart(c=>({...c,[p.id]:Math.min(p.quantity,(c[p.id]||0)+1)}));
   const mutateCart=(id:string,n:number)=>setCart(c=>{const value=(c[id]||0)+n;if(value<=0){const next={...c};delete next[id];return next}return {...c,[id]:value}});
   function finish(){if(!cartLines.length||customerPhoneInvalid)return;checkout.mutate({data:{invoiceNo:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:roundMoney(Number(received)||total),customerName:customerName.trim()||null,customerPhone:customerPhone.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference());setPayment('cash');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
   function park(){if(!cartLines.length||customerPhoneInvalid)return;hold.mutate({data:{reference:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),customerName:customerName.trim()||null,customerPhone:customerPhone.trim()||null,discountAmount:disc,paymentMethod:payment,amountReceived:roundMoney(Number(received)||0)}},{onSuccess:heldSale=>{setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference());setPayment('cash');qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice(`تم تعليق الفاتورة ${heldSale.reference}`)}})}
   function clearCurrentCart(){setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference())}
-  function closeExchange(){setExchangeOpen(false);setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setExchangeReplacementProductId('');setExchangeReplacementQuantity(1)}
-  function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const returnItems=Object.entries(exchangeReturnItems).map(([productId,quantity])=>({productId,quantity}));if(!exchangeLoadedInvoiceNo||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()||!returnItems.length||!exchangeReplacementProductId)return;exchange.mutate({data:{invoiceNo:exchangeLoadedInvoiceNo,returnItems,replacementItems:[{productId:exchangeReplacementProductId,quantity:exchangeReplacementQuantity}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(f.get('amountReceived'))||0}},{onSuccess:r=>{closeExchange();setNotice(`تم الاستبدال · ${r.exchangeInvoiceNo}`);qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo)})}})}
+  function closeExchange(){setExchangeOpen(false);setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setExchangeReplacementProductId('');setExchangeReplacementQuantity(1);setExchangeAmountReceived('')}
+  function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const returnItems=Object.entries(exchangeReturnItems).map(([productId,quantity])=>({productId,quantity}));if(!exchangeLoadedInvoiceNo||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()||!returnItems.length||!exchangeReplacementProductId)return;exchange.mutate({data:{invoiceNo:exchangeLoadedInvoiceNo,returnItems,replacementItems:[{productId:exchangeReplacementProductId,quantity:exchangeReplacementQuantity}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(exchangeAmountReceived)||0}},{onSuccess:r=>{closeExchange();const settlement=r.changeAmount>0?(r.balanceDue>0?`الباقي للعميل ${money(r.changeAmount)}`:`المبلغ المسترد للعميل ${money(r.changeAmount)}`):'';setNotice([`تم الاستبدال · ${r.exchangeInvoiceNo}`,settlement].filter(Boolean).join(' · '));qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo)})}})}
   return <>
     <div className="pos-page">
       <PageTitle eyebrow="نقطة البيع" title="صندوق البيع" desc="أضف المنتجات وأكمل الدفع بخطوات قليلة."
@@ -1261,7 +1301,8 @@ function PosPage() {
         <label className="field"><span>كمية المنتج البديل</span><input name="replacementQuantity" type="number" min={1} max={exchangeReplacementProduct?.quantity||1} step={1} value={exchangeReplacementQuantity} onChange={event=>setExchangeReplacementQuantity(Math.max(1,Math.min(exchangeReplacementProduct?.quantity||1,Number(event.target.value)||1)))} required/></label>
         <label className="field"><span>طريقة الدفع / التسوية</span><select name="paymentMethod"><option value="cash">نقداً</option><option value="card">بطاقة</option><option value="wallet">محفظة</option></select></label>
         {exchangeLoadedInvoiceNo&&exchangeReplacementProduct&&Object.keys(exchangeReturnItems).length>0&&<div className="exchange-price-summary field-wide" aria-live="polite"><div><span>قيمة المنتجات المرتجعة</span><b>{money(exchangeReturnedAmount)}</b></div><div><span>قيمة المنتج البديل شامل الضريبة</span><b>{money(exchangeReplacementTotal)}</b></div><div className={`exchange-price-difference ${exchangeBalanceDue>0?'exchange-due':exchangeBalanceDue<0?'exchange-refund':''}`}><span>فرق السعر</span><strong>{exchangeBalanceDue>0?`على العميل ${money(exchangeBalanceDue)}`:exchangeBalanceDue<0?`على المتجر رد ${money(Math.abs(exchangeBalanceDue))} للعميل`:'لا يوجد فرق سعر'}</strong></div></div>}
-        {exchangeBalanceDue>0&&<label className="field field-wide"><span>المبلغ المستلم من العميل</span><input key={exchangeBalanceDue} name="amountReceived" type="number" min={0} step="0.01" defaultValue={exchangeBalanceDue}/></label>}
+        {exchangeBalanceDue>0&&<label className="field field-wide"><span>المبلغ المستلم من العميل</span><input name="amountReceived" type="number" min={0} step="0.01" value={exchangeAmountReceived} onChange={event=>setExchangeAmountReceived(event.target.value)}/></label>}
+        {exchangeBalanceDue>0&&exchangeChangeAmount>0&&<div className="exchange-change-summary field-wide" role="status"><span>الباقي للعميل</span><strong>{money(exchangeChangeAmount)}</strong></div>}
         <div className="role-hint field-wide"><ArrowLeftRight size={17}/><span>يُسجل المرتجع والمنتج البديل كعملية واحدة ذرية؛ لا يتم حفظ نصف العملية.</span></div>
         {exchange.isError&&<div className="form-error">تعذر إتمام الاستبدال. تحقق من الفاتورة والكميات.</div>}
         <div className="modal-actions"><button type="button" className="button button-quiet" onClick={closeExchange}>إلغاء</button><button className="button button-confirm" disabled={exchange.isPending||!Object.keys(exchangeReturnItems).length||!exchangeReplacementProductId||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()}>{exchange.isPending?'جارٍ تنفيذ الاستبدال…':'تأكيد الاستبدال'}</button></div>
@@ -1313,7 +1354,9 @@ function ReportsPage() {
 function SalesPage() {
   const qc=useQueryClient(), sales=useListXStoreSales({limit:100}), ret=useCreateXStoreReturnBatch();
   const money=useMoney();
-  const isCashier=useGetXStoreSession().data?.role==='cashier';
+  const session=useGetXStoreSession();
+  const canViewAmounts=hasAppRole(session.data,['platform_admin','tenant_admin','accountant']);
+  const canReturn=hasAppRole(session.data,['platform_admin','tenant_admin','cashier']);
   const [selected,setSelected]=useState<Sale|null>(null),[printTarget,setPrintTarget]=useState<Sale|null>(null),[notice,setNotice]=useState(''),[search,setSearch]=useState('');
   const [returnInvoiceNo,setReturnInvoiceNo]=useState(''),[returnLoadedInvoiceNo,setReturnLoadedInvoiceNo]=useState(''),[returnSelectedItems,setReturnSelectedItems]=useState<Record<string,number>>({});
   const rows=(sales.data||[]).filter(s=>s.invoiceNo.toLowerCase().includes(search.toLowerCase()));
@@ -1333,10 +1376,10 @@ function SalesPage() {
       setNotice(`تم تسجيل المرتجع · ${money(result.refundAmount)}`);
     }});
   }
-  return <>
+  return <div className="sales-page">
     <PageTitle eyebrow="حركة المتجر" title="المبيعات" desc="الفواتير الأخيرة وطرق الدفع والمرتجعات المسجلة." action={<button className="button button-quiet" onClick={()=>sales.refetch()}><RefreshCw size={15}/> تحديث القائمة</button>}/>
-    {!isCashier&&<div className="stat-grid sales-stats"><StatCard label="عمليات ظاهرة" value={fmt(sales.data?.length||0)} detail="آخر ١٠٠ فاتورة" icon={ReceiptText}/><StatCard label="إجمالي المبيعات" value={money((sales.data||[]).reduce((a,s)=>a+s.total,0))} detail="حسب القائمة المحمّلة" icon={Banknote} tint="gold"/><StatCard label="نقداً" value={fmt((sales.data||[]).filter(s=>s.paymentMethod==='cash').length)} detail="عمليات نقدية" icon={Wallet} tint="sage"/><StatCard label="مرتجعة" value={fmt((sales.data||[]).filter(s=>s.status!=='completed').length)} detail="تتضمن استرداداً" icon={RotateCcw} tint="red"/></div>}
-    <Card><SectionHead title="سجل الفواتير" detail="عرض الفواتير حسب الأحدث أولاً"/><div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث برقم الفاتورة" data-testid="input-search-sales"/></label><span className="result-count">{fmt(rows.length)} فاتورة</span></div>{sales.isLoading?<StateBlock loading error={false} onRetry={()=>sales.refetch()} empty={false}/>:sales.isError?<StateBlock loading={false} error onRetry={()=>sales.refetch()} empty={false}/>:rows.length?<SalesTable sales={rows} onReturn={openReturn} onPrint={s=>setPrintTarget(s)} showAmounts={!isCashier}/>:<div className="empty-inline">لا توجد فواتير تطابق البحث.</div>}</Card>
+    {canViewAmounts&&<div className="stat-grid sales-stats"><StatCard label="عمليات ظاهرة" value={fmt(sales.data?.length||0)} detail="آخر ١٠٠ فاتورة" icon={ReceiptText}/><StatCard label="إجمالي المبيعات" value={money((sales.data||[]).reduce((a,s)=>a+s.total,0))} detail="حسب القائمة المحمّلة" icon={Banknote} tint="gold"/><StatCard label="نقداً" value={fmt((sales.data||[]).filter(s=>s.paymentMethod==='cash').length)} detail="عمليات نقدية" icon={Wallet} tint="sage"/><StatCard label="مرتجعة" value={fmt((sales.data||[]).filter(s=>s.status!=='completed').length)} detail="تتضمن استرداداً" icon={RotateCcw} tint="red"/></div>}
+    <Card className="sales-invoice-panel"><SectionHead title="سجل الفواتير" detail="عرض الفواتير حسب الأحدث أولاً"/><div className="table-toolbar"><label className="search-box sales-search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث برقم الفاتورة" data-testid="input-search-sales"/></label><span className="result-count sales-result-count">{fmt(rows.length)} فاتورة</span></div>{sales.isLoading?<StateBlock loading error={false} onRetry={()=>sales.refetch()} empty={false}/>:sales.isError?<StateBlock loading={false} error onRetry={()=>sales.refetch()} empty={false}/>:rows.length?<SalesTable sales={rows} onReturn={canReturn?openReturn:undefined} onPrint={s=>setPrintTarget(s)} showAmounts={canViewAmounts}/>:<div className="empty-inline">لا توجد فواتير تطابق البحث.</div>}</Card>
     {selected&&<Modal title="تسجيل مرتجع" close={closeReturn}><form className="form-grid" onSubmit={submit}>
       <InvoiceReturnPicker invoiceNo={returnInvoiceNo} setInvoiceNo={setReturnInvoiceNo} loadedInvoiceNo={returnLoadedInvoiceNo} setLoadedInvoiceNo={setReturnLoadedInvoiceNo} selectedItems={returnSelectedItems} setSelectedItems={setReturnSelectedItems} testIdPrefix="return"/>
       <label className="field field-wide"><span>سبب الإرجاع</span><input name="reason" required placeholder="اكتب سبب الإرجاع"/></label>
@@ -1345,7 +1388,7 @@ function SalesPage() {
     </form></Modal>}
     {printTarget&&<ReceiptModal sale={printTarget} close={()=>setPrintTarget(null)}/>}
     {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
-  </>;
+  </div>;
 }
 function AuditPage() {
   const logs=useListXStoreAuditLogs();

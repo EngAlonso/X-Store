@@ -7,6 +7,7 @@
  */
 import type { TeamMemberRole } from './teamMemberRole';
 import type { TeamMemberStatus } from './teamMemberStatus';
+import type { TeamPermission } from './teamPermission';
 
 export interface TeamMember {
   id: string;
@@ -16,6 +17,9 @@ export interface TeamMember {
   email: string | null;
   name: string;
   role: TeamMemberRole;
+  /** @nullable */
+  roleName: string | null;
+  permissions: TeamPermission[];
   status: TeamMemberStatus;
   createdAt: Date;
 }

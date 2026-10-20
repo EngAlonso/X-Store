@@ -88,7 +88,11 @@ export function getXStoreUser(res: Response): XStoreUser {
 }
 
 export function hasRole(user: XStoreUser, roles: readonly string[]): boolean {
-  return roles.includes(user.role);
+  if (roles.includes(user.role)) return true;
+  return (
+    user.role === "custom" &&
+    (user.permissions ?? []).some((permission) => roles.includes(permission))
+  );
 }
 
 export function denyRole(

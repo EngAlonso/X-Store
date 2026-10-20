@@ -15,4 +15,5 @@ export const SessionUserRole = {
   cashier: 'cashier',
   warehouse_manager: 'warehouse_manager',
   accountant: 'accountant',
+  custom: 'custom',
 } as const;

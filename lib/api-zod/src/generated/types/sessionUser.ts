@@ -7,6 +7,7 @@
  */
 import type { SessionUserCurrency } from './sessionUserCurrency';
 import type { SessionUserRole } from './sessionUserRole';
+import type { TeamPermission } from './teamPermission';
 
 export interface SessionUser {
   id: string;
@@ -15,6 +16,9 @@ export interface SessionUser {
   /** @nullable */
   email: string | null;
   role: SessionUserRole;
+  /** @nullable */
+  roleName: string | null;
+  permissions: TeamPermission[];
   /** @nullable */
   tenantId: string | null;
   /** @nullable */

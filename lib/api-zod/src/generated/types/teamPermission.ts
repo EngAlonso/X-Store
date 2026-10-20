@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type TeamMemberInputRole = typeof TeamMemberInputRole[keyof typeof TeamMemberInputRole];
+export type TeamPermission = typeof TeamPermission[keyof typeof TeamPermission];
 
 
-export const TeamMemberInputRole = {
+export const TeamPermission = {
   cashier: 'cashier',
   warehouse_manager: 'warehouse_manager',
   accountant: 'accountant',

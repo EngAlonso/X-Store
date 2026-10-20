@@ -14,4 +14,5 @@ export const TeamMemberRole = {
   cashier: 'cashier',
   warehouse_manager: 'warehouse_manager',
   accountant: 'accountant',
+  custom: 'custom',
 } as const;

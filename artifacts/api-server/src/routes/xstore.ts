@@ -88,6 +88,8 @@ import {
   type XStoreProduct,
   type XStoreSocialLinks,
   type XStoreTenant,
+  type XStoreTeamPermission,
+  type XStoreUser,
 } from "@workspace/db";
 import {
   getXStoreUser,
@@ -167,6 +169,8 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     phone: user.phone ?? "",
     email: user.email,
     role: user.role,
+    roleName: user.roleName ?? null,
+    permissions: user.permissions ?? [],
     tenantId: user.tenantId,
     tenantName: tenant?.name ?? null,
     currency: tenant?.currency ?? null,
@@ -341,7 +345,7 @@ function isMissingDatabaseRelation(error: unknown): boolean {
 
 function saleDto(
   sale: typeof xstoreSales.$inferSelect,
-  role: string,
+  user: XStoreUser,
   grossProfit: number | null = null,
   cashierName = "—",
   exchangeEvents: XStoreExchangeEvent[] = [],
@@ -354,7 +358,9 @@ function saleDto(
     discountAmount: toNumber(sale.discountAmount),
     taxAmount: toNumber(sale.taxAmount),
     total: toNumber(sale.total),
-    grossProfit: role === "cashier" ? null : grossProfit,
+    grossProfit: hasRole(user, ["platform_admin", "tenant_admin", "accountant"])
+      ? grossProfit
+      : null,
     amountReceived: toNumber(sale.amountReceived),
     changeAmount: toNumber(sale.changeAmount),
     createdAt: iso(sale.createdAt),
@@ -441,14 +447,20 @@ function exchangeEventFromAudit(log: {
   };
 }
 
-function productDto(product: XStoreProduct, role?: string) {
+function productDto(product: XStoreProduct, user: XStoreUser) {
   return {
     ...product,
-    price: role === "warehouse_manager" ? 0 : toNumber(product.price),
-    costPrice:
-      role === "cashier" || role === "warehouse_manager"
-        ? null
-        : toNumber(product.costPrice),
+    price: hasRole(user, [
+      "platform_admin",
+      "tenant_admin",
+      "cashier",
+      "accountant",
+    ])
+      ? toNumber(product.price)
+      : 0,
+    costPrice: hasRole(user, ["platform_admin", "tenant_admin", "accountant"])
+      ? toNumber(product.costPrice)
+      : null,
     barcode: product.barcode ?? null,
     color: product.color ?? null,
     size: product.size ?? null,
@@ -998,7 +1010,7 @@ router.get("/xstore/dashboard", async (req, res): Promise<void> => {
     expiringSubscriptions: Number(expiringCount[0]?.total ?? 0),
     latestTenants: latestTenants.map(tenantDto),
     latestSales: latestSales.map(({ sale, cashierName }) =>
-      saleDto(sale, user.role, null, cashierName),
+      saleDto(sale, user, null, cashierName),
     ),
     latestAuditLogs: latestLogs.map((log) => ({
       ...log,
@@ -1314,6 +1326,12 @@ router.post("/xstore/team", async (req, res): Promise<void> => {
     return;
   }
   const memberInput = parsed.data;
+  const roleName = memberInput.roleName.trim();
+  if (!roleName) {
+    res.status(400).json({ error: "Enter a name for this custom role." });
+    return;
+  }
+  const permissions = [...new Set(memberInput.permissions)] as XStoreTeamPermission[];
   let phone: string;
   try {
     phone = normalizePhone(memberInput.phone);
@@ -1345,6 +1363,7 @@ router.post("/xstore/team", async (req, res): Promise<void> => {
                   "cashier",
                   "warehouse_manager",
                   "accountant",
+                  "custom",
                 ]),
               ),
             )
@@ -1390,7 +1409,9 @@ router.post("/xstore/team", async (req, res): Promise<void> => {
               phone,
               email,
               name: memberInput.name,
-              role: memberInput.role,
+              role: "custom",
+              roleName,
+              permissions,
               status: "active",
             })
             .where(eq(xstoreTeamMembers.id, existingMember.id))
@@ -1402,7 +1423,9 @@ router.post("/xstore/team", async (req, res): Promise<void> => {
               phone,
               email,
               name: memberInput.name,
-              role: memberInput.role,
+              role: "custom",
+              roleName,
+              permissions,
               status: "active",
             })
             .onConflictDoUpdate({
@@ -1410,7 +1433,9 @@ router.post("/xstore/team", async (req, res): Promise<void> => {
               set: {
                 email,
                 name: memberInput.name,
-                role: memberInput.role,
+                role: "custom",
+                roleName,
+                permissions,
                 status: "active",
               },
             })
@@ -1423,7 +1448,9 @@ router.post("/xstore/team", async (req, res): Promise<void> => {
           .set({
             email,
             name: memberInput.name,
-            role: memberInput.role,
+            role: "custom",
+            roleName,
+            permissions,
             tenantId: actor.tenantId,
             passwordHash,
             sessionVersion: sql`${xstoreUsers.sessionVersion} + 1`,
@@ -1436,7 +1463,9 @@ router.post("/xstore/team", async (req, res): Promise<void> => {
           phone,
           passwordHash,
           name: memberInput.name,
-          role: memberInput.role,
+          role: "custom",
+          roleName,
+          permissions,
           tenantId: actor.tenantId,
         });
       }
@@ -1464,7 +1493,7 @@ router.post("/xstore/team", async (req, res): Promise<void> => {
     actor.tenantId,
     "team_member",
     member.id,
-    `${member.phone} assigned ${member.role}`,
+    `${member.phone} assigned ${member.roleName || member.role} (${member.permissions.join(", ")})`,
   );
   res
     .status(201)
@@ -1620,7 +1649,7 @@ router.get("/xstore/products", async (req, res): Promise<void> => {
     .limit(500);
   res.json(
     ListXStoreProductsResponse.parse(
-      rows.map((product) => productDto(product, user.role)),
+      rows.map((product) => productDto(product, user)),
     ),
   );
 });
@@ -1639,7 +1668,7 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
     return;
   }
   if (
-    actor.role === "warehouse_manager" &&
+    hasRole(actor, ["warehouse_manager"]) &&
     ((parsed.data.price !== undefined && parsed.data.price !== 0) ||
       (parsed.data.costPrice !== undefined && parsed.data.costPrice !== 0))
   ) {
@@ -1653,9 +1682,13 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
     .values({
       ...parsed.data,
       tenantId,
-      price: String(actor.role === "warehouse_manager" ? 0 : parsed.data.price),
+      price: String(
+        hasRole(actor, ["warehouse_manager"]) ? 0 : parsed.data.price,
+      ),
       costPrice: String(
-        actor.role === "warehouse_manager" ? 0 : (parsed.data.costPrice ?? 0),
+        hasRole(actor, ["warehouse_manager"])
+          ? 0
+          : (parsed.data.costPrice ?? 0),
       ),
       barcode: parsed.data.barcode ?? null,
       color: parsed.data.color ?? null,
@@ -1679,7 +1712,7 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
   res
     .status(201)
     .json(
-      CreateXStoreProductResponse.parse(productDto(product, actor.role)),
+      CreateXStoreProductResponse.parse(productDto(product, actor)),
     );
 });
 
@@ -1700,7 +1733,7 @@ router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
     return;
   }
   if (
-    actor.role === "warehouse_manager" &&
+    hasRole(actor, ["warehouse_manager"]) &&
     Object.keys(parsed.data).some((key) => key !== "quantity")
   ) {
     res.status(403).json({
@@ -1740,7 +1773,7 @@ router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
     `Updated ${product.name}`,
   );
   res.json(
-    UpdateXStoreProductResponse.parse(productDto(product, actor.role)),
+    UpdateXStoreProductResponse.parse(productDto(product, actor)),
   );
 });
 
@@ -1828,7 +1861,7 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
       rows.map(({ sale, cashierName }) =>
         saleDto(
           sale,
-          user.role,
+          user,
           roundMoney(
             toNumber(sale.subtotal) -
               toNumber(sale.discountAmount) -
@@ -2159,7 +2192,7 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
       .status(201)
       .json(
         CheckoutXStoreSaleResponse.parse(
-          saleDto(sale, actor.role, null, actor.name),
+          saleDto(sale, actor, null, actor.name),
         ),
       );
   } catch (error) {

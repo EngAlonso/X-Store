@@ -906,14 +906,19 @@ components:
         email: { type: ["string", "null"], format: email }
         role:
           type: string
-          enum: [platform_admin, tenant_admin, cashier, warehouse_manager, accountant]
+          enum: [platform_admin, tenant_admin, cashier, warehouse_manager, accountant, custom]
+        roleName: { type: ["string", "null"] }
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamPermission"
         tenantId: { type: ["string", "null"] }
         tenantName: { type: ["string", "null"] }
         currency:
           type: ["string", "null"]
           enum: [EGP, SAR, AED, USD, EUR, GBP, null]
         vatRate: { type: ["number", "null"], minimum: 0, maximum: 1 }
-      required: [id, name, phone, email, role, tenantId, tenantName, currency, vatRate]
+      required: [id, name, phone, email, role, roleName, permissions, tenantId, tenantName, currency, vatRate]
     StoreSettings:
       type: object
       properties:
@@ -1091,6 +1096,9 @@ components:
     StoreCurrency:
       type: string
       enum: [EGP, SAR, AED, USD, EUR, GBP]
+    TeamPermission:
+      type: string
+      enum: [cashier, warehouse_manager, accountant]
     TeamMember:
       type: object
       properties:
@@ -1100,12 +1108,17 @@ components:
         name: { type: string }
         role:
           type: string
-          enum: [tenant_admin, cashier, warehouse_manager, accountant]
+          enum: [tenant_admin, cashier, warehouse_manager, accountant, custom]
+        roleName: { type: ["string", "null"] }
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamPermission"
         status:
           type: string
           enum: [active, invited]
         createdAt: { type: string, format: date-time }
-      required: [id, phone, email, name, role, status, createdAt]
+      required: [id, phone, email, name, role, roleName, permissions, status, createdAt]
     TeamMemberInput:
       type: object
       properties:
@@ -1113,10 +1126,17 @@ components:
         password: { type: string, minLength: 1, maxLength: 128 }
         email: { type: ["string", "null"], format: email }
         name: { type: string, minLength: 1 }
-        role:
+        roleName:
           type: string
-          enum: [cashier, warehouse_manager, accountant]
-      required: [phone, password, name, role]
+          minLength: 1
+          maxLength: 50
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamPermission"
+          minItems: 1
+          maxItems: 3
+      required: [phone, password, name, roleName, permissions]
     SubscriptionPayment:
       type: object
       properties:

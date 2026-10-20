@@ -5,7 +5,7 @@
  * X-Store point-of-sale and inventory API
  * OpenAPI spec version: 0.1.0
  */
-import type { TeamMemberInputRole } from './teamMemberInputRole';
+import type { TeamPermission } from './teamPermission';
 
 export interface TeamMemberInput {
   /**
@@ -22,5 +22,14 @@ export interface TeamMemberInput {
   email?: string | null;
   /** @minLength 1 */
   name: string;
-  role: TeamMemberInputRole;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  roleName: string;
+  /**
+     * @minItems 1
+     * @maxItems 3
+     */
+  permissions: TeamPermission[];
 }

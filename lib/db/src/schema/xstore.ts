@@ -14,6 +14,13 @@ import {
 } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
+export const xstoreTeamPermissions = [
+  "cashier",
+  "warehouse_manager",
+  "accountant",
+] as const;
+export type XStoreTeamPermission = (typeof xstoreTeamPermissions)[number];
+
 export type XStoreLine = {
   productId: string;
   quantity: number;
@@ -52,6 +59,11 @@ export const xstoreUsers = pgTable(
     isActive: boolean("is_active").notNull().default(true),
     name: text("name").notNull(),
     role: text("role").notNull(),
+    roleName: text("role_name"),
+    permissions: jsonb("permissions")
+      .$type<XStoreTeamPermission[]>()
+      .notNull()
+      .default([]),
     tenantId: uuid("tenant_id").references(() => xstoreTenants.id, {
       onDelete: "set null",
     }),
@@ -76,6 +88,11 @@ export const xstoreTeamMembers = pgTable(
     email: text("email"),
     name: text("name").notNull(),
     role: text("role").notNull(),
+    roleName: text("role_name"),
+    permissions: jsonb("permissions")
+      .$type<XStoreTeamPermission[]>()
+      .notNull()
+      .default([]),
     status: text("status").notNull().default("invited"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

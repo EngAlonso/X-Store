@@ -22,6 +22,7 @@ export const SessionUserRole = {
   cashier: 'cashier',
   warehouse_manager: 'warehouse_manager',
   accountant: 'accountant',
+  custom: 'custom',
 } as const;
 
 /**
@@ -39,6 +40,15 @@ export const SessionUserCurrency = {
   GBP: 'GBP',
 } as const;
 
+export type TeamPermission = typeof TeamPermission[keyof typeof TeamPermission];
+
+
+export const TeamPermission = {
+  cashier: 'cashier',
+  warehouse_manager: 'warehouse_manager',
+  accountant: 'accountant',
+} as const;
+
 export interface SessionUser {
   id: string;
   name: string;
@@ -46,6 +56,9 @@ export interface SessionUser {
   /** @nullable */
   email: string | null;
   role: SessionUserRole;
+  /** @nullable */
+  roleName: string | null;
+  permissions: TeamPermission[];
   /** @nullable */
   tenantId: string | null;
   /** @nullable */
@@ -424,6 +437,7 @@ export const TeamMemberRole = {
   cashier: 'cashier',
   warehouse_manager: 'warehouse_manager',
   accountant: 'accountant',
+  custom: 'custom',
 } as const;
 
 export type TeamMemberStatus = typeof TeamMemberStatus[keyof typeof TeamMemberStatus];
@@ -442,18 +456,12 @@ export interface TeamMember {
   email: string | null;
   name: string;
   role: TeamMemberRole;
+  /** @nullable */
+  roleName: string | null;
+  permissions: TeamPermission[];
   status: TeamMemberStatus;
   createdAt: string;
 }
-
-export type TeamMemberInputRole = typeof TeamMemberInputRole[keyof typeof TeamMemberInputRole];
-
-
-export const TeamMemberInputRole = {
-  cashier: 'cashier',
-  warehouse_manager: 'warehouse_manager',
-  accountant: 'accountant',
-} as const;
 
 export interface TeamMemberInput {
   /**
@@ -470,7 +478,16 @@ export interface TeamMemberInput {
   email?: string | null;
   /** @minLength 1 */
   name: string;
-  role: TeamMemberInputRole;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  roleName: string;
+  /**
+     * @minItems 1
+     * @maxItems 3
+     */
+  permissions: TeamPermission[];
 }
 
 export type SubscriptionPaymentPlan = typeof SubscriptionPaymentPlan[keyof typeof SubscriptionPaymentPlan];
