@@ -887,6 +887,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { 
 .stat-card>small { margin-top:4px;color:#7c8980;font-size:12px;line-height:1.5; }
 .dashboard-grid { display:grid;grid-template-columns:1.5fr .9fr;gap:15px;align-items:start; }
 .dashboard-grid .panel { min-height:282px; }
+.dashboard-grid .section-head h2 { font-size:20px; }
+.dashboard-grid .section-head>div>span { font-size:14px; }
+.dashboard-grid .section-head .text-link { font-size:14px; }
+.dashboard-grid th { padding:13px 14px;font-size:13px; }
+.dashboard-grid td { padding:17px 14px;font-size:15px; }
+.dashboard-grid td>b { font-size:16px; }
+.dashboard-grid td>small { font-size:13px; }
+.dashboard-grid .ltr-id { font-size:14px; }
+.dashboard-grid .status-pill { padding:6px 10px;font-size:13px; }
 .quick-list { display:flex;flex-direction:column; }
 .quick-list>div { display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #eef1ee; }
 .quick-list>div>span:nth-child(2) { display:flex;flex:1;flex-direction:column;gap:4px; }
