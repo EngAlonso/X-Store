@@ -1171,6 +1171,100 @@ export const ListXStoreAuditLogsResponse = zod.array(ListXStoreAuditLogsResponse
 
 
 /**
+ * @summary List application database tables for the platform owner
+ */
+export const ListXStorePlatformDatabaseTablesResponse = zod.object({
+  "tables": zod.array(zod.object({
+  "name": zod.string(),
+  "label": zod.string(),
+  "rowCount": zod.number().int(),
+  "columns": zod.array(zod.object({
+  "name": zod.string(),
+  "dataType": zod.string(),
+  "nullable": zod.boolean(),
+  "primaryKey": zod.boolean()
+})),
+  "deletable": zod.boolean(),
+  "deleteWarning": zod.string().nullable()
+})),
+  "tableCount": zod.number().int(),
+  "totalRows": zod.number().int()
+})
+
+
+/**
+ * @summary Browse and search rows in one application database table
+ */
+export const listXStorePlatformDatabaseRowsQueryTableNameMax = 80;
+
+export const listXStorePlatformDatabaseRowsQueryPageDefault = 1;
+
+export const listXStorePlatformDatabaseRowsQueryPageSizeDefault = 25;
+export const listXStorePlatformDatabaseRowsQueryPageSizeMax = 100;
+
+export const listXStorePlatformDatabaseRowsQuerySearchMax = 100;
+
+
+
+export const ListXStorePlatformDatabaseRowsQueryParams = zod.object({
+  "tableName": zod.coerce.string().max(listXStorePlatformDatabaseRowsQueryTableNameMax),
+  "page": zod.coerce.number().int().min(1).default(listXStorePlatformDatabaseRowsQueryPageDefault),
+  "pageSize": zod.coerce.number().int().min(1).max(listXStorePlatformDatabaseRowsQueryPageSizeMax).default(listXStorePlatformDatabaseRowsQueryPageSizeDefault),
+  "search": zod.coerce.string().max(listXStorePlatformDatabaseRowsQuerySearchMax).optional()
+})
+
+export const ListXStorePlatformDatabaseRowsResponse = zod.object({
+  "tableName": zod.string(),
+  "label": zod.string(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int(),
+  "totalRows": zod.number().int(),
+  "totalPages": zod.number().int(),
+  "columns": zod.array(zod.object({
+  "name": zod.string(),
+  "dataType": zod.string(),
+  "nullable": zod.boolean(),
+  "primaryKey": zod.boolean()
+})),
+  "rows": zod.array(zod.object({
+  "id": zod.string(),
+  "values": zod.record(zod.string(), zod.unknown()),
+  "canDelete": zod.boolean(),
+  "deleteBlockedReason": zod.string().nullable()
+}))
+})
+
+
+/**
+ * @summary Delete one confirmed row from an allowlisted application table
+ */
+export const deleteXStorePlatformDatabaseRowPathTableNameMax = 80;
+
+export const deleteXStorePlatformDatabaseRowPathRowIdMax = 120;
+
+
+
+export const DeleteXStorePlatformDatabaseRowParams = zod.object({
+  "tableName": zod.coerce.string().max(deleteXStorePlatformDatabaseRowPathTableNameMax),
+  "rowId": zod.coerce.string().max(deleteXStorePlatformDatabaseRowPathRowIdMax)
+})
+
+export const deleteXStorePlatformDatabaseRowBodyConfirmationMax = 120;
+
+
+
+export const DeleteXStorePlatformDatabaseRowBody = zod.object({
+  "confirmation": zod.string().min(1).max(deleteXStorePlatformDatabaseRowBodyConfirmationMax)
+})
+
+export const DeleteXStorePlatformDatabaseRowResponse = zod.object({
+  "tableName": zod.string(),
+  "recordId": zod.string(),
+  "deletedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Get the tables and record counts included in a platform backup
  */
 export const GetXStorePlatformBackupSummaryResponse = zod.object({

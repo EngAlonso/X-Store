@@ -852,6 +852,64 @@ export interface ExchangeResult {
   createdAt: string;
 }
 
+export interface PlatformDatabaseColumn {
+  name: string;
+  dataType: string;
+  nullable: boolean;
+  primaryKey: boolean;
+}
+
+export interface PlatformDatabaseTable {
+  name: string;
+  label: string;
+  rowCount: number;
+  columns: PlatformDatabaseColumn[];
+  deletable: boolean;
+  /** @nullable */
+  deleteWarning: string | null;
+}
+
+export interface PlatformDatabaseTablesResponse {
+  tables: PlatformDatabaseTable[];
+  tableCount: number;
+  totalRows: number;
+}
+
+export type PlatformDatabaseRowValues = { [key: string]: unknown };
+
+export interface PlatformDatabaseRow {
+  id: string;
+  values: PlatformDatabaseRowValues;
+  canDelete: boolean;
+  /** @nullable */
+  deleteBlockedReason: string | null;
+}
+
+export interface PlatformDatabaseRowsResponse {
+  tableName: string;
+  label: string;
+  page: number;
+  pageSize: number;
+  totalRows: number;
+  totalPages: number;
+  columns: PlatformDatabaseColumn[];
+  rows: PlatformDatabaseRow[];
+}
+
+export interface PlatformDatabaseDeleteInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  confirmation: string;
+}
+
+export interface PlatformDatabaseDeleteResult {
+  tableName: string;
+  recordId: string;
+  deletedAt: string;
+}
+
 export interface XStorePlatformBackupTableSummary {
   name: string;
   rowCount: number;
@@ -970,5 +1028,25 @@ from?: string;
  */
 to?: string;
 tenantId?: string;
+};
+
+export type ListXStorePlatformDatabaseRowsParams = {
+/**
+ * @maxLength 80
+ */
+tableName: string;
+/**
+ * @minimum 1
+ */
+page?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+pageSize?: number;
+/**
+ * @maxLength 100
+ */
+search?: string;
 };
 

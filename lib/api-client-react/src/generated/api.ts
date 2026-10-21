@@ -35,11 +35,16 @@ import type {
   HealthStatus,
   HeldSale,
   HoldSaleInput,
+  ListXStorePlatformDatabaseRowsParams,
   ListXStoreProductsParams,
   ListXStoreSalesParams,
   ListXStoreTenantsParams,
   NotFoundResponse,
   PhoneLoginInput,
+  PlatformDatabaseDeleteInput,
+  PlatformDatabaseDeleteResult,
+  PlatformDatabaseRowsResponse,
+  PlatformDatabaseTablesResponse,
   Product,
   ProductInput,
   ProductUpdate,
@@ -2925,6 +2930,258 @@ export function useListXStoreAuditLogs<TData = Awaited<ReturnType<typeof listXSt
 
 
 
+
+export const getListXStorePlatformDatabaseTablesUrl = () => {
+
+
+
+
+  return `/api/xstore/platform-database/tables`
+}
+
+/**
+ * @summary List application database tables for the platform owner
+ */
+export const listXStorePlatformDatabaseTables = async ( options?: Parameters<typeof customFetch>[1]): Promise<PlatformDatabaseTablesResponse> => {
+
+  return customFetch<PlatformDatabaseTablesResponse>(getListXStorePlatformDatabaseTablesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListXStorePlatformDatabaseTablesQueryKey = () => {
+    return [
+    `/api/xstore/platform-database/tables`
+    ] as const;
+    }
+
+
+export const getListXStorePlatformDatabaseTablesQueryOptions = <TData = Awaited<ReturnType<typeof listXStorePlatformDatabaseTables>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listXStorePlatformDatabaseTables>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListXStorePlatformDatabaseTablesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listXStorePlatformDatabaseTables>>> = ({ signal }) => listXStorePlatformDatabaseTables({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listXStorePlatformDatabaseTables>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListXStorePlatformDatabaseTablesQueryResult = NonNullable<Awaited<ReturnType<typeof listXStorePlatformDatabaseTables>>>
+export type ListXStorePlatformDatabaseTablesQueryError = ErrorType<UnauthorizedResponse | ForbiddenResponse>
+
+
+/**
+ * @summary List application database tables for the platform owner
+ */
+
+export function useListXStorePlatformDatabaseTables<TData = Awaited<ReturnType<typeof listXStorePlatformDatabaseTables>>, TError = ErrorType<UnauthorizedResponse | ForbiddenResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listXStorePlatformDatabaseTables>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListXStorePlatformDatabaseTablesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListXStorePlatformDatabaseRowsUrl = (params: ListXStorePlatformDatabaseRowsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/xstore/platform-database/rows?${stringifiedParams}` : `/api/xstore/platform-database/rows`
+}
+
+/**
+ * @summary Browse and search rows in one application database table
+ */
+export const listXStorePlatformDatabaseRows = async (params: ListXStorePlatformDatabaseRowsParams, options?: Parameters<typeof customFetch>[1]): Promise<PlatformDatabaseRowsResponse> => {
+
+  return customFetch<PlatformDatabaseRowsResponse>(getListXStorePlatformDatabaseRowsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListXStorePlatformDatabaseRowsQueryKey = (params?: ListXStorePlatformDatabaseRowsParams,) => {
+    return [
+    `/api/xstore/platform-database/rows`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListXStorePlatformDatabaseRowsQueryOptions = <TData = Awaited<ReturnType<typeof listXStorePlatformDatabaseRows>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(params: ListXStorePlatformDatabaseRowsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listXStorePlatformDatabaseRows>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListXStorePlatformDatabaseRowsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listXStorePlatformDatabaseRows>>> = ({ signal }) => listXStorePlatformDatabaseRows(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listXStorePlatformDatabaseRows>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListXStorePlatformDatabaseRowsQueryResult = NonNullable<Awaited<ReturnType<typeof listXStorePlatformDatabaseRows>>>
+export type ListXStorePlatformDatabaseRowsQueryError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+
+
+/**
+ * @summary Browse and search rows in one application database table
+ */
+
+export function useListXStorePlatformDatabaseRows<TData = Awaited<ReturnType<typeof listXStorePlatformDatabaseRows>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>>(
+ params: ListXStorePlatformDatabaseRowsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listXStorePlatformDatabaseRows>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListXStorePlatformDatabaseRowsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeleteXStorePlatformDatabaseRowUrl = (tableName: string,
+    rowId: string,) => {
+
+
+
+
+  return `/api/xstore/platform-database/tables/${tableName}/rows/${rowId}`
+}
+
+/**
+ * @summary Delete one confirmed row from an allowlisted application table
+ */
+export const deleteXStorePlatformDatabaseRow = async (tableName: string,
+    rowId: string,
+    platformDatabaseDeleteInput: PlatformDatabaseDeleteInput, options?: Parameters<typeof customFetch>[1]): Promise<PlatformDatabaseDeleteResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PlatformDatabaseDeleteResult>(getDeleteXStorePlatformDatabaseRowUrl(tableName,rowId),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(platformDatabaseDeleteInput)
+  }
+);}
+
+
+
+
+
+export const getDeleteXStorePlatformDatabaseRowMutationKey = () => ['deleteXStorePlatformDatabaseRow'] as const;
+
+export const getDeleteXStorePlatformDatabaseRowMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteXStorePlatformDatabaseRow>>, TError,DeleteXStorePlatformDatabaseRowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteXStorePlatformDatabaseRow>>, TError,DeleteXStorePlatformDatabaseRowMutationVariables, TContext> => {
+
+const mutationKey = getDeleteXStorePlatformDatabaseRowMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteXStorePlatformDatabaseRow>>, DeleteXStorePlatformDatabaseRowMutationVariables> = (props) => {
+          const {tableName,rowId,data} = props ?? {};
+
+          return  deleteXStorePlatformDatabaseRow(tableName,rowId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteXStorePlatformDatabaseRowMutationResult = NonNullable<Awaited<ReturnType<typeof deleteXStorePlatformDatabaseRow>>>
+    export type DeleteXStorePlatformDatabaseRowMutationBody = BodyType<PlatformDatabaseDeleteInput>
+    export type DeleteXStorePlatformDatabaseRowMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>
+    export type DeleteXStorePlatformDatabaseRowMutationVariables = {tableName: string;rowId: string;data: BodyType<PlatformDatabaseDeleteInput>}
+
+    /**
+ * @summary Delete one confirmed row from an allowlisted application table
+ */
+export const useDeleteXStorePlatformDatabaseRow = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteXStorePlatformDatabaseRow>>, TError,DeleteXStorePlatformDatabaseRowMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteXStorePlatformDatabaseRow>>,
+        TError,
+        DeleteXStorePlatformDatabaseRowMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteXStorePlatformDatabaseRowMutationOptions(options));
+    }
 
 export const getGetXStorePlatformBackupSummaryUrl = () => {
 

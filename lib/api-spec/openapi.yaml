@@ -836,6 +836,100 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /xstore/platform-database/tables:
+    get:
+      operationId: listXStorePlatformDatabaseTables
+      tags: [xstore]
+      summary: List application database tables for the platform owner
+      responses:
+        "200":
+          description: Available database tables and row counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformDatabaseTablesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /xstore/platform-database/rows:
+    get:
+      operationId: listXStorePlatformDatabaseRows
+      tags: [xstore]
+      summary: Browse and search rows in one application database table
+      parameters:
+        - name: tableName
+          in: query
+          required: true
+          schema: { type: string, maxLength: 80 }
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string, maxLength: 100 }
+      responses:
+        "200":
+          description: Paginated table rows
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformDatabaseRowsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /xstore/platform-database/tables/{tableName}/rows/{rowId}:
+    delete:
+      operationId: deleteXStorePlatformDatabaseRow
+      tags: [xstore]
+      summary: Delete one confirmed row from an allowlisted application table
+      parameters:
+        - name: tableName
+          in: path
+          required: true
+          schema: { type: string, maxLength: 80 }
+        - name: rowId
+          in: path
+          required: true
+          schema: { type: string, maxLength: 120 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlatformDatabaseDeleteInput"
+      responses:
+        "200":
+          description: Row deleted and the action recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformDatabaseDeleteResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: The row cannot be deleted safely because it is linked to other data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /xstore/platform-backup/summary:
     get:
       operationId: getXStorePlatformBackupSummary
@@ -1588,6 +1682,77 @@ components:
         - entityId
         - details
         - createdAt
+    PlatformDatabaseColumn:
+      type: object
+      properties:
+        name: { type: string }
+        dataType: { type: string }
+        nullable: { type: boolean }
+        primaryKey: { type: boolean }
+      required: [name, dataType, nullable, primaryKey]
+    PlatformDatabaseTable:
+      type: object
+      properties:
+        name: { type: string }
+        label: { type: string }
+        rowCount: { type: integer }
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlatformDatabaseColumn"
+        deletable: { type: boolean }
+        deleteWarning: { type: ["string", "null"] }
+      required: [name, label, rowCount, columns, deletable, deleteWarning]
+    PlatformDatabaseTablesResponse:
+      type: object
+      properties:
+        tables:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlatformDatabaseTable"
+        tableCount: { type: integer }
+        totalRows: { type: integer }
+      required: [tables, tableCount, totalRows]
+    PlatformDatabaseRow:
+      type: object
+      properties:
+        id: { type: string }
+        values:
+          type: object
+          additionalProperties: true
+        canDelete: { type: boolean }
+        deleteBlockedReason: { type: ["string", "null"] }
+      required: [id, values, canDelete, deleteBlockedReason]
+    PlatformDatabaseRowsResponse:
+      type: object
+      properties:
+        tableName: { type: string }
+        label: { type: string }
+        page: { type: integer }
+        pageSize: { type: integer }
+        totalRows: { type: integer }
+        totalPages: { type: integer }
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlatformDatabaseColumn"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlatformDatabaseRow"
+      required: [tableName, label, page, pageSize, totalRows, totalPages, columns, rows]
+    PlatformDatabaseDeleteInput:
+      type: object
+      properties:
+        confirmation: { type: string, minLength: 1, maxLength: 120 }
+      required: [confirmation]
+    PlatformDatabaseDeleteResult:
+      type: object
+      properties:
+        tableName: { type: string }
+        recordId: { type: string }
+        deletedAt: { type: string, format: date-time }
+      required: [tableName, recordId, deletedAt]
     XStorePlatformBackupSummary:
       type: object
       properties:
