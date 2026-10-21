@@ -73,7 +73,7 @@ export async function ensureXStoreTenantAccess(
         "Blocked access to inactive X-Store tenant",
       );
       res.status(403).json({
-        error: "This store account is suspended or its subscription has expired.",
+        error: "حساب هذا المتجر موقوف أو انتهى اشتراكه.",
       });
       return false;
     }
