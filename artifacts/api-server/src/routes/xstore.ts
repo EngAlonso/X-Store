@@ -33,6 +33,7 @@ import {
   CreateXStoreSubscriptionPaymentResponse,
   CreateXStoreTenantBody,
   CreateXStoreTenantResponse,
+  DeleteXStoreTeamMemberParams,
   GetXStoreAuthStatusResponse,
   GetXStoreContactSettingsResponse,
   GetXStoreDashboardResponse,
@@ -70,6 +71,9 @@ import {
   UpdateXStoreContactSettingsResponse,
   UpdateXStoreStoreSettingsBody,
   UpdateXStoreStoreSettingsResponse,
+  UpdateXStoreTeamMemberBody,
+  UpdateXStoreTeamMemberParams,
+  UpdateXStoreTeamMemberResponse,
 } from "@workspace/api-zod";
 import {
   db,
@@ -1498,6 +1502,315 @@ router.post("/xstore/team", async (req, res): Promise<void> => {
   res
     .status(201)
     .json(AddXStoreTeamMemberResponse.parse({ ...member, createdAt: iso(member.createdAt) }));
+});
+
+router.patch("/xstore/team/:memberId", async (req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (actor.role !== "tenant_admin" || !actor.tenantId) {
+    res.status(403).json({ error: "Only a store administrator can manage the team." });
+    return;
+  }
+  const params = UpdateXStoreTeamMemberParams.safeParse(req.params);
+  const parsed = UpdateXStoreTeamMemberBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const input = parsed.data;
+  const name = input.name.trim();
+  if (!name) {
+    res.status(400).json({ error: "Enter a name for this team member." });
+    return;
+  }
+  const roleName = input.roleName.trim();
+  if (!roleName) {
+    res.status(400).json({ error: "Enter a name for this custom role." });
+    return;
+  }
+  let phone: string;
+  try {
+    phone = normalizePhone(input.phone);
+  } catch {
+    res.status(400).json({ error: "Enter a valid team member phone number." });
+    return;
+  }
+  const email = input.email?.trim().toLowerCase() || null;
+  const permissions = [...new Set(input.permissions)] as XStoreTeamPermission[];
+  const passwordHash = input.password ? await hashPassword(input.password) : undefined;
+
+  type UpdateResult =
+    | { kind: "updated"; member: typeof xstoreTeamMembers.$inferSelect }
+    | { kind: "not_found" }
+    | { kind: "owner" }
+    | { kind: "account_missing" }
+    | { kind: "phone_taken" };
+  let result: UpdateResult;
+  try {
+    result = await db.transaction(async (tx): Promise<UpdateResult> => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${phone}))`);
+      const [member] = await tx
+        .select()
+        .from(xstoreTeamMembers)
+        .where(
+          and(
+            eq(xstoreTeamMembers.id, params.data.memberId),
+            eq(xstoreTeamMembers.tenantId, actor.tenantId!),
+          ),
+        )
+        .limit(1);
+      if (!member) return { kind: "not_found" };
+      if (member.role === "tenant_admin") return { kind: "owner" };
+
+      const memberRoles = ["cashier", "warehouse_manager", "accountant", "custom"];
+      const [accountByPhone] = member.phone
+        ? await tx
+            .select()
+            .from(xstoreUsers)
+            .where(
+              and(
+                eq(xstoreUsers.phone, member.phone),
+                eq(xstoreUsers.tenantId, actor.tenantId!),
+                inArray(xstoreUsers.role, memberRoles),
+              ),
+            )
+            .limit(1)
+        : [];
+      const [accountByEmail] = !accountByPhone && member.email
+        ? await tx
+            .select()
+            .from(xstoreUsers)
+            .where(
+              and(
+                ilike(xstoreUsers.email, member.email),
+                eq(xstoreUsers.tenantId, actor.tenantId!),
+                inArray(xstoreUsers.role, memberRoles),
+              ),
+            )
+            .limit(1)
+        : [];
+      const account = accountByPhone ?? accountByEmail;
+      if (account?.id === actor.id) return { kind: "owner" };
+      if (!account && member.status === "active" && !passwordHash) {
+        return { kind: "account_missing" };
+      }
+
+      const [phoneOwner] = await tx
+        .select({ id: xstoreUsers.id })
+        .from(xstoreUsers)
+        .where(eq(xstoreUsers.phone, phone))
+        .limit(1);
+      if (phoneOwner && phoneOwner.id !== account?.id) {
+        return { kind: "phone_taken" };
+      }
+      const [duplicateMember] = await tx
+        .select({ id: xstoreTeamMembers.id })
+        .from(xstoreTeamMembers)
+        .where(
+          and(
+            eq(xstoreTeamMembers.tenantId, actor.tenantId!),
+            eq(xstoreTeamMembers.phone, phone),
+          ),
+        )
+        .limit(1);
+      if (duplicateMember && duplicateMember.id !== member.id) {
+        return { kind: "phone_taken" };
+      }
+
+      const [savedMember] = await tx
+        .update(xstoreTeamMembers)
+        .set({
+          phone,
+          email,
+          name,
+          role: "custom",
+          roleName,
+          permissions,
+          status: account || passwordHash ? "active" : member.status,
+        })
+        .where(eq(xstoreTeamMembers.id, member.id))
+        .returning();
+      if (!savedMember) return { kind: "not_found" };
+
+      if (account) {
+        await tx
+          .update(xstoreUsers)
+          .set({
+            phone,
+            email,
+            name,
+            role: "custom",
+            roleName,
+            permissions,
+            ...(passwordHash ? { passwordHash } : {}),
+            sessionVersion: sql`${xstoreUsers.sessionVersion} + 1`,
+            isActive: true,
+          })
+          .where(eq(xstoreUsers.id, account.id));
+      } else if (passwordHash) {
+        await tx.insert(xstoreUsers).values({
+          phone,
+          email,
+          passwordHash,
+          name,
+          role: "custom",
+          roleName,
+          permissions,
+          tenantId: actor.tenantId!,
+        });
+      }
+      return { kind: "updated", member: savedMember };
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      res.status(409).json({ error: "This phone number already belongs to another account." });
+      return;
+    }
+    throw error;
+  }
+
+  if (result.kind === "not_found") {
+    res.status(404).json({ error: "Team member not found." });
+    return;
+  }
+  if (result.kind === "owner") {
+    res.status(403).json({ error: "The store owner account cannot be managed from this page." });
+    return;
+  }
+  if (result.kind === "account_missing") {
+    res.status(409).json({ error: "This member has no active login. Set a new password to create one." });
+    return;
+  }
+  if (result.kind === "phone_taken") {
+    res.status(409).json({ error: "This phone number already belongs to another account." });
+    return;
+  }
+  if (result.kind !== "updated") {
+    res.status(500).json({ error: "Unable to update this team member." });
+    return;
+  }
+  await audit(
+    actor,
+    "team.member_updated",
+    actor.tenantId,
+    "team_member",
+    result.member.id,
+    `Updated ${result.member.name} (${result.member.phone}) role ${result.member.roleName || result.member.role}; password ${passwordHash ? "changed" : "unchanged"}.`,
+  );
+  res.json(
+    UpdateXStoreTeamMemberResponse.parse({
+      ...result.member,
+      createdAt: iso(result.member.createdAt),
+    }),
+  );
+});
+
+router.delete("/xstore/team/:memberId", async (req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (actor.role !== "tenant_admin" || !actor.tenantId) {
+    res.status(403).json({ error: "Only a store administrator can manage the team." });
+    return;
+  }
+  const params = DeleteXStoreTeamMemberParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  type DeleteResult =
+    | { kind: "deleted"; member: typeof xstoreTeamMembers.$inferSelect }
+    | { kind: "not_found" }
+    | { kind: "owner" };
+  const result = await db.transaction(async (tx): Promise<DeleteResult> => {
+    const [member] = await tx
+      .select()
+      .from(xstoreTeamMembers)
+      .where(
+        and(
+          eq(xstoreTeamMembers.id, params.data.memberId),
+          eq(xstoreTeamMembers.tenantId, actor.tenantId!),
+        ),
+      )
+      .limit(1);
+    if (!member) return { kind: "not_found" };
+    if (member.role === "tenant_admin") return { kind: "owner" };
+
+    const memberRoles = ["cashier", "warehouse_manager", "accountant", "custom"];
+    const [accountByPhone] = member.phone
+      ? await tx
+          .select()
+          .from(xstoreUsers)
+          .where(
+            and(
+              eq(xstoreUsers.phone, member.phone),
+              eq(xstoreUsers.tenantId, actor.tenantId!),
+              inArray(xstoreUsers.role, memberRoles),
+            ),
+          )
+          .limit(1)
+      : [];
+    const [accountByEmail] = !accountByPhone && member.email
+      ? await tx
+          .select()
+          .from(xstoreUsers)
+          .where(
+            and(
+              ilike(xstoreUsers.email, member.email),
+              eq(xstoreUsers.tenantId, actor.tenantId!),
+              inArray(xstoreUsers.role, memberRoles),
+            ),
+          )
+          .limit(1)
+      : [];
+    const account = accountByPhone ?? accountByEmail;
+    if (account?.id === actor.id) return { kind: "owner" };
+
+    if (account) {
+      await tx
+        .update(xstoreUsers)
+        .set({
+          phone: null,
+          email: null,
+          passwordHash: null,
+          role: "custom",
+          roleName: null,
+          permissions: [],
+          sessionVersion: sql`${xstoreUsers.sessionVersion} + 1`,
+          isActive: false,
+        })
+        .where(eq(xstoreUsers.id, account.id));
+    }
+    await tx
+      .delete(xstoreTeamMembers)
+      .where(eq(xstoreTeamMembers.id, member.id));
+    return { kind: "deleted", member };
+  });
+
+  if (result.kind === "not_found") {
+    res.status(404).json({ error: "Team member not found." });
+    return;
+  }
+  if (result.kind === "owner") {
+    res.status(403).json({ error: "The store owner account cannot be removed from this page." });
+    return;
+  }
+  if (result.kind !== "deleted") {
+    res.status(500).json({ error: "Unable to remove this team member." });
+    return;
+  }
+  await audit(
+    actor,
+    "team.member_deleted",
+    actor.tenantId,
+    "team_member",
+    result.member.id,
+    `Removed ${result.member.name} (${result.member.phone ?? "no phone"}); login access revoked and historical transactions retained.`,
+  );
+  res.status(204).end();
 });
 
 router.get("/xstore/subscription-payments", async (_req, res): Promise<void> => {

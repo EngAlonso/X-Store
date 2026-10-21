@@ -66,6 +66,7 @@ export * from './teamMember';
 export * from './teamMemberInput';
 export * from './teamMemberRole';
 export * from './teamMemberStatus';
+export * from './teamMemberUpdate';
 export * from './teamPermission';
 export * from './tenant';
 export * from './tenantCredentialsInput';

@@ -10,13 +10,14 @@ import {
   getListXStoreSalesQueryKey, getListXStoreTeamQueryKey, getListXStoreTenantsQueryKey,
   getListXStoreSubscriptionPaymentsQueryKey,
   logoutXStore, useAddXStoreTeamMember, useCreateInitialPlatformOwner, useCreateXStoreExchange, useCreateXStoreProduct, useCreateXStoreReturnBatch,
+  useDeleteXStoreTeamMember, useUpdateXStoreTeamMember,
   useCreateXStoreSubscriptionPayment, useCreateXStoreTenant, useGetXStoreDashboard, useGetXStoreSession, useHoldXStoreSale,
   useGetXStoreAuthStatus, useGetXStoreContactSettings, useGetXStoreSaleInvoiceItems, useLoginXStoreWithPhone,
   useListXStoreAuditLogs, useListXStoreHeldSales, useListXStoreProducts, useListXStoreSales,
   useGetXStoreProfitLossReport, useListXStoreSubscriptionPayments, useListXStoreTeam, useListXStoreTenants, useReleaseXStoreHeldSale, useUpdateXStoreProduct,
   useUpdateXStoreTenant, useUpdateXStoreTenantCredentials, useUpdateXStoreContactSettings, useUpdateXStoreStoreSettings, useCheckoutXStoreSale,
 } from '@workspace/api-client-react';
-import type { AuthStatus, HeldSale, Product, Tenant, Sale, SaleInvoiceItem, SessionUser, TeamPermission } from '@workspace/api-client-react';
+import type { AuthStatus, HeldSale, Product, Tenant, Sale, SaleInvoiceItem, SessionUser, TeamMember, TeamPermission } from '@workspace/api-client-react';
 import { Route, Switch, Redirect, Link, useLocation, Router as WouterRouter } from 'wouter';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -31,7 +32,7 @@ import {
   Bell, LogOut, Menu, X, ArrowUpLeft, ChevronLeft, ChevronDown, CreditCard, Banknote,
   Wallet, CircleCheck, Clock3, AlertTriangle, RotateCcw,
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
-  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone, Database, Coffee, Utensils,
+  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone, Database, Coffee, Utensils, Pencil,
 } from 'lucide-react';
 import {
   FaFacebook,
@@ -809,53 +810,353 @@ function TenantsPage() {
   </>;
 }
 function TeamPage() {
-  const qc=useQueryClient(), team=useListXStoreTeam(), add=useAddXStoreTeamMember();
-  const [dialog,setDialog]=useState(false),[search,setSearch]=useState(''),[notice,setNotice]=useState('');
-  const [selectedPermissions,setSelectedPermissions]=useState<TeamPermission[]>([]);
-  const roleTitle:Record<string,string>={tenant_admin:'مالك المتجر',cashier:'أمين الصندوق',warehouse_manager:'مدير المخزون',accountant:'محاسب',custom:'دور مخصص'};
-  const members=(team.data||[]).filter(m=>`${m.name} ${m.phone} ${m.email||''} ${m.roleName||''} ${(m.permissions||[]).join(' ')}`.toLowerCase().includes(search.toLowerCase()));
-  function openDialog(){setSelectedPermissions([]);setDialog(true)}
-  function closeDialog(){setDialog(false);setSelectedPermissions([])}
-  function togglePermission(permission:TeamPermission){
-    setSelectedPermissions(current=>current.includes(permission)?current.filter(item=>item!==permission):[...current,permission]);
+  const qc = useQueryClient();
+  const team = useListXStoreTeam();
+  const add = useAddXStoreTeamMember();
+  const update = useUpdateXStoreTeamMember();
+  const remove = useDeleteXStoreTeamMember();
+  const [dialog, setDialog] = useState(false);
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [deletingMember, setDeletingMember] = useState<TeamMember | null>(null);
+  const [search, setSearch] = useState('');
+  const [notice, setNotice] = useState('');
+  const [selectedPermissions, setSelectedPermissions] = useState<TeamPermission[]>([]);
+  const roleTitle: Record<string, string> = {
+    tenant_admin: 'مالك المتجر',
+    cashier: 'أمين الصندوق',
+    warehouse_manager: 'مدير المخزون',
+    accountant: 'محاسب',
+    custom: 'دور مخصص',
+  };
+  const members = (team.data || []).filter((member) =>
+    `${member.name} ${member.phone || ''} ${member.email || ''} ${member.roleName || ''} ${(member.permissions || []).join(' ')}`
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
+
+  function openDialog() {
+    add.reset();
+    setSelectedPermissions([]);
+    setDialog(true);
   }
-  function memberPermissionSummary(role:string,permissions:TeamPermission[]){
-    const assigned=role==='custom'?permissions:teamPermissionOptions.filter(option=>option.value===role).map(option=>option.value);
-    return assigned.map(permission=>teamPermissionNames[permission]).join(' · ')||'صلاحيات مالك المتجر';
+  function closeDialog() {
+    setDialog(false);
+    setSelectedPermissions([]);
   }
-  function submit(e:FormEvent<HTMLFormElement>){
+  function openEdit(member: TeamMember) {
+    update.reset();
+    setEditingMember(member);
+    setSelectedPermissions(
+      member.role === 'custom'
+        ? member.permissions
+        : teamPermissionOptions
+            .filter((option) => option.value === member.role)
+            .map((option) => option.value),
+    );
+  }
+  function closeEdit() {
+    setEditingMember(null);
+    setSelectedPermissions([]);
+  }
+  function togglePermission(permission: TeamPermission) {
+    setSelectedPermissions((current) =>
+      current.includes(permission)
+        ? current.filter((item) => item !== permission)
+        : [...current, permission],
+    );
+  }
+  function memberPermissionSummary(role: string, permissions: TeamPermission[]) {
+    const assigned =
+      role === 'custom'
+        ? permissions
+        : teamPermissionOptions
+            .filter((option) => option.value === role)
+            .map((option) => option.value);
+    return assigned.map((permission) => teamPermissionNames[permission]).join(' · ') || 'بدون صلاحيات محددة';
+  }
+  function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const f=new FormData(e.currentTarget);
-    const roleName=String(f.get('roleName')||'').trim();
-    if(!roleName||!selectedPermissions.length)return;
-    add.mutate({data:{name:String(f.get('name')),phone:String(f.get('phone')),password:String(f.get('password')),email:String(f.get('email')||'').trim()||null,roleName,permissions:selectedPermissions}},{onSuccess:()=>{qc.invalidateQueries({queryKey:getListXStoreTeamQueryKey()});closeDialog();setNotice('تم حفظ حساب عضو الفريق والصلاحيات المحددة');}});
+    const form = new FormData(e.currentTarget);
+    const roleName = String(form.get('roleName') || '').trim();
+    if (!roleName || !selectedPermissions.length) return;
+    add.mutate(
+      {
+        data: {
+          name: String(form.get('name')).trim(),
+          phone: String(form.get('phone')),
+          password: String(form.get('password')),
+          email: String(form.get('email') || '').trim() || null,
+          roleName,
+          permissions: selectedPermissions,
+        },
+      },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getListXStoreTeamQueryKey() });
+          closeDialog();
+          setNotice('تم حفظ حساب عضو الفريق والصلاحيات المحددة');
+        },
+      },
+    );
   }
-  return <><PageTitle eyebrow="إدارة الصلاحيات" title="فريق العمل" desc="أضف عضوًا، واكتب اسم دوره، ثم اختر الصلاحيات التي يحتاجها." action={<button className="button button-primary" onClick={openDialog} data-testid="button-add-team-member"><Plus size={17}/> إضافة عضو</button>}/>
-    <div className="team-summary"><div><span className="team-summary-icon"><Users size={18}/></span><b>{fmt(members.length)} عضو</b><small>ضمن فريق متجرك</small></div><div><span className="team-summary-icon team-sage"><ShieldCheck size={18}/></span><b>صلاحيات تختارها يدويًا</b><small>كل عضو حسب مهامه</small></div><div className="team-summary-note">تظل إعدادات المتجر وإدارة الفريق خاصة بمالك المتجر.</div></div>
-    <Card><SectionHead title="أعضاء الفريق" detail="يعرض الجدول الدور والصلاحيات المسجلة لكل عضو."/>
-      <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم العضو أو الدور" data-testid="input-search-team"/></label><span className="result-count">{fmt(members.length)} عضو</span></div>
-      {team.isLoading?<StateBlock loading error={false} onRetry={()=>team.refetch()} empty={false}/>:team.isError?<StateBlock loading={false} error onRetry={()=>team.refetch()} empty={false}/>:members.length?<div className="table-wrap"><table><thead><tr><th>عضو الفريق</th><th>رقم الهاتف</th><th>البريد الإلكتروني</th><th>الدور</th><th>الصلاحيات</th><th>الحالة</th><th>تاريخ الإضافة</th></tr></thead><tbody>{members.map(m=><tr key={m.id}><td><div className="member-name"><span>{m.name.slice(0,1)}</span><b>{m.name}</b></div></td><td dir="ltr">{m.phone}</td><td>{m.email||'—'}</td><td>{m.roleName||roleTitle[m.role]||m.role}</td><td>{memberPermissionSummary(m.role,m.permissions)}</td><td><span className={`status-pill ${m.status==='active'?'status-active':'status-trial'}`}>{m.status==='active'?'نشط':'دعوة مرسلة'}</span></td><td>{dateLabel(m.createdAt)}</td></tr>)}</tbody></table></div>:<div className="state-box"><div className="empty-symbol"><Users/></div><b>ابدأ ببناء فريقك</b><span>أضف عضوًا وحدد له الدور والصلاحيات المناسبة.</span><button className="button button-primary" onClick={openDialog}><Plus size={16}/> إضافة عضو</button></div>}
-    </Card>
-    {dialog&&<Modal title="إضافة حساب لفريق العمل" close={closeDialog}><form className="form-grid" onSubmit={submit}>
-      <Field label="اسم العضو" name="name" required/>
-      <Field label="رقم هاتف الدخول" name="phone" type="tel" required placeholder="+20 10 1234 5678"/>
-      <Field label="كلمة المرور" name="password" type="password" required maxLength={128} placeholder="اكتب كلمة المرور"/>
-      <Field label="البريد الإلكتروني (اختياري)" name="email" type="email"/>
-      <Field className="field-wide" label="اسم الدور" name="roleName" required maxLength={50} placeholder="مثال: مشرف الوردية"/>
-      <fieldset className="team-permission-list field-wide">
-        <legend>الصلاحيات — اختر واحدة أو أكثر</legend>
-        {teamPermissionOptions.map(({value,label,description})=><label key={value} className={`team-permission-option ${selectedPermissions.includes(value)?'is-selected':''}`}>
-          <input type="checkbox" checked={selectedPermissions.includes(value)} onChange={()=>togglePermission(value)}/>
-          <span className="team-permission-copy"><b>{label}</b><small>{description}</small></span>
-        </label>)}
-      </fieldset>
-      {!selectedPermissions.length&&<small className="team-permission-note field-wide">اختر صلاحية واحدة على الأقل قبل حفظ الحساب.</small>}
-      <div className="role-hint field-wide"><ShieldCheck size={17}/><span>يمكن جمع أكثر من صلاحية. لا تمنح هذه الخيارات إدارة الفريق أو إعدادات المتجر أو بيانات متاجر أخرى.</span></div>
-      {add.isError&&<div className="form-error">{apiErrorMessage(add.error,'تعذر حفظ الحساب. تحقق من رقم الهاتف والصلاحيات.')}</div>}
-      <div className="modal-actions"><button className="button button-quiet" type="button" onClick={closeDialog}>إلغاء</button><button className="button button-primary" disabled={add.isPending||!selectedPermissions.length}>{add.isPending?'جارٍ الحفظ…':'حفظ الحساب'}</button></div>
-    </form></Modal>}
-    {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
-  </>;
+  function submitEdit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingMember) return;
+    const form = new FormData(e.currentTarget);
+    const roleName = String(form.get('roleName') || '').trim();
+    if (!roleName || !selectedPermissions.length) return;
+    const password = String(form.get('password') || '');
+    update.mutate(
+      {
+        memberId: editingMember.id,
+        data: {
+          name: String(form.get('name')).trim(),
+          phone: String(form.get('phone')),
+          email: String(form.get('email') || '').trim() || null,
+          roleName,
+          permissions: selectedPermissions,
+          ...(password ? { password } : {}),
+        },
+      },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getListXStoreTeamQueryKey() });
+          closeEdit();
+          setNotice('تم تحديث الحساب. سيحتاج العضو لتسجيل الدخول مرة أخرى.');
+        },
+      },
+    );
+  }
+  function confirmDelete() {
+    if (!deletingMember) return;
+    remove.mutate(
+      { memberId: deletingMember.id },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: getListXStoreTeamQueryKey() });
+          setNotice(`تم حذف حساب ${deletingMember.name} وإيقاف دخوله`);
+          setDeletingMember(null);
+        },
+      },
+    );
+  }
+
+  return (
+    <>
+      <PageTitle
+        eyebrow="إدارة الصلاحيات"
+        title="فريق العمل"
+        desc="أضف أعضاء الفريق، وعدّل بيانات دخولهم وصلاحياتهم."
+        action={
+          <button
+            className="button button-primary"
+            onClick={openDialog}
+            data-testid="button-add-team-member"
+          >
+            <Plus size={17} /> إضافة عضو
+          </button>
+        }
+      />
+      <div className="team-summary">
+        <div>
+          <span className="team-summary-icon"><Users size={18} /></span>
+          <b>{fmt(members.length)} عضو</b>
+          <small>ضمن فريق متجرك</small>
+        </div>
+        <div>
+          <span className="team-summary-icon team-sage"><ShieldCheck size={18} /></span>
+          <b>صلاحيات تختارها يدويًا</b>
+          <small>كل عضو حسب مهامه</small>
+        </div>
+        <div className="team-summary-note">إدارة الفريق وإعدادات المتجر خاصة بمالك المتجر.</div>
+      </div>
+      <Card>
+        <SectionHead title="أعضاء الفريق" detail="يمكنك تعديل بيانات الدخول والصلاحيات أو سحب الوصول." />
+        <div className="table-toolbar">
+          <label className="search-box">
+            <Search size={17} />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="ابحث باسم العضو أو الدور"
+              data-testid="input-search-team"
+            />
+          </label>
+          <span className="result-count">{fmt(members.length)} عضو</span>
+        </div>
+        {team.isLoading ? (
+          <StateBlock loading error={false} onRetry={() => team.refetch()} empty={false} />
+        ) : team.isError ? (
+          <StateBlock loading={false} error onRetry={() => team.refetch()} empty={false} />
+        ) : members.length ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>عضو الفريق</th>
+                  <th>رقم الهاتف</th>
+                  <th>البريد الإلكتروني</th>
+                  <th>الدور</th>
+                  <th>الصلاحيات</th>
+                  <th>الحالة</th>
+                  <th>تاريخ الإضافة</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {members.map((member) => (
+                  <tr key={member.id}>
+                    <td>
+                      <div className="member-name">
+                        <span>{member.name.slice(0, 1)}</span>
+                        <b>{member.name}</b>
+                      </div>
+                    </td>
+                    <td dir="ltr">{member.phone || '—'}</td>
+                    <td>{member.email || '—'}</td>
+                    <td>{member.roleName || roleTitle[member.role] || member.role}</td>
+                    <td>{memberPermissionSummary(member.role, member.permissions)}</td>
+                    <td>
+                      <span className={`status-pill ${member.status === 'active' ? 'status-active' : 'status-trial'}`}>
+                        {member.status === 'active' ? 'نشط' : 'دعوة مرسلة'}
+                      </span>
+                    </td>
+                    <td>{dateLabel(member.createdAt)}</td>
+                    <td>
+                      {member.role === 'tenant_admin' ? (
+                        <span className="team-owner-note">حساب المالك</span>
+                      ) : (
+                        <div className="team-member-actions">
+                          <button
+                            className="table-action"
+                            onClick={() => openEdit(member)}
+                            aria-label={`تعديل حساب ${member.name}`}
+                            title="تعديل الحساب"
+                          >
+                            <Pencil size={15} /> تعديل
+                          </button>
+                          <button
+                            className="table-action team-action-danger"
+                            onClick={() => {
+                              remove.reset();
+                              setDeletingMember(member);
+                            }}
+                            aria-label={`حذف حساب ${member.name}`}
+                            title="حذف الحساب"
+                          >
+                            <Trash2 size={15} /> حذف
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="state-box">
+            <div className="empty-symbol"><Users /></div>
+            <b>ابدأ ببناء فريقك</b>
+            <span>أضف عضوًا وحدد له الدور والصلاحيات المناسبة.</span>
+            <button className="button button-primary" onClick={openDialog}>
+              <Plus size={16} /> إضافة عضو
+            </button>
+          </div>
+        )}
+      </Card>
+
+      {dialog && (
+        <Modal title="إضافة حساب لفريق العمل" close={closeDialog}>
+          <form className="form-grid" onSubmit={submit}>
+            <Field label="اسم العضو" name="name" required maxLength={100} />
+            <Field label="رقم هاتف الدخول" name="phone" type="tel" required placeholder="+20 10 1234 5678" />
+            <Field label="كلمة المرور" name="password" type="password" required maxLength={128} placeholder="اكتب كلمة المرور" />
+            <Field label="البريد الإلكتروني (اختياري)" name="email" type="email" />
+            <Field className="field-wide" label="اسم الدور" name="roleName" required maxLength={50} placeholder="مثال: مشرف الوردية" />
+            <fieldset className="team-permission-list field-wide">
+              <legend>الصلاحيات — اختر واحدة أو أكثر</legend>
+              {teamPermissionOptions.map(({ value, label, description }) => (
+                <label key={value} className={`team-permission-option ${selectedPermissions.includes(value) ? 'is-selected' : ''}`}>
+                  <input type="checkbox" checked={selectedPermissions.includes(value)} onChange={() => togglePermission(value)} />
+                  <span className="team-permission-copy"><b>{label}</b><small>{description}</small></span>
+                </label>
+              ))}
+            </fieldset>
+            {!selectedPermissions.length && (
+              <small className="team-permission-note field-wide">اختر صلاحية واحدة على الأقل قبل حفظ الحساب.</small>
+            )}
+            <div className="role-hint field-wide">
+              <ShieldCheck size={17} />
+              <span>يمكن جمع أكثر من صلاحية. لا تمنح هذه الخيارات إدارة الفريق أو إعدادات المتجر أو بيانات متاجر أخرى.</span>
+            </div>
+            {add.isError && <div className="form-error">{apiErrorMessage(add.error, 'تعذر حفظ الحساب. تحقق من رقم الهاتف والصلاحيات.')}</div>}
+            <div className="modal-actions">
+              <button className="button button-quiet" type="button" onClick={closeDialog}>إلغاء</button>
+              <button className="button button-primary" disabled={add.isPending || !selectedPermissions.length}>
+                {add.isPending ? 'جارٍ الحفظ…' : 'حفظ الحساب'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {editingMember && (
+        <Modal title={`تعديل حساب ${editingMember.name}`} close={closeEdit}>
+          <form className="form-grid" onSubmit={submitEdit}>
+            <Field label="اسم العضو" name="name" required maxLength={100} defaultValue={editingMember.name} />
+            <Field label="رقم الهاتف" name="phone" type="tel" required defaultValue={editingMember.phone || ''} placeholder="+20 10 1234 5678" />
+            <Field label="البريد الإلكتروني (اختياري)" name="email" type="email" defaultValue={editingMember.email || ''} />
+            <Field label="كلمة مرور جديدة (اختياري)" name="password" type="password" maxLength={128} placeholder="اتركها فارغة بدون تغيير" />
+            <Field className="field-wide" label="اسم الدور" name="roleName" required maxLength={50} defaultValue={editingMember.roleName || roleTitle[editingMember.role] || ''} />
+            <fieldset className="team-permission-list field-wide">
+              <legend>الصلاحيات — اختر واحدة أو أكثر</legend>
+              {teamPermissionOptions.map(({ value, label, description }) => (
+                <label key={value} className={`team-permission-option ${selectedPermissions.includes(value) ? 'is-selected' : ''}`}>
+                  <input type="checkbox" checked={selectedPermissions.includes(value)} onChange={() => togglePermission(value)} />
+                  <span className="team-permission-copy"><b>{label}</b><small>{description}</small></span>
+                </label>
+              ))}
+            </fieldset>
+            {!selectedPermissions.length && (
+              <small className="team-permission-note field-wide">اختر صلاحية واحدة على الأقل قبل حفظ الحساب.</small>
+            )}
+            <div className="role-hint field-wide">
+              <KeyRound size={17} />
+              <span>لو غيّرت رقم الهاتف أو كلمة المرور، هيتطلب من العضو تسجيل الدخول من جديد. ترك كلمة المرور فارغة يحافظ على الحالية.</span>
+            </div>
+            {update.isError && <div className="form-error">{apiErrorMessage(update.error, 'تعذر تحديث الحساب. راجع رقم الهاتف والصلاحيات.')}</div>}
+            <div className="modal-actions">
+              <button className="button button-quiet" type="button" onClick={closeEdit}>إلغاء</button>
+              <button className="button button-primary" disabled={update.isPending || !selectedPermissions.length}>
+                {update.isPending ? 'جارٍ الحفظ…' : 'حفظ التعديلات'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {deletingMember && (
+        <Modal title="تأكيد حذف الحساب" close={() => setDeletingMember(null)}>
+          <div className="team-delete-confirm">
+            <div className="team-delete-icon"><Trash2 size={21} /></div>
+            <b>حذف حساب {deletingMember.name}؟</b>
+            <p>سيتم إزالة العضو من الفريق، وإيقاف تسجيل دخوله، وإلغاء رقم الهاتف والبريد من الحساب.</p>
+            <p className="team-delete-retention">الفواتير وسجل العمليات القديمة هيفضلوا محفوظين باسم العضو للحفاظ على السجل المالي.</p>
+            {remove.isError && <div className="form-error">{apiErrorMessage(remove.error, 'تعذر حذف الحساب.')}</div>}
+            <div className="modal-actions">
+              <button className="button button-quiet" type="button" onClick={() => setDeletingMember(null)}>إلغاء</button>
+              <button className="button button-danger" onClick={confirmDelete} disabled={remove.isPending}>
+                {remove.isPending ? 'جارٍ حذف الحساب…' : 'حذف الحساب وإيقاف الدخول'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {notice && <div className="toast-note" role="status">{notice}<button onClick={() => setNotice('')}><X size={14} /></button></div>}
+    </>
+  );
 }
 function PlatformSettingsPage() {
   const queryClient=useQueryClient();

@@ -58,6 +58,7 @@ import type {
   SubscriptionPaymentInput,
   TeamMember,
   TeamMemberInput,
+  TeamMemberUpdate,
   Tenant,
   TenantCredentialsInput,
   TenantInput,
@@ -1421,6 +1422,169 @@ export const useAddXStoreTeamMember = <TError = ErrorType<BadRequestResponse | U
         TContext
       > => {
       return useMutation(getAddXStoreTeamMemberMutationOptions(options));
+    }
+
+export const getUpdateXStoreTeamMemberUrl = (memberId: string,) => {
+
+
+
+
+  return `/api/xstore/team/${memberId}`
+}
+
+/**
+ * @summary Update a team member account
+ */
+export const updateXStoreTeamMember = async (memberId: string,
+    teamMemberUpdate: TeamMemberUpdate, options?: Parameters<typeof customFetch>[1]): Promise<TeamMember> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<TeamMember>(getUpdateXStoreTeamMemberUrl(memberId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(teamMemberUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateXStoreTeamMemberMutationKey = () => ['updateXStoreTeamMember'] as const;
+
+export const getUpdateXStoreTeamMemberMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateXStoreTeamMember>>, TError,UpdateXStoreTeamMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateXStoreTeamMember>>, TError,UpdateXStoreTeamMemberMutationVariables, TContext> => {
+
+const mutationKey = getUpdateXStoreTeamMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateXStoreTeamMember>>, UpdateXStoreTeamMemberMutationVariables> = (props) => {
+          const {memberId,data} = props ?? {};
+
+          return  updateXStoreTeamMember(memberId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateXStoreTeamMemberMutationResult = NonNullable<Awaited<ReturnType<typeof updateXStoreTeamMember>>>
+    export type UpdateXStoreTeamMemberMutationBody = BodyType<TeamMemberUpdate>
+    export type UpdateXStoreTeamMemberMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>
+    export type UpdateXStoreTeamMemberMutationVariables = {memberId: string;data: BodyType<TeamMemberUpdate>}
+
+    /**
+ * @summary Update a team member account
+ */
+export const useUpdateXStoreTeamMember = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateXStoreTeamMember>>, TError,UpdateXStoreTeamMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateXStoreTeamMember>>,
+        TError,
+        UpdateXStoreTeamMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateXStoreTeamMemberMutationOptions(options));
+    }
+
+export const getDeleteXStoreTeamMemberUrl = (memberId: string,) => {
+
+
+
+
+  return `/api/xstore/team/${memberId}`
+}
+
+/**
+ * @summary Remove a team member account and revoke access
+ */
+export const deleteXStoreTeamMember = async (memberId: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteXStoreTeamMemberUrl(memberId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteXStoreTeamMemberMutationKey = () => ['deleteXStoreTeamMember'] as const;
+
+export const getDeleteXStoreTeamMemberMutationOptions = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteXStoreTeamMember>>, TError,DeleteXStoreTeamMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteXStoreTeamMember>>, TError,DeleteXStoreTeamMemberMutationVariables, TContext> => {
+
+const mutationKey = getDeleteXStoreTeamMemberMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteXStoreTeamMember>>, DeleteXStoreTeamMemberMutationVariables> = (props) => {
+          const {memberId} = props ?? {};
+
+          return  deleteXStoreTeamMember(memberId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteXStoreTeamMemberMutationResult = NonNullable<Awaited<ReturnType<typeof deleteXStoreTeamMember>>>
+
+    export type DeleteXStoreTeamMemberMutationError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>
+    export type DeleteXStoreTeamMemberMutationVariables = {memberId: string}
+
+    /**
+ * @summary Remove a team member account and revoke access
+ */
+export const useDeleteXStoreTeamMember = <TError = ErrorType<UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteXStoreTeamMember>>, TError,DeleteXStoreTeamMemberMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteXStoreTeamMember>>,
+        TError,
+        DeleteXStoreTeamMemberMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteXStoreTeamMemberMutationOptions(options));
     }
 
 export const getListXStoreSubscriptionPaymentsUrl = () => {

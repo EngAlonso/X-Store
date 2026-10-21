@@ -1079,6 +1079,20 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 .audit-privacy small { color:#7c9080;font-size:9px; }
 .payments-panel { margin-top:15px; }
 .table-actions-cell { display:flex;align-items:center;gap:8px; }
+.team-member-actions { display:flex;align-items:center;gap:10px;white-space:nowrap; }
+.team-member-actions .table-action { min-height:34px;padding:0 7px;border-radius:7px;font-size:11px; }
+.team-member-actions .table-action:hover { background:#eff5f0; }
+.team-member-actions .team-action-danger { color:#b84a50; }
+.team-member-actions .team-action-danger:hover { color:#9c333b;background:#fbefef; }
+.team-owner-note { color:#8b958d;font-size:10px;white-space:nowrap; }
+.button-danger { color:#fff;background:#b64047;border-color:#a9363d; }
+.button-danger:hover:not(:disabled) { background:#a3333a; }
+.team-delete-confirm { display:grid;justify-items:start;gap:10px; }
+.team-delete-icon { width:42px;height:42px;display:grid;place-items:center;border-radius:12px;background:#fbefef;color:#b64047; }
+.team-delete-confirm>b { color:#34463a;font-size:15px; }
+.team-delete-confirm>p { margin:0;color:#657269;font-size:12px;line-height:1.8; }
+.team-delete-confirm .team-delete-retention { padding:10px 12px;border:1px solid #e3ece4;border-radius:8px;background:#f3f7f3;color:#56715d; }
+.team-delete-confirm .modal-actions { width:100%;margin-top:5px; }
 .receipt-modal { width:min(100%,390px); }
 .receipt-brand { display:flex;align-items:center;gap:9px;padding-bottom:14px;border-bottom:1px dashed #dce4dd;color:#0b4619;direction:ltr; }
 .receipt-brand img { width:31px;height:31px;object-fit:contain;border-radius:6px; }

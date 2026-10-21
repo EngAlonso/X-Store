@@ -490,6 +490,36 @@ export interface TeamMemberInput {
   permissions: TeamPermission[];
 }
 
+export interface TeamMemberUpdate {
+  /**
+     * @minLength 8
+     * @maxLength 20
+     */
+  phone: string;
+  /**
+     * @minLength 1
+     * @maxLength 128
+     */
+  password?: string;
+  /** @nullable */
+  email: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /**
+     * @minLength 1
+     * @maxLength 50
+     */
+  roleName: string;
+  /**
+     * @minItems 1
+     * @maxItems 3
+     */
+  permissions: TeamPermission[];
+}
+
 export type SubscriptionPaymentPlan = typeof SubscriptionPaymentPlan[keyof typeof SubscriptionPaymentPlan];
 
 

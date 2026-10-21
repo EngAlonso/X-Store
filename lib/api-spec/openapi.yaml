@@ -356,6 +356,58 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+  /xstore/team/{memberId}:
+    parameters:
+      - name: memberId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    patch:
+      operationId: updateXStoreTeamMember
+      tags: [xstore]
+      summary: Update a team member account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamMemberUpdate"
+      responses:
+        "200":
+          description: Updated team member account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMember"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Phone number is already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteXStoreTeamMember
+      tags: [xstore]
+      summary: Remove a team member account and revoke access
+      responses:
+        "204":
+          description: Access revoked and team member removed; transaction history is retained
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /xstore/subscription-payments:
     get:
       operationId: listXStoreSubscriptionPayments
@@ -1137,6 +1189,24 @@ components:
           minItems: 1
           maxItems: 3
       required: [phone, password, name, roleName, permissions]
+    TeamMemberUpdate:
+      type: object
+      properties:
+        phone: { type: string, minLength: 8, maxLength: 20 }
+        password: { type: string, minLength: 1, maxLength: 128 }
+        email: { type: ["string", "null"], format: email }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        roleName:
+          type: string
+          minLength: 1
+          maxLength: 50
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamPermission"
+          minItems: 1
+          maxItems: 3
+      required: [phone, email, name, roleName, permissions]
     SubscriptionPayment:
       type: object
       properties:

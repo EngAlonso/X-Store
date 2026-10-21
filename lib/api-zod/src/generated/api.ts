@@ -575,6 +575,58 @@ export const AddXStoreTeamMemberResponse = zod.object({
 
 
 /**
+ * @summary Update a team member account
+ */
+export const UpdateXStoreTeamMemberParams = zod.object({
+  "memberId": zod.coerce.string().uuid()
+})
+
+export const updateXStoreTeamMemberBodyPhoneMin = 8;
+export const updateXStoreTeamMemberBodyPhoneMax = 20;
+
+export const updateXStoreTeamMemberBodyPasswordMax = 128;
+
+export const updateXStoreTeamMemberBodyNameMax = 100;
+
+export const updateXStoreTeamMemberBodyRoleNameMax = 50;
+
+export const updateXStoreTeamMemberBodyPermissionsMax = 3;
+
+
+
+export const UpdateXStoreTeamMemberBody = zod.object({
+  "phone": zod.string().min(updateXStoreTeamMemberBodyPhoneMin).max(updateXStoreTeamMemberBodyPhoneMax),
+  "password": zod.string().min(1).max(updateXStoreTeamMemberBodyPasswordMax).optional(),
+  "email": zod.string().email().nullable(),
+  "name": zod.string().min(1).max(updateXStoreTeamMemberBodyNameMax),
+  "roleName": zod.string().min(1).max(updateXStoreTeamMemberBodyRoleNameMax),
+  "permissions": zod.array(zod.enum(['cashier', 'warehouse_manager', 'accountant'])).min(1).max(updateXStoreTeamMemberBodyPermissionsMax)
+})
+
+export const UpdateXStoreTeamMemberResponse = zod.object({
+  "id": zod.string(),
+  "phone": zod.string().nullable(),
+  "email": zod.string().email().nullable(),
+  "name": zod.string(),
+  "role": zod.enum(['tenant_admin', 'cashier', 'warehouse_manager', 'accountant', 'custom']),
+  "roleName": zod.string().nullable(),
+  "permissions": zod.array(zod.enum(['cashier', 'warehouse_manager', 'accountant'])),
+  "status": zod.enum(['active', 'invited']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a team member account and revoke access
+ */
+export const DeleteXStoreTeamMemberParams = zod.object({
+  "memberId": zod.coerce.string().uuid()
+})
+
+export const DeleteXStoreTeamMemberResponse = zod.void()
+
+
+/**
  * @summary List platform subscription payments
  */
 export const ListXStoreSubscriptionPaymentsResponseItem = zod.object({
