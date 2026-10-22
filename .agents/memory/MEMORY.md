@@ -7,3 +7,4 @@
 - [X-Store natural icons](xstore-category-tiles.md) — use compact, familiar object symbols with restrained color to avoid a cartoonish interface.
 - [X-Store invoice lifecycle](xstore-invoice-lifecycle.md) — preserve invoice identity and attribution; use invoice-only multi-item return/exchange selection with remaining quantities.
 - [X-Store sales-page readability](xstore-sales-readability.md) — keep invoice rows, amounts, and exchange details easy to scan with larger text.
+- [Platform database administration](platform-database-management.md) — only the platform owner manages database records across all stores.
