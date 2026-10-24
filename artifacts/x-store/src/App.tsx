@@ -1763,6 +1763,18 @@ function Routed() {
   return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
 }
 function App() {
-  return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><div className="site-layout"><div className="site-route"><Routed/></div><SiteFooter/></div></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;
+  return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><SiteLayout/></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;
+}
+
+function SiteLayout() {
+  const [location] = useLocation();
+  const showSiteFooter = location === '/'
+    || location === '/contact'
+    || location === '/sign-in'
+    || location.startsWith('/sign-in/')
+    || location === '/sign-up'
+    || location.startsWith('/sign-up/');
+
+  return <div className="site-layout"><div className="site-route"><Routed/></div>{showSiteFooter&&<SiteFooter/>}</div>;
 }
 export default App;
