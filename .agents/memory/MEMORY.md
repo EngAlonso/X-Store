@@ -1,0 +1,1 @@
+- [Artifact import routing](artifact-import-routing.md) — keep registered artifact metadata under `artifacts/<slug>` and verify the preview proxy after relocation.
