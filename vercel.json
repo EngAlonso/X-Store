@@ -8,11 +8,13 @@
     },
     "x-store": {
       "root": "artifacts/x-store",
-      "framework": "vite"
+      "framework": "vite",
+      "outputDirectory": "dist/public"
     },
     "mockup-sandbox": {
       "root": "artifacts/mockup-sandbox",
-      "framework": "vite"
+      "framework": "vite",
+      "outputDirectory": "dist"
     }
   },
   "rewrites": [
