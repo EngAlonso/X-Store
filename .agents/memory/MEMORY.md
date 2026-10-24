@@ -1,1 +1,2 @@
 - [Artifact import routing](artifact-import-routing.md) — keep registered artifact metadata under `artifacts/<slug>` and verify the preview proxy after relocation.
+- [Store types](store-types.md) — capture store category at creation, but keep all categories on the current workflow until their differences are defined together.

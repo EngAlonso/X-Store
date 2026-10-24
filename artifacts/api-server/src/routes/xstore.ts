@@ -1103,6 +1103,7 @@ router.post("/xstore/tenants", async (req, res): Promise<void> => {
           phone,
           email: input.email?.trim().toLowerCase() || null,
           businessType: input.businessType,
+          storeType: input.storeType,
           countryCode: input.countryCode,
           currency: input.currency,
           status: "trial",

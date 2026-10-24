@@ -218,6 +218,21 @@ export interface ContactSettingsInput {
   socialLinks: SocialLinks;
 }
 
+/**
+ * @nullable
+ */
+export type TenantStoreType = typeof TenantStoreType[keyof typeof TenantStoreType] | null;
+
+
+export const TenantStoreType = {
+  clothing_shoes: 'clothing_shoes',
+  grocery_supermarket: 'grocery_supermarket',
+  electronics_accessories: 'electronics_accessories',
+  perfume_beauty: 'perfume_beauty',
+  cafe: 'cafe',
+  restaurant: 'restaurant',
+} as const;
+
 export type StoreCurrency = typeof StoreCurrency[keyof typeof StoreCurrency];
 
 
@@ -258,6 +273,8 @@ export interface Tenant {
   /** @nullable */
   email: string | null;
   businessType: string;
+  /** @nullable */
+  storeType: TenantStoreType;
   /**
      * @minLength 2
      * @maxLength 2
@@ -377,6 +394,18 @@ export const TenantInputPlan = {
   lifetime: 'lifetime',
 } as const;
 
+export type StoreType = typeof StoreType[keyof typeof StoreType];
+
+
+export const StoreType = {
+  clothing_shoes: 'clothing_shoes',
+  grocery_supermarket: 'grocery_supermarket',
+  electronics_accessories: 'electronics_accessories',
+  perfume_beauty: 'perfume_beauty',
+  cafe: 'cafe',
+  restaurant: 'restaurant',
+} as const;
+
 export interface TenantInput {
   /** @minLength 1 */
   name: string;
@@ -396,6 +425,7 @@ export interface TenantInput {
   email?: string | null;
   /** @minLength 1 */
   businessType: string;
+  storeType: StoreType;
   /**
      * @minLength 2
      * @maxLength 2

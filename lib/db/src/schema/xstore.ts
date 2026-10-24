@@ -21,6 +21,16 @@ export const xstoreTeamPermissions = [
 ] as const;
 export type XStoreTeamPermission = (typeof xstoreTeamPermissions)[number];
 
+export const xstoreStoreTypes = [
+  "clothing_shoes",
+  "grocery_supermarket",
+  "electronics_accessories",
+  "perfume_beauty",
+  "cafe",
+  "restaurant",
+] as const;
+export type XStoreStoreType = (typeof xstoreStoreTypes)[number];
+
 export type XStoreLine = {
   productId: string;
   quantity: number;
@@ -34,6 +44,7 @@ export const xstoreTenants = pgTable("xstore_tenants", {
   phone: text("phone"),
   email: text("email"),
   businessType: text("business_type").notNull(),
+  storeType: text("store_type").$type<XStoreStoreType>(),
   countryCode: text("country_code").notNull().default("EG"),
   currency: text("currency").notNull().default("SAR"),
   vatRate: numeric("vat_rate", { precision: 5, scale: 4 })

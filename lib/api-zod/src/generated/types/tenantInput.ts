@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { StoreCurrency } from './storeCurrency';
+import type { StoreType } from './storeType';
 import type { TenantInputPlan } from './tenantInputPlan';
 
 export interface TenantInput {
@@ -27,6 +28,7 @@ export interface TenantInput {
   email?: string | null;
   /** @minLength 1 */
   businessType: string;
+  storeType: StoreType;
   /**
      * @minLength 2
      * @maxLength 2

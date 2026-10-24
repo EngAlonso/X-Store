@@ -114,6 +114,17 @@ const currencyOptions: { value: StoreCurrency; label: string; shortLabel: string
 ];
 const currencyLabels = Object.fromEntries(currencyOptions.map(({ value, label }) => [value, label])) as Record<StoreCurrency, string>;
 const currencyShortLabels = Object.fromEntries(currencyOptions.map(({ value, shortLabel }) => [value, shortLabel])) as Record<StoreCurrency, string>;
+const storeTypeOptions = [
+  { value: 'clothing_shoes', label: 'الملابس والأحذية' },
+  { value: 'grocery_supermarket', label: 'البقالة والسوبرماركت' },
+  { value: 'electronics_accessories', label: 'الإلكترونيات والإكسسوارات' },
+  { value: 'perfume_beauty', label: 'العطور والتجميل' },
+  { value: 'cafe', label: 'الكافيهات' },
+  { value: 'restaurant', label: 'المطاعم' },
+] as const;
+function storeTypeName(value: string | null | undefined) {
+  return storeTypeOptions.find((type) => type.value === value)?.label ?? 'غير محدد';
+}
 const CurrencyContext = createContext<StoreCurrency>('SAR');
 function ProductIconSymbol({ symbol, kind }: { symbol: string; kind: ProductIconKind }) {
   if (kind === 'jacket') {
@@ -648,7 +659,7 @@ function DashboardPage() {
 }
 function TenantTable({tenants,compact=false}:{tenants:Tenant[];compact?:boolean}) {
   if(!tenants.length)return <div className="empty-inline">لا توجد متاجر لعرضها.</div>;
-  return <div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th>{!compact&&<th>نوع النشاط</th>}<th>العملة</th><th>الحالة</th><th>الخطة</th>{!compact&&<th>الفروع</th>}</tr></thead><tbody>{tenants.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone||'—'}</small></td><td>{t.ownerName}</td>{!compact&&<td>{t.businessType}</td>}<td>{currencyLabels[t.currency as StoreCurrency] || t.currency}</td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td>{!compact&&<td>{fmt(t.branchCount)}</td>}</tr>)}</tbody></table></div>;
+  return <div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th>{!compact&&<th>نوع المتجر</th>}<th>العملة</th><th>الحالة</th><th>الخطة</th>{!compact&&<th>الفروع</th>}</tr></thead><tbody>{tenants.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone||'—'}</small></td><td>{t.ownerName}</td>{!compact&&<td><b>{storeTypeName(t.storeType)}</b><small>{t.businessType}</small></td>}<td>{currencyLabels[t.currency as StoreCurrency] || t.currency}</td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td>{!compact&&<td>{fmt(t.branchCount)}</td>}</tr>)}</tbody></table></div>;
 }
 function SalesTable({sales,compact=false,onReturn,onPrint,showAmounts=true}:{sales:Sale[];compact?:boolean;onReturn?:(s:Sale)=>void;onPrint?:(s:Sale)=>void;showAmounts?:boolean}) {
   const money=useMoney();
@@ -754,7 +765,7 @@ function TenantsPage() {
   const [dialog,setDialog]=useState(false);
   const [accessTenant,setAccessTenant]=useState<Tenant|null>(null);
   const [notice,setNotice]=useState('');
-  const filtered=useMemo(()=> (tenants.data||[]).filter(t=>`${t.name} ${t.ownerName} ${t.phone} ${t.email||''} ${getPhoneCountry(t.countryCode).name}`.toLowerCase().includes(search.toLowerCase())),[tenants.data,search]);
+  const filtered=useMemo(()=> (tenants.data||[]).filter(t=>`${t.name} ${t.ownerName} ${t.phone} ${t.email||''} ${t.businessType} ${storeTypeName(t.storeType)} ${getPhoneCountry(t.countryCode).name}`.toLowerCase().includes(search.toLowerCase())),[tenants.data,search]);
   function refreshTenants(){qc.invalidateQueries({queryKey:getListXStoreTenantsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});}
   function changeCurrency(tenant:Tenant, currency:StoreCurrency, select:HTMLSelectElement) {
     if(currency===tenant.currency)return;
@@ -774,6 +785,7 @@ function TenantsPage() {
       ownerPassword:String(f.get('ownerPassword')),
       email:String(f.get('email')||'').trim()||null,
       businessType:String(f.get('businessType')),
+      storeType:String(f.get('storeType')) as (typeof storeTypeOptions)[number]['value'],
       countryCode:String(f.get('countryCode')),
        currency:String(f.get('currency')) as StoreCurrency,
       plan:String(f.get('plan')) as 'monthly'|'annual'|'half_yearly'|'lifetime',
@@ -789,15 +801,17 @@ function TenantsPage() {
     <div className="tenant-summary"><span><Store size={17}/> {fmt(filtered.length)} متجر</span><span><CircleCheck size={17}/> {fmt(filtered.filter(t=>t.status==='active').length)} نشط</span><span><Clock3 size={17}/> {fmt(filtered.filter(t=>t.status==='trial').length)} تجريبي</span></div>
     <Card><SectionHead title="قائمة المتاجر" detail="تحديث الحالة وتغيير بيانات دخول المالك مسجلان في سجل التدقيق."/>
       <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم المتجر أو المالك أو الهاتف" data-testid="input-search-tenants"/></label><span className="result-count">{fmt(filtered.length)} نتيجة</span></div>
-      {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع النشاط</th><th>العملة الأساسية</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td>{t.businessType}<small>{getPhoneCountry(t.countryCode).name} (+{getPhoneCountry(t.countryCode).callingCode})</small></td><td><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></td></tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
+      {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع المتجر والنشاط</th><th>العملة الأساسية</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td><b>{storeTypeName(t.storeType)}</b><small>{t.businessType} · {getPhoneCountry(t.countryCode).name} (+{getPhoneCountry(t.countryCode).callingCode})</small></td><td><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></td></tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
     </Card>
     {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
     {dialog&&<Modal title="إضافة متجر وحساب مالكه" close={()=>setDialog(false)}><form className="form-grid" onSubmit={submit}>
-      <Field label="اسم المتجر" name="name" required/><Field label="اسم المالك" name="ownerName" required/>
+      <Field label="اسم المتجر" name="name" required/><label className="field"><span>نوع المتجر</span><select name="storeType" defaultValue="" required><option value="" disabled>اختر نوع المتجر</option>{storeTypeOptions.map(type=><option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
+      <Field label="اسم المالك" name="ownerName" required/>
       <Field label="رقم هاتف الدخول" name="phone" type="tel" required placeholder="+20 10 1234 5678"/>
       <Field label="كلمة مرور المالك" name="ownerPassword" type="password" required maxLength={128} placeholder="اكتب كلمة المرور"/>
       <Field label="البريد الإلكتروني (اختياري)" name="email" type="email"/>
-      <Field label="نوع النشاط" name="businessType" required placeholder="مثال: ملابس"/>
+      <Field label="وصف النشاط" name="businessType" required placeholder="مثال: ملابس رجالي أو أزياء نسائية"/>
+      <div className="role-hint field-wide"><Store size={16}/><span>كل الأنواع تستخدم النظام الحالي مؤقتاً؛ سنخصص نظام كل نوع بعد تحديد احتياجاته.</span></div>
        <label className="field"><span>دولة المتجر</span><select name="countryCode" defaultValue="EG" required>{phoneCountries.map(country=><option key={country.countryCode} value={country.countryCode}>{country.name} (+{country.callingCode})</option>)}</select></label>
        <div className="role-hint field-wide"><Phone size={16}/><span>سيُستخدم مفتاح الدولة تلقائيًا في أرقام العملاء على فواتير هذا المتجر.</span></div>
        <label className="field"><span>العملة الأساسية</span><select name="currency" defaultValue="SAR">{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></label>

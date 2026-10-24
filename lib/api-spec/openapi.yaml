@@ -1185,6 +1185,9 @@ components:
         phone: { type: ["string", "null"] }
         email: { type: ["string", "null"], format: email }
         businessType: { type: string }
+        storeType:
+          type: ["string", "null"]
+          enum: [clothing_shoes, grocery_supermarket, electronics_accessories, perfume_beauty, cafe, restaurant, null]
         countryCode: { type: string, minLength: 2, maxLength: 2, pattern: "^[A-Z]{2}$" }
         currency: { $ref: "#/components/schemas/StoreCurrency" }
         status:
@@ -1203,6 +1206,7 @@ components:
         - phone
         - email
         - businessType
+        - storeType
         - countryCode
         - currency
         - status
@@ -1219,13 +1223,14 @@ components:
         ownerPassword: { type: string, minLength: 1, maxLength: 128 }
         email: { type: ["string", "null"], format: email }
         businessType: { type: string, minLength: 1 }
+        storeType: { $ref: "#/components/schemas/StoreType" }
         countryCode: { type: string, minLength: 2, maxLength: 2, pattern: "^[A-Z]{2}$" }
         currency: { $ref: "#/components/schemas/StoreCurrency" }
         plan:
           type: string
           enum: [monthly, half_yearly, annual, lifetime]
         subscriptionEndsAt: { type: ["string", "null"], format: date }
-      required: [name, ownerName, phone, ownerPassword, businessType, countryCode, currency, plan]
+      required: [name, ownerName, phone, ownerPassword, businessType, storeType, countryCode, currency, plan]
     TenantCredentialsInput:
       type: object
       properties:
@@ -1243,6 +1248,9 @@ components:
           type: string
           enum: [monthly, half_yearly, annual, lifetime]
         subscriptionEndsAt: { type: ["string", "null"], format: date }
+    StoreType:
+      type: string
+      enum: [clothing_shoes, grocery_supermarket, electronics_accessories, perfume_beauty, cafe, restaurant]
     StoreCurrency:
       type: string
       enum: [EGP, SAR, AED, USD, EUR, GBP]

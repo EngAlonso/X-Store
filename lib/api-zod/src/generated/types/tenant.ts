@@ -8,6 +8,7 @@
 import type { StoreCurrency } from './storeCurrency';
 import type { TenantPlan } from './tenantPlan';
 import type { TenantStatus } from './tenantStatus';
+import type { TenantStoreType } from './tenantStoreType';
 
 export interface Tenant {
   id: string;
@@ -18,6 +19,8 @@ export interface Tenant {
   /** @nullable */
   email: string | null;
   businessType: string;
+  /** @nullable */
+  storeType: TenantStoreType;
   /**
      * @minLength 2
      * @maxLength 2
