@@ -18,6 +18,12 @@ export interface Tenant {
   /** @nullable */
   email: string | null;
   businessType: string;
+  /**
+     * @minLength 2
+     * @maxLength 2
+     * @pattern ^[A-Z]{2}$
+     */
+  countryCode: string;
   currency: StoreCurrency;
   status: TenantStatus;
   plan: TenantPlan;

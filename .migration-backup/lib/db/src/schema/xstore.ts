@@ -34,6 +34,7 @@ export const xstoreTenants = pgTable("xstore_tenants", {
   phone: text("phone"),
   email: text("email"),
   businessType: text("business_type").notNull(),
+  countryCode: text("country_code").notNull().default("EG"),
   currency: text("currency").notNull().default("SAR"),
   vatRate: numeric("vat_rate", { precision: 5, scale: 4 })
     .notNull()

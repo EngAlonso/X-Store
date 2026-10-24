@@ -26,6 +26,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { getProductIcon, matchesProductSearch, type ProductIconKind } from '@/lib/product-icons';
 import { createWhatsAppInvoiceUrl, getWhatsAppDigits } from '@/lib/whatsapp-invoice';
+import { getPhoneCountry, phoneCountries, phoneNumberForCountry, splitInternationalPhone } from '@/lib/phone-countries';
 import './auth-unified.css';
 import {
   LayoutDashboard, Store, Package, ShoppingCart, ReceiptText, ScrollText, Search, Plus,
@@ -753,7 +754,7 @@ function TenantsPage() {
   const [dialog,setDialog]=useState(false);
   const [accessTenant,setAccessTenant]=useState<Tenant|null>(null);
   const [notice,setNotice]=useState('');
-  const filtered=useMemo(()=> (tenants.data||[]).filter(t=>`${t.name} ${t.ownerName} ${t.phone} ${t.email||''}`.toLowerCase().includes(search.toLowerCase())),[tenants.data,search]);
+  const filtered=useMemo(()=> (tenants.data||[]).filter(t=>`${t.name} ${t.ownerName} ${t.phone} ${t.email||''} ${getPhoneCountry(t.countryCode).name}`.toLowerCase().includes(search.toLowerCase())),[tenants.data,search]);
   function refreshTenants(){qc.invalidateQueries({queryKey:getListXStoreTenantsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});}
   function changeCurrency(tenant:Tenant, currency:StoreCurrency, select:HTMLSelectElement) {
     if(currency===tenant.currency)return;
@@ -773,6 +774,7 @@ function TenantsPage() {
       ownerPassword:String(f.get('ownerPassword')),
       email:String(f.get('email')||'').trim()||null,
       businessType:String(f.get('businessType')),
+      countryCode:String(f.get('countryCode')),
        currency:String(f.get('currency')) as StoreCurrency,
       plan:String(f.get('plan')) as 'monthly'|'annual'|'half_yearly'|'lifetime',
     }},{onSuccess:()=>{refreshTenants();setDialog(false);setNotice('تم إنشاء المتجر وحساب المالك');}});
@@ -787,7 +789,7 @@ function TenantsPage() {
     <div className="tenant-summary"><span><Store size={17}/> {fmt(filtered.length)} متجر</span><span><CircleCheck size={17}/> {fmt(filtered.filter(t=>t.status==='active').length)} نشط</span><span><Clock3 size={17}/> {fmt(filtered.filter(t=>t.status==='trial').length)} تجريبي</span></div>
     <Card><SectionHead title="قائمة المتاجر" detail="تحديث الحالة وتغيير بيانات دخول المالك مسجلان في سجل التدقيق."/>
       <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم المتجر أو المالك أو الهاتف" data-testid="input-search-tenants"/></label><span className="result-count">{fmt(filtered.length)} نتيجة</span></div>
-      {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع النشاط</th><th>العملة الأساسية</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td>{t.businessType}</td><td><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></td></tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
+      {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع النشاط</th><th>العملة الأساسية</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td>{t.businessType}<small>{getPhoneCountry(t.countryCode).name} (+{getPhoneCountry(t.countryCode).callingCode})</small></td><td><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></td></tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
     </Card>
     {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
     {dialog&&<Modal title="إضافة متجر وحساب مالكه" close={()=>setDialog(false)}><form className="form-grid" onSubmit={submit}>
@@ -796,6 +798,8 @@ function TenantsPage() {
       <Field label="كلمة مرور المالك" name="ownerPassword" type="password" required maxLength={128} placeholder="اكتب كلمة المرور"/>
       <Field label="البريد الإلكتروني (اختياري)" name="email" type="email"/>
       <Field label="نوع النشاط" name="businessType" required placeholder="مثال: ملابس"/>
+       <label className="field"><span>دولة المتجر</span><select name="countryCode" defaultValue="EG" required>{phoneCountries.map(country=><option key={country.countryCode} value={country.countryCode}>{country.name} (+{country.callingCode})</option>)}</select></label>
+       <div className="role-hint field-wide"><Phone size={16}/><span>سيُستخدم مفتاح الدولة تلقائيًا في أرقام العملاء على فواتير هذا المتجر.</span></div>
        <label className="field"><span>العملة الأساسية</span><select name="currency" defaultValue="SAR">{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></label>
       <label className="field"><span>الخطة</span><select name="plan"><option value="monthly">شهري</option><option value="half_yearly">نصف سنوي</option><option value="annual">سنوي</option><option value="lifetime">مدى الحياة</option></select></label>
        <div className="role-hint field-wide"><Banknote size={16}/><span>ستُستخدم العملة لعرض أسعار المنتجات والمبيعات والتقارير. تغييرها لاحقاً لا يحوّل الأرقام المحفوظة.</span></div>
@@ -1513,12 +1517,26 @@ function PosPage() {
   const [exchangeReplacementProductId,setExchangeReplacementProductId]=useState(''),[exchangeReplacementQuantity,setExchangeReplacementQuantity]=useState(1);
   const [exchangeAmountReceived,setExchangeAmountReceived]=useState('');
   const exchangeInvoiceItems=useGetXStoreSaleInvoiceItems(exchangeLoadedInvoiceNo,{query:{queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo),enabled:Boolean(exchangeLoadedInvoiceNo)}});
-  const [customerName,setCustomerName]=useState(''),[customerPhone,setCustomerPhone]=useState(''),[invoiceReference,setInvoiceReference]=useState(createHeldInvoiceReference),[receiptSale,setReceiptSale]=useState<Sale|null>(null);
-  const customerWhatsappNumber=getWhatsAppDigits(customerPhone);
+  const [customerName,setCustomerName]=useState(''),[customerPhone,setCustomerPhone]=useState(''),[phoneCountryOverride,setPhoneCountryOverride]=useState<string|null>(null),[invoiceReference,setInvoiceReference]=useState(createHeldInvoiceReference),[receiptSale,setReceiptSale]=useState<Sale|null>(null);
+  const phoneCountry=getPhoneCountry(phoneCountryOverride??session.data?.countryCode);
+  const invoicePhone=phoneNumberForCountry(phoneCountry.countryCode,customerPhone);
+  const customerWhatsappNumber=getWhatsAppDigits(invoicePhone);
   const customerPhoneInvalid=Boolean(customerPhone.trim()&&!customerWhatsappNumber);
+  function changeCustomerPhone(value:string) {
+    if (/^\s*(?:\+|00)/.test(value)) {
+      const international=splitInternationalPhone(value);
+      if (international.countryCode) {
+        setPhoneCountryOverride(international.countryCode);
+        setCustomerPhone(international.nationalNumber);
+        return;
+      }
+    }
+    if (!value.trim()) setPhoneCountryOverride(null);
+    setCustomerPhone(value);
+  }
   const visible=(products.data||[]).filter(p=>matchesProductSearch(p,term));
   const cartLines=(products.data||[]).filter(p=>cart[p.id]).map(p=>({...p,count:cart[p.id]}));
-  useEffect(()=>{if(!cartLines.length){if(customerPhone)setCustomerPhone('');if(customerName)setCustomerName('')}},[cartLines.length,customerPhone,customerName]);
+   useEffect(()=>{if(!cartLines.length){if(customerPhone)setCustomerPhone('');if(phoneCountryOverride)setPhoneCountryOverride(null);if(customerName)setCustomerName('')}},[cartLines.length,customerPhone,phoneCountryOverride,customerName]);
   const subtotal=roundMoney(cartLines.reduce((s,p)=>s+p.price*p.count,0)), disc=Math.min(subtotal,roundMoney(Math.max(0,Number(discount)||0))), tax=roundMoney((subtotal-disc)*vatRate), total=roundMoney(subtotal-disc+tax);
   const exchangeReturnedAmount=roundMoney(Object.entries(exchangeReturnItems).reduce((sum,[productId,quantity])=>{
     const item=exchangeInvoiceItems.data?.find(line=>line.productId===productId);
@@ -1532,9 +1550,9 @@ function PosPage() {
   useEffect(()=>{setExchangeAmountReceived(exchangeBalanceDue>0?String(exchangeBalanceDue):'0')},[exchangeBalanceDue]);
   const add=(p:Product)=>setCart(c=>({...c,[p.id]:Math.min(p.quantity,(c[p.id]||0)+1)}));
   const mutateCart=(id:string,n:number)=>setCart(c=>{const value=(c[id]||0)+n;if(value<=0){const next={...c};delete next[id];return next}return {...c,[id]:value}});
-  function finish(){if(!cartLines.length||customerPhoneInvalid)return;checkout.mutate({data:{invoiceNo:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:roundMoney(Number(received)||total),customerName:customerName.trim()||null,customerPhone:customerPhone.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference());setPayment('cash');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreProfitLossReportQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
-  function park(){if(!cartLines.length||customerPhoneInvalid)return;hold.mutate({data:{reference:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),customerName:customerName.trim()||null,customerPhone:customerPhone.trim()||null,discountAmount:disc,paymentMethod:payment,amountReceived:roundMoney(Number(received)||0)}},{onSuccess:heldSale=>{setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference());setPayment('cash');qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice(`تم تعليق الفاتورة ${heldSale.reference}`)}})}
-  function clearCurrentCart(){setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setInvoiceReference(createHeldInvoiceReference())}
+   function finish(){if(!cartLines.length||customerPhoneInvalid)return;checkout.mutate({data:{invoiceNo:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:roundMoney(Number(received)||total),customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreProfitLossReportQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
+   function park(){if(!cartLines.length||customerPhoneInvalid)return;hold.mutate({data:{reference:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null,discountAmount:disc,paymentMethod:payment,amountReceived:roundMoney(Number(received)||0)}},{onSuccess:heldSale=>{setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice(`تم تعليق الفاتورة ${heldSale.reference}`)}})}
+   function clearCurrentCart(){setCart({});setDiscount('0');setReceived('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference())}
   function closeExchange(){setExchangeOpen(false);setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setExchangeReplacementProductId('');setExchangeReplacementQuantity(1);setExchangeAmountReceived('')}
    function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const returnItems=Object.entries(exchangeReturnItems).map(([productId,quantity])=>({productId,quantity}));if(!exchangeLoadedInvoiceNo||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()||!returnItems.length||!exchangeReplacementProductId)return;exchange.mutate({data:{invoiceNo:exchangeLoadedInvoiceNo,returnItems,replacementItems:[{productId:exchangeReplacementProductId,quantity:exchangeReplacementQuantity}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(exchangeAmountReceived)||0}},{onSuccess:r=>{closeExchange();const settlement=r.changeAmount>0?(r.balanceDue>0?`الباقي للعميل ${money(r.changeAmount)}`:`المبلغ المسترد للعميل ${money(r.changeAmount)}`):'';setNotice([`تم الاستبدال · ${r.exchangeInvoiceNo}`,settlement].filter(Boolean).join(' · '));qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreProfitLossReportQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo)})}})}
   return <>
@@ -1580,7 +1598,7 @@ function PosPage() {
           <div className="payment-tabs">{(['cash','card','wallet'] as const).map((m,i)=>{const I=[Banknote,CreditCard,Wallet][i];return <button key={m} onClick={()=>setPayment(m)} className={payment===m?'payment-active':''}><I size={16}/>{paymentName(m)}</button>})}</div>
           {payment==='cash'&&<label className="received-field"><span>المبلغ المستلم</span><div><input type="number" min={total} value={received} onChange={e=>setReceived(e.target.value)} placeholder={fmt(total)}/><small>الباقي {money(Math.max(0,(Number(received)||total)-total))}</small></div></label>}
           <label className="customer-phone-field customer-name-field"><span><Users size={14}/> اسم العميل <em>اختياري</em></span><input type="text" maxLength={150} autoComplete="name" value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder="اكتب اسم العميل" aria-label="اسم العميل على الفاتورة" data-testid="input-customer-name" disabled={!cartLines.length}/></label>
-          <label className="customer-phone-field"><span><Phone size={14}/> رقم هاتف العميل على الفاتورة <em>اختياري</em></span><input type="tel" inputMode="tel" autoComplete="tel" dir="ltr" value={customerPhone} onChange={e=>setCustomerPhone(e.target.value)} placeholder="+20 10 1234 5678" aria-label="رقم هاتف العميل على الفاتورة" data-testid="input-customer-phone" disabled={!cartLines.length}/><small>اكتب الرقم بمفتاح الدولة لتفعيل الإرسال عبر واتساب.</small>{customerPhoneInvalid&&<small className="customer-phone-error" role="alert">تأكد من كتابة الرقم الدولي مع مفتاح الدولة، مثل +20.</small>}</label>
+          <label className="customer-phone-field"><span><Phone size={14}/> رقم هاتف العميل على الفاتورة <em>اختياري</em></span><div className="customer-phone-input" dir="ltr"><span className="customer-phone-prefix" aria-label={`مفتاح الدولة +${phoneCountry.callingCode}`}>+{phoneCountry.callingCode}</span><input type="tel" inputMode="tel" autoComplete="tel-national" dir="ltr" value={customerPhone} onChange={e=>changeCustomerPhone(e.target.value)} placeholder="10 1234 5678" aria-label="رقم هاتف العميل بدون مفتاح الدولة" data-testid="input-customer-phone" disabled={!cartLines.length}/></div><small>مفتاح الدولة ثابت حسب دولة المتجر: {phoneCountry.name} (+{phoneCountry.callingCode}).</small>{customerPhoneInvalid&&<small className="customer-phone-error" role="alert">تأكد من كتابة رقم هاتف صحيح لهذا المفتاح.</small>}</label>
           <div className="cart-actions">
             <button className="button button-quiet" onClick={park} disabled={!cartLines.length||hold.isPending||customerPhoneInvalid}><Pause size={15}/>{hold.isPending?'جارٍ الحفظ':'تعليق'}</button>
             <button className="button button-confirm" onClick={finish} disabled={!cartLines.length||checkout.isPending||customerPhoneInvalid||(payment==='cash'&&Number(received)>0&&roundMoney(Number(received))<total)}>{checkout.isPending?'جارٍ إتمام البيع':<><CircleCheck size={17}/> إتمام البيع</>}</button>
@@ -1610,7 +1628,9 @@ function PosPage() {
                 setReceived(h.amountReceived?String(h.amountReceived):'');
                 setPayment(h.paymentMethod);
                 setCustomerName(h.customerName||'');
-                setCustomerPhone(h.customerPhone||'');
+                const restoredPhone=splitInternationalPhone(h.customerPhone);
+                setCustomerPhone(restoredPhone.nationalNumber);
+                setPhoneCountryOverride(restoredPhone.countryCode);
                 setInvoiceReference(h.reference);
                 qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});
                 setHeldOpen(false);

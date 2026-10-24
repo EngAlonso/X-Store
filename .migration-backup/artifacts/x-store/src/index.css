@@ -2159,6 +2159,42 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   font-size:14px;
   padding:0 11px;
 }
+.pos-page .customer-phone-input {
+  display:flex;
+  align-items:center;
+  overflow:hidden;
+  border:1px solid #dfe7dd;
+  border-radius:9px;
+  background:#fffefa;
+}
+.pos-page .customer-phone-input:focus-within {
+  border-color:#7fa58a;
+  outline:2px solid rgba(85,133,98,.15);
+}
+.pos-page .customer-phone-field .customer-phone-input input {
+  flex:1;
+  min-width:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  outline:0;
+}
+.pos-page .customer-phone-field .customer-phone-input input:focus {
+  border:0;
+  outline:0;
+}
+.pos-page .customer-phone-prefix {
+  display:flex;
+  align-items:center;
+  align-self:stretch;
+  padding:0 12px;
+  border-right:1px solid #e3e9e1;
+  background:#f4f7f2;
+  color:#496650;
+  font-size:13px;
+  font-weight:700;
+  white-space:nowrap;
+}
 .pos-page .customer-phone-field input:focus {
   border-color:#7fa58a;
   outline:2px solid rgba(85,133,98,.15);

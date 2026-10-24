@@ -23,6 +23,13 @@ export interface SessionUser {
   tenantId: string | null;
   /** @nullable */
   tenantName: string | null;
+  /**
+     * @minLength 2
+     * @maxLength 2
+     * @nullable
+     * @pattern ^[A-Z]{2}$
+     */
+  countryCode: string | null;
   /** @nullable */
   currency: SessionUserCurrency;
   /**

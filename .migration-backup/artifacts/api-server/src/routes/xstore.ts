@@ -160,6 +160,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     ? await db
         .select({
           name: xstoreTenants.name,
+          countryCode: xstoreTenants.countryCode,
           currency: xstoreTenants.currency,
           vatRate: xstoreTenants.vatRate,
         })
@@ -177,6 +178,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     permissions: user.permissions ?? [],
     tenantId: user.tenantId,
     tenantName: tenant?.name ?? null,
+    countryCode: tenant?.countryCode ?? null,
     currency: tenant?.currency ?? null,
     vatRate: tenant ? toNumber(tenant.vatRate) : null,
   };
@@ -1101,6 +1103,7 @@ router.post("/xstore/tenants", async (req, res): Promise<void> => {
           phone,
           email: input.email?.trim().toLowerCase() || null,
           businessType: input.businessType,
+          countryCode: input.countryCode,
           currency: input.currency,
           status: "trial",
           plan: input.plan,

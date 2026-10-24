@@ -1060,11 +1060,12 @@ components:
             $ref: "#/components/schemas/TeamPermission"
         tenantId: { type: ["string", "null"] }
         tenantName: { type: ["string", "null"] }
+        countryCode: { type: ["string", "null"], minLength: 2, maxLength: 2, pattern: "^[A-Z]{2}$" }
         currency:
           type: ["string", "null"]
           enum: [EGP, SAR, AED, USD, EUR, GBP, null]
         vatRate: { type: ["number", "null"], minimum: 0, maximum: 1 }
-      required: [id, name, phone, email, role, roleName, permissions, tenantId, tenantName, currency, vatRate]
+      required: [id, name, phone, email, role, roleName, permissions, tenantId, tenantName, countryCode, currency, vatRate]
     StoreSettings:
       type: object
       properties:
@@ -1184,6 +1185,7 @@ components:
         phone: { type: ["string", "null"] }
         email: { type: ["string", "null"], format: email }
         businessType: { type: string }
+        countryCode: { type: string, minLength: 2, maxLength: 2, pattern: "^[A-Z]{2}$" }
         currency: { $ref: "#/components/schemas/StoreCurrency" }
         status:
           type: string
@@ -1201,6 +1203,7 @@ components:
         - phone
         - email
         - businessType
+        - countryCode
         - currency
         - status
         - plan
@@ -1216,12 +1219,13 @@ components:
         ownerPassword: { type: string, minLength: 1, maxLength: 128 }
         email: { type: ["string", "null"], format: email }
         businessType: { type: string, minLength: 1 }
+        countryCode: { type: string, minLength: 2, maxLength: 2, pattern: "^[A-Z]{2}$" }
         currency: { $ref: "#/components/schemas/StoreCurrency" }
         plan:
           type: string
           enum: [monthly, half_yearly, annual, lifetime]
         subscriptionEndsAt: { type: ["string", "null"], format: date }
-      required: [name, ownerName, phone, ownerPassword, businessType, currency, plan]
+      required: [name, ownerName, phone, ownerPassword, businessType, countryCode, currency, plan]
     TenantCredentialsInput:
       type: object
       properties:

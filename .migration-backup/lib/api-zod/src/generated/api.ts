@@ -85,6 +85,11 @@ export const CreateInitialPlatformOwnerBody = zod.object({
   "setupSecret": zod.string().min(1).max(createInitialPlatformOwnerBodySetupSecretMax)
 })
 
+export const createInitialPlatformOwnerResponseCountryCodeMin = 2;
+export const createInitialPlatformOwnerResponseCountryCodeMax = 2;
+
+
+export const createInitialPlatformOwnerResponseCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
 export const createInitialPlatformOwnerResponseVatRateMin = 0;
 export const createInitialPlatformOwnerResponseVatRateMax = 1;
 
@@ -100,6 +105,7 @@ export const CreateInitialPlatformOwnerResponse = zod.object({
   "permissions": zod.array(zod.enum(['cashier', 'warehouse_manager', 'accountant'])),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable(),
+  "countryCode": zod.string().min(createInitialPlatformOwnerResponseCountryCodeMin).max(createInitialPlatformOwnerResponseCountryCodeMax).regex(createInitialPlatformOwnerResponseCountryCodeRegExp).nullable(),
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
   "vatRate": zod.number().min(createInitialPlatformOwnerResponseVatRateMin).max(createInitialPlatformOwnerResponseVatRateMax).nullable()
 })
@@ -120,6 +126,11 @@ export const LoginXStoreWithPhoneBody = zod.object({
   "password": zod.string().min(1).max(loginXStoreWithPhoneBodyPasswordMax)
 })
 
+export const loginXStoreWithPhoneResponseCountryCodeMin = 2;
+export const loginXStoreWithPhoneResponseCountryCodeMax = 2;
+
+
+export const loginXStoreWithPhoneResponseCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
 export const loginXStoreWithPhoneResponseVatRateMin = 0;
 export const loginXStoreWithPhoneResponseVatRateMax = 1;
 
@@ -135,6 +146,7 @@ export const LoginXStoreWithPhoneResponse = zod.object({
   "permissions": zod.array(zod.enum(['cashier', 'warehouse_manager', 'accountant'])),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable(),
+  "countryCode": zod.string().min(loginXStoreWithPhoneResponseCountryCodeMin).max(loginXStoreWithPhoneResponseCountryCodeMax).regex(loginXStoreWithPhoneResponseCountryCodeRegExp).nullable(),
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
   "vatRate": zod.number().min(loginXStoreWithPhoneResponseVatRateMin).max(loginXStoreWithPhoneResponseVatRateMax).nullable()
 })
@@ -149,6 +161,11 @@ export const LogoutXStoreResponse = zod.void()
 /**
  * @summary Get the signed-in user's X-Store role
  */
+export const getXStoreSessionResponseCountryCodeMin = 2;
+export const getXStoreSessionResponseCountryCodeMax = 2;
+
+
+export const getXStoreSessionResponseCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
 export const getXStoreSessionResponseVatRateMin = 0;
 export const getXStoreSessionResponseVatRateMax = 1;
 
@@ -164,6 +181,7 @@ export const GetXStoreSessionResponse = zod.object({
   "permissions": zod.array(zod.enum(['cashier', 'warehouse_manager', 'accountant'])),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable(),
+  "countryCode": zod.string().min(getXStoreSessionResponseCountryCodeMin).max(getXStoreSessionResponseCountryCodeMax).regex(getXStoreSessionResponseCountryCodeRegExp).nullable(),
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
   "vatRate": zod.number().min(getXStoreSessionResponseVatRateMin).max(getXStoreSessionResponseVatRateMax).nullable()
 })
@@ -194,6 +212,13 @@ export const UpdateXStoreStoreSettingsResponse = zod.object({
 /**
  * @summary Get the role-scoped dashboard summary
  */
+export const getXStoreDashboardResponseLatestTenantsItemCountryCodeMin = 2;
+export const getXStoreDashboardResponseLatestTenantsItemCountryCodeMax = 2;
+
+
+export const getXStoreDashboardResponseLatestTenantsItemCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
+
+
 export const GetXStoreDashboardResponse = zod.object({
   "totalTenants": zod.number().int(),
   "activeTenants": zod.number().int(),
@@ -212,6 +237,7 @@ export const GetXStoreDashboardResponse = zod.object({
   "phone": zod.string().nullable(),
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
+  "countryCode": zod.string().min(getXStoreDashboardResponseLatestTenantsItemCountryCodeMin).max(getXStoreDashboardResponseLatestTenantsItemCountryCodeMax).regex(getXStoreDashboardResponseLatestTenantsItemCountryCodeRegExp),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
@@ -282,6 +308,13 @@ export const ListXStoreTenantsQueryParams = zod.object({
   "businessType": zod.coerce.string().optional()
 })
 
+export const listXStoreTenantsResponseCountryCodeMin = 2;
+export const listXStoreTenantsResponseCountryCodeMax = 2;
+
+
+export const listXStoreTenantsResponseCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
+
+
 export const ListXStoreTenantsResponseItem = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -289,6 +322,7 @@ export const ListXStoreTenantsResponseItem = zod.object({
   "phone": zod.string().nullable(),
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
+  "countryCode": zod.string().min(listXStoreTenantsResponseCountryCodeMin).max(listXStoreTenantsResponseCountryCodeMax).regex(listXStoreTenantsResponseCountryCodeRegExp),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
@@ -310,6 +344,11 @@ export const createXStoreTenantBodyPhoneMax = 20;
 export const createXStoreTenantBodyOwnerPasswordMax = 128;
 
 
+export const createXStoreTenantBodyCountryCodeMin = 2;
+export const createXStoreTenantBodyCountryCodeMax = 2;
+
+
+export const createXStoreTenantBodyCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
 
 
 export const CreateXStoreTenantBody = zod.object({
@@ -319,10 +358,18 @@ export const CreateXStoreTenantBody = zod.object({
   "ownerPassword": zod.string().min(1).max(createXStoreTenantBodyOwnerPasswordMax),
   "email": zod.string().email().nullish(),
   "businessType": zod.string().min(1),
+  "countryCode": zod.string().min(createXStoreTenantBodyCountryCodeMin).max(createXStoreTenantBodyCountryCodeMax).regex(createXStoreTenantBodyCountryCodeRegExp),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
   "subscriptionEndsAt": zod.coerce.date().nullish()
 })
+
+export const createXStoreTenantResponseCountryCodeMin = 2;
+export const createXStoreTenantResponseCountryCodeMax = 2;
+
+
+export const createXStoreTenantResponseCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
+
 
 export const CreateXStoreTenantResponse = zod.object({
   "id": zod.string(),
@@ -331,6 +378,7 @@ export const CreateXStoreTenantResponse = zod.object({
   "phone": zod.string().nullable(),
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
+  "countryCode": zod.string().min(createXStoreTenantResponseCountryCodeMin).max(createXStoreTenantResponseCountryCodeMax).regex(createXStoreTenantResponseCountryCodeRegExp),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
@@ -354,6 +402,13 @@ export const UpdateXStoreTenantBody = zod.object({
   "subscriptionEndsAt": zod.coerce.date().nullish()
 })
 
+export const updateXStoreTenantResponseCountryCodeMin = 2;
+export const updateXStoreTenantResponseCountryCodeMax = 2;
+
+
+export const updateXStoreTenantResponseCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
+
+
 export const UpdateXStoreTenantResponse = zod.object({
   "id": zod.string(),
   "name": zod.string(),
@@ -361,6 +416,7 @@ export const UpdateXStoreTenantResponse = zod.object({
   "phone": zod.string().nullable(),
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
+  "countryCode": zod.string().min(updateXStoreTenantResponseCountryCodeMin).max(updateXStoreTenantResponseCountryCodeMax).regex(updateXStoreTenantResponseCountryCodeRegExp),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),

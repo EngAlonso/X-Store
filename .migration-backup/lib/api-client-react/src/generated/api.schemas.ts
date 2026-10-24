@@ -63,6 +63,13 @@ export interface SessionUser {
   tenantId: string | null;
   /** @nullable */
   tenantName: string | null;
+  /**
+     * @minLength 2
+     * @maxLength 2
+     * @nullable
+     * @pattern ^[A-Z]{2}$
+     */
+  countryCode: string | null;
   /** @nullable */
   currency: SessionUserCurrency;
   /**
@@ -251,6 +258,12 @@ export interface Tenant {
   /** @nullable */
   email: string | null;
   businessType: string;
+  /**
+     * @minLength 2
+     * @maxLength 2
+     * @pattern ^[A-Z]{2}$
+     */
+  countryCode: string;
   currency: StoreCurrency;
   status: TenantStatus;
   plan: TenantPlan;
@@ -383,6 +396,12 @@ export interface TenantInput {
   email?: string | null;
   /** @minLength 1 */
   businessType: string;
+  /**
+     * @minLength 2
+     * @maxLength 2
+     * @pattern ^[A-Z]{2}$
+     */
+  countryCode: string;
   currency: StoreCurrency;
   plan: TenantInputPlan;
   /** @nullable */

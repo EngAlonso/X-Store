@@ -27,6 +27,12 @@ export interface TenantInput {
   email?: string | null;
   /** @minLength 1 */
   businessType: string;
+  /**
+     * @minLength 2
+     * @maxLength 2
+     * @pattern ^[A-Z]{2}$
+     */
+  countryCode: string;
   currency: StoreCurrency;
   plan: TenantInputPlan;
   /** @nullable */
