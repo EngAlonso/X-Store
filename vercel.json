@@ -4,7 +4,7 @@
     "api-server": {
       "root": "artifacts/api-server",
       "framework": "express",
-      "entrypoint": "src/app.ts"
+      "entrypoint": "src/index.ts"
     },
     "x-store": {
       "root": "artifacts/x-store",
