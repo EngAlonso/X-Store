@@ -10,6 +10,7 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm run migrate:production` — apply pending tracked migrations to Aiven production using the `AIVEN_PRODUCTION_DATABASE_URL` Replit Secret and the checked-in Project CA certificate.
 
 ## Stack
 
