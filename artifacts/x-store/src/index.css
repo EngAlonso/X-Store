@@ -2979,6 +2979,137 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   }
 }
 
+.receipt-modal--thermal-80 {
+  width: min(100%, 80mm);
+  border-radius: 14px;
+}
+
+.receipt-modal--thermal-58 {
+  width: min(100%, 58mm);
+  border-radius: 12px;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-top,
+.receipt-modal--thermal-58 .receipt-refined-top {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 13px;
+}
+
+.receipt-modal--thermal-80 .receipt-success-mark,
+.receipt-modal--thermal-58 .receipt-success-mark {
+  display: none;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-title h2 {
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.receipt-modal--thermal-58 .receipt-refined-title h2 {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-amount,
+.receipt-modal--thermal-58 .receipt-refined-amount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 7px 0 0;
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: right;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-amount strong {
+  margin: 0;
+  font-size: 15px;
+}
+
+.receipt-modal--thermal-58 .receipt-refined-amount strong {
+  margin: 0;
+  font-size: 12px;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-body,
+.receipt-modal--thermal-58 .receipt-refined-body {
+  padding: 12px;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-meta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.receipt-modal--thermal-58 .receipt-refined-meta {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  margin-bottom: 8px;
+}
+
+.receipt-modal--thermal-80 .receipt-meta-item,
+.receipt-modal--thermal-58 .receipt-meta-item {
+  padding: 6px;
+}
+
+.receipt-modal--thermal-80 .receipt-meta-item span,
+.receipt-modal--thermal-58 .receipt-meta-item span {
+  margin-bottom: 3px;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .receipt-meta-item b,
+.receipt-modal--thermal-58 .receipt-meta-item b {
+  font-size: 9px;
+}
+
+.receipt-modal--thermal-80 .receipt-success-row {
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.receipt-modal--thermal-58 .receipt-success-row {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-summary,
+.receipt-modal--thermal-58 .receipt-refined-summary {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.receipt-modal--thermal-80 .receipt-payment-details,
+.receipt-modal--thermal-58 .receipt-payment-details,
+.receipt-modal--thermal-80 .receipt-total-panel,
+.receipt-modal--thermal-58 .receipt-total-panel {
+  gap: 6px;
+  padding: 8px;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.receipt-modal--thermal-80 .receipt-refined-actions .button:last-child {
+  grid-column: 1 / -1;
+}
+
+.receipt-modal--thermal-58 .receipt-refined-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.receipt-modal--thermal-58 .receipt-refined-actions .button {
+  width: 100%;
+}
+
 @media print {
   @page { margin: 0; }
   .receipt-modal {
