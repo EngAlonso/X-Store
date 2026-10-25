@@ -18,11 +18,27 @@ function getPoolConfig() {
   const caCertificate = process.env.DATABASE_CA_CERT?.trim();
   const parsedUrl = new URL(connectionString);
   const isAiven = parsedUrl.hostname.endsWith(".aivencloud.com");
+  const disableSsl = process.env.XSTORE_DISABLE_DB_SSL === "1";
 
   if (isAiven && !caCertificate) {
     throw new Error(
       "DATABASE_CA_CERT must be set to the Aiven project CA certificate.",
     );
+  }
+
+  if (disableSsl && !isAiven) {
+    // Replit's development database does not accept SSL, even if its URL
+    // contains SSL options. Keep this override limited to the dev command.
+    for (const key of [
+      "sslmode",
+      "sslrootcert",
+      "sslcert",
+      "sslkey",
+      "uselibpqcompat",
+    ]) {
+      parsedUrl.searchParams.delete(key);
+    }
+    return { connectionString: parsedUrl.toString(), ssl: false };
   }
 
   if (!caCertificate) {
