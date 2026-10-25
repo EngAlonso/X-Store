@@ -814,6 +814,9 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
       </div>
     </div>
     <div className="receipt-refined-body">
+      <div className="receipt-watermark" aria-hidden="true">
+        <img src={`${basePath}/x-store-receipt-watermark.jpeg`} alt=""/>
+      </div>
       <div className="receipt-success-row">
         <span className="receipt-paid-status"><CircleCheck size={14}/>{sale.status==='completed'?'مدفوعة':statusNames[sale.status]} · {paymentName(sale.paymentMethod)}</span>
         <span className="receipt-refined-invoice">رقم الفاتورة <b>{sale.invoiceNo}</b></span>
