@@ -249,11 +249,20 @@ export const GetXStoreDashboardResponse = zod.object({
   "latestSales": zod.array(zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
+  "tenantName": zod.string().nullish(),
   "invoiceNo": zod.string(),
   "cashierName": zod.string(),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
   "itemCount": zod.number().int(),
+  "items": zod.array(zod.object({
+  "productId": zod.string(),
+  "name": zod.string(),
+  "sku": zod.string(),
+  "unitPrice": zod.number(),
+  "quantity": zod.number().int(),
+  "returnedQuantity": zod.number().int()
+})).optional(),
   "subtotal": zod.number(),
   "discountAmount": zod.number(),
   "taxAmount": zod.number(),
@@ -863,11 +872,20 @@ export const ListXStoreSalesQueryParams = zod.object({
 export const ListXStoreSalesResponseItem = zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
+  "tenantName": zod.string().nullish(),
   "invoiceNo": zod.string(),
   "cashierName": zod.string(),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
   "itemCount": zod.number().int(),
+  "items": zod.array(zod.object({
+  "productId": zod.string(),
+  "name": zod.string(),
+  "sku": zod.string(),
+  "unitPrice": zod.number(),
+  "quantity": zod.number().int(),
+  "returnedQuantity": zod.number().int()
+})).optional(),
   "subtotal": zod.number(),
   "discountAmount": zod.number(),
   "taxAmount": zod.number(),
@@ -939,11 +957,20 @@ export const CheckoutXStoreSaleBody = zod.object({
 export const CheckoutXStoreSaleResponse = zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
+  "tenantName": zod.string().nullish(),
   "invoiceNo": zod.string(),
   "cashierName": zod.string(),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
   "itemCount": zod.number().int(),
+  "items": zod.array(zod.object({
+  "productId": zod.string(),
+  "name": zod.string(),
+  "sku": zod.string(),
+  "unitPrice": zod.number(),
+  "quantity": zod.number().int(),
+  "returnedQuantity": zod.number().int()
+})).optional(),
   "subtotal": zod.number(),
   "discountAmount": zod.number(),
   "taxAmount": zod.number(),

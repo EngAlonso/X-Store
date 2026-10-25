@@ -661,14 +661,29 @@ function TenantTable({tenants,compact=false}:{tenants:Tenant[];compact?:boolean}
   if(!tenants.length)return <div className="empty-inline">لا توجد متاجر لعرضها.</div>;
   return <div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th>{!compact&&<th>نوع المتجر</th>}<th>العملة</th><th>الحالة</th><th>الخطة</th>{!compact&&<th>الفروع</th>}</tr></thead><tbody>{tenants.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone||'—'}</small></td><td>{t.ownerName}</td>{!compact&&<td><b>{storeTypeName(t.storeType)}</b><small>{t.businessType}</small></td>}<td>{currencyLabels[t.currency as StoreCurrency] || t.currency}</td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td>{!compact&&<td>{fmt(t.branchCount)}</td>}</tr>)}</tbody></table></div>;
 }
-function SalesTable({sales,compact=false,onReturn,onPrint,showAmounts=true}:{sales:Sale[];compact?:boolean;onReturn?:(s:Sale)=>void;onPrint?:(s:Sale)=>void;showAmounts?:boolean}) {
+function SaleItemsTable({items,money,variant='history'}:{items:NonNullable<Sale['items']>;money:(value:number)=>string;variant?:'history'|'receipt'}) {
+  if(!items.length)return <p className={variant==='receipt'?'receipt-lines-empty':'sale-lines-empty'}>لا توجد تفاصيل أصناف محفوظة لهذه الفاتورة.</p>;
+  return <div className={variant==='receipt'?'receipt-lines-wrap':'sale-lines-wrap'}>
+    <table className={variant==='receipt'?'receipt-lines-table':'sale-lines-table'}>
+      <thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead>
+      <tbody>{items.map((item,index)=><tr key={`${item.productId}-${index}`}>
+        <td><b>{item.name}</b>{item.sku&&<small>{item.sku}</small>}{item.returnedQuantity>0&&<small className="sale-line-returned">مرتجع: {fmt(item.returnedQuantity)}</small>}</td>
+        <td>{fmt(item.quantity)}</td>
+        <td>{money(item.unitPrice)}</td>
+        <td><b>{money(roundMoney(item.unitPrice*item.quantity))}</b></td>
+      </tr>)}</tbody>
+    </table>
+  </div>;
+}
+function SalesTable({sales,compact=false,onReturn,onPrint,onToggleItems,expandedSaleId,showAmounts=true}:{sales:Sale[];compact?:boolean;onReturn?:(s:Sale)=>void;onPrint?:(s:Sale)=>void;onToggleItems?:(s:Sale)=>void;expandedSaleId?:string|null;showAmounts?:boolean}) {
   const money=useMoney();
   if(!sales.length)return <div className="empty-inline">لا توجد عمليات بيع لعرضها.</div>;
-  const columnCount=3+Number(!compact)+Number(showAmounts)+1+Number(Boolean(onReturn||onPrint));
+  const hasActions=Boolean(onReturn||onPrint||onToggleItems);
+  const columnCount=3+Number(!compact)+Number(showAmounts)+1+Number(hasActions);
   return (
     <div className="table-wrap">
       <table>
-        <thead><tr><th>رقم الفاتورة</th><th>التاريخ والوقت</th><th>الأصناف</th>{!compact&&<th>الدفع</th>}{showAmounts&&<th>الإجمالي</th>}<th>الحالة</th>{(onReturn||onPrint)&&<th>إجراء</th>}</tr></thead>
+        <thead><tr><th>رقم الفاتورة</th><th>التاريخ والوقت</th><th>الأصناف</th>{!compact&&<th>الدفع</th>}{showAmounts&&<th>الإجمالي</th>}<th>الحالة</th>{hasActions&&<th>إجراء</th>}</tr></thead>
         <tbody>
           {sales.map(sale=>(
             <Fragment key={sale.id}>
@@ -679,8 +694,9 @@ function SalesTable({sales,compact=false,onReturn,onPrint,showAmounts=true}:{sal
                 {!compact&&<td>{paymentName(sale.paymentMethod)}</td>}
                 {showAmounts&&<td><b>{money(sale.total)}</b></td>}
                 <td><span className={`status-pill status-${sale.status}`}>{statusNames[sale.status]}</span></td>
-                {(onReturn||onPrint)&&<td className="table-actions-cell">{onPrint&&<button className="table-action" onClick={()=>onPrint(sale)} data-testid={`button-print-${sale.id}`}><Printer size={14}/> إيصال</button>}{onReturn&&<button className="table-action" onClick={()=>onReturn(sale)} data-testid={`button-return-${sale.id}`}><RotateCcw size={14}/> مرتجع</button>}</td>}
+                {hasActions&&<td className="table-actions-cell">{onToggleItems&&<button className="table-action" onClick={()=>onToggleItems(sale)} aria-expanded={expandedSaleId===sale.id} data-testid={`button-sale-items-${sale.id}`}><ReceiptText size={14}/> {expandedSaleId===sale.id?'إخفاء الأصناف':'الأصناف'}</button>}{onPrint&&<button className="table-action" onClick={()=>onPrint(sale)} data-testid={`button-print-${sale.id}`}><Printer size={14}/> إيصال</button>}{onReturn&&<button className="table-action" onClick={()=>onReturn(sale)} data-testid={`button-return-${sale.id}`}><RotateCcw size={14}/> مرتجع</button>}</td>}
               </tr>
+              {expandedSaleId===sale.id&&<tr className="sale-line-detail-row"><td colSpan={columnCount}><section className="sale-line-detail-panel"><b>الأصناف المباعة وأسعارها</b><SaleItemsTable items={sale.items??[]} money={money}/></section></td></tr>}
               {sale.exchangeEvents.map((event,index)=>(
                 <tr className="sale-exchange-row" key={`${sale.id}-${event.exchangeInvoiceNo}-${index}`}>
                   <td colSpan={columnCount}>
@@ -736,13 +752,18 @@ function heldWhatsAppMessage(held:HeldSale, products:Product[], money:(value:num
 }
 function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
   const money=useMoney();
+  const items=sale.items??[];
+  const storeName=sale.tenantName?.trim()||'المتجر';
   const whatsappMessage=[
-    `فاتورة بيع رقم ${sale.invoiceNo}`,
+    `فاتورة ${storeName} رقم ${sale.invoiceNo}`,
+    'X-Store',
     `الحالة: ${sale.status==='completed'?'مدفوعة':statusNames[sale.status]}`,
     ...(sale.customerName?[`العميل: ${sale.customerName}`]:[]),
     `التاريخ والوقت: ${dateTimeLabel(sale.createdAt)}`,
     `الحساب: ${sale.cashierName}`,
     `عدد الأصناف: ${fmt(sale.itemCount)}`,
+    'تفاصيل الأصناف:',
+    ...items.map(item=>`- ${item.name} × ${fmt(item.quantity)} · سعر الوحدة ${money(item.unitPrice)} · إجمالي الصنف ${money(roundMoney(item.unitPrice*item.quantity))}`),
     `طريقة الدفع: ${paymentName(sale.paymentMethod)}`,
     `المجموع الفرعي: ${money(sale.subtotal)}`,
     `الخصم: ${money(sale.discountAmount)}`,
@@ -752,8 +773,37 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
     `الباقي: ${money(sale.changeAmount)}`,
     'شكراً لزيارتكم',
   ].join('\n');
-  const whatsappUrl=createWhatsAppInvoiceUrl(sale.customerPhone,whatsappMessage);
-  return <div className="modal-backdrop receipt-backdrop"><section className="modal receipt-modal" role="dialog" aria-modal="true" dir="rtl"><div className="receipt-brand"><img src={`${basePath}/x-store-mark.png`} alt=""/><b>X-Store</b><span>إيصال بيع</span></div><div className="receipt-number"><span>رقم الفاتورة</span><b className="ltr-id">{sale.invoiceNo}</b></div><div className="receipt-detail"><span>الحالة</span><b>{sale.status==='completed'?'مدفوعة':statusNames[sale.status]}</b></div>{sale.customerName&&<div className="receipt-detail"><span>اسم العميل</span><b>{sale.customerName}</b></div>}<div className="receipt-detail"><span>الحساب المنفذ</span><b>{sale.cashierName}</b></div><div className="receipt-detail"><span>التاريخ والوقت</span><b>{dateTimeLabel(sale.createdAt)}</b></div><div className="receipt-detail"><span>رقم هاتف العميل</span><b className="ltr-id">{sale.customerPhone||'—'}</b></div><div className="receipt-detail"><span>عدد الأصناف</span><b>{fmt(sale.itemCount)}</b></div><div className="receipt-detail"><span>طريقة الدفع</span><b>{paymentName(sale.paymentMethod)}</b></div><div className="receipt-divider"/><div className="receipt-detail"><span>المجموع الفرعي</span><b>{money(sale.subtotal)}</b></div><div className="receipt-detail"><span>الخصم</span><b>{money(sale.discountAmount)}</b></div><div className="receipt-detail"><span>الضريبة</span><b>{money(sale.taxAmount)}</b></div><div className="receipt-grand"><span>الإجمالي</span><b>{money(sale.total)}</b></div><div className="receipt-detail"><span>المبلغ المستلم</span><b>{money(sale.amountReceived)}</b></div><div className="receipt-detail"><span>الباقي</span><b>{money(sale.changeAmount)}</b></div><p className="receipt-thanks">شكراً لزيارتكم</p><div className="modal-actions receipt-actions"><button className="button button-quiet" onClick={close}>إغلاق</button>{whatsappUrl&&<a className="button button-whatsapp" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><MessageCircle size={16}/> إرسال عبر واتساب</a>}<button className="button button-primary" onClick={()=>window.print()}><Printer size={16}/> طباعة الإيصال</button></div></section></div>;
+  const whatsappUrl=items.length?createWhatsAppInvoiceUrl(sale.customerPhone,whatsappMessage):null;
+  return <div className="modal-backdrop receipt-backdrop"><section className="modal receipt-modal" role="dialog" aria-modal="true" dir="rtl">
+    <div className="receipt-watermark" aria-hidden="true"><img src={`${basePath}/x-store-mark.png`} alt=""/><span>X-Store</span></div>
+    <div className="receipt-content">
+      <div className="receipt-store-header"><b>{storeName}</b><span>إيصال بيع</span></div>
+      <div className="receipt-number"><span>رقم الفاتورة</span><b className="ltr-id">{sale.invoiceNo}</b></div>
+      <div className="receipt-detail"><span>الحالة</span><b>{sale.status==='completed'?'مدفوعة':statusNames[sale.status]}</b></div>
+      {sale.customerName&&<div className="receipt-detail"><span>اسم العميل</span><b>{sale.customerName}</b></div>}
+      <div className="receipt-detail"><span>الحساب المنفذ</span><b>{sale.cashierName}</b></div>
+      <div className="receipt-detail"><span>التاريخ والوقت</span><b>{dateTimeLabel(sale.createdAt)}</b></div>
+      <div className="receipt-detail"><span>رقم هاتف العميل</span><b className="ltr-id">{sale.customerPhone||'—'}</b></div>
+      <div className="receipt-detail"><span>عدد الأصناف</span><b>{fmt(sale.itemCount)}</b></div>
+      <div className="receipt-detail"><span>طريقة الدفع</span><b>{paymentName(sale.paymentMethod)}</b></div>
+      <div className="receipt-divider"/>
+      <div className="receipt-items-heading">الأصناف المباعة</div>
+      <SaleItemsTable items={items} money={money} variant="receipt"/>
+      <div className="receipt-divider"/>
+      <div className="receipt-detail"><span>المجموع الفرعي</span><b>{money(sale.subtotal)}</b></div>
+      <div className="receipt-detail"><span>الخصم</span><b>{money(sale.discountAmount)}</b></div>
+      <div className="receipt-detail"><span>الضريبة</span><b>{money(sale.taxAmount)}</b></div>
+      <div className="receipt-grand"><span>الإجمالي</span><b>{money(sale.total)}</b></div>
+      <div className="receipt-detail"><span>المبلغ المستلم</span><b>{money(sale.amountReceived)}</b></div>
+      <div className="receipt-detail"><span>الباقي</span><b>{money(sale.changeAmount)}</b></div>
+      <p className="receipt-thanks">شكراً لزيارتكم</p>
+      <div className="modal-actions receipt-actions">
+        <button className="button button-quiet" onClick={close}>إغلاق</button>
+        {whatsappUrl&&<a className="button button-whatsapp" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><MessageCircle size={16}/> إرسال عبر واتساب</a>}
+        <button className="button button-primary" disabled={!items.length} title={!items.length?'لا يمكن طباعة فاتورة بدون تفاصيل الأصناف':''} onClick={()=>window.print()}><Printer size={16}/> طباعة الإيصال</button>
+      </div>
+    </div>
+  </section></div>;
 }
 function TenantsPage() {
   const qc=useQueryClient();
@@ -1717,9 +1767,10 @@ function SalesPage() {
   const session=useGetXStoreSession();
   const canViewAmounts=hasAppRole(session.data,['platform_admin','tenant_admin','accountant']);
   const canReturn=hasAppRole(session.data,['platform_admin','tenant_admin','cashier']);
-  const [selected,setSelected]=useState<Sale|null>(null),[printTarget,setPrintTarget]=useState<Sale|null>(null),[notice,setNotice]=useState(''),[search,setSearch]=useState('');
+  const [selected,setSelected]=useState<Sale|null>(null),[printTarget,setPrintTarget]=useState<Sale|null>(null),[detailsSaleId,setDetailsSaleId]=useState<string|null>(null),[notice,setNotice]=useState(''),[search,setSearch]=useState('');
   const [returnInvoiceNo,setReturnInvoiceNo]=useState(''),[returnLoadedInvoiceNo,setReturnLoadedInvoiceNo]=useState(''),[returnSelectedItems,setReturnSelectedItems]=useState<Record<string,number>>({});
   const rows=(sales.data||[]).filter(s=>s.invoiceNo.toLowerCase().includes(search.toLowerCase()));
+  function toggleSaleItems(sale:Sale){setDetailsSaleId(current=>current===sale.id?null:sale.id)}
   function closeReturn(){setSelected(null);setReturnInvoiceNo('');setReturnLoadedInvoiceNo('');setReturnSelectedItems({})}
   function openReturn(sale:Sale){setSelected(sale);setReturnInvoiceNo(sale.invoiceNo);setReturnLoadedInvoiceNo(sale.invoiceNo);setReturnSelectedItems({})}
   function submit(e:FormEvent<HTMLFormElement>){
@@ -1740,7 +1791,7 @@ function SalesPage() {
   return <div className="sales-page">
     <PageTitle eyebrow="حركة المتجر" title="المبيعات" desc="الفواتير الأخيرة وطرق الدفع والمرتجعات المسجلة." action={<button className="button button-quiet" onClick={()=>sales.refetch()}><RefreshCw size={15}/> تحديث القائمة</button>}/>
     {canViewAmounts&&<div className="stat-grid sales-stats"><StatCard label="عمليات ظاهرة" value={fmt(sales.data?.length||0)} detail="آخر ١٠٠ فاتورة" icon={ReceiptText}/><StatCard label="إجمالي المبيعات" value={money((sales.data||[]).reduce((a,s)=>a+s.total,0))} detail="حسب القائمة المحمّلة" icon={Banknote} tint="gold"/><StatCard label="نقداً" value={fmt((sales.data||[]).filter(s=>s.paymentMethod==='cash').length)} detail="عمليات نقدية" icon={Wallet} tint="sage"/><StatCard label="مرتجعة" value={fmt((sales.data||[]).filter(s=>s.status!=='completed').length)} detail="تتضمن استرداداً" icon={RotateCcw} tint="red"/></div>}
-    <Card className="sales-invoice-panel"><SectionHead title="سجل الفواتير" detail="عرض الفواتير حسب الأحدث أولاً"/><div className="table-toolbar"><label className="search-box sales-search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث برقم الفاتورة" data-testid="input-search-sales"/></label><span className="result-count sales-result-count">{fmt(rows.length)} فاتورة</span></div>{sales.isLoading?<StateBlock loading error={false} onRetry={()=>sales.refetch()} empty={false}/>:sales.isError?<StateBlock loading={false} error onRetry={()=>sales.refetch()} empty={false}/>:rows.length?<SalesTable sales={rows} onReturn={canReturn?openReturn:undefined} onPrint={s=>setPrintTarget(s)} showAmounts={canViewAmounts}/>:<div className="empty-inline">لا توجد فواتير تطابق البحث.</div>}</Card>
+    <Card className="sales-invoice-panel"><SectionHead title="سجل الفواتير" detail="عرض الفواتير حسب الأحدث أولاً"/><div className="table-toolbar"><label className="search-box sales-search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث برقم الفاتورة" data-testid="input-search-sales"/></label><span className="result-count sales-result-count">{fmt(rows.length)} فاتورة</span></div>{sales.isLoading?<StateBlock loading error={false} onRetry={()=>sales.refetch()} empty={false}/>:sales.isError?<StateBlock loading={false} error onRetry={()=>sales.refetch()} empty={false}/>:rows.length?<SalesTable sales={rows} onReturn={canReturn?openReturn:undefined} onPrint={s=>setPrintTarget(s)} onToggleItems={toggleSaleItems} expandedSaleId={detailsSaleId} showAmounts={canViewAmounts}/>:<div className="empty-inline">لا توجد فواتير تطابق البحث.</div>}</Card>
     {selected&&<Modal title="تسجيل مرتجع" close={closeReturn}><form className="form-grid" onSubmit={submit}>
       <InvoiceReturnPicker invoiceNo={returnInvoiceNo} setInvoiceNo={setReturnInvoiceNo} loadedInvoiceNo={returnLoadedInvoiceNo} setLoadedInvoiceNo={setReturnLoadedInvoiceNo} selectedItems={returnSelectedItems} setSelectedItems={setReturnSelectedItems} testIdPrefix="return"/>
       <label className="field field-wide"><span>سبب الإرجاع</span><input name="reason" required placeholder="اكتب سبب الإرجاع"/></label>

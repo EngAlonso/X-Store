@@ -349,17 +349,30 @@ function isMissingDatabaseRelation(error: unknown): boolean {
   );
 }
 
+type XStoreSaleLineItemDto = {
+  productId: string;
+  name: string;
+  sku: string;
+  unitPrice: number;
+  quantity: number;
+  returnedQuantity: number;
+};
+
 function saleDto(
   sale: typeof xstoreSales.$inferSelect,
   user: XStoreUser,
   grossProfit: number | null = null,
   cashierName = "—",
   exchangeEvents: XStoreExchangeEvent[] = [],
+  items?: XStoreSaleLineItemDto[],
+  tenantName?: string | null,
 ) {
   return {
     ...sale,
     cashierName,
     exchangeEvents,
+    ...(items === undefined ? {} : { items }),
+    ...(tenantName === undefined ? {} : { tenantName }),
     subtotal: toNumber(sale.subtotal),
     discountAmount: toNumber(sale.discountAmount),
     taxAmount: toNumber(sale.taxAmount),
@@ -2110,13 +2123,47 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
     .select({
       sale: xstoreSales,
       cashierName: xstoreUsers.name,
+      tenantName: xstoreTenants.name,
     })
     .from(xstoreSales)
     .innerJoin(xstoreUsers, eq(xstoreSales.cashierUserId, xstoreUsers.id))
+    .innerJoin(xstoreTenants, eq(xstoreSales.tenantId, xstoreTenants.id))
     .where(scopedTenant ? eq(xstoreSales.tenantId, scopedTenant) : undefined)
     .orderBy(desc(xstoreSales.createdAt))
     .limit(parsed.data.limit ?? 50);
   const saleIds = rows.map(({ sale }) => sale.id);
+  const invoiceLines = saleIds.length
+    ? await db
+        .select({
+          saleId: xstoreSaleItems.saleId,
+          productId: xstoreSaleItems.productId,
+          name: sql<string>`coalesce(${xstoreSaleItems.productName}, ${xstoreProducts.name})`,
+          sku: xstoreProducts.sku,
+          unitPrice: xstoreSaleItems.unitPrice,
+          quantity: xstoreSaleItems.quantity,
+          returnedQuantity: xstoreSaleItems.returnedQuantity,
+        })
+        .from(xstoreSaleItems)
+        .innerJoin(
+          xstoreProducts,
+          eq(xstoreSaleItems.productId, xstoreProducts.id),
+        )
+        .where(inArray(xstoreSaleItems.saleId, saleIds))
+        .orderBy(xstoreSaleItems.saleId, xstoreProducts.name)
+    : [];
+  const invoiceLinesBySale = new Map<string, XStoreSaleLineItemDto[]>();
+  for (const line of invoiceLines) {
+    const items = invoiceLinesBySale.get(line.saleId) ?? [];
+    items.push({
+      productId: line.productId,
+      name: line.name,
+      sku: line.sku,
+      unitPrice: toNumber(line.unitPrice),
+      quantity: line.quantity,
+      returnedQuantity: line.returnedQuantity,
+    });
+    invoiceLinesBySale.set(line.saleId, items);
+  }
   const costsBySale = saleIds.length
     ? await db
         .select({
@@ -2175,7 +2222,7 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
     );
   res.json(
     ListXStoreSalesResponse.parse(
-      rows.map(({ sale, cashierName }) =>
+      rows.map(({ sale, cashierName, tenantName }) =>
         saleDto(
           sale,
           user,
@@ -2191,6 +2238,8 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
               event.originalInvoiceNo === sale.invoiceNo ||
               event.exchangeInvoiceNo === sale.invoiceNo,
           ),
+          invoiceLinesBySale.get(sale.id) ?? [],
+          tenantName,
         ),
       ),
     ),
@@ -2257,7 +2306,7 @@ router.get(
     const items = await db
       .select({
         productId: xstoreSaleItems.productId,
-        name: xstoreProducts.name,
+        name: sql<string>`coalesce(${xstoreSaleItems.productName}, ${xstoreProducts.name})`,
         sku: xstoreProducts.sku,
         unitPrice: xstoreSaleItems.unitPrice,
         quantity: xstoreSaleItems.quantity,
@@ -2415,8 +2464,13 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Store settings not found." });
     return;
   }
+  const [tenant] = await db
+    .select({ name: xstoreTenants.name })
+    .from(xstoreTenants)
+    .where(eq(xstoreTenants.id, tenantId))
+    .limit(1);
   try {
-    const sale = await db.transaction(async (tx) => {
+    const { sale, items } = await db.transaction(async (tx) => {
       const lines = mergedLines(parsed.data.items);
       const priced: Array<{
         product: XStoreProduct;
@@ -2498,18 +2552,29 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
         await tx.insert(xstoreSaleItems).values({
           saleId: createdSale.id,
           productId: line.product.id,
+          productName: line.product.name,
           quantity: line.quantity,
           unitPrice: String(line.unitPrice),
           unitCost: String(toNumber(line.product.costPrice)),
         });
       }
-      return createdSale;
+      return {
+        sale: createdSale,
+        items: priced.map((line) => ({
+          productId: line.product.id,
+          name: line.product.name,
+          sku: line.product.sku,
+          unitPrice: line.unitPrice,
+          quantity: line.quantity,
+          returnedQuantity: 0,
+        })),
+      };
     });
     res
       .status(201)
       .json(
         CheckoutXStoreSaleResponse.parse(
-          saleDto(sale, actor, null, actor.name),
+          saleDto(sale, actor, null, actor.name, [], items, tenant?.name ?? null),
         ),
       );
   } catch (error) {
@@ -3196,6 +3261,7 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
           await tx.insert(xstoreSaleItems).values({
             saleId: replacementSale.id,
             productId: line.product.id,
+            productName: line.product.name,
             quantity: line.quantity,
             unitPrice: String(line.unitPrice),
             unitCost: String(toNumber(line.product.costPrice)),

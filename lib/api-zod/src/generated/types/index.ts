@@ -56,6 +56,7 @@ export * from './saleInput';
 export * from './saleInputPaymentMethod';
 export * from './saleInvoiceItem';
 export * from './saleLineInput';
+export * from './saleLineItem';
 export * from './salePaymentMethod';
 export * from './saleStatus';
 export * from './sessionUser';

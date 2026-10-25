@@ -280,6 +280,7 @@ export const xstoreSaleItems = pgTable(
     productId: uuid("product_id")
       .notNull()
       .references(() => xstoreProducts.id),
+    productName: text("product_name"),
     quantity: integer("quantity").notNull(),
     unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
     unitCost: numeric("unit_cost", { precision: 12, scale: 2 })

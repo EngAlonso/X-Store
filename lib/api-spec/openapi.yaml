@@ -1431,11 +1431,16 @@ components:
       properties:
         id: { type: string }
         tenantId: { type: string }
+        tenantName: { type: ["string", "null"] }
         invoiceNo: { type: string }
         cashierName: { type: string }
         customerName: { type: ["string", "null"] }
         customerPhone: { type: ["string", "null"] }
         itemCount: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SaleLineItem"
         subtotal: { type: number }
         discountAmount: { type: number }
         taxAmount: { type: number }
@@ -1471,6 +1476,16 @@ components:
         - status
         - createdAt
         - exchangeEvents
+    SaleLineItem:
+      type: object
+      properties:
+        productId: { type: string }
+        name: { type: string }
+        sku: { type: string }
+        unitPrice: { type: number }
+        quantity: { type: integer }
+        returnedQuantity: { type: integer }
+      required: [productId, name, sku, unitPrice, quantity, returnedQuantity]
     ExchangeEventItem:
       type: object
       properties:

@@ -290,6 +290,15 @@ export interface Tenant {
   createdAt: string;
 }
 
+export interface SaleLineItem {
+  productId: string;
+  name: string;
+  sku: string;
+  unitPrice: number;
+  quantity: number;
+  returnedQuantity: number;
+}
+
 export type SalePaymentMethod = typeof SalePaymentMethod[keyof typeof SalePaymentMethod];
 
 
@@ -334,6 +343,8 @@ export interface SaleExchangeEvent {
 export interface Sale {
   id: string;
   tenantId: string;
+  /** @nullable */
+  tenantName?: string | null;
   invoiceNo: string;
   cashierName: string;
   /** @nullable */
@@ -341,6 +352,7 @@ export interface Sale {
   /** @nullable */
   customerPhone: string | null;
   itemCount: number;
+  items?: SaleLineItem[];
   subtotal: number;
   discountAmount: number;
   taxAmount: number;

@@ -6,12 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { SaleExchangeEvent } from './saleExchangeEvent';
+import type { SaleLineItem } from './saleLineItem';
 import type { SalePaymentMethod } from './salePaymentMethod';
 import type { SaleStatus } from './saleStatus';
 
 export interface Sale {
   id: string;
   tenantId: string;
+  /** @nullable */
+  tenantName?: string | null;
   invoiceNo: string;
   cashierName: string;
   /** @nullable */
@@ -19,6 +22,7 @@ export interface Sale {
   /** @nullable */
   customerPhone: string | null;
   itemCount: number;
+  items?: SaleLineItem[];
   subtotal: number;
   discountAmount: number;
   taxAmount: number;
