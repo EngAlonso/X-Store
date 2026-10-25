@@ -823,6 +823,30 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { 
 .vat-rate-input input:focus { border-color:#91b49a;outline:0;box-shadow:0 0 0 3px #e8f1e8; }
 .vat-rate-input>span { color:#526b59;font-size:15px;font-weight:600; }
 .settings-success { grid-column:1/-1;display:flex;align-items:center;gap:8px;color:#2d7140;font-size:11px; }
+.invoice-format-section { display:grid;gap:12px; }
+.invoice-format-section .section-head { margin:0; }
+.invoice-format-options { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px; }
+.invoice-format-option { position:relative;display:flex;min-width:0;min-height:148px;flex-direction:column;align-items:flex-start;gap:12px;padding:14px;border:1px solid #dfe8dd;border-radius:12px;background:#fffefa;cursor:pointer;transition:border-color .16s,box-shadow .16s,background .16s; }
+.invoice-format-option:hover { border-color:#9fbea2; }
+.invoice-format-option.is-selected { border-color:#39764b;background:#f3f8f1;box-shadow:0 0 0 2px #39764b19; }
+.invoice-format-option:focus-within { outline:3px solid #cfe2d0;outline-offset:2px; }
+.invoice-format-option>input { position:absolute;top:14px;inset-inline-end:14px;width:17px;height:17px;margin:0;accent-color:#24683b; }
+.invoice-format-sample { display:flex;width:44px;height:58px;flex-direction:column;justify-content:center;gap:5px;padding:8px 5px;border:1px solid #cfd9cc;border-radius:4px;background:#fff;box-shadow:0 2px 6px #203c2010; }
+.invoice-format-sample i { display:block;height:3px;border-radius:3px;background:#dce5dc; }
+.invoice-format-sample i:first-child { width:70%;height:5px;background:#82a68a; }
+.invoice-format-sample i:last-child { width:54%;background:#b6c9b8; }
+.invoice-format-sample--wide { width:74px;height:48px; }
+.invoice-format-sample--thermal-80 { width:40px; }
+.invoice-format-sample--thermal-58 { width:31px;height:54px;padding-inline:4px; }
+.invoice-format-copy { display:grid;gap:5px;padding-inline-end:20px; }
+.invoice-format-copy b { color:#304a37;font-size:12px; }
+.invoice-format-copy small { color:#77847a;font-size:10px;line-height:1.7; }
+.thermal-lines-wrap { display:grid;padding:0 8px; }
+.thermal-line-item { display:grid;gap:3px;padding:7px 0;border-bottom:1px dashed #bfc9bf; }
+.thermal-line-item>b { color:#374b3d;font-size:11px;line-height:1.5;overflow-wrap:anywhere; }
+.thermal-line-item>small { color:#768278;font-size:8px;overflow-wrap:anywhere; }
+.thermal-line-item>div { display:flex;align-items:center;justify-content:space-between;gap:8px;color:#657368;font-size:9px; }
+.thermal-line-item>div strong { color:#244b2e;font-size:10px;white-space:nowrap; }
 .app-frame { min-height:100dvh; display:flex; background:#F8F9FA; }
 .sidebar { width:254px; position:fixed; inset:0 0 0 auto; z-index:30; display:flex; flex-direction:column; padding:22px 16px 15px; background:#0B4619; color:#eef5ef; }
 .sidebar-top { display:flex; align-items:center; justify-content:space-between; padding:0 7px 21px; }
@@ -1274,6 +1298,16 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   .report-profit { padding:14px; }
   .report-profit strong { font-size:19px; }
 }
+@page xstore-thermal-80 {
+  size: 80mm auto;
+  margin: 0;
+}
+
+@page xstore-thermal-58 {
+  size: 58mm auto;
+  margin: 0;
+}
+
 @media print {
   body { background:#fff; }
   body * { visibility:hidden!important; }
@@ -3077,4 +3111,66 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
     border-top: 1px dashed #aeb8af;
     font-size: 8px;
   }
+
+  .receipt-modal--thermal-80 {
+    page: xstore-thermal-80;
+    width: 78mm !important;
+    padding: 3mm !important;
+  }
+
+  .receipt-modal--thermal-58 {
+    page: xstore-thermal-58;
+    width: 56mm !important;
+    padding: 2mm !important;
+  }
+
+  .receipt-modal--thermal-80 .receipt-refined-meta,
+  .receipt-modal--thermal-58 .receipt-refined-meta {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .receipt-modal--thermal-80 .receipt-refined-title h2 {
+    font-size: 12px;
+  }
+
+  .receipt-modal--thermal-58 .receipt-refined-title h2 {
+    font-size: 10px;
+  }
+
+  .receipt-modal--thermal-80 .receipt-refined-meta,
+  .receipt-modal--thermal-80 .receipt-refined-items,
+  .receipt-modal--thermal-80 .receipt-total-panel,
+  .receipt-modal--thermal-58 .receipt-refined-meta,
+  .receipt-modal--thermal-58 .receipt-refined-items,
+  .receipt-modal--thermal-58 .receipt-total-panel {
+    font-size: 7px;
+  }
+
+  .receipt-modal--thermal-58 .receipt-meta-item span,
+  .receipt-modal--thermal-58 .receipt-meta-item b,
+  .receipt-modal--thermal-58 .receipt-summary-line,
+  .receipt-modal--thermal-58 .receipt-summary-line b,
+  .receipt-modal--thermal-58 .thermal-line-item>div {
+    font-size: 7px;
+  }
+
+  .receipt-modal--thermal-58 .receipt-paid-status,
+  .receipt-modal--thermal-58 .receipt-refined-invoice {
+    font-size: 7px;
+  }
+
+  .receipt-modal--thermal-58 .thermal-line-item>b {
+    font-size: 9px;
+  }
+
+  .receipt-modal--thermal-58 .thermal-line-item>div strong {
+    font-size: 8px;
+  }
+}
+
+@media (max-width: 720px) {
+  .invoice-format-options { grid-template-columns:1fr; }
+  .invoice-format-option { min-height:0;flex-direction:row;align-items:center; }
+  .invoice-format-copy { padding-inline-end:26px; }
 }

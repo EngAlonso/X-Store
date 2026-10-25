@@ -163,6 +163,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
           countryCode: xstoreTenants.countryCode,
           currency: xstoreTenants.currency,
           vatRate: xstoreTenants.vatRate,
+          invoiceFormat: xstoreTenants.invoiceFormat,
         })
         .from(xstoreTenants)
         .where(eq(xstoreTenants.id, user.tenantId))
@@ -181,6 +182,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     countryCode: tenant?.countryCode ?? null,
     currency: tenant?.currency ?? null,
     vatRate: tenant ? toNumber(tenant.vatRate) : null,
+    invoiceFormat: tenant?.invoiceFormat ?? null,
   };
 }
 
@@ -795,7 +797,7 @@ router.get("/xstore/session", async (_req, res): Promise<void> => {
 router.patch("/xstore/store-settings", async (req, res): Promise<void> => {
   const actor = getXStoreUser(res);
   if (actor.role !== "tenant_admin") {
-    res.status(403).json({ error: "Only the store owner can change VAT settings." });
+    res.status(403).json({ error: "Only the store owner can change invoice settings." });
     return;
   }
   const tenantId = requireTenant(res, actor);
@@ -807,24 +809,34 @@ router.patch("/xstore/store-settings", async (req, res): Promise<void> => {
   }
   const [tenant] = await db
     .update(xstoreTenants)
-    .set({ vatRate: String(parsed.data.vatRate) })
+    .set({
+      vatRate: String(parsed.data.vatRate),
+      ...(parsed.data.invoiceFormat
+        ? { invoiceFormat: parsed.data.invoiceFormat }
+        : {}),
+    })
     .where(eq(xstoreTenants.id, tenantId))
-    .returning({ id: xstoreTenants.id, vatRate: xstoreTenants.vatRate });
+    .returning({
+      id: xstoreTenants.id,
+      vatRate: xstoreTenants.vatRate,
+      invoiceFormat: xstoreTenants.invoiceFormat,
+    });
   if (!tenant) {
     res.status(404).json({ error: "Store settings not found." });
     return;
   }
   await audit(
     actor,
-    "tenant.vat_rate_updated",
+    "tenant.store_settings_updated",
     tenant.id,
     "tenant",
     tenant.id,
-    `Updated VAT rate to ${(toNumber(tenant.vatRate) * 100).toFixed(2)}%`,
+    `Updated VAT rate to ${(toNumber(tenant.vatRate) * 100).toFixed(2)}% and invoice format to ${tenant.invoiceFormat}`,
   );
   res.json(
     UpdateXStoreStoreSettingsResponse.parse({
       vatRate: toNumber(tenant.vatRate),
+      invoiceFormat: tenant.invoiceFormat,
     }),
   );
 });

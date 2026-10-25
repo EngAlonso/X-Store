@@ -5,6 +5,7 @@
  * X-Store point-of-sale and inventory API
  * OpenAPI spec version: 0.1.0
  */
+import type { StoreSettingsInvoiceFormat } from './storeSettingsInvoiceFormat';
 
 export interface StoreSettings {
   /**
@@ -12,4 +13,5 @@ export interface StoreSettings {
      * @maximum 1
      */
   vatRate: number;
+  invoiceFormat: StoreSettingsInvoiceFormat;
 }

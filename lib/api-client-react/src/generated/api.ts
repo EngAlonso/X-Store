@@ -593,7 +593,7 @@ export const getUpdateXStoreStoreSettingsUrl = () => {
 }
 
 /**
- * @summary Update the current store's VAT rate
+ * @summary Update the current store's invoice settings
  */
 export const updateXStoreStoreSettings = async (storeSettingsInput: StoreSettingsInput, options?: Parameters<typeof customFetch>[1]): Promise<StoreSettings> => {
 
@@ -659,7 +659,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateXStoreStoreSettingsMutationVariables = {data: BodyType<StoreSettingsInput>}
 
     /**
- * @summary Update the current store's VAT rate
+ * @summary Update the current store's invoice settings
  */
 export const useUpdateXStoreStoreSettings = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateXStoreStoreSettings>>, TError,UpdateXStoreStoreSettingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

@@ -40,6 +40,18 @@ export const SessionUserCurrency = {
   GBP: 'GBP',
 } as const;
 
+/**
+ * @nullable
+ */
+export type SessionUserInvoiceFormat = typeof SessionUserInvoiceFormat[keyof typeof SessionUserInvoiceFormat] | null;
+
+
+export const SessionUserInvoiceFormat = {
+  wide: 'wide',
+  thermal_80mm: 'thermal_80mm',
+  thermal_58mm: 'thermal_58mm',
+} as const;
+
 export type TeamPermission = typeof TeamPermission[keyof typeof TeamPermission];
 
 
@@ -78,7 +90,18 @@ export interface SessionUser {
      * @nullable
      */
   vatRate: number | null;
+  /** @nullable */
+  invoiceFormat: SessionUserInvoiceFormat;
 }
+
+export type StoreSettingsInvoiceFormat = typeof StoreSettingsInvoiceFormat[keyof typeof StoreSettingsInvoiceFormat];
+
+
+export const StoreSettingsInvoiceFormat = {
+  wide: 'wide',
+  thermal_80mm: 'thermal_80mm',
+  thermal_58mm: 'thermal_58mm',
+} as const;
 
 export interface StoreSettings {
   /**
@@ -86,7 +109,17 @@ export interface StoreSettings {
      * @maximum 1
      */
   vatRate: number;
+  invoiceFormat: StoreSettingsInvoiceFormat;
 }
+
+export type StoreSettingsInputInvoiceFormat = typeof StoreSettingsInputInvoiceFormat[keyof typeof StoreSettingsInputInvoiceFormat];
+
+
+export const StoreSettingsInputInvoiceFormat = {
+  wide: 'wide',
+  thermal_80mm: 'thermal_80mm',
+  thermal_58mm: 'thermal_58mm',
+} as const;
 
 export interface StoreSettingsInput {
   /**
@@ -95,6 +128,7 @@ export interface StoreSettingsInput {
      * @maximum 1
      */
   vatRate: number;
+  invoiceFormat?: StoreSettingsInputInvoiceFormat;
 }
 
 export interface SocialLinks {

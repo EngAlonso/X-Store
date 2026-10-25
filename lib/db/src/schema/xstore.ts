@@ -31,6 +31,13 @@ export const xstoreStoreTypes = [
 ] as const;
 export type XStoreStoreType = (typeof xstoreStoreTypes)[number];
 
+export const xstoreInvoiceFormats = [
+  "wide",
+  "thermal_80mm",
+  "thermal_58mm",
+] as const;
+export type XStoreInvoiceFormat = (typeof xstoreInvoiceFormats)[number];
+
 export type XStoreLine = {
   productId: string;
   quantity: number;
@@ -50,6 +57,10 @@ export const xstoreTenants = pgTable("xstore_tenants", {
   vatRate: numeric("vat_rate", { precision: 5, scale: 4 })
     .notNull()
     .default("0.15"),
+  invoiceFormat: text("invoice_format")
+    .$type<XStoreInvoiceFormat>()
+    .notNull()
+    .default("wide"),
   status: text("status").notNull().default("trial"),
   plan: text("plan").notNull().default("monthly"),
   subscriptionEndsAt: date("subscription_ends_at", { mode: "string" }),

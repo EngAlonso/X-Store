@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { SessionUserCurrency } from './sessionUserCurrency';
+import type { SessionUserInvoiceFormat } from './sessionUserInvoiceFormat';
 import type { SessionUserRole } from './sessionUserRole';
 import type { TeamPermission } from './teamPermission';
 
@@ -38,4 +39,6 @@ export interface SessionUser {
      * @nullable
      */
   vatRate: number | null;
+  /** @nullable */
+  invoiceFormat: SessionUserInvoiceFormat;
 }

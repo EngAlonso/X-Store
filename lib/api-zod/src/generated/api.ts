@@ -107,7 +107,8 @@ export const CreateInitialPlatformOwnerResponse = zod.object({
   "tenantName": zod.string().nullable(),
   "countryCode": zod.string().min(createInitialPlatformOwnerResponseCountryCodeMin).max(createInitialPlatformOwnerResponseCountryCodeMax).regex(createInitialPlatformOwnerResponseCountryCodeRegExp).nullable(),
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
-  "vatRate": zod.number().min(createInitialPlatformOwnerResponseVatRateMin).max(createInitialPlatformOwnerResponseVatRateMax).nullable()
+  "vatRate": zod.number().min(createInitialPlatformOwnerResponseVatRateMin).max(createInitialPlatformOwnerResponseVatRateMax).nullable(),
+  "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable()
 })
 
 
@@ -148,7 +149,8 @@ export const LoginXStoreWithPhoneResponse = zod.object({
   "tenantName": zod.string().nullable(),
   "countryCode": zod.string().min(loginXStoreWithPhoneResponseCountryCodeMin).max(loginXStoreWithPhoneResponseCountryCodeMax).regex(loginXStoreWithPhoneResponseCountryCodeRegExp).nullable(),
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
-  "vatRate": zod.number().min(loginXStoreWithPhoneResponseVatRateMin).max(loginXStoreWithPhoneResponseVatRateMax).nullable()
+  "vatRate": zod.number().min(loginXStoreWithPhoneResponseVatRateMin).max(loginXStoreWithPhoneResponseVatRateMax).nullable(),
+  "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable()
 })
 
 
@@ -183,12 +185,13 @@ export const GetXStoreSessionResponse = zod.object({
   "tenantName": zod.string().nullable(),
   "countryCode": zod.string().min(getXStoreSessionResponseCountryCodeMin).max(getXStoreSessionResponseCountryCodeMax).regex(getXStoreSessionResponseCountryCodeRegExp).nullable(),
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
-  "vatRate": zod.number().min(getXStoreSessionResponseVatRateMin).max(getXStoreSessionResponseVatRateMax).nullable()
+  "vatRate": zod.number().min(getXStoreSessionResponseVatRateMin).max(getXStoreSessionResponseVatRateMax).nullable(),
+  "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable()
 })
 
 
 /**
- * @summary Update the current store's VAT rate
+ * @summary Update the current store's invoice settings
  */
 export const updateXStoreStoreSettingsBodyVatRateMin = 0;
 export const updateXStoreStoreSettingsBodyVatRateMax = 1;
@@ -196,7 +199,8 @@ export const updateXStoreStoreSettingsBodyVatRateMax = 1;
 
 
 export const UpdateXStoreStoreSettingsBody = zod.object({
-  "vatRate": zod.number().min(updateXStoreStoreSettingsBodyVatRateMin).max(updateXStoreStoreSettingsBodyVatRateMax).describe('VAT rate as a fraction; 0.15 means 15%.')
+  "vatRate": zod.number().min(updateXStoreStoreSettingsBodyVatRateMin).max(updateXStoreStoreSettingsBodyVatRateMax).describe('VAT rate as a fraction; 0.15 means 15%.'),
+  "invoiceFormat": zod.enum(['wide', 'thermal_80mm', 'thermal_58mm']).optional()
 })
 
 export const updateXStoreStoreSettingsResponseVatRateMin = 0;
@@ -205,7 +209,8 @@ export const updateXStoreStoreSettingsResponseVatRateMax = 1;
 
 
 export const UpdateXStoreStoreSettingsResponse = zod.object({
-  "vatRate": zod.number().min(updateXStoreStoreSettingsResponseVatRateMin).max(updateXStoreStoreSettingsResponseVatRateMax)
+  "vatRate": zod.number().min(updateXStoreStoreSettingsResponseVatRateMin).max(updateXStoreStoreSettingsResponseVatRateMax),
+  "invoiceFormat": zod.enum(['wide', 'thermal_80mm', 'thermal_58mm'])
 })
 
 

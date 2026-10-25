@@ -57,6 +57,17 @@ const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 type SocialLinkKey = keyof AuthStatus['socialLinks'];
 type SocialLinkInputValues = Record<SocialLinkKey, string>;
+type InvoiceFormat = NonNullable<SessionUser['invoiceFormat']>;
+const invoiceFormatOptions: {
+  value: InvoiceFormat;
+  label: string;
+  detail: string;
+  sampleClass: string;
+}[] = [
+  { value: 'wide', label: 'عريضة (الحالي)', detail: 'التصميم الحالي بعرض مريح للطباعة العادية.', sampleClass: 'wide' },
+  { value: 'thermal_80mm', label: 'حراري 80 مم', detail: 'مناسب لرولات الطابعة الحرارية الكبيرة.', sampleClass: 'thermal-80' },
+  { value: 'thermal_58mm', label: 'حراري 58 مم', detail: 'مناسب لرولات الطابعة الحرارية الصغيرة.', sampleClass: 'thermal-58' },
+];
 type PublicSocialMethod = {
   key: SocialLinkKey | 'whatsapp';
   label: string;
@@ -664,8 +675,14 @@ function TenantTable({tenants,compact=false}:{tenants:Tenant[];compact?:boolean}
   if(!tenants.length)return <div className="empty-inline">لا توجد متاجر لعرضها.</div>;
   return <div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th>{!compact&&<th>نوع المتجر</th>}<th>العملة</th><th>الحالة</th><th>الخطة</th>{!compact&&<th>الفروع</th>}</tr></thead><tbody>{tenants.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone||'—'}</small></td><td>{t.ownerName}</td>{!compact&&<td><b>{storeTypeName(t.storeType)}</b><small>{t.businessType}</small></td>}<td>{currencyLabels[t.currency as StoreCurrency] || t.currency}</td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td>{!compact&&<td>{fmt(t.branchCount)}</td>}</tr>)}</tbody></table></div>;
 }
-function SaleItemsTable({items,money,variant='history'}:{items:NonNullable<Sale['items']>;money:(value:number)=>string;variant?:'history'|'receipt'}) {
-  if(!items.length)return <p className={variant==='receipt'?'receipt-lines-empty':'sale-lines-empty'}>لا توجد تفاصيل أصناف محفوظة لهذه الفاتورة.</p>;
+function SaleItemsTable({items,money,variant='history'}:{items:NonNullable<Sale['items']>;money:(value:number)=>string;variant?:'history'|'receipt'|'thermal'}) {
+  if(!items.length)return <p className={variant==='receipt'||variant==='thermal'?'receipt-lines-empty':'sale-lines-empty'}>لا توجد تفاصيل أصناف محفوظة لهذه الفاتورة.</p>;
+  if(variant==='thermal')return <div className="thermal-lines-wrap">{items.map((item,index)=><article className="thermal-line-item" key={`${item.productId}-${index}`}>
+    <b>{item.name}</b>
+    {item.sku&&<small>{item.sku}</small>}
+    {item.returnedQuantity>0&&<small className="sale-line-returned">مرتجع: {fmt(item.returnedQuantity)}</small>}
+    <div><span>{fmt(item.quantity)} × {money(item.unitPrice)}</span><strong>{money(roundMoney(item.unitPrice*item.quantity))}</strong></div>
+  </article>)}</div>;
   return <div className={variant==='receipt'?'receipt-lines-wrap':'sale-lines-wrap'}>
     <table className={variant==='receipt'?'receipt-lines-table':'sale-lines-table'}>
       <thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead>
@@ -756,6 +773,10 @@ function heldWhatsAppMessage(held:HeldSale, products:Product[], money:(value:num
 }
 function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
   const money=useMoney();
+  const session=useGetXStoreSession();
+  const invoiceFormat=session.data?.invoiceFormat??'wide';
+  const thermal=invoiceFormat!=='wide';
+  const printFormatClass=invoiceFormat==='thermal_80mm'?'receipt-modal--thermal-80':invoiceFormat==='thermal_58mm'?'receipt-modal--thermal-58':'receipt-modal--wide';
   const items=sale.items??[];
   const storeName=sale.tenantName?.trim()||'المتجر';
   const whatsappMessage=[
@@ -779,7 +800,7 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
     'شكراً لزيارتكم',
   ].join('\n');
   const whatsappUrl=items.length?createWhatsAppInvoiceUrl(sale.customerPhone,whatsappMessage):null;
-  return <div className="modal-backdrop receipt-backdrop"><section className="modal receipt-modal" role="dialog" aria-modal="true" dir="rtl">
+  return <div className="modal-backdrop receipt-backdrop"><section className={`modal receipt-modal ${printFormatClass}`} role="dialog" aria-modal="true" dir="rtl">
     <div className="receipt-refined-top">
       <span className="receipt-success-mark" aria-hidden="true"><CircleCheck size={24}/></span>
       <div className="receipt-refined-title">
@@ -808,7 +829,7 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
       </div>
       <section className="receipt-refined-items">
         <div className="receipt-refined-items-title"><span>تفاصيل الأصناف</span><small>{fmt(items.length)} أصناف · {fmt(sale.itemCount)} وحدات</small></div>
-        <SaleItemsTable items={items} money={money} variant="receipt"/>
+        <SaleItemsTable items={items} money={money} variant={thermal?'thermal':'receipt'}/>
       </section>
       <div className="receipt-refined-summary">
         <div className="receipt-payment-details">
@@ -1335,29 +1356,43 @@ function StoreSettingsPage() {
   const session=useGetXStoreSession();
   const update=useUpdateXStoreStoreSettings();
   const [vatPercent,setVatPercent]=useState('15');
+  const [invoiceFormat,setInvoiceFormat]=useState<InvoiceFormat>('wide');
   const [notice,setNotice]=useState('');
   useEffect(()=>{
     if(session.data?.vatRate!=null)setVatPercent(String(session.data.vatRate*100));
-  },[session.data?.vatRate]);
+    if(session.data?.invoiceFormat)setInvoiceFormat(session.data.invoiceFormat);
+  },[session.data?.vatRate,session.data?.invoiceFormat]);
   function submit(e:FormEvent<HTMLFormElement>){
     e.preventDefault();
     const percent=Number(vatPercent);
     if(!Number.isFinite(percent)||percent<0||percent>100)return;
-    update.mutate({data:{vatRate:percent/100}},{onSuccess:settings=>{
+    update.mutate({data:{vatRate:percent/100,invoiceFormat}},{onSuccess:settings=>{
       setVatPercent(String(settings.vatRate*100));
-      qc.setQueryData(getGetXStoreSessionQueryKey(),current=>current?{...current,vatRate:settings.vatRate}:current);
+      setInvoiceFormat(settings.invoiceFormat);
+      qc.setQueryData(getGetXStoreSessionQueryKey(),current=>current?{...current,vatRate:settings.vatRate,invoiceFormat:settings.invoiceFormat}:current);
       void qc.invalidateQueries({queryKey:getGetXStoreSessionQueryKey()});
-      setNotice('تم تحديث نسبة ضريبة القيمة المضافة، وستُطبق على الفواتير الجديدة.');
+      setNotice('تم حفظ نسبة الضريبة وتصميم الفاتورة لهذا المتجر.');
     }});
   }
-  return <><PageTitle eyebrow="إعدادات المتجر" title="ضريبة القيمة المضافة" desc="حدد النسبة التي تُحسب على فواتير البيع والاستبدال الجديدة."/>
+  return <><PageTitle eyebrow="إعدادات المتجر" title="إعدادات الفاتورة" desc="اختر تصميم الورق المناسب لطابعتك وحدد نسبة الضريبة."/>
     <Card className="settings-card"><SectionHead title="نسبة الضريبة" detail="تُحفظ النسبة للمتجر كله، وتظهر لأمناء الصندوق عند البيع."/>
       {session.isLoading?<StateBlock loading error={false} onRetry={()=>session.refetch()} empty={false}/>:session.isError?<StateBlock loading={false} error onRetry={()=>session.refetch()} empty={false}/>:<form className="form-grid settings-form" onSubmit={submit}>
         <label className="field field-wide"><span>نسبة ضريبة القيمة المضافة</span><div className="vat-rate-input"><input aria-label="نسبة ضريبة القيمة المضافة" type="number" min="0" max="100" step="0.01" required value={vatPercent} onChange={e=>{setVatPercent(e.target.value);setNotice('')}}/><span>%</span></div></label>
         <div className="role-hint field-wide"><ShieldCheck size={16}/><span>اكتب النسبة من ٠ إلى ١٠٠٪. تغييرها لا يعدّل الفواتير السابقة.</span></div>
-        {update.isError&&<div className="form-error">{apiErrorMessage(update.error,'تعذر حفظ نسبة الضريبة.')}</div>}
+        <div className="invoice-format-section field-wide">
+          <SectionHead title="تصميم ومقاس الطباعة" detail="سيُستخدم الاختيار على فواتير المتجر عند الطباعة."/>
+          <div className="invoice-format-options" role="radiogroup" aria-label="تصميم ومقاس الفاتورة">
+            {invoiceFormatOptions.map(option=><label className={`invoice-format-option${invoiceFormat===option.value?' is-selected':''}`} key={option.value} data-testid={`invoice-format-${option.value}`}>
+              <input type="radio" name="invoiceFormat" value={option.value} checked={invoiceFormat===option.value} onChange={()=>{setInvoiceFormat(option.value);setNotice('')}}/>
+              <span className={`invoice-format-sample invoice-format-sample--${option.sampleClass}`} aria-hidden="true"><i/><i/><i/></span>
+              <span className="invoice-format-copy"><b>{option.label}</b><small>{option.detail}</small></span>
+            </label>)}
+          </div>
+          <div className="role-hint"><Printer size={16}/><span>اختر نفس عرض الرول الموجود في إعدادات الطابعة: 80 مم أو 58 مم.</span></div>
+        </div>
+        {update.isError&&<div className="form-error">{apiErrorMessage(update.error,'تعذر حفظ إعدادات الفاتورة.')}</div>}
         {notice&&<div className="settings-success"><CircleCheck size={16}/>{notice}</div>}
-        <div className="modal-actions"><button className="button button-primary" disabled={update.isPending}>{update.isPending?'جارٍ الحفظ…':'حفظ نسبة الضريبة'}</button></div>
+        <div className="modal-actions"><button className="button button-primary" disabled={update.isPending}>{update.isPending?'جارٍ الحفظ…':'حفظ إعدادات الفاتورة'}</button></div>
       </form>}
     </Card>
   </>;
