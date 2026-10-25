@@ -775,32 +775,53 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
   ].join('\n');
   const whatsappUrl=items.length?createWhatsAppInvoiceUrl(sale.customerPhone,whatsappMessage):null;
   return <div className="modal-backdrop receipt-backdrop"><section className="modal receipt-modal" role="dialog" aria-modal="true" dir="rtl">
-    <div className="receipt-watermark" aria-hidden="true"><img src={`${basePath}/x-store-mark.png`} alt=""/><span>X-Store</span></div>
-    <div className="receipt-content">
-      <div className="receipt-store-header"><b>{storeName}</b><span>إيصال بيع</span></div>
-      <div className="receipt-number"><span>رقم الفاتورة</span><b className="ltr-id">{sale.invoiceNo}</b></div>
-      <div className="receipt-detail"><span>الحالة</span><b>{sale.status==='completed'?'مدفوعة':statusNames[sale.status]}</b></div>
-      {sale.customerName&&<div className="receipt-detail"><span>اسم العميل</span><b>{sale.customerName}</b></div>}
-      <div className="receipt-detail"><span>الحساب المنفذ</span><b>{sale.cashierName}</b></div>
-      <div className="receipt-detail"><span>التاريخ والوقت</span><b>{dateTimeLabel(sale.createdAt)}</b></div>
-      <div className="receipt-detail"><span>رقم هاتف العميل</span><b className="ltr-id">{sale.customerPhone||'—'}</b></div>
-      <div className="receipt-detail"><span>عدد الأصناف</span><b>{fmt(sale.itemCount)}</b></div>
-      <div className="receipt-detail"><span>طريقة الدفع</span><b>{paymentName(sale.paymentMethod)}</b></div>
-      <div className="receipt-divider"/>
-      <div className="receipt-items-heading">الأصناف المباعة</div>
-      <SaleItemsTable items={items} money={money} variant="receipt"/>
-      <div className="receipt-divider"/>
-      <div className="receipt-detail"><span>المجموع الفرعي</span><b>{money(sale.subtotal)}</b></div>
-      <div className="receipt-detail"><span>الخصم</span><b>{money(sale.discountAmount)}</b></div>
-      <div className="receipt-detail"><span>الضريبة</span><b>{money(sale.taxAmount)}</b></div>
-      <div className="receipt-grand"><span>الإجمالي</span><b>{money(sale.total)}</b></div>
-      <div className="receipt-detail"><span>المبلغ المستلم</span><b>{money(sale.amountReceived)}</b></div>
-      <div className="receipt-detail"><span>الباقي</span><b>{money(sale.changeAmount)}</b></div>
-      <p className="receipt-thanks">شكراً لزيارتكم</p>
-      <div className="modal-actions receipt-actions">
-        <button className="button button-quiet" onClick={close}>إغلاق</button>
-        {whatsappUrl&&<a className="button button-whatsapp" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><MessageCircle size={16}/> إرسال عبر واتساب</a>}
+    <div className="receipt-refined-top">
+      <span className="receipt-success-mark" aria-hidden="true"><CircleCheck size={24}/></span>
+      <div className="receipt-refined-title">
+        <small>{sale.status==='completed'?'تمت عملية البيع بنجاح':'ملخص عملية البيع'}</small>
+        <h2>{storeName}</h2>
+        <span>إيصال بيع</span>
+      </div>
+      <div className="receipt-refined-amount">
+        <small>إجمالي الفاتورة</small>
+        <strong>{money(sale.total)}</strong>
+      </div>
+    </div>
+    <div className="receipt-refined-body">
+      <div className="receipt-success-row">
+        <span className="receipt-paid-status"><CircleCheck size={14}/>{sale.status==='completed'?'مدفوعة':statusNames[sale.status]} · {paymentName(sale.paymentMethod)}</span>
+        <span className="receipt-refined-invoice">رقم الفاتورة <b>{sale.invoiceNo}</b></span>
+      </div>
+      <div className="receipt-refined-meta">
+        {sale.customerName&&<div className="receipt-meta-item"><span>اسم العميل</span><b>{sale.customerName}</b></div>}
+        <div className="receipt-meta-item"><span>رقم هاتف العميل</span><b className="receipt-meta-ltr">{sale.customerPhone||'—'}</b></div>
+        <div className="receipt-meta-item"><span>التاريخ والوقت</span><b>{dateTimeLabel(sale.createdAt)}</b></div>
+        <div className="receipt-meta-item"><span>الحساب المنفذ</span><b>{sale.cashierName}</b></div>
+        <div className="receipt-meta-item"><span>عدد الوحدات</span><b>{fmt(sale.itemCount)}</b></div>
+        <div className="receipt-meta-item"><span>طريقة الدفع</span><b><Banknote size={14}/> {paymentName(sale.paymentMethod)}</b></div>
+      </div>
+      <section className="receipt-refined-items">
+        <div className="receipt-refined-items-title"><span>تفاصيل الأصناف</span><small>{fmt(items.length)} أصناف · {fmt(sale.itemCount)} وحدات</small></div>
+        <SaleItemsTable items={items} money={money} variant="receipt"/>
+      </section>
+      <div className="receipt-refined-summary">
+        <div className="receipt-payment-details">
+          <div className="receipt-summary-line"><span>المبلغ المستلم</span><b>{money(sale.amountReceived)}</b></div>
+          <div className="receipt-summary-line"><span>الباقي للعميل</span><b>{money(sale.changeAmount)}</b></div>
+          <div className="receipt-summary-line"><span>حالة العملية</span><b>{sale.status==='completed'?'مكتملة':statusNames[sale.status]}</b></div>
+        </div>
+        <div className="receipt-total-panel">
+          <div className="receipt-summary-line"><span>المجموع الفرعي</span><b>{money(sale.subtotal)}</b></div>
+          <div className="receipt-summary-line discount"><span>الخصم</span><b>− {money(sale.discountAmount)}</b></div>
+          <div className="receipt-summary-line"><span>الضريبة</span><b>{money(sale.taxAmount)}</b></div>
+          <div className="receipt-summary-line receipt-total-amount"><span>الإجمالي</span><b>{money(sale.total)}</b></div>
+        </div>
+      </div>
+      <p className="receipt-thanks-refined">شكراً لزيارتكم، نتمنى لكم يوماً سعيداً</p>
+      <div className="modal-actions receipt-actions receipt-refined-actions">
         <button className="button button-primary" disabled={!items.length} title={!items.length?'لا يمكن طباعة فاتورة بدون تفاصيل الأصناف':''} onClick={()=>window.print()}><Printer size={16}/> طباعة الإيصال</button>
+        {whatsappUrl&&<a className="button button-whatsapp" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><MessageCircle size={16}/> إرسال عبر واتساب</a>}
+        <button className="button button-quiet" onClick={close}>إغلاق</button>
       </div>
     </div>
   </section></div>;
