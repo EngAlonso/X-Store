@@ -30,6 +30,11 @@ export interface Sale {
   /** @nullable */
   grossProfit: number | null;
   paymentMethod: SalePaymentMethod;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  transferSender: string | null;
   amountReceived: number;
   changeAmount: number;
   status: SaleStatus;

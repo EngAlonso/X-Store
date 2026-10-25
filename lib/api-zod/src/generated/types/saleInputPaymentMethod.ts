@@ -13,4 +13,5 @@ export const SaleInputPaymentMethod = {
   cash: 'cash',
   card: 'card',
   wallet: 'wallet',
+  instapay: 'instapay',
 } as const;

@@ -21,6 +21,11 @@ export interface HeldSale {
   estimatedTotal: number;
   discountAmount: number;
   paymentMethod: HeldSalePaymentMethod;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  transferSender: string | null;
   amountReceived: number;
   createdAt: Date;
 }

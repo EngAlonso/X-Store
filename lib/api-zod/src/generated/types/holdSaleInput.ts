@@ -31,4 +31,9 @@ export interface HoldSaleInput {
   paymentMethod?: HoldSaleInputPaymentMethod;
   /** @minimum 0 */
   amountReceived?: number;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  transferSender?: string | null;
 }

@@ -1421,8 +1421,9 @@ components:
         discountAmount: { type: number, minimum: 0 }
         paymentMethod:
           type: string
-          enum: [cash, card, wallet]
+          enum: [cash, card, wallet, instapay]
         amountReceived: { type: number, minimum: 0 }
+        transferSender: { type: ["string", "null"], maxLength: 80 }
         customerName: { type: ["string", "null"], maxLength: 150 }
         customerPhone: { type: ["string", "null"], maxLength: 30 }
       required: [items, discountAmount, paymentMethod, amountReceived]
@@ -1448,7 +1449,8 @@ components:
         grossProfit: { type: ["number", "null"] }
         paymentMethod:
           type: string
-          enum: [cash, card, wallet]
+          enum: [cash, card, wallet, instapay]
+        transferSender: { type: ["string", "null"], maxLength: 80 }
         amountReceived: { type: number }
         changeAmount: { type: number }
         status: { type: string, enum: [completed, partially_returned, returned] }
@@ -1471,6 +1473,7 @@ components:
         - total
         - grossProfit
         - paymentMethod
+        - transferSender
         - amountReceived
         - changeAmount
         - status
@@ -1562,8 +1565,9 @@ components:
         discountAmount: { type: number, minimum: 0 }
         paymentMethod:
           type: string
-          enum: [cash, card, wallet]
+          enum: [cash, card, wallet, instapay]
         amountReceived: { type: number, minimum: 0 }
+        transferSender: { type: ["string", "null"], maxLength: 80 }
       required: [items]
     HeldSaleLine:
       type: object
@@ -1589,7 +1593,8 @@ components:
         discountAmount: { type: number }
         paymentMethod:
           type: string
-          enum: [cash, card, wallet]
+          enum: [cash, card, wallet, instapay]
+        transferSender: { type: ["string", "null"], maxLength: 80 }
         amountReceived: { type: number }
         createdAt: { type: string, format: date-time }
       required:
@@ -1603,6 +1608,7 @@ components:
         - estimatedTotal
         - discountAmount
         - paymentMethod
+        - transferSender
         - amountReceived
         - createdAt
     ReturnInput:

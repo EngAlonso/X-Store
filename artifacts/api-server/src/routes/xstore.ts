@@ -2459,6 +2459,17 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
       return;
     }
   }
+  const transferSender = parsed.data.transferSender?.trim() || null;
+  if (
+    (parsed.data.paymentMethod === "wallet" ||
+      parsed.data.paymentMethod === "instapay") &&
+    !transferSender
+  ) {
+    res.status(400).json({
+      error: "Enter the sender number for this transfer.",
+    });
+    return;
+  }
   const vatRate = await getTenantVatRate(tenantId);
   if (vatRate === null) {
     res.status(404).json({ error: "Store settings not found." });
@@ -2515,12 +2526,18 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
         (subtotal - discountAmount) * vatRate,
       );
       const total = roundMoney(subtotal - discountAmount + taxAmount);
-      const amountReceived = roundMoney(parsed.data.amountReceived);
+      const amountReceived =
+        parsed.data.paymentMethod === "cash"
+          ? roundMoney(parsed.data.amountReceived)
+          : total;
       if (
         parsed.data.paymentMethod === "cash" &&
-        amountReceived < total
+        (amountReceived <= 0 || amountReceived < total)
       ) {
-        throw new DomainError("The amount received is less than the total.", 400);
+        throw new DomainError(
+          "Enter the cash amount received and make sure it covers the total.",
+          400,
+        );
       }
       const [createdSale] = await tx
         .insert(xstoreSales)
@@ -2536,6 +2553,7 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
           taxAmount: String(taxAmount),
           total: String(total),
           paymentMethod: parsed.data.paymentMethod,
+          transferSender,
           amountReceived: String(amountReceived),
           changeAmount: String(
             roundMoney(Math.max(0, amountReceived - total)),
@@ -2691,6 +2709,7 @@ router.post("/xstore/held-sales", async (req, res): Promise<void> => {
       estimatedTotal: String(estimatedTotal),
       discountAmount: String(discountAmount),
       paymentMethod: parsed.data.paymentMethod ?? "cash",
+      transferSender: parsed.data.transferSender?.trim() || null,
       amountReceived: String(roundMoney(parsed.data.amountReceived ?? 0)),
     })
     .returning();

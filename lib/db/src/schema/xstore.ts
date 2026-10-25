@@ -245,6 +245,7 @@ export const xstoreSales = pgTable(
     taxAmount: numeric("tax_amount", { precision: 12, scale: 2 }).notNull(),
     total: numeric("total", { precision: 12, scale: 2 }).notNull(),
     paymentMethod: text("payment_method").notNull(),
+    transferSender: text("transfer_sender"),
     amountReceived: numeric("amount_received", {
       precision: 12,
       scale: 2,
@@ -318,6 +319,7 @@ export const xstoreHeldSales = pgTable(
       scale: 2,
     }).notNull().default("0"),
     paymentMethod: text("payment_method").notNull().default("cash"),
+    transferSender: text("transfer_sender"),
     amountReceived: numeric("amount_received", {
       precision: 12,
       scale: 2,

@@ -306,6 +306,7 @@ export const SalePaymentMethod = {
   cash: 'cash',
   card: 'card',
   wallet: 'wallet',
+  instapay: 'instapay',
 } as const;
 
 export type SaleStatus = typeof SaleStatus[keyof typeof SaleStatus];
@@ -360,6 +361,11 @@ export interface Sale {
   /** @nullable */
   grossProfit: number | null;
   paymentMethod: SalePaymentMethod;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  transferSender: string | null;
   amountReceived: number;
   changeAmount: number;
   status: SaleStatus;
@@ -722,6 +728,7 @@ export const SaleInputPaymentMethod = {
   cash: 'cash',
   card: 'card',
   wallet: 'wallet',
+  instapay: 'instapay',
 } as const;
 
 export interface SaleInput {
@@ -738,6 +745,11 @@ export interface SaleInput {
   paymentMethod: SaleInputPaymentMethod;
   /** @minimum 0 */
   amountReceived: number;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  transferSender?: string | null;
   /**
      * @maxLength 150
      * @nullable
@@ -779,6 +791,7 @@ export const HoldSaleInputPaymentMethod = {
   cash: 'cash',
   card: 'card',
   wallet: 'wallet',
+  instapay: 'instapay',
 } as const;
 
 export interface HoldSaleInput {
@@ -804,6 +817,11 @@ export interface HoldSaleInput {
   paymentMethod?: HoldSaleInputPaymentMethod;
   /** @minimum 0 */
   amountReceived?: number;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  transferSender?: string | null;
 }
 
 export interface HeldSaleLine {
@@ -821,6 +839,7 @@ export const HeldSalePaymentMethod = {
   cash: 'cash',
   card: 'card',
   wallet: 'wallet',
+  instapay: 'instapay',
 } as const;
 
 export interface HeldSale {
@@ -836,6 +855,11 @@ export interface HeldSale {
   estimatedTotal: number;
   discountAmount: number;
   paymentMethod: HeldSalePaymentMethod;
+  /**
+     * @maxLength 80
+     * @nullable
+     */
+  transferSender: string | null;
   amountReceived: number;
   createdAt: string;
 }

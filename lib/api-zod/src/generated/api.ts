@@ -217,6 +217,8 @@ export const getXStoreDashboardResponseLatestTenantsItemCountryCodeMax = 2;
 
 
 export const getXStoreDashboardResponseLatestTenantsItemCountryCodeRegExp = new RegExp('^[A-Z]{2}$');
+export const getXStoreDashboardResponseLatestSalesItemTransferSenderMax = 80;
+
 
 
 export const GetXStoreDashboardResponse = zod.object({
@@ -268,7 +270,8 @@ export const GetXStoreDashboardResponse = zod.object({
   "taxAmount": zod.number(),
   "total": zod.number(),
   "grossProfit": zod.number().nullable(),
-  "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
+  "paymentMethod": zod.enum(['cash', 'card', 'wallet', 'instapay']),
+  "transferSender": zod.string().max(getXStoreDashboardResponseLatestSalesItemTransferSenderMax).nullable(),
   "amountReceived": zod.number(),
   "changeAmount": zod.number(),
   "status": zod.enum(['completed', 'partially_returned', 'returned']),
@@ -869,6 +872,10 @@ export const ListXStoreSalesQueryParams = zod.object({
   "limit": zod.coerce.number().int().min(1).max(listXStoreSalesQueryLimitMax).optional()
 })
 
+export const listXStoreSalesResponseTransferSenderMax = 80;
+
+
+
 export const ListXStoreSalesResponseItem = zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
@@ -891,7 +898,8 @@ export const ListXStoreSalesResponseItem = zod.object({
   "taxAmount": zod.number(),
   "total": zod.number(),
   "grossProfit": zod.number().nullable(),
-  "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
+  "paymentMethod": zod.enum(['cash', 'card', 'wallet', 'instapay']),
+  "transferSender": zod.string().max(listXStoreSalesResponseTransferSenderMax).nullable(),
   "amountReceived": zod.number(),
   "changeAmount": zod.number(),
   "status": zod.enum(['completed', 'partially_returned', 'returned']),
@@ -935,6 +943,8 @@ export const checkoutXStoreSaleBodyDiscountAmountMin = 0;
 
 export const checkoutXStoreSaleBodyAmountReceivedMin = 0;
 
+export const checkoutXStoreSaleBodyTransferSenderMax = 80;
+
 export const checkoutXStoreSaleBodyCustomerNameMax = 150;
 
 export const checkoutXStoreSaleBodyCustomerPhoneMax = 30;
@@ -948,11 +958,16 @@ export const CheckoutXStoreSaleBody = zod.object({
 })).min(1),
   "invoiceNo": zod.string().min(1).max(checkoutXStoreSaleBodyInvoiceNoMax).regex(checkoutXStoreSaleBodyInvoiceNoRegExp).optional(),
   "discountAmount": zod.number().min(checkoutXStoreSaleBodyDiscountAmountMin),
-  "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
+  "paymentMethod": zod.enum(['cash', 'card', 'wallet', 'instapay']),
   "amountReceived": zod.number().min(checkoutXStoreSaleBodyAmountReceivedMin),
+  "transferSender": zod.string().max(checkoutXStoreSaleBodyTransferSenderMax).nullish(),
   "customerName": zod.string().max(checkoutXStoreSaleBodyCustomerNameMax).nullish(),
   "customerPhone": zod.string().max(checkoutXStoreSaleBodyCustomerPhoneMax).nullish()
 })
+
+export const checkoutXStoreSaleResponseTransferSenderMax = 80;
+
+
 
 export const CheckoutXStoreSaleResponse = zod.object({
   "id": zod.string(),
@@ -976,7 +991,8 @@ export const CheckoutXStoreSaleResponse = zod.object({
   "taxAmount": zod.number(),
   "total": zod.number(),
   "grossProfit": zod.number().nullable(),
-  "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
+  "paymentMethod": zod.enum(['cash', 'card', 'wallet', 'instapay']),
+  "transferSender": zod.string().max(checkoutXStoreSaleResponseTransferSenderMax).nullable(),
   "amountReceived": zod.number(),
   "changeAmount": zod.number(),
   "status": zod.enum(['completed', 'partially_returned', 'returned']),
@@ -1060,6 +1076,8 @@ export const GetXStoreProfitLossReportResponse = zod.object({
 
 export const listXStoreHeldSalesResponseItemsItemUnitPriceMin = 0;
 
+export const listXStoreHeldSalesResponseTransferSenderMax = 80;
+
 
 
 export const ListXStoreHeldSalesResponseItem = zod.object({
@@ -1076,7 +1094,8 @@ export const ListXStoreHeldSalesResponseItem = zod.object({
   "itemCount": zod.number().int(),
   "estimatedTotal": zod.number(),
   "discountAmount": zod.number(),
-  "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
+  "paymentMethod": zod.enum(['cash', 'card', 'wallet', 'instapay']),
+  "transferSender": zod.string().max(listXStoreHeldSalesResponseTransferSenderMax).nullable(),
   "amountReceived": zod.number(),
   "createdAt": zod.coerce.date()
 })
@@ -1098,6 +1117,8 @@ export const holdXStoreSaleBodyDiscountAmountMin = 0;
 
 export const holdXStoreSaleBodyAmountReceivedMin = 0;
 
+export const holdXStoreSaleBodyTransferSenderMax = 80;
+
 
 
 export const HoldXStoreSaleBody = zod.object({
@@ -1109,12 +1130,15 @@ export const HoldXStoreSaleBody = zod.object({
   "customerName": zod.string().max(holdXStoreSaleBodyCustomerNameMax).nullish(),
   "customerPhone": zod.string().max(holdXStoreSaleBodyCustomerPhoneMax).nullish(),
   "discountAmount": zod.number().min(holdXStoreSaleBodyDiscountAmountMin).optional(),
-  "paymentMethod": zod.enum(['cash', 'card', 'wallet']).optional(),
-  "amountReceived": zod.number().min(holdXStoreSaleBodyAmountReceivedMin).optional()
+  "paymentMethod": zod.enum(['cash', 'card', 'wallet', 'instapay']).optional(),
+  "amountReceived": zod.number().min(holdXStoreSaleBodyAmountReceivedMin).optional(),
+  "transferSender": zod.string().max(holdXStoreSaleBodyTransferSenderMax).nullish()
 })
 
 
 export const holdXStoreSaleResponseItemsItemUnitPriceMin = 0;
+
+export const holdXStoreSaleResponseTransferSenderMax = 80;
 
 
 
@@ -1132,7 +1156,8 @@ export const HoldXStoreSaleResponse = zod.object({
   "itemCount": zod.number().int(),
   "estimatedTotal": zod.number(),
   "discountAmount": zod.number(),
-  "paymentMethod": zod.enum(['cash', 'card', 'wallet']),
+  "paymentMethod": zod.enum(['cash', 'card', 'wallet', 'instapay']),
+  "transferSender": zod.string().max(holdXStoreSaleResponseTransferSenderMax).nullable(),
   "amountReceived": zod.number(),
   "createdAt": zod.coerce.date()
 })

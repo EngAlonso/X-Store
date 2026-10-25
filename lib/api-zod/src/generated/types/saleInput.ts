@@ -23,6 +23,11 @@ export interface SaleInput {
   /** @minimum 0 */
   amountReceived: number;
   /**
+     * @maxLength 80
+     * @nullable
+     */
+  transferSender?: string | null;
+  /**
      * @maxLength 150
      * @nullable
      */
