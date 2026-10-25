@@ -10,11 +10,6 @@
       "root": "artifacts/x-store",
       "framework": "vite",
       "outputDirectory": "dist/public"
-    },
-    "mockup-sandbox": {
-      "root": "artifacts/mockup-sandbox",
-      "framework": "vite",
-      "outputDirectory": "dist"
     }
   },
   "rewrites": [
