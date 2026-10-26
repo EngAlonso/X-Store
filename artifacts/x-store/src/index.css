@@ -1309,17 +1309,18 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 
 @page xstore-a5-wide {
   size: A5 portrait;
-  margin: 7mm;
+  margin: 12mm;
 }
 
 @media print {
-  body { background:#fff; }
+  html,body { width:100%;min-height:0!important;margin:0!important;background:#fff; }
+  #root { display:none!important; }
   body * { visibility:hidden!important; }
   .receipt-backdrop,.receipt-backdrop * { visibility:visible!important; }
   .receipt-backdrop { display:block!important;position:fixed!important;inset:0!important;padding:0!important;background:#fff!important; }
-  .receipt-modal { position:absolute!important;top:0!important;right:50%!important;transform:translateX(50%)!important;width:78mm!important;max-width:none!important;max-height:none!important;overflow:visible!important;padding:7mm!important;border:0!important;box-shadow:none!important; }
+  .receipt-modal { position:absolute!important;top:0!important;right:50%!important;transform:translateX(50%)!important;width:78mm!important;max-width:none!important;max-height:none!important;overflow:visible!important;padding:7mm!important;border:0!important;box-shadow:none!important;animation:none!important; }
   .receipt-lines-wrap { overflow:visible!important; }
-  .receipt-lines-table { break-inside:avoid; }
+  .receipt-lines-table { break-inside:auto; }
   .receipt-lines-table tr { break-inside:avoid; }
   .receipt-actions { display:none!important; }
 }
@@ -3883,7 +3884,7 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 }
 
 @media print {
-  .receipt-modal--wide {
+  .receipt-backdrop--wide {
     page: xstore-a5-wide;
   }
 
@@ -3902,7 +3903,7 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
     position: relative !important;
     top: auto !important;
     right: auto !important;
-    width: 132mm !important;
+    width: 120mm !important;
     max-width: none !important;
     max-height: none !important;
     overflow: visible !important;

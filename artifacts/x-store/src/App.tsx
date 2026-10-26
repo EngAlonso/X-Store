@@ -1,4 +1,5 @@
 import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from 'react';
+import { createPortal } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -800,7 +801,7 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
     'شكراً لزيارتكم',
   ].join('\n');
   const whatsappUrl=items.length?createWhatsAppInvoiceUrl(sale.customerPhone,whatsappMessage):null;
-  return <div className={`modal-backdrop receipt-backdrop${!thermal?' receipt-backdrop--wide':''}`}><section className={`modal receipt-modal ${printFormatClass}`} role="dialog" aria-modal="true" dir="rtl">
+  return createPortal(<div className={`modal-backdrop receipt-backdrop${!thermal?' receipt-backdrop--wide':''}`}><section className={`modal receipt-modal ${printFormatClass}`} role="dialog" aria-modal="true" dir="rtl">
     {!thermal?<div className="receipt-refined-top">
       <span className="receipt-success-mark" aria-hidden="true"><CircleCheck size={24}/></span>
       <div className="receipt-refined-title">
@@ -858,7 +859,7 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
         <button className="button button-quiet" onClick={close}>إغلاق</button>
       </div>
     </div>
-  </section></div>;
+  </section></div>,document.body);
 }
 function TenantsPage() {
   const qc=useQueryClient();
