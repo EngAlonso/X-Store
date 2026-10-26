@@ -3316,3 +3316,534 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   .invoice-format-option { min-height:0;flex-direction:row;align-items:center; }
   .invoice-format-copy { padding-inline-end:26px; }
 }
+
+/* Thermal receipts use their own reading order instead of shrinking the wide invoice. */
+.receipt-modal--thermal-80,
+.receipt-modal--thermal-58 {
+  box-sizing: border-box;
+  overflow-x: hidden;
+  border: 1px solid #dce5da;
+  background: #fffefa;
+  color: #304536;
+}
+
+.receipt-modal--thermal-80 {
+  width: min(100%, 80mm);
+  border-radius: 10px;
+}
+
+.receipt-modal--thermal-58 {
+  width: min(100%, 58mm);
+  border-radius: 8px;
+}
+
+.receipt-thermal-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 17px 13px 11px;
+  border-bottom: 1px dashed #cbd6cb;
+  color: #405747;
+  background: #fffefa;
+  text-align: center;
+}
+
+.receipt-thermal-head small {
+  color: #78877b;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.receipt-thermal-head h2 {
+  max-width: 100%;
+  margin: 0;
+  color: #21452e;
+  font-size: 16px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.receipt-thermal-head span {
+  color: #78877b;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .receipt-thermal-body {
+  padding: 13px 13px 15px;
+}
+
+.receipt-modal--thermal-58 .receipt-thermal-body {
+  padding: 10px 9px 12px;
+}
+
+.receipt-modal--thermal-80 .receipt-thermal-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 9px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #d5ded4;
+}
+
+.receipt-modal--thermal-80 .receipt-paid-status {
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px 7px;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-invoice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 3px;
+  min-width: 0;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-invoice b,
+.receipt-modal--thermal-58 .receipt-refined-invoice b {
+  overflow-wrap: anywhere;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .receipt-thermal-meta {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 10px;
+  margin: 0 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #d5ded4;
+}
+
+.receipt-modal--thermal-80 .receipt-meta-item {
+  min-width: 0;
+  padding: 5px 0;
+  border: 0;
+  border-bottom: 1px dotted #e5ebe3;
+  border-radius: 0;
+  background: transparent;
+}
+
+.receipt-modal--thermal-80 .receipt-meta-item span {
+  margin-bottom: 2px;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .receipt-meta-item b {
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.receipt-modal--thermal-80 .receipt-thermal-items,
+.receipt-modal--thermal-58 .receipt-thermal-items {
+  overflow: visible;
+  border: 0;
+  border-top: 1px solid #d6dfd5;
+  border-radius: 0;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-items-title,
+.receipt-modal--thermal-58 .receipt-refined-items-title {
+  min-height: 0;
+  padding: 8px 0 6px;
+  border-bottom: 1px dashed #d5ded4;
+  color: #405747;
+  background: transparent;
+  font-size: 10px;
+}
+
+.receipt-modal--thermal-80 .receipt-refined-items-title small,
+.receipt-modal--thermal-58 .receipt-refined-items-title small {
+  color: #78877b;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .thermal-lines-wrap,
+.receipt-modal--thermal-58 .thermal-lines-wrap {
+  padding: 0;
+}
+
+.receipt-modal--thermal-80 .thermal-line-item,
+.receipt-modal--thermal-58 .thermal-line-item {
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px dashed #d5ded4;
+}
+
+.receipt-modal--thermal-80 .thermal-line-item > b {
+  color: #354b3b;
+  font-size: 10px;
+}
+
+.receipt-modal--thermal-80 .thermal-line-item > small {
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .thermal-line-item > div {
+  gap: 7px;
+  margin-top: 1px;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .thermal-line-item > div strong {
+  font-size: 9px;
+}
+
+.receipt-modal--thermal-80 .receipt-thermal-summary,
+.receipt-modal--thermal-58 .receipt-thermal-summary {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin-top: 10px;
+}
+
+.receipt-modal--thermal-80 .receipt-total-panel,
+.receipt-modal--thermal-58 .receipt-total-panel {
+  order: 1;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.receipt-modal--thermal-80 .receipt-total-panel .receipt-summary-line,
+.receipt-modal--thermal-58 .receipt-total-panel .receipt-summary-line {
+  color: #68776b;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .receipt-total-panel .receipt-summary-line b,
+.receipt-modal--thermal-58 .receipt-total-panel .receipt-summary-line b {
+  color: #405345;
+  font-size: 9px;
+}
+
+.receipt-modal--thermal-80 .receipt-total-panel .receipt-total-amount,
+.receipt-modal--thermal-58 .receipt-total-panel .receipt-total-amount {
+  margin-top: 3px;
+  padding: 8px 7px;
+  border: 1px solid #dce7d9;
+  border-radius: 5px;
+  color: #315b3b;
+  background: #f3f7f0;
+  font-size: 10px;
+}
+
+.receipt-modal--thermal-80 .receipt-total-panel .receipt-total-amount b {
+  color: #1c6039;
+  font-size: 14px;
+}
+
+.receipt-modal--thermal-80 .receipt-payment-details,
+.receipt-modal--thermal-58 .receipt-payment-details {
+  order: 2;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 8px 0 0;
+  border: 0;
+  border-top: 1px dashed #cbd6cb;
+  border-radius: 0;
+  background: transparent;
+}
+
+.receipt-modal--thermal-80 .receipt-payment-details .receipt-summary-line,
+.receipt-modal--thermal-80 .receipt-payment-details .receipt-summary-line b {
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .receipt-thermal-thanks,
+.receipt-modal--thermal-58 .receipt-thermal-thanks {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #cbd6cb;
+  color: #647769;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-80 .receipt-thermal-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.receipt-modal--thermal-80 .receipt-thermal-actions .button {
+  min-width: 0;
+  padding-inline: 6px;
+  font-size: 9px;
+}
+
+.receipt-modal--thermal-80 .receipt-thermal-actions .button:last-child {
+  grid-column: 1 / -1;
+}
+
+.receipt-modal--thermal-58 .receipt-thermal-head {
+  padding: 13px 9px 9px;
+}
+
+.receipt-modal--thermal-58 .receipt-thermal-head h2 {
+  font-size: 13px;
+}
+
+.receipt-modal--thermal-58 .receipt-thermal-body {
+  padding: 9px 8px 11px;
+}
+
+.receipt-modal--thermal-58 .receipt-thermal-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 7px;
+  padding-bottom: 7px;
+  border-bottom: 1px dashed #d5ded4;
+  text-align: center;
+}
+
+.receipt-modal--thermal-58 .receipt-paid-status {
+  max-width: 100%;
+  padding: 3px 6px;
+  font-size: 7px;
+}
+
+.receipt-modal--thermal-58 .receipt-refined-invoice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  font-size: 7px;
+  text-align: center;
+}
+
+.receipt-modal--thermal-58 .receipt-refined-invoice b {
+  max-width: 100%;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-58 .receipt-thermal-meta {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin: 0 0 8px;
+  padding-bottom: 7px;
+  border-bottom: 1px dashed #d5ded4;
+}
+
+.receipt-modal--thermal-58 .receipt-meta-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 1px dotted #e5ebe3;
+  border-radius: 0;
+  background: transparent;
+}
+
+.receipt-modal--thermal-58 .receipt-meta-item span {
+  margin: 0;
+  font-size: 7px;
+}
+
+.receipt-modal--thermal-58 .receipt-meta-item b {
+  justify-content: flex-start;
+  max-width: 68%;
+  font-size: 8px;
+  text-align: left;
+}
+
+.receipt-modal--thermal-58 .receipt-refined-items-title {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 0 5px;
+  font-size: 9px;
+}
+
+.receipt-modal--thermal-58 .thermal-line-item {
+  gap: 3px;
+  padding: 7px 0;
+}
+
+.receipt-modal--thermal-58 .thermal-line-item > b {
+  color: #354b3b;
+  font-size: 9px;
+}
+
+.receipt-modal--thermal-58 .thermal-line-item > small {
+  font-size: 7px;
+}
+
+.receipt-modal--thermal-58 .thermal-line-item > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  font-size: 7px;
+}
+
+.receipt-modal--thermal-58 .thermal-line-item > div strong {
+  justify-self: end;
+  font-size: 8px;
+}
+
+.receipt-modal--thermal-58 .receipt-total-panel .receipt-total-amount {
+  padding: 7px 6px;
+  font-size: 9px;
+}
+
+.receipt-modal--thermal-58 .receipt-total-panel .receipt-total-amount b {
+  color: #1c6039;
+  font-size: 12px;
+}
+
+.receipt-modal--thermal-58 .receipt-payment-details .receipt-summary-line,
+.receipt-modal--thermal-58 .receipt-payment-details .receipt-summary-line b {
+  font-size: 7px;
+}
+
+.receipt-modal--thermal-58 .receipt-thermal-thanks {
+  margin-top: 8px;
+  padding-top: 7px;
+  font-size: 7px;
+}
+
+.receipt-modal--thermal-58 .receipt-thermal-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
+.receipt-modal--thermal-58 .receipt-thermal-actions .button {
+  width: 100%;
+  min-height: 34px;
+  padding-inline: 5px;
+  font-size: 8px;
+}
+
+@media print {
+  .receipt-modal--thermal-80 {
+    page: xstore-thermal-80;
+    width: 80mm !important;
+    padding: 3mm !important;
+  }
+
+  .receipt-modal--thermal-58 {
+    page: xstore-thermal-58;
+    width: 58mm !important;
+    padding: 2mm !important;
+  }
+
+  .receipt-modal--thermal-80 .receipt-thermal-head,
+  .receipt-modal--thermal-58 .receipt-thermal-head {
+    padding-top: 0;
+    background: #fffefa;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .receipt-modal--thermal-80 .receipt-thermal-head h2 {
+    font-size: 12px;
+  }
+
+  .receipt-modal--thermal-58 .receipt-thermal-head h2 {
+    font-size: 10px;
+  }
+
+  .receipt-modal--thermal-80 .receipt-thermal-body {
+    padding: 2mm 0 0;
+  }
+
+  .receipt-modal--thermal-58 .receipt-thermal-body {
+    padding: 1.5mm 0 0;
+  }
+
+  .receipt-modal--thermal-80 .receipt-thermal-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .receipt-modal--thermal-58 .receipt-thermal-meta {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .receipt-modal--thermal-80 .receipt-meta-item,
+  .receipt-modal--thermal-58 .receipt-meta-item {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  .receipt-modal--thermal-80 .receipt-meta-item span,
+  .receipt-modal--thermal-58 .receipt-meta-item span,
+  .receipt-modal--thermal-80 .receipt-meta-item b,
+  .receipt-modal--thermal-58 .receipt-meta-item b {
+    font-size: 7px;
+  }
+
+  .receipt-modal--thermal-80 .receipt-refined-items-title,
+  .receipt-modal--thermal-58 .receipt-refined-items-title {
+    padding-top: 5px;
+    padding-bottom: 4px;
+    font-size: 8px;
+  }
+
+  .receipt-modal--thermal-80 .thermal-line-item {
+    padding: 5px 0;
+  }
+
+  .receipt-modal--thermal-80 .thermal-line-item > b {
+    font-size: 8px;
+  }
+
+  .receipt-modal--thermal-80 .thermal-line-item > div,
+  .receipt-modal--thermal-80 .thermal-line-item > div strong {
+    font-size: 7px;
+  }
+
+  .receipt-modal--thermal-58 .thermal-line-item {
+    padding: 4px 0;
+  }
+
+  .receipt-modal--thermal-58 .thermal-line-item > b {
+    font-size: 7.5px;
+  }
+
+  .receipt-modal--thermal-58 .thermal-line-item > div,
+  .receipt-modal--thermal-58 .thermal-line-item > div strong {
+    font-size: 7px;
+  }
+
+  .receipt-modal--thermal-80 .receipt-total-panel .receipt-summary-line,
+  .receipt-modal--thermal-80 .receipt-total-panel .receipt-summary-line b,
+  .receipt-modal--thermal-80 .receipt-payment-details .receipt-summary-line,
+  .receipt-modal--thermal-80 .receipt-payment-details .receipt-summary-line b,
+  .receipt-modal--thermal-58 .receipt-total-panel .receipt-summary-line,
+  .receipt-modal--thermal-58 .receipt-total-panel .receipt-summary-line b,
+  .receipt-modal--thermal-58 .receipt-payment-details .receipt-summary-line,
+  .receipt-modal--thermal-58 .receipt-payment-details .receipt-summary-line b {
+    font-size: 7px;
+  }
+
+  .receipt-modal--thermal-80 .receipt-total-panel .receipt-total-amount b {
+    font-size: 11px;
+  }
+
+  .receipt-modal--thermal-58 .receipt-total-panel .receipt-total-amount b {
+    font-size: 9px;
+  }
+
+  .receipt-modal--thermal-80 .receipt-thermal-thanks,
+  .receipt-modal--thermal-58 .receipt-thermal-thanks {
+    font-size: 7px;
+  }
+
+  .receipt-modal--thermal-80 .receipt-watermark,
+  .receipt-modal--thermal-58 .receipt-watermark {
+    opacity: 0.12;
+  }
+}

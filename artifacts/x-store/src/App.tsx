@@ -801,7 +801,7 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
   ].join('\n');
   const whatsappUrl=items.length?createWhatsAppInvoiceUrl(sale.customerPhone,whatsappMessage):null;
   return <div className="modal-backdrop receipt-backdrop"><section className={`modal receipt-modal ${printFormatClass}`} role="dialog" aria-modal="true" dir="rtl">
-    <div className="receipt-refined-top">
+    {!thermal?<div className="receipt-refined-top">
       <span className="receipt-success-mark" aria-hidden="true"><CircleCheck size={24}/></span>
       <div className="receipt-refined-title">
         <small>{sale.status==='completed'?'تمت عملية البيع بنجاح':'ملخص عملية البيع'}</small>
@@ -812,16 +812,20 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
         <small>إجمالي الفاتورة</small>
         <strong>{money(sale.total)}</strong>
       </div>
-    </div>
-    <div className="receipt-refined-body">
+    </div>:<header className="receipt-thermal-head">
+      <small>إيصال بيع</small>
+      <h2>{storeName}</h2>
+      <span>نسخة العميل</span>
+    </header>}
+    <div className={`receipt-refined-body${thermal?' receipt-thermal-body':''}`}>
       <div className="receipt-watermark" aria-hidden="true">
         <img src={`${basePath}/x-store-receipt-watermark.jpeg`} alt=""/>
       </div>
-      <div className="receipt-success-row">
+      <div className={`receipt-success-row${thermal?' receipt-thermal-status':''}`}>
         <span className="receipt-paid-status"><CircleCheck size={14}/>{sale.status==='completed'?'مدفوعة':statusNames[sale.status]} · {paymentName(sale.paymentMethod)}</span>
         <span className="receipt-refined-invoice">رقم الفاتورة <b>{sale.invoiceNo}</b></span>
       </div>
-      <div className="receipt-refined-meta">
+      <div className={`receipt-refined-meta${thermal?' receipt-thermal-meta':''}${invoiceFormat==='thermal_58mm'?' receipt-thermal-meta--58':''}`}>
         {sale.customerName&&<div className="receipt-meta-item"><span>اسم العميل</span><b>{sale.customerName}</b></div>}
         <div className="receipt-meta-item"><span>رقم هاتف العميل</span><b className="receipt-meta-ltr">{sale.customerPhone||'—'}</b></div>
         <div className="receipt-meta-item"><span>التاريخ والوقت</span><b>{dateTimeLabel(sale.createdAt)}</b></div>
@@ -830,11 +834,11 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
         <div className="receipt-meta-item"><span>طريقة الدفع</span><b><Banknote size={14}/> {paymentName(sale.paymentMethod)}</b></div>
         {sale.transferSender&&<div className="receipt-meta-item"><span>التحويل من</span><b className="receipt-meta-ltr">{sale.transferSender}</b></div>}
       </div>
-      <section className="receipt-refined-items">
+      <section className={`receipt-refined-items${thermal?' receipt-thermal-items':''}`}>
         <div className="receipt-refined-items-title"><span>تفاصيل الأصناف</span><small>{fmt(items.length)} أصناف · {fmt(sale.itemCount)} وحدات</small></div>
         <SaleItemsTable items={items} money={money} variant={thermal?'thermal':'receipt'}/>
       </section>
-      <div className="receipt-refined-summary">
+      <div className={`receipt-refined-summary${thermal?' receipt-thermal-summary':''}`}>
         <div className="receipt-payment-details">
           <div className="receipt-summary-line"><span>المبلغ المستلم</span><b>{money(sale.amountReceived)}</b></div>
           <div className="receipt-summary-line"><span>الباقي للعميل</span><b>{money(sale.changeAmount)}</b></div>
@@ -847,8 +851,8 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
           <div className="receipt-summary-line receipt-total-amount"><span>الإجمالي</span><b>{money(sale.total)}</b></div>
         </div>
       </div>
-      <p className="receipt-thanks-refined">شكراً لزيارتكم، نتمنى لكم يوماً سعيداً</p>
-      <div className="modal-actions receipt-actions receipt-refined-actions">
+      <p className={`receipt-thanks-refined${thermal?' receipt-thermal-thanks':''}`}>شكراً لزيارتكم، نتمنى لكم يوماً سعيداً</p>
+      <div className={`modal-actions receipt-actions receipt-refined-actions${thermal?' receipt-thermal-actions':''}`}>
         <button className="button button-primary" disabled={!items.length} title={!items.length?'لا يمكن طباعة فاتورة بدون تفاصيل الأصناف':''} onClick={()=>window.print()}><Printer size={16}/> طباعة الإيصال</button>
         {whatsappUrl&&<a className="button button-whatsapp" href={whatsappUrl} target="_blank" rel="noopener noreferrer"><MessageCircle size={16}/> إرسال عبر واتساب</a>}
         <button className="button button-quiet" onClick={close}>إغلاق</button>
