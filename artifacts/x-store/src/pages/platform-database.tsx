@@ -23,15 +23,16 @@ import {
   X,
 } from "lucide-react";
 import "./platform-database.css";
+import { APP_NUMBER_LOCALE, latinizeDigits } from "@/lib/formatting";
 
 const PAGE_SIZE = 25;
-const fmt = (value: number) => new Intl.NumberFormat("ar-EG").format(value);
+const fmt = (value: number) => new Intl.NumberFormat(APP_NUMBER_LOCALE).format(value);
 
 function formatValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "object") return JSON.stringify(value);
+  if (typeof value === "object") return latinizeDigits(JSON.stringify(value));
   if (typeof value === "boolean") return value ? "نعم" : "لا";
-  return String(value);
+  return latinizeDigits(String(value));
 }
 
 function compactValue(value: unknown): string {

@@ -8,6 +8,7 @@ import {
   useRestoreXStorePlatformBackup,
 } from '@workspace/api-client-react';
 import type { XStorePlatformBackup } from '@workspace/api-client-react';
+import { APP_NUMBER_LOCALE, APP_SAUDI_DATE_LOCALE } from '@/lib/formatting';
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -24,8 +25,8 @@ import {
 } from 'lucide-react';
 
 const CONFIRMATION_PHRASE = 'استعادة المنصة';
-const fmt = (value: number) => new Intl.NumberFormat('ar-SA').format(value);
-const dateLabel = (value: string) => new Intl.DateTimeFormat('ar-SA', {
+const fmt = (value: number) => new Intl.NumberFormat(APP_NUMBER_LOCALE).format(value);
+const dateLabel = (value: string) => new Intl.DateTimeFormat(APP_SAUDI_DATE_LOCALE, {
   dateStyle: 'long',
   timeStyle: 'short',
 }).format(new Date(value));
@@ -237,7 +238,7 @@ export default function PlatformBackupPage() {
     <div className="backup-workflow-grid">
       <section className="panel backup-action-panel">
         <div className="backup-panel-heading">
-          <span className="backup-step">١</span>
+          <span className="backup-step">1</span>
           <div><span className="backup-panel-kicker">حفظ نسخة خارجية</span><h2>تنزيل نسخة المنصة</h2></div>
           <span className="backup-heading-icon"><ArrowDownToLine size={18}/></span>
         </div>
@@ -252,7 +253,7 @@ export default function PlatformBackupPage() {
 
       <section className="panel backup-action-panel restore-panel">
         <div className="backup-panel-heading">
-          <span className="backup-step">٢</span>
+          <span className="backup-step">2</span>
           <div><span className="backup-panel-kicker">استعادة من ملف</span><h2>اختيار نسخة احتياطية</h2></div>
           <span className="backup-heading-icon"><Upload size={18}/></span>
         </div>

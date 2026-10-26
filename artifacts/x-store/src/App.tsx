@@ -26,6 +26,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { getProductIcon, matchesProductSearch, type ProductIconKind } from '@/lib/product-icons';
+import { APP_EGYPT_DATE_LOCALE, APP_NUMBER_LOCALE, APP_SAUDI_DATE_LOCALE, latinizeDigits } from '@/lib/formatting';
 import { createWhatsAppInvoiceUrl, getWhatsAppDigits } from '@/lib/whatsapp-invoice';
 import { getPhoneCountry, phoneCountries, phoneNumberForCountry, splitInternationalPhone } from '@/lib/phone-countries';
 import './auth-unified.css';
@@ -114,7 +115,7 @@ function nullableSocialLinks(links: SocialLinkInputValues): AuthStatus['socialLi
   };
 }
 
-const fmt = (n: number) => new Intl.NumberFormat('ar-SA', { maximumFractionDigits: 2 }).format(n);
+const fmt = (n: number) => new Intl.NumberFormat(APP_NUMBER_LOCALE, { maximumFractionDigits: 2 }).format(n);
 type StoreCurrency = 'EGP' | 'SAR' | 'AED' | 'USD' | 'EUR' | 'GBP';
 const currencyOptions: { value: StoreCurrency; label: string; shortLabel: string }[] = [
   { value: 'EGP', label: 'الجنيه المصري (EGP)', shortLabel: 'ج.م.' },
@@ -154,7 +155,7 @@ function ProductIconSymbol({ symbol, kind }: { symbol: string; kind: ProductIcon
 }
 function useMoney() {
   const currency = useContext(CurrencyContext);
-  return useCallback((amount: number) => new Intl.NumberFormat('ar-EG', {
+  return useCallback((amount: number) => new Intl.NumberFormat(APP_NUMBER_LOCALE, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
@@ -183,13 +184,13 @@ function checkoutErrorMessage(error: unknown): string {
   }
   const stockError = serverMessage.match(/^Not enough stock for (.+)\. Available: (\d+)\.$/);
   if (stockError) {
-    return `الكمية المتاحة من ${stockError[1]} هي ${stockError[2]} فقط. قلّل الكمية أو حدّث المخزون.`;
+    return `الكمية المتاحة من ${latinizeDigits(stockError[1])} هي ${latinizeDigits(stockError[2])} فقط. قلّل الكمية أو حدّث المخزون.`;
   }
-  if (serverMessage) return `تعذر إتمام البيع: ${serverMessage}`;
+  if (serverMessage) return `تعذر إتمام البيع: ${latinizeDigits(serverMessage)}`;
   return 'تعذر إتمام البيع. تحقق من الاتصال والبيانات ثم حاول مرة أخرى.';
 }
-const dateLabel = (d?: string | null) => d ? new Intl.DateTimeFormat('ar-SA', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(d)) : '—';
-const dateTimeLabel = (d?: string | null) => d ? new Intl.DateTimeFormat('ar-EG', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(new Date(d)) : '—';
+const dateLabel = (d?: string | null) => d ? new Intl.DateTimeFormat(APP_SAUDI_DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(d)) : '—';
+const dateTimeLabel = (d?: string | null) => d ? new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(new Date(d)) : '—';
 const roleNames: Record<string, string> = { platform_admin: 'مالك المنصة', tenant_admin: 'مالك المتجر', cashier: 'أمين الصندوق', warehouse_manager: 'مدير المخزون', accountant: 'محاسب', custom: 'دور مخصص' };
 const teamPermissionOptions: { value: TeamPermission; label: string; description: string }[] = [
   { value: 'cashier', label: 'نقطة البيع والمبيعات', description: 'إتمام البيع، مراجعة الفواتير، والمرتجعات والاستبدال.' },
@@ -297,10 +298,10 @@ function Home() {
     <header className="landing-nav"><Logo /><div className="landing-actions"><Link href="/contact" className="button button-quiet" data-testid="button-contact-us">اتصل بنا</Link><Link href="/sign-in" className="button button-primary">دخول الحساب <ArrowUpLeft size={16}/></Link></div></header>
     <section className="landing-hero">
       <div className="hero-copy"><div className="eyebrow"><span className="live-dot"/> إدارة واضحة. يوم عمل أهدأ.</div><h1>كل متجرك،<br/><em>في مكان واحد.</em></h1><p>نقطة بيع سريعة ومخزون مرتب وتقارير موثوقة — أدوات يومية تساعد أصحاب المتاجر وفرقهم على العمل بثقة.</p><div className="hero-ctas"><button onClick={() => go('/sign-in')} className="button button-primary button-large" data-testid="button-start">دخول إلى حسابك <ChevronLeft size={18}/></button><button onClick={() => go('/sign-in')} className="text-link" data-testid="button-login">تحتاج حساباً؟ تواصل مع إدارة المنصة</button></div><div className="hero-proof"><span><CircleCheck size={16}/> إعداد بسيط</span><span><ShieldCheck size={16}/> بياناتك بأمان</span><span><Clock3 size={16}/> جاهز لليوم</span></div></div>
-      <div className="hero-visual"><div className="dashboard-window"><div className="window-top"><span className="window-brand"><img src={`${basePath}/x-store-mark.png`}/> X-Store</span><span className="window-date">الأربعاء، ١٤ مايو</span><span className="window-avatar">م</span></div><div className="window-body" dir="rtl"><div className="window-greeting">مرحباً، متجر النخبة <span>صباح الخير</span></div><div className="mock-stats"><div><small>مبيعات اليوم</small><b>٤٬٨٢٠ <i>ر.س</i></b><span className="positive">↑ ١٢٪ عن أمس</span></div><div><small>الطلبات</small><b>٣٨</b><span>اليوم</span></div></div><div className="mock-chart"><div className="chart-title"><b>حركة المبيعات</b><span>آخر ٧ أيام</span></div><div className="bars">{[34,50,42,67,56,83,62,91,68,78,56,72,46,65].map((h,i)=><span key={i} style={{height:`${h}%`}} className={i===7?'bar-hot':''}/>)}</div><div className="chart-days"><span>السبت</span><span>الإثنين</span><span>الأربعاء</span><span>الجمعة</span></div></div><div className="mock-bottom"><span><i className="mini-stock"/> مخزون منخفض</span><b>٥ منتجات تحتاج متابعة</b><ChevronLeft size={14}/></div></div></div><div className="hero-float"><span className="float-check"><CircleCheck size={16}/></span><div><b>عملية بيع ناجحة</b><small>فاتورة X-2048 · منذ لحظات</small></div><strong>٢٤٥ ر.س</strong></div><div className="hero-orbit orbit-one"/><div className="hero-orbit orbit-two"/></div>
+      <div className="hero-visual"><div className="dashboard-window"><div className="window-top"><span className="window-brand"><img src={`${basePath}/x-store-mark.png`}/> X-Store</span><span className="window-date">الأربعاء، 14 مايو</span><span className="window-avatar">م</span></div><div className="window-body" dir="rtl"><div className="window-greeting">مرحباً، متجر النخبة <span>صباح الخير</span></div><div className="mock-stats"><div><small>مبيعات اليوم</small><b>4,820 <i>ر.س</i></b><span className="positive">↑ 12٪ عن أمس</span></div><div><small>الطلبات</small><b>38</b><span>اليوم</span></div></div><div className="mock-chart"><div className="chart-title"><b>حركة المبيعات</b><span>آخر 7 أيام</span></div><div className="bars">{[34,50,42,67,56,83,62,91,68,78,56,72,46,65].map((h,i)=><span key={i} style={{height:`${h}%`}} className={i===7?'bar-hot':''}/>)}</div><div className="chart-days"><span>السبت</span><span>الإثنين</span><span>الأربعاء</span><span>الجمعة</span></div></div><div className="mock-bottom"><span><i className="mini-stock"/> مخزون منخفض</span><b>5 منتجات تحتاج متابعة</b><ChevronLeft size={14}/></div></div></div><div className="hero-float"><span className="float-check"><CircleCheck size={16}/></span><div><b>عملية بيع ناجحة</b><small>فاتورة X-2048 · منذ لحظات</small></div><strong>245 ر.س</strong></div><div className="hero-orbit orbit-one"/><div className="hero-orbit orbit-two"/></div>
     </section>
     <section className="landing-ribbon"><span>مصمم لروتين المتجر الحقيقي</span><b>من أول مسح للمنتج</b><i/><b>حتى إغلاق الوردية</b><i/><b>كل شيء واضح</b></section>
-    <section className="feature-section"><div className="section-heading"><div className="eyebrow">أدوات يومية، بدون تعقيد</div><h2>تركيز على ما يحتاجه<br/>متجرك فعلاً.</h2><p>واجهة عربية مريحة وسير عمل مترابط يقلل الخطوات ويترك لك مساحة للاهتمام بعملائك.</p></div><div className="feature-grid"><article className="feature feature-large"><span className="feature-icon"><ShoppingCart size={21}/></span><div><h3>بيع أسرع عند الصندوق</h3><p>ابحث أو امسح الباركود، أضف الخصم واختر طريقة الدفع. شاشة واضحة تبقى سهلة القراءة طوال الوردية.</p><span className="feature-foot">نقطة بيع سريعة <ArrowUpLeft size={15}/></span></div><div className="feature-receipt"><div className="receipt-head">X-Store <span>فاتورة</span></div><div className="receipt-line">قميص قطني <b>١٢٠ ر.س</b></div><div className="receipt-line">حزام جلدي <b>٨٥ ر.س</b></div><div className="receipt-total">الإجمالي <b>٢٠٥ ر.س</b></div><span className="receipt-mark">تم الدفع</span></div></article><article className="feature"><span className="feature-icon feature-icon-gold"><Boxes size={21}/></span><h3>مخزون يعرف تفاصيله</h3><p>تابع المقاسات والألوان والكميات وتواريخ الصلاحية من قائمة واحدة.</p><div className="stock-preview"><span><i/> حذاء رياضي · ٣ ألوان</span><b>١٨ قطعة</b></div></article><article className="feature"><span className="feature-icon feature-icon-red"><Activity size={21}/></span><h3>صورة صادقة عن الأداء</h3><p>اطّلع على المبيعات والاشتراكات ونشاط المتجر حسب صلاحيتك.</p><div className="mini-metrics"><span>المبيعات <b>١٢٨</b></span><span>متاجر نشطة <b>٢٤</b></span></div></article></div></section>
+    <section className="feature-section"><div className="section-heading"><div className="eyebrow">أدوات يومية، بدون تعقيد</div><h2>تركيز على ما يحتاجه<br/>متجرك فعلاً.</h2><p>واجهة عربية مريحة وسير عمل مترابط يقلل الخطوات ويترك لك مساحة للاهتمام بعملائك.</p></div><div className="feature-grid"><article className="feature feature-large"><span className="feature-icon"><ShoppingCart size={21}/></span><div><h3>بيع أسرع عند الصندوق</h3><p>ابحث أو امسح الباركود، أضف الخصم واختر طريقة الدفع. شاشة واضحة تبقى سهلة القراءة طوال الوردية.</p><span className="feature-foot">نقطة بيع سريعة <ArrowUpLeft size={15}/></span></div><div className="feature-receipt"><div className="receipt-head">X-Store <span>فاتورة</span></div><div className="receipt-line">قميص قطني <b>120 ر.س</b></div><div className="receipt-line">حزام جلدي <b>85 ر.س</b></div><div className="receipt-total">الإجمالي <b>205 ر.س</b></div><span className="receipt-mark">تم الدفع</span></div></article><article className="feature"><span className="feature-icon feature-icon-gold"><Boxes size={21}/></span><h3>مخزون يعرف تفاصيله</h3><p>تابع المقاسات والألوان والكميات وتواريخ الصلاحية من قائمة واحدة.</p><div className="stock-preview"><span><i/> حذاء رياضي · 3 ألوان</span><b>18 قطعة</b></div></article><article className="feature"><span className="feature-icon feature-icon-red"><Activity size={21}/></span><h3>صورة صادقة عن الأداء</h3><p>اطّلع على المبيعات والاشتراكات ونشاط المتجر حسب صلاحيتك.</p><div className="mini-metrics"><span>المبيعات <b>128</b></span><span>متاجر نشطة <b>24</b></span></div></article></div></section>
     <section className="landing-quote"><div className="quote-mark">“</div><blockquote>عندما تكون الأرقام واضحة،<br/>تكون قرارات اليوم أسهل.</blockquote><span>صُمم لأصحاب المتاجر الذين يديرون التفاصيل كل يوم.</span><div className="quote-seal"><img src={`${basePath}/x-store-mark.png`} alt=""/></div></section>
     <section className="store-fit-section" aria-labelledby="store-fit-title">
       <div className="store-fit-inner">
@@ -311,7 +312,7 @@ function Home() {
           </div>
           <div className="store-fit-heading-copy">
             <p>من نقطة البيع إلى المخزون وتقارير الأداء، X-Store يجمع أدوات يومك في تجربة واحدة مرتّبة.</p>
-            <div className="store-fit-meta"><span><strong>٠٦</strong> قطاعات متنوعة</span><i aria-hidden="true"/><span>نظام واحد متكامل</span></div>
+            <div className="store-fit-meta"><span><strong>06</strong> قطاعات متنوعة</span><i aria-hidden="true"/><span>نظام واحد متكامل</span></div>
           </div>
         </div>
         <div className="store-fit-grid">
@@ -602,7 +603,7 @@ function AppShell({ children }: { children: ReactNode }) {
      return <CurrencyContext.Provider value={(user.currency as StoreCurrency | null) || 'SAR'}><div dir="rtl" className="app-frame">
       <aside className={`sidebar ${open?'sidebar-open':''}`}><div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={()=>setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div><div className="store-chip"><span className="store-avatar">{(user.tenantName||user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{user.roleName || roleNames[user.role] || user.role}</small></span><ChevronDown size={15}/></div><div className="nav-caption">القائمة الرئيسية</div><nav className="side-nav">{items.map(item=><Link key={item.href} href={item.href} onClick={()=>setOpen(false)} className={`nav-link ${location===item.href?'nav-active':''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location===item.href&&<i/>}</Link>)}</nav><div className="sidebar-bottom"><div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div><div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.phone}</small></span><button type="button" className="icon-button" onClick={()=>void handleLogout()} disabled={loggingOut} title={loggingOut?'جارٍ تسجيل الخروج…':'تسجيل الخروج'} aria-label={loggingOut?'جارٍ تسجيل الخروج':'تسجيل الخروج'} data-testid="button-sign-out"><LogOut size={17}/></button></div></div></aside>
     {open&&<button aria-label="إغلاق القائمة" className="mobile-scrim" onClick={()=>setOpen(false)}/>}
-    <div className="workspace"><header className="topbar"><button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={()=>setOpen(true)}><Menu size={20}/></button><div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i=>i.href===location)?.label||'لوحة التحكم'}</b></div><div className="topbar-tools"><span className="today"><CalendarDays size={15}/> {new Intl.DateTimeFormat('ar-SA',{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span><button className="icon-button notification" aria-label="الإشعارات"><Bell size={18}/><i/></button><span className="top-avatar">{user.name.slice(0,1)}</span></div></header><main className="main-content">{children}</main></div>
+     <div className="workspace"><header className="topbar"><button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={()=>setOpen(true)}><Menu size={20}/></button><div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i=>i.href===location)?.label||'لوحة التحكم'}</b></div><div className="topbar-tools"><span className="today"><CalendarDays size={15}/> {new Intl.DateTimeFormat(APP_SAUDI_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span><button className="icon-button notification" aria-label="الإشعارات"><Bell size={18}/><i/></button><span className="top-avatar">{user.name.slice(0,1)}</span></div></header><main className="main-content">{children}</main></div>
    </div></CurrencyContext.Provider>;
 }
 function ProtectedLayout() {
@@ -679,20 +680,26 @@ function TenantTable({tenants,compact=false}:{tenants:Tenant[];compact?:boolean}
 function SaleItemsTable({items,money,variant='history'}:{items:NonNullable<Sale['items']>;money:(value:number)=>string;variant?:'history'|'receipt'|'thermal'}) {
   if(!items.length)return <p className={variant==='receipt'||variant==='thermal'?'receipt-lines-empty':'sale-lines-empty'}>لا توجد تفاصيل أصناف محفوظة لهذه الفاتورة.</p>;
   if(variant==='thermal')return <div className="thermal-lines-wrap">{items.map((item,index)=><article className="thermal-line-item" key={`${item.productId}-${index}`}>
-    <b>{item.name}</b>
-    {item.sku&&<small>{item.sku}</small>}
+    <b>{latinizeDigits(item.name)}</b>
+    {item.sku&&<small>{latinizeDigits(item.sku)}</small>}
     {item.returnedQuantity>0&&<small className="sale-line-returned">مرتجع: {fmt(item.returnedQuantity)}</small>}
     <div><span>{fmt(item.quantity)} × {money(item.unitPrice)}</span><strong>{money(roundMoney(item.unitPrice*item.quantity))}</strong></div>
   </article>)}</div>;
+  const receipt=variant==='receipt';
   return <div className={variant==='receipt'?'receipt-lines-wrap':'sale-lines-wrap'}>
-    <table className={variant==='receipt'?'receipt-lines-table':'sale-lines-table'}>
-      <thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead>
-      <tbody>{items.map((item,index)=><tr key={`${item.productId}-${index}`}>
-        <td><b>{item.name}</b>{item.sku&&<small>{item.sku}</small>}{item.returnedQuantity>0&&<small className="sale-line-returned">مرتجع: {fmt(item.returnedQuantity)}</small>}</td>
-        <td>{fmt(item.quantity)}</td>
-        <td>{money(item.unitPrice)}</td>
-        <td><b>{money(roundMoney(item.unitPrice*item.quantity))}</b></td>
-      </tr>)}</tbody>
+    <table className={receipt?'receipt-lines-table':'sale-lines-table'} dir={receipt?'ltr':'rtl'}>
+      <thead><tr>{receipt
+        ? <><th>الإجمالي</th><th>سعر الوحدة</th><th>الكمية</th><th>الصنف</th></>
+        : <><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></>}
+      </tr></thead>
+      <tbody>{items.map((item,index)=>{
+        const lineTotal=money(roundMoney(item.unitPrice*item.quantity));
+        const productDetails=<><b>{latinizeDigits(item.name)}</b>{item.sku&&<small>{latinizeDigits(item.sku)}</small>}{item.returnedQuantity>0&&<small className="sale-line-returned">مرتجع: {fmt(item.returnedQuantity)}</small>}</>;
+        return <tr key={`${item.productId}-${index}`}>{receipt
+          ? <><td><b>{lineTotal}</b></td><td>{money(item.unitPrice)}</td><td>{fmt(item.quantity)}</td><td>{productDetails}</td></>
+          : <><td>{productDetails}</td><td>{fmt(item.quantity)}</td><td>{money(item.unitPrice)}</td><td><b>{lineTotal}</b></td></>}
+        </tr>;
+      })}</tbody>
     </table>
   </div>;
 }
@@ -709,7 +716,7 @@ function SalesTable({sales,compact=false,onReturn,onPrint,onToggleItems,expanded
           {sales.map(sale=>(
             <Fragment key={sale.id}>
               <tr>
-                <td className="ltr-id">{sale.invoiceNo}{sale.exchangeEvents.length>0&&<span className="sale-exchange-badge"><ArrowLeftRight size={12}/> استبدال</span>}</td>
+                <td className="ltr-id">{latinizeDigits(sale.invoiceNo)}{sale.exchangeEvents.length>0&&<span className="sale-exchange-badge"><ArrowLeftRight size={12}/> استبدال</span>}</td>
                 <td>{dateTimeLabel(sale.createdAt)}</td>
                 <td>{fmt(sale.itemCount)}</td>
                 {!compact&&<td>{paymentName(sale.paymentMethod)}</td>}
@@ -724,15 +731,15 @@ function SalesTable({sales,compact=false,onReturn,onPrint,onToggleItems,expanded
                     <article className="sale-exchange-detail">
                       <header>
                         <b><ArrowLeftRight size={15}/> عملية استبدال مرتبطة بالفاتورة</b>
-                        <span>الأصلية: <strong className="ltr-id">{event.originalInvoiceNo}</strong></span>
-                        <span>فاتورة البديل: <strong className="ltr-id">{event.exchangeInvoiceNo}</strong></span>
+                        <span>الأصلية: <strong className="ltr-id">{latinizeDigits(event.originalInvoiceNo)}</strong></span>
+                        <span>فاتورة البديل: <strong className="ltr-id">{latinizeDigits(event.exchangeInvoiceNo)}</strong></span>
                         <span>{dateTimeLabel(event.createdAt)}</span>
                         <span>نفّذ العملية: <strong>{event.performedBy}</strong></span>
                       </header>
                       {event.detailsAvailable?<>
                         <div className="sale-exchange-items">
-                          <div><b>الأصناف المرتجعة</b><ul>{event.returnedItems.map(item=><li key={item.productId}>{item.name} <span>× {fmt(item.quantity)}</span></li>)}</ul></div>
-                          <div><b>الأصناف البديلة</b><ul>{event.replacementItems.map(item=><li key={item.productId}>{item.name} <span>× {fmt(item.quantity)}</span></li>)}</ul></div>
+                          <div><b>الأصناف المرتجعة</b><ul>{event.returnedItems.map(item=><li key={item.productId}>{latinizeDigits(item.name)} <span>× {fmt(item.quantity)}</span></li>)}</ul></div>
+                          <div><b>الأصناف البديلة</b><ul>{event.replacementItems.map(item=><li key={item.productId}>{latinizeDigits(item.name)} <span>× {fmt(item.quantity)}</span></li>)}</ul></div>
                         </div>
                         <div className="sale-exchange-amounts">
                           <span>قيمة المرتجع: <b>{event.refundAmount===null?'—':money(event.refundAmount)}</b></span>
@@ -763,7 +770,7 @@ function heldWhatsAppMessage(held:HeldSale, products:Product[], money:(value:num
     `العميل: ${held.customerName||'عميل نقدي'}`,
     `التاريخ: ${dateLabel(held.createdAt)}`,
     'الأصناف:',
-    ...held.items.map(item=>`- ${productNames.get(item.productId)||'منتج'} × ${fmt(item.quantity)} · ${money(item.unitPrice*item.quantity)}`),
+    ...held.items.map(item=>`- ${latinizeDigits(productNames.get(item.productId)||'منتج')} × ${fmt(item.quantity)} · ${money(item.unitPrice*item.quantity)}`),
     `الخصم: ${money(held.discountAmount)}`,
     `الإجمالي شامل الضريبة: ${money(held.estimatedTotal)}`,
     `طريقة الدفع المختارة: ${paymentName(held.paymentMethod)}`,
@@ -781,7 +788,7 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
   const items=sale.items??[];
   const storeName=sale.tenantName?.trim()||'المتجر';
   const whatsappMessage=[
-    `فاتورة ${storeName} رقم ${sale.invoiceNo}`,
+    `فاتورة ${storeName} رقم ${latinizeDigits(sale.invoiceNo)}`,
     'X-Store',
     `الحالة: ${sale.status==='completed'?'مدفوعة':statusNames[sale.status]}`,
     ...(sale.customerName?[`العميل: ${sale.customerName}`]:[]),
@@ -789,7 +796,7 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
     `الحساب: ${sale.cashierName}`,
     `عدد الأصناف: ${fmt(sale.itemCount)}`,
     'تفاصيل الأصناف:',
-    ...items.map(item=>`- ${item.name} × ${fmt(item.quantity)} · سعر الوحدة ${money(item.unitPrice)} · إجمالي الصنف ${money(roundMoney(item.unitPrice*item.quantity))}`),
+    ...items.map(item=>`- ${latinizeDigits(item.name)} × ${fmt(item.quantity)} · سعر الوحدة ${money(item.unitPrice)} · إجمالي الصنف ${money(roundMoney(item.unitPrice*item.quantity))}`),
     `طريقة الدفع: ${paymentName(sale.paymentMethod)}`,
     ...(sale.transferSender?[`التحويل من: ${sale.transferSender}`]:[]),
     `المجموع الفرعي: ${money(sale.subtotal)}`,
@@ -824,11 +831,11 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
       </div>
       <div className={`receipt-success-row${thermal?' receipt-thermal-status':''}`}>
         <span className="receipt-paid-status"><CircleCheck size={14}/>{sale.status==='completed'?'مدفوعة':statusNames[sale.status]} · {paymentName(sale.paymentMethod)}</span>
-        <span className="receipt-refined-invoice">رقم الفاتورة <b>{sale.invoiceNo}</b></span>
+      <span className="receipt-refined-invoice">رقم الفاتورة <b>{latinizeDigits(sale.invoiceNo)}</b></span>
       </div>
       <div className={`receipt-refined-meta${thermal?' receipt-thermal-meta':''}${invoiceFormat==='thermal_58mm'?' receipt-thermal-meta--58':''}`}>
         {sale.customerName&&<div className="receipt-meta-item"><span>اسم العميل</span><b>{sale.customerName}</b></div>}
-        <div className="receipt-meta-item"><span>رقم هاتف العميل</span><b className="receipt-meta-ltr">{sale.customerPhone||'—'}</b></div>
+        <div className="receipt-meta-item"><span>رقم هاتف العميل</span><b className="receipt-meta-ltr">{sale.customerPhone?latinizeDigits(sale.customerPhone):'—'}</b></div>
         <div className="receipt-meta-item"><span>التاريخ والوقت</span><b>{dateTimeLabel(sale.createdAt)}</b></div>
         <div className="receipt-meta-item receipt-meta-item--cashier"><span>الحساب المنفذ</span><b>{sale.cashierName}</b></div>
         <div className="receipt-meta-item"><span>عدد الوحدات</span><b>{fmt(sale.itemCount)}</b></div>
@@ -1386,7 +1393,7 @@ function StoreSettingsPage() {
     <Card className="settings-card"><SectionHead title="نسبة الضريبة" detail="تُحفظ النسبة للمتجر كله، وتظهر لأمناء الصندوق عند البيع."/>
       {session.isLoading?<StateBlock loading error={false} onRetry={()=>session.refetch()} empty={false}/>:session.isError?<StateBlock loading={false} error onRetry={()=>session.refetch()} empty={false}/>:<form className="form-grid settings-form" onSubmit={submit}>
         <label className="field field-wide"><span>نسبة ضريبة القيمة المضافة</span><div className="vat-rate-input"><input aria-label="نسبة ضريبة القيمة المضافة" type="number" min="0" max="100" step="0.01" required value={vatPercent} onChange={e=>{setVatPercent(e.target.value);setNotice('')}}/><span>%</span></div></label>
-        <div className="role-hint field-wide"><ShieldCheck size={16}/><span>اكتب النسبة من ٠ إلى ١٠٠٪. تغييرها لا يعدّل الفواتير السابقة.</span></div>
+        <div className="role-hint field-wide"><ShieldCheck size={16}/><span>اكتب النسبة من 0 إلى 100٪. تغييرها لا يعدّل الفواتير السابقة.</span></div>
         <div className="invoice-format-section field-wide">
           <SectionHead title="تصميم ومقاس الطباعة" detail="سيُستخدم الاختيار على فواتير المتجر عند الطباعة."/>
           <div className="invoice-format-options" role="radiogroup" aria-label="تصميم ومقاس الفاتورة">
@@ -1497,7 +1504,7 @@ function InventoryPage() {
     />
     <div className="stat-grid inventory-stats">
       <StatCard label="إجمالي المنتجات" value={q.isLoading?'—':fmt(allProducts.length)} detail="منتجات مسجلة في المتجر" icon={Package}/>
-      <StatCard label="قريب من النفاد" value={q.isLoading?'—':fmt(lowStockCount)} detail="رصيد من ١ إلى ٥ وحدات" icon={AlertTriangle} tint="gold"/>
+      <StatCard label="قريب من النفاد" value={q.isLoading?'—':fmt(lowStockCount)} detail="رصيد من 1 إلى 5 وحدات" icon={AlertTriangle} tint="gold"/>
       <StatCard label="قيمة المخزون" value={isWarehouseManager ? '—' : money(inventoryValue)} detail={isWarehouseManager ? 'متاح لمالك المتجر فقط' : 'محسوبة بسعر البيع'} icon={Banknote}/>
       <StatCard label="التصنيفات" value={q.isLoading?'—':fmt(categories.length)} detail="فئات المنتجات المسجلة" icon={Boxes} tint="sage"/>
     </div>
@@ -1634,7 +1641,7 @@ function InvoiceReturnPicker({invoiceNo,setInvoiceNo,loadedInvoiceNo,setLoadedIn
       {invoiceItems.data.length?invoiceItems.data.map(item=>{
         const selected=Object.prototype.hasOwnProperty.call(selectedItems,item.productId);
         return <div className={`invoice-item-option${selected?' is-selected':''}`} key={item.productId}>
-          <label className="invoice-item-label"><input type="checkbox" checked={selected} disabled={!item.returnableQuantity} onChange={e=>toggleItem(item,e.target.checked)} aria-label={`اختيار ${item.name}`} data-testid={`checkbox-${testIdPrefix}-item-${item.productId}`}/><span><b>{item.name}</b><small>{item.sku} · في الفاتورة {fmt(item.quantity)} · تم إرجاع {fmt(item.returnedQuantity)} · متاح للإرجاع {fmt(item.returnableQuantity)}</small></span></label>
+          <label className="invoice-item-label"><input type="checkbox" checked={selected} disabled={!item.returnableQuantity} onChange={e=>toggleItem(item,e.target.checked)} aria-label={`اختيار ${latinizeDigits(item.name)}`} data-testid={`checkbox-${testIdPrefix}-item-${item.productId}`}/><span><b>{latinizeDigits(item.name)}</b><small>{latinizeDigits(item.sku)} · في الفاتورة {fmt(item.quantity)} · تم إرجاع {fmt(item.returnedQuantity)} · متاح للإرجاع {fmt(item.returnableQuantity)}</small></span></label>
           {selected&&<label className="invoice-item-quantity"><span>الكمية</span><input type="number" min={1} max={item.returnableQuantity} step={1} value={selectedItems[item.productId]} onChange={e=>{const quantity=Math.max(1,Math.min(item.returnableQuantity,Number(e.target.value)||1));setSelectedItems(current=>({...current,[item.productId]:quantity}))}} aria-label={`كمية الإرجاع من ${item.name}`} data-testid={`input-${testIdPrefix}-quantity-${item.productId}`}/></label>}
         </div>
       }):<div className="empty-inline">لا توجد أصناف على هذه الفاتورة.</div>}
@@ -1865,7 +1872,7 @@ function SalesPage() {
   }
   return <div className="sales-page">
     <PageTitle eyebrow="حركة المتجر" title="المبيعات" desc="الفواتير الأخيرة وطرق الدفع والمرتجعات المسجلة." action={<button className="button button-quiet" onClick={()=>sales.refetch()}><RefreshCw size={15}/> تحديث القائمة</button>}/>
-    {canViewAmounts&&<div className="stat-grid sales-stats"><StatCard label="عمليات ظاهرة" value={fmt(sales.data?.length||0)} detail="آخر ١٠٠ فاتورة" icon={ReceiptText}/><StatCard label="إجمالي المبيعات" value={money((sales.data||[]).reduce((a,s)=>a+s.total,0))} detail="حسب القائمة المحمّلة" icon={Banknote} tint="gold"/><StatCard label="نقداً" value={fmt((sales.data||[]).filter(s=>s.paymentMethod==='cash').length)} detail="عمليات نقدية" icon={Wallet} tint="sage"/><StatCard label="مرتجعة" value={fmt((sales.data||[]).filter(s=>s.status!=='completed').length)} detail="تتضمن استرداداً" icon={RotateCcw} tint="red"/></div>}
+    {canViewAmounts&&<div className="stat-grid sales-stats"><StatCard label="عمليات ظاهرة" value={fmt(sales.data?.length||0)} detail="آخر 100 فاتورة" icon={ReceiptText}/><StatCard label="إجمالي المبيعات" value={money((sales.data||[]).reduce((a,s)=>a+s.total,0))} detail="حسب القائمة المحمّلة" icon={Banknote} tint="gold"/><StatCard label="نقداً" value={fmt((sales.data||[]).filter(s=>s.paymentMethod==='cash').length)} detail="عمليات نقدية" icon={Wallet} tint="sage"/><StatCard label="مرتجعة" value={fmt((sales.data||[]).filter(s=>s.status!=='completed').length)} detail="تتضمن استرداداً" icon={RotateCcw} tint="red"/></div>}
     <Card className="sales-invoice-panel"><SectionHead title="سجل الفواتير" detail="عرض الفواتير حسب الأحدث أولاً"/><div className="table-toolbar"><label className="search-box sales-search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث برقم الفاتورة" data-testid="input-search-sales"/></label><span className="result-count sales-result-count">{fmt(rows.length)} فاتورة</span></div>{sales.isLoading?<StateBlock loading error={false} onRetry={()=>sales.refetch()} empty={false}/>:sales.isError?<StateBlock loading={false} error onRetry={()=>sales.refetch()} empty={false}/>:rows.length?<SalesTable sales={rows} onReturn={canReturn?openReturn:undefined} onPrint={s=>setPrintTarget(s)} onToggleItems={toggleSaleItems} expandedSaleId={detailsSaleId} showAmounts={canViewAmounts}/>:<div className="empty-inline">لا توجد فواتير تطابق البحث.</div>}</Card>
     {selected&&<Modal title="تسجيل مرتجع" close={closeReturn}><form className="form-grid" onSubmit={submit}>
       <InvoiceReturnPicker invoiceNo={returnInvoiceNo} setInvoiceNo={setReturnInvoiceNo} loadedInvoiceNo={returnLoadedInvoiceNo} setLoadedInvoiceNo={setReturnLoadedInvoiceNo} selectedItems={returnSelectedItems} setSelectedItems={setReturnSelectedItems} testIdPrefix="return"/>
@@ -1888,15 +1895,15 @@ function auditDetailsLabel(action:string,details:string) {
   if(action!=='sale.exchange')return details;
   try{
     const payload=JSON.parse(details) as {originalInvoiceNo?:string;returnedItems?:{name:string;quantity:number}[];replacementItems?:{name:string;quantity:number}[];balanceDue?:number};
-    const items=(rows:{name:string;quantity:number}[]|undefined)=>rows?.map(item=>`${item.name} × ${fmt(item.quantity)}`).join('، ')||'—';
+    const items=(rows:{name:string;quantity:number}[]|undefined)=>rows?.map(item=>`${latinizeDigits(item.name)} × ${fmt(item.quantity)}`).join('، ')||'—';
     const balance=typeof payload.balanceDue==='number'?payload.balanceDue>0?`فرق السعر على العميل ${moneyLabel(payload.balanceDue)}`:payload.balanceDue<0?`مستحق للعميل ${moneyLabel(Math.abs(payload.balanceDue))}`:'لا يوجد فرق سعر':'';
-    return [`استبدال الفاتورة ${payload.originalInvoiceNo||'—'}`,`المرتجع: ${items(payload.returnedItems)}`,`البديل: ${items(payload.replacementItems)}`,balance].filter(Boolean).join(' · ');
+    return [`استبدال الفاتورة ${payload.originalInvoiceNo?latinizeDigits(payload.originalInvoiceNo):'—'}`,`المرتجع: ${items(payload.returnedItems)}`,`البديل: ${items(payload.replacementItems)}`,balance].filter(Boolean).join(' · ');
   }catch{
-    return details.replace(/^Exchange for /,'استبدال الفاتورة ');
+    return latinizeDigits(details.replace(/^Exchange for /,'استبدال الفاتورة '));
   }
 }
 function moneyLabel(amount:number) {
-  return new Intl.NumberFormat('ar-EG',{minimumFractionDigits:2,maximumFractionDigits:2}).format(amount);
+  return new Intl.NumberFormat(APP_NUMBER_LOCALE,{minimumFractionDigits:2,maximumFractionDigits:2}).format(amount);
 }
 
 function Routed() {
