@@ -64,7 +64,7 @@ const invoiceFormatOptions: {
   detail: string;
   sampleClass: string;
 }[] = [
-  { value: 'wide', label: 'عريضة (الحالي)', detail: 'التصميم الحالي بعرض مريح للطباعة العادية.', sampleClass: 'wide' },
+  { value: 'wide', label: 'عريضة A5 (الحالي)', detail: 'التصميم الحالي، مناسب للطباعة على ورق A5.', sampleClass: 'wide' },
   { value: 'thermal_80mm', label: 'حراري 80 مم', detail: 'مناسب لرولات الطابعة الحرارية الكبيرة.', sampleClass: 'thermal-80' },
   { value: 'thermal_58mm', label: 'حراري 58 مم', detail: 'مناسب لرولات الطابعة الحرارية الصغيرة.', sampleClass: 'thermal-58' },
 ];
@@ -800,7 +800,7 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
     'شكراً لزيارتكم',
   ].join('\n');
   const whatsappUrl=items.length?createWhatsAppInvoiceUrl(sale.customerPhone,whatsappMessage):null;
-  return <div className="modal-backdrop receipt-backdrop"><section className={`modal receipt-modal ${printFormatClass}`} role="dialog" aria-modal="true" dir="rtl">
+  return <div className={`modal-backdrop receipt-backdrop${!thermal?' receipt-backdrop--wide':''}`}><section className={`modal receipt-modal ${printFormatClass}`} role="dialog" aria-modal="true" dir="rtl">
     {!thermal?<div className="receipt-refined-top">
       <span className="receipt-success-mark" aria-hidden="true"><CircleCheck size={24}/></span>
       <div className="receipt-refined-title">
