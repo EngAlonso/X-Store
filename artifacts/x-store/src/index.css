@@ -1297,11 +1297,6 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   .report-profit { padding:14px; }
   .report-profit strong { font-size:19px; }
 }
-@page xstore-wide {
-  size: A5 portrait;
-  margin: 8mm 7mm;
-}
-
 @page xstore-thermal-80 {
   size: 80mm auto;
   margin: 0;
@@ -3122,7 +3117,7 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 }
 
 @media print {
-  @page { margin: 0; }
+  @page { size: A5 portrait; margin: 7mm; }
   .receipt-watermark {
     opacity: 0.18;
     -webkit-print-color-adjust: exact;
@@ -3888,16 +3883,18 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
     position: static !important;
     inset: auto !important;
     display: block !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
     padding: 0 !important;
     background: #fff !important;
   }
 
   .receipt-backdrop--wide .receipt-modal--wide {
-    page: xstore-wide;
     position: relative !important;
     top: auto !important;
     right: auto !important;
-    width: 134mm !important;
+    width: 132mm !important;
     max-width: none !important;
     max-height: none !important;
     overflow: visible !important;
@@ -3912,8 +3909,8 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 
   .receipt-modal--wide .receipt-refined-top {
     grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 15px;
-    padding: 24px 28px;
+    gap: 12px;
+    padding: 16px 20px;
     color: #f5faf4;
     background: linear-gradient(115deg, #143d28 0%, #245a3b 58%, #36724b 100%);
     -webkit-print-color-adjust: exact;
@@ -3938,13 +3935,13 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 
   .receipt-modal--wide .receipt-refined-title h2 {
     color: #fff;
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .receipt-modal--wide .receipt-refined-amount {
     display: block !important;
-    min-width: 154px;
-    padding-inline-start: 18px;
+    min-width: 130px;
+    padding-inline-start: 12px;
     border-inline-start: 1px solid rgba(255, 255, 255, 0.2);
     text-align: left;
   }
@@ -3955,48 +3952,49 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 
   .receipt-modal--wide .receipt-refined-amount strong {
     color: #fff;
-    font-size: 22px;
+    font-size: 18px;
   }
 
   .receipt-modal--wide .receipt-refined-body {
-    padding: 22px 28px 24px;
+    padding: 14px 20px 15px;
   }
 
   .receipt-modal--wide .receipt-success-row {
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 17px;
+    gap: 8px;
+    margin-bottom: 10px;
   }
 
   .receipt-modal--wide .receipt-paid-status {
-    padding: 7px 11px;
+    padding: 5px 8px;
     border: 1px solid #d5e9d7;
     color: #267142;
     background: #eff8ef;
+    font-size: 9px;
   }
 
   .receipt-modal--wide .receipt-refined-meta {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    margin-bottom: 20px;
+    gap: 5px;
+    margin-bottom: 10px;
   }
 
   .receipt-modal--wide .receipt-meta-item {
-    padding: 10px 12px;
+    padding: 6px 8px;
     border: 1px solid #e8ede5;
-    border-radius: 11px;
+    border-radius: 8px;
     background: #fafbf7;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   .receipt-modal--wide .receipt-meta-item span {
-    margin-bottom: 5px;
-    font-size: 9px;
+    margin-bottom: 3px;
+    font-size: 8px;
   }
 
   .receipt-modal--wide .receipt-meta-item b {
-    font-size: 11px;
+    font-size: 9px;
   }
 
   .receipt-modal--wide .receipt-refined-items {
@@ -4006,30 +4004,30 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   }
 
   .receipt-modal--wide .receipt-refined-items-title {
-    padding: 12px 15px;
+    padding: 8px 10px;
     border-bottom: 1px solid #e9eee7;
     color: #344b3b;
     background: #f7f9f4;
-    font-size: 12px;
+    font-size: 10px;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
   .receipt-modal--wide .receipt-refined-items-title small {
-    font-size: 10px;
+    font-size: 8px;
   }
 
   .receipt-modal--wide .receipt-refined-items .receipt-lines-table {
-    font-size: 11px;
-  }
-
-  .receipt-modal--wide .receipt-refined-items .receipt-lines-table th {
-    padding: 9px 10px;
     font-size: 9px;
   }
 
+  .receipt-modal--wide .receipt-refined-items .receipt-lines-table th {
+    padding: 6px 7px;
+    font-size: 8px;
+  }
+
   .receipt-modal--wide .receipt-refined-items .receipt-lines-table td {
-    padding: 10px;
+    padding: 7px 8px;
   }
 
   .receipt-modal--wide .receipt-refined-items .receipt-lines-table th:first-child {
@@ -4046,53 +4044,53 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   }
 
   .receipt-modal--wide .receipt-refined-summary {
-    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr);
-    gap: 18px;
-    margin-top: 17px;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 0.8fr);
+    gap: 10px;
+    margin-top: 10px;
   }
 
   .receipt-modal--wide .receipt-payment-details {
-    gap: 8px;
-    padding: 13px 14px;
+    gap: 5px;
+    padding: 8px 10px;
     border: 1px solid #e8ede6;
     border-radius: 12px;
     background: #fafbf7;
-    break-inside: avoid;
+    break-inside: auto;
   }
 
   .receipt-modal--wide .receipt-summary-line {
-    font-size: 10px;
+    font-size: 9px;
   }
 
   .receipt-modal--wide .receipt-summary-line b {
-    font-size: 11px;
+    font-size: 9px;
   }
 
   .receipt-modal--wide .receipt-total-panel {
-    gap: 9px;
-    padding: 15px;
+    gap: 6px;
+    padding: 9px;
     border: 1px solid #dce9da;
     border-radius: 13px;
     background: linear-gradient(135deg, #f1f7ed, #f8faf3);
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-    break-inside: avoid;
+    break-inside: auto;
   }
 
   .receipt-modal--wide .receipt-total-panel .receipt-total-amount {
-    padding-top: 9px;
+    padding-top: 6px;
     border-top: 1px solid #dfe9dc;
   }
 
   .receipt-modal--wide .receipt-total-panel .receipt-total-amount b {
-    font-size: 19px;
+    font-size: 16px;
   }
 
   .receipt-modal--wide .receipt-thanks-refined {
-    margin: 16px 0 0;
+    margin: 10px 0 0;
     padding: 0;
     border: 0;
-    font-size: 10px;
+    font-size: 9px;
   }
 
   .receipt-modal--wide .receipt-refined-actions {
