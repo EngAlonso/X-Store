@@ -829,9 +829,9 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
         {sale.customerName&&<div className="receipt-meta-item"><span>اسم العميل</span><b>{sale.customerName}</b></div>}
         <div className="receipt-meta-item"><span>رقم هاتف العميل</span><b className="receipt-meta-ltr">{sale.customerPhone||'—'}</b></div>
         <div className="receipt-meta-item"><span>التاريخ والوقت</span><b>{dateTimeLabel(sale.createdAt)}</b></div>
-        <div className="receipt-meta-item"><span>الحساب المنفذ</span><b>{sale.cashierName}</b></div>
+        <div className="receipt-meta-item receipt-meta-item--cashier"><span>الحساب المنفذ</span><b>{sale.cashierName}</b></div>
         <div className="receipt-meta-item"><span>عدد الوحدات</span><b>{fmt(sale.itemCount)}</b></div>
-        <div className="receipt-meta-item"><span>طريقة الدفع</span><b><Banknote size={14}/> {paymentName(sale.paymentMethod)}</b></div>
+        <div className="receipt-meta-item receipt-meta-item--payment"><span>طريقة الدفع</span><b><Banknote size={14}/> {paymentName(sale.paymentMethod)}</b></div>
         {sale.transferSender&&<div className="receipt-meta-item"><span>التحويل من</span><b className="receipt-meta-ltr">{sale.transferSender}</b></div>}
       </div>
       <section className={`receipt-refined-items${thermal?' receipt-thermal-items':''}`}>

@@ -3847,3 +3847,33 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
     opacity: 0.12;
   }
 }
+
+.receipt-modal--thermal-58 .receipt-meta-item--cashier,
+.receipt-modal--thermal-58 .receipt-meta-item--payment {
+  grid-template-columns: max-content minmax(0, 1fr);
+}
+
+.receipt-modal--thermal-58 .receipt-meta-item--cashier span,
+.receipt-modal--thermal-58 .receipt-meta-item--payment span {
+  white-space: nowrap;
+}
+
+.receipt-modal--thermal-58 .receipt-meta-item--cashier b,
+.receipt-modal--thermal-58 .receipt-meta-item--payment b {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.receipt-modal--thermal-58 .receipt-meta-item--payment b {
+  flex-wrap: nowrap;
+}
+
+.receipt-modal--thermal-58 .receipt-meta-item--payment b svg {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+}
