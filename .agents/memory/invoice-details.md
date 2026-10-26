@@ -13,4 +13,4 @@ The store owner can choose the receipt format: the existing wide A5 design, ther
 
 **Why:** the user asked for product-level prices across all invoice channels, plus receipts whose full composition adapts to the selected paper width; the wide format must print on A5.
 
-**How to apply:** keep invoice details available in checkout results and saved sales; enforce payment requirements in both the cashier UI and API, show stored transfer details in invoice views, and preserve format-specific layout, print width, and logo watermark.
+**How to apply:** keep invoice details available in checkout results and saved sales; enforce payment requirements in both the cashier UI and API, show stored transfer details in invoice views, and preserve format-specific layout, print width, and logo watermark. Scope page-size rules to each named receipt format; do not apply A5 as a global print default.

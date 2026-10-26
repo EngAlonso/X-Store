@@ -1307,6 +1307,11 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   margin: 0;
 }
 
+@page xstore-a5-wide {
+  size: A5 portrait;
+  margin: 7mm;
+}
+
 @media print {
   body { background:#fff; }
   body * { visibility:hidden!important; }
@@ -3117,7 +3122,6 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 }
 
 @media print {
-  @page { size: A5 portrait; margin: 7mm; }
   .receipt-watermark {
     opacity: 0.18;
     -webkit-print-color-adjust: exact;
@@ -3879,6 +3883,10 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 }
 
 @media print {
+  .receipt-modal--wide {
+    page: xstore-a5-wide;
+  }
+
   .receipt-backdrop--wide {
     position: static !important;
     inset: auto !important;
