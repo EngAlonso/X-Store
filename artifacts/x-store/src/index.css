@@ -3912,7 +3912,7 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
     position: relative !important;
     top: auto !important;
     right: auto !important;
-    width: 116mm !important;
+    width: 124mm !important;
     max-width: none !important;
     max-height: none !important;
     overflow: visible !important;
@@ -3974,7 +3974,7 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   }
 
   .receipt-modal--wide .receipt-refined-body {
-    padding: 14px 20px 15px;
+    padding: 14px 8px 15px;
   }
 
   .receipt-modal--wide .receipt-watermark {
@@ -4049,7 +4049,7 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   }
 
   .receipt-modal--wide .receipt-refined-items .receipt-lines-table {
-    width: 108mm !important;
+    width: 119mm !important;
     min-width: 0 !important;
     max-width: none !important;
     table-layout: fixed !important;
