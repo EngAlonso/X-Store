@@ -3979,7 +3979,7 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 
   .receipt-modal--wide .receipt-watermark {
     z-index: 2;
-    opacity: 0.16;
+    opacity: 0.1;
   }
 
   .receipt-modal--wide .receipt-watermark img {
