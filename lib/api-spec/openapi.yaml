@@ -1269,7 +1269,7 @@ components:
       enum: [EGP, SAR, AED, USD, EUR, GBP]
     TeamPermission:
       type: string
-      enum: [cashier, warehouse_manager, accountant]
+      enum: [retail_sales, wholesale_sales, cashier, warehouse_manager, accountant]
     TeamMember:
       type: object
       properties:

@@ -1,5 +1,5 @@
 - [Artifact import routing](artifact-import-routing.md) — keep registered artifact metadata under `artifacts/<slug>` and verify the preview proxy after relocation.
-- [Store types](store-types.md) — capture store category at creation, but keep all categories on the current workflow until their differences are defined together.
+- [Store types](store-types.md) — preserve current workflows, enforce store-level wholesale eligibility, and grant retail/wholesale selling permissions separately.
 - [Invoice line details](invoice-details.md) — completed invoices must show per-item name, quantity, unit price, and line total across print, WhatsApp, and history.
 - [Latin numerals](display-numerals.md) — show user-visible values with 0–9 across money, dates, quantities, charts, and invoice samples.
 - [Aiven production database](aiven-production-db.md) — use the same-service CA with strict TLS and apply tracked migrations to the Vercel production database.

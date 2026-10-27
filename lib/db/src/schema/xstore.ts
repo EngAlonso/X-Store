@@ -15,6 +15,9 @@ import {
 import { z } from "zod/v4";
 
 export const xstoreTeamPermissions = [
+  "retail_sales",
+  "wholesale_sales",
+  // Kept for existing team accounts; it grants both sale types.
   "cashier",
   "warehouse_manager",
   "accountant",

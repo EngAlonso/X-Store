@@ -1,6 +1,12 @@
 import { eq } from "drizzle-orm";
 import type { NextFunction, Request, Response } from "express";
-import { db, xstoreTenants, xstoreUsers, type XStoreUser } from "@workspace/db";
+import {
+  db,
+  xstoreTenants,
+  xstoreUsers,
+  type XStoreSaleType,
+  type XStoreUser,
+} from "@workspace/db";
 import { readSessionToken } from "../lib/xstore-session";
 
 declare global {
@@ -93,6 +99,36 @@ export function hasRole(user: XStoreUser, roles: readonly string[]): boolean {
     user.role === "custom" &&
     (user.permissions ?? []).some((permission) => roles.includes(permission))
   );
+}
+
+export function canSellSaleType(
+  user: XStoreUser,
+  saleType: XStoreSaleType,
+): boolean {
+  if (
+    user.role === "platform_admin" ||
+    user.role === "tenant_admin" ||
+    user.role === "cashier"
+  ) {
+    return true;
+  }
+  if (user.role !== "custom") return false;
+
+  const permissions = user.permissions ?? [];
+  if (permissions.includes("cashier")) return true;
+  return permissions.includes(
+    saleType === "retail" ? "retail_sales" : "wholesale_sales",
+  );
+}
+
+export function getAllowedSaleTypes(user: XStoreUser): XStoreSaleType[] {
+  return (["retail", "wholesale"] as const).filter((saleType) =>
+    canSellSaleType(user, saleType),
+  );
+}
+
+export function canAccessPointOfSale(user: XStoreUser): boolean {
+  return getAllowedSaleTypes(user).length > 0;
 }
 
 export function denyRole(

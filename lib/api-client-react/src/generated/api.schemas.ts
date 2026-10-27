@@ -56,6 +56,8 @@ export type TeamPermission = typeof TeamPermission[keyof typeof TeamPermission];
 
 
 export const TeamPermission = {
+  retail_sales: 'retail_sales',
+  wholesale_sales: 'wholesale_sales',
   cashier: 'cashier',
   warehouse_manager: 'warehouse_manager',
   accountant: 'accountant',

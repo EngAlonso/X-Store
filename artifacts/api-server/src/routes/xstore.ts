@@ -96,6 +96,9 @@ import {
   type XStoreUser,
 } from "@workspace/db";
 import {
+  canAccessPointOfSale,
+  canSellSaleType,
+  getAllowedSaleTypes,
   getXStoreUser,
   hasRole,
   requireXStoreUser,
@@ -115,7 +118,6 @@ const router: IRouter = Router();
 const platformAdmin = ["platform_admin"] as const;
 const tenantManagers = ["tenant_admin"] as const;
 const inventoryEditors = ["platform_admin", "tenant_admin", "warehouse_manager"] as const;
-const cashierRoles = ["platform_admin", "tenant_admin", "cashier"] as const;
 const reportRoles = ["platform_admin", "tenant_admin", "accountant"] as const;
 const saleHistoryRoles = [
   "platform_admin",
@@ -498,14 +500,18 @@ function productDto(product: XStoreProduct, user: XStoreUser) {
     "warehouse_manager",
     "accountant",
   ]);
+  const canViewRetailPrice =
+    canViewSellingPrices || canSellSaleType(user, "retail");
+  const canViewWholesalePrice =
+    canViewSellingPrices || canSellSaleType(user, "wholesale");
   return {
     ...product,
-    price: canViewSellingPrices
+    price: canViewRetailPrice
       ? product.price === null
         ? null
         : toNumber(product.price)
       : 0,
-    wholesalePrice: canViewSellingPrices
+    wholesalePrice: canViewWholesalePrice
       ? product.wholesalePrice === null
         ? null
         : toNumber(product.wholesalePrice)
@@ -943,15 +949,23 @@ router.get("/xstore/dashboard", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
   const isPlatformAdmin = user.role === "platform_admin";
   const isFinancial = hasRole(user, reportRoles);
+  const hasAllSalesHistory = hasRole(user, saleHistoryRoles);
+  const limitedSaleTypes =
+    canAccessPointOfSale(user) && !hasAllSalesHistory
+      ? getAllowedSaleTypes(user)
+      : undefined;
   const tenantWhere = user.tenantId
     ? eq(xstoreTenants.id, user.tenantId)
     : undefined;
   const productWhere = user.tenantId
     ? eq(xstoreProducts.tenantId, user.tenantId)
     : undefined;
-  const saleWhere = user.tenantId
-    ? eq(xstoreSales.tenantId, user.tenantId)
-    : undefined;
+  const saleWhere = and(
+    user.tenantId ? eq(xstoreSales.tenantId, user.tenantId) : undefined,
+    limitedSaleTypes
+      ? inArray(xstoreSales.saleType, limitedSaleTypes)
+      : undefined,
+  );
   const currentDay = new Date();
   currentDay.setHours(0, 0, 0, 0);
   const dayStart = currentDay;
@@ -2229,7 +2243,8 @@ router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
 
 router.get("/xstore/sales", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!hasRole(user, saleHistoryRoles)) {
+  const hasAllSalesHistory = hasRole(user, saleHistoryRoles);
+  if (!hasAllSalesHistory && !canAccessPointOfSale(user)) {
     res.status(403).json({ error: "Sales history is not available to this role." });
     return;
   }
@@ -2248,7 +2263,14 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
     .from(xstoreSales)
     .innerJoin(xstoreUsers, eq(xstoreSales.cashierUserId, xstoreUsers.id))
     .innerJoin(xstoreTenants, eq(xstoreSales.tenantId, xstoreTenants.id))
-    .where(scopedTenant ? eq(xstoreSales.tenantId, scopedTenant) : undefined)
+    .where(
+      and(
+        scopedTenant ? eq(xstoreSales.tenantId, scopedTenant) : undefined,
+        hasAllSalesHistory
+          ? undefined
+          : inArray(xstoreSales.saleType, getAllowedSaleTypes(user)),
+      ),
+    )
     .orderBy(desc(xstoreSales.createdAt))
     .limit(parsed.data.limit ?? 50);
   const saleIds = rows.map(({ sale }) => sale.id);
@@ -2370,7 +2392,8 @@ router.get(
   "/xstore/sales/:invoiceNo/items",
   async (req, res): Promise<void> => {
     const user = getXStoreUser(res);
-    if (!hasRole(user, saleHistoryRoles)) {
+    const hasAllSalesHistory = hasRole(user, saleHistoryRoles);
+    if (!hasAllSalesHistory && !canAccessPointOfSale(user)) {
       res.status(403).json({ error: "Sales history is not available to this role." });
       return;
     }
@@ -2397,6 +2420,10 @@ router.get(
       .limit(1);
     if (!sale) {
       res.status(404).json({ error: "Invoice not found." });
+      return;
+    }
+    if (!hasAllSalesHistory && !canSellSaleType(user, sale.saleType)) {
+      res.status(403).json({ error: "This role cannot access this sale type." });
       return;
     }
     const [saleTotals] = await db
@@ -2552,7 +2579,7 @@ router.get("/xstore/reports/profit-loss", async (req, res): Promise<void> => {
 
 router.post("/xstore/sales", async (req, res): Promise<void> => {
   const actor = getXStoreUser(res);
-  if (!hasRole(actor, cashierRoles)) {
+  if (!canAccessPointOfSale(actor)) {
     res.status(403).json({ error: "This role cannot complete sales." });
     return;
   }
@@ -2609,6 +2636,10 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
     .where(eq(xstoreTenants.id, tenantId))
     .limit(1);
   const saleType = parsed.data.saleType ?? "retail";
+  if (!canSellSaleType(actor, saleType)) {
+    res.status(403).json({ error: "You do not have permission for this sale type." });
+    return;
+  }
   if (saleType === "wholesale" && !tenantAllowsWholesale(tenant)) {
     res.status(403).json({
       error: "Wholesale sales are not enabled for this store.",
@@ -2752,7 +2783,7 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
 
 router.get("/xstore/held-sales", async (_req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!hasRole(user, cashierRoles)) {
+  if (!canAccessPointOfSale(user)) {
     res.status(403).json({ error: "This role cannot access cashier carts." });
     return;
   }
@@ -2761,7 +2792,12 @@ router.get("/xstore/held-sales", async (_req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(xstoreHeldSales)
-    .where(eq(xstoreHeldSales.tenantId, tenantId))
+    .where(
+      and(
+        eq(xstoreHeldSales.tenantId, tenantId),
+        inArray(xstoreHeldSales.saleType, getAllowedSaleTypes(user)),
+      ),
+    )
     .orderBy(desc(xstoreHeldSales.createdAt));
   res.json(
     ListXStoreHeldSalesResponse.parse(
@@ -2778,7 +2814,7 @@ router.get("/xstore/held-sales", async (_req, res): Promise<void> => {
 
 router.post("/xstore/held-sales", async (req, res): Promise<void> => {
   const actor = getXStoreUser(res);
-  if (!hasRole(actor, cashierRoles)) {
+  if (!canAccessPointOfSale(actor)) {
     res.status(403).json({ error: "This role cannot hold cashier carts." });
     return;
   }
@@ -2810,6 +2846,10 @@ router.post("/xstore/held-sales", async (req, res): Promise<void> => {
     return;
   }
   const saleType = parsed.data.saleType ?? "retail";
+  if (!canSellSaleType(actor, saleType)) {
+    res.status(403).json({ error: "You do not have permission for this sale type." });
+    return;
+  }
   const [tenant] = await db
     .select({
       storeType: xstoreTenants.storeType,
@@ -2900,7 +2940,7 @@ router.post("/xstore/held-sales", async (req, res): Promise<void> => {
 
 router.delete("/xstore/held-sales/:heldSaleId", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!hasRole(user, cashierRoles)) {
+  if (!canAccessPointOfSale(user)) {
     res.status(403).json({ error: "This role cannot remove cashier carts." });
     return;
   }
@@ -2912,24 +2952,37 @@ router.delete("/xstore/held-sales/:heldSaleId", async (req, res): Promise<void> 
     return;
   }
   const [held] = await db
-    .delete(xstoreHeldSales)
+    .select({ saleType: xstoreHeldSales.saleType })
+    .from(xstoreHeldSales)
     .where(
       and(
         eq(xstoreHeldSales.id, params.data.heldSaleId),
         eq(xstoreHeldSales.tenantId, tenantId),
       ),
     )
-    .returning({ id: xstoreHeldSales.id });
+    .limit(1);
   if (!held) {
     res.status(404).json({ error: "Held cart not found." });
     return;
   }
+  if (!canSellSaleType(user, held.saleType)) {
+    res.status(403).json({ error: "This role cannot access this sale type." });
+    return;
+  }
+  await db
+    .delete(xstoreHeldSales)
+    .where(
+      and(
+        eq(xstoreHeldSales.id, params.data.heldSaleId),
+        eq(xstoreHeldSales.tenantId, tenantId),
+      ),
+    );
   res.sendStatus(204);
 });
 
 router.post("/xstore/returns", async (req, res): Promise<void> => {
   const actor = getXStoreUser(res);
-  if (!hasRole(actor, cashierRoles)) {
+  if (!canAccessPointOfSale(actor)) {
     res.status(403).json({ error: "This role cannot process returns." });
     return;
   }
@@ -2953,6 +3006,12 @@ router.post("/xstore/returns", async (req, res): Promise<void> => {
         )
         .limit(1);
       if (!sale) throw new DomainError("Invoice not found.", 404);
+      if (!canSellSaleType(actor, sale.saleType)) {
+        throw new DomainError(
+          "This role cannot process returns for this sale type.",
+          403,
+        );
+      }
       const [saleItem] = await tx
         .select()
         .from(xstoreSaleItems)
@@ -3076,7 +3135,7 @@ router.post("/xstore/returns", async (req, res): Promise<void> => {
 
 router.post("/xstore/returns/batch", async (req, res): Promise<void> => {
   const actor = getXStoreUser(res);
-  if (!hasRole(actor, cashierRoles)) {
+  if (!canAccessPointOfSale(actor)) {
     res.status(403).json({ error: "This role cannot process returns." });
     return;
   }
@@ -3101,6 +3160,12 @@ router.post("/xstore/returns/batch", async (req, res): Promise<void> => {
         )
         .limit(1);
       if (!sale) throw new DomainError("Invoice not found.", 404);
+      if (!canSellSaleType(actor, sale.saleType)) {
+        throw new DomainError(
+          "This role cannot process returns for this sale type.",
+          403,
+        );
+      }
 
       const originalSubtotal = toNumber(sale.subtotal);
       const discountedSubtotal = Math.max(
@@ -3247,7 +3312,7 @@ router.post("/xstore/returns/batch", async (req, res): Promise<void> => {
 
 router.post("/xstore/exchanges", async (req, res): Promise<void> => {
   const actor = getXStoreUser(res);
-  if (!hasRole(actor, cashierRoles)) {
+  if (!canAccessPointOfSale(actor)) {
     res.status(403).json({ error: "This role cannot process exchanges." });
     return;
   }
@@ -3276,6 +3341,12 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
         )
         .limit(1);
       if (!original) throw new DomainError("Invoice not found.", 404);
+      if (!canSellSaleType(actor, original.saleType)) {
+        throw new DomainError(
+          "This role cannot process exchanges for this sale type.",
+          403,
+        );
+      }
 
       let refundAmount = 0;
       const returnedItems: XStoreExchangeEvent["returnedItems"] = [];

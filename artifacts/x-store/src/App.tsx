@@ -206,20 +206,43 @@ const dateLabel = (d?: string | null) => d ? new Intl.DateTimeFormat(APP_SAUDI_D
 const dateTimeLabel = (d?: string | null) => d ? new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(new Date(d)) : '—';
 const roleNames: Record<string, string> = { platform_admin: 'مالك المنصة', tenant_admin: 'مالك المتجر', cashier: 'أمين الصندوق', warehouse_manager: 'مدير المخزون', accountant: 'محاسب', custom: 'دور مخصص' };
 const teamPermissionOptions: { value: TeamPermission; label: string; description: string }[] = [
-  { value: 'cashier', label: 'نقطة البيع والمبيعات', description: 'إتمام البيع، مراجعة الفواتير، والمرتجعات والاستبدال.' },
+  { value: 'retail_sales', label: 'بيع قطاعي', description: 'إتمام الفواتير بسعر القطاعي ومعالجة فواتير القطاعي.' },
+  { value: 'wholesale_sales', label: 'بيع جملة', description: 'إتمام الفواتير بسعر الجملة عند تفعيل قسم الجملة للمتجر.' },
   { value: 'warehouse_manager', label: 'إدارة المخزون', description: 'عرض المنتجات وتعديل الكميات دون تغيير أسعار المنتجات.' },
   { value: 'accountant', label: 'التقارير المالية', description: 'عرض التقارير المالية والمبيعات المسجلة.' },
 ];
-const teamPermissionNames = Object.fromEntries(
-  teamPermissionOptions.map(({ value, label }) => [value, label]),
-) as Record<TeamPermission, string>;
-function hasAppRole(user: SessionUser | null | undefined, roles: readonly string[]): boolean {
-  return Boolean(
-    user &&
-      (roles.includes(user.role) ||
-        (user.role === 'custom' &&
-          (user.permissions || []).some((permission) => roles.includes(permission)))),
+const teamPermissionNames: Record<TeamPermission, string> = {
+  retail_sales: 'بيع قطاعي',
+  wholesale_sales: 'بيع جملة',
+  cashier: 'نقطة البيع والمبيعات',
+  warehouse_manager: 'إدارة المخزون',
+  accountant: 'التقارير المالية',
+};
+function normalizeTeamPermissions(permissions: TeamPermission[]): TeamPermission[] {
+  const normalized = new Set<TeamPermission>(
+    permissions.filter((permission) => permission !== 'cashier'),
   );
+  if (permissions.includes('cashier')) {
+    normalized.add('retail_sales');
+    normalized.add('wholesale_sales');
+  }
+  return [...normalized];
+}
+function canSellSaleType(user: SessionUser | null | undefined, saleType: SaleType): boolean {
+  if (!user) return false;
+  if (user.role === 'platform_admin' || user.role === 'tenant_admin' || user.role === 'cashier') return true;
+  if (user.role !== 'custom') return false;
+  const permissions = user.permissions || [];
+  return permissions.includes('cashier') || permissions.includes(saleType === 'retail' ? 'retail_sales' : 'wholesale_sales');
+}
+function hasAppRole(user: SessionUser | null | undefined, roles: readonly string[]): boolean {
+  if (!user) return false;
+  if (roles.includes(user.role)) return true;
+  if (user.role !== 'custom') return false;
+  const permissions = user.permissions || [];
+  return permissions.some((permission) => roles.includes(permission)) ||
+    (roles.includes('cashier') &&
+      permissions.some((permission) => permission === 'retail_sales' || permission === 'wholesale_sales'));
 }
 const statusNames: Record<string, string> = { active: 'نشط', trial: 'تجريبي', suspended: 'موقوف', completed: 'مكتملة', partially_returned: 'مستردة جزئياً', returned: 'مستردة', monthly: 'شهري', half_yearly: 'نصف سنوي', annual: 'سنوي', lifetime: 'مدى الحياة' };
 const founderSetupSchema = z.object({
@@ -997,13 +1020,14 @@ function TeamPage() {
   function openEdit(member: TeamMember) {
     update.reset();
     setEditingMember(member);
-    setSelectedPermissions(
-      member.role === 'custom'
-        ? member.permissions
+    const permissions = member.role === 'custom'
+      ? member.permissions
+      : member.role === 'cashier'
+        ? ['cashier' as TeamPermission]
         : teamPermissionOptions
             .filter((option) => option.value === member.role)
-            .map((option) => option.value),
-    );
+            .map((option) => option.value);
+    setSelectedPermissions(normalizeTeamPermissions(permissions));
   }
   function closeEdit() {
     setEditingMember(null);
@@ -1019,7 +1043,9 @@ function TeamPage() {
   function memberPermissionSummary(role: string, permissions: TeamPermission[]) {
     const assigned =
       role === 'custom'
-        ? permissions
+        ? normalizeTeamPermissions(permissions)
+        : role === 'cashier'
+          ? ['retail_sales', 'wholesale_sales'] as TeamPermission[]
         : teamPermissionOptions
             .filter((option) => option.value === role)
             .map((option) => option.value);
@@ -1722,8 +1748,11 @@ function PosPage() {
   const money=useMoney(), currency=useContext(CurrencyContext);
   const vatRate=session.data?.vatRate??.15;
   const wholesaleEnabled=session.data?.wholesaleEnabled??false;
+  const canSellRetail=canSellSaleType(session.data,'retail');
+  const canSellWholesale=wholesaleEnabled&&canSellSaleType(session.data,'wholesale');
+  const initialSaleType:SaleType=canSellRetail?'retail':canSellWholesale?'wholesale':'retail';
   const [cart,setCart]=useState<Record<string,number>>({}),[term,setTerm]=useState(''),[discount,setDiscount]=useState('0'),[received,setReceived]=useState(''),[payment,setPayment]=useState<'cash'|'card'|'wallet'|'instapay'>('cash'),[transferSender,setTransferSender]=useState(''),[heldOpen,setHeldOpen]=useState(false),[exchangeOpen,setExchangeOpen]=useState(false),[notice,setNotice]=useState('');
-  const [saleType,setSaleType]=useState<SaleType>('retail');
+  const [saleType,setSaleType]=useState<SaleType>(initialSaleType);
   const [exchangeInvoiceNo,setExchangeInvoiceNo]=useState(''),[exchangeLoadedInvoiceNo,setExchangeLoadedInvoiceNo]=useState(''),[exchangeReturnItems,setExchangeReturnItems]=useState<Record<string,number>>({});
   const [exchangeReplacementProductId,setExchangeReplacementProductId]=useState(''),[exchangeReplacementQuantity,setExchangeReplacementQuantity]=useState(1);
   const [exchangeAmountReceived,setExchangeAmountReceived]=useState('');
@@ -1732,6 +1761,10 @@ function PosPage() {
   const phoneCountry=getPhoneCountry(phoneCountryOverride??session.data?.countryCode);
   const invoicePhone=phoneNumberForCountry(phoneCountry.countryCode,customerPhone);
   const customerWhatsappNumber=getWhatsAppDigits(invoicePhone);
+  useEffect(()=>{
+    if(canSellRetail&&saleType==='wholesale'&&!canSellWholesale)setSaleType('retail');
+    else if(!canSellRetail&&canSellWholesale&&saleType!=='wholesale')setSaleType('wholesale');
+  },[canSellRetail,canSellWholesale,saleType]);
   const customerPhoneInvalid=Boolean(customerPhone.trim()&&!customerWhatsappNumber);
   function changeCustomerPhone(value:string) {
     if (/^\s*(?:\+|00)/.test(value)) {
@@ -1763,6 +1796,7 @@ function PosPage() {
   useEffect(()=>{setExchangeAmountReceived(exchangeBalanceDue>0?String(exchangeBalanceDue):'0')},[exchangeBalanceDue]);
   useEffect(()=>{setExchangeReplacementProductId('');setExchangeReplacementQuantity(1)},[exchangeLoadedInvoiceNo,exchangeSaleType]);
   function switchSaleType(next:SaleType) {
+     if((next==='retail'&&!canSellRetail)||(next==='wholesale'&&!canSellWholesale))return;
     if(next===saleType)return;
     if(cartLines.length&&!window.confirm('سيتم تفريغ الطلب الحالي قبل تغيير قسم البيع. هل تريد المتابعة؟'))return;
     setCart({});
@@ -1781,6 +1815,7 @@ function PosPage() {
    function clearCurrentCart(){setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference())}
   function closeExchange(){setExchangeOpen(false);setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setExchangeReplacementProductId('');setExchangeReplacementQuantity(1);setExchangeAmountReceived('')}
    function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const returnItems=Object.entries(exchangeReturnItems).map(([productId,quantity])=>({productId,quantity}));if(!exchangeLoadedInvoiceNo||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()||!returnItems.length||!exchangeReplacementProductId)return;exchange.mutate({data:{invoiceNo:exchangeLoadedInvoiceNo,returnItems,replacementItems:[{productId:exchangeReplacementProductId,quantity:exchangeReplacementQuantity}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(exchangeAmountReceived)||0}},{onSuccess:r=>{closeExchange();const settlement=r.changeAmount>0?(r.balanceDue>0?`الباقي للعميل ${money(r.changeAmount)}`:`المبلغ المسترد للعميل ${money(r.changeAmount)}`):'';setNotice([`تم الاستبدال · ${r.exchangeInvoiceNo}`,settlement].filter(Boolean).join(' · '));qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreProfitLossReportQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo)})}})}
+   if(!canSellRetail&&!canSellWholesale)return <div className="pos-page"><PageTitle eyebrow="نقطة البيع" title="صندوق البيع" desc="لا توجد صلاحية بيع مفعّلة لهذا الحساب."/><div className="state-box error-state"><ShieldCheck size={22}/><b>لا يوجد نوع بيع متاح</b><span>اطلب من مالك المتجر منحك صلاحية قطاعي أو جملة، والتأكد من تفعيل الجملة للمتجر عند الحاجة.</span></div></div>;
   return <>
     <div className="pos-page">
       <PageTitle eyebrow="نقطة البيع" title="صندوق البيع" desc="أضف المنتجات وأكمل الدفع بخطوات قليلة."
@@ -1792,9 +1827,9 @@ function PosPage() {
       <div className="pos-layout">
         <section className="pos-products">
           <label className="search-box pos-search"><Search size={18}/><input autoFocus value={term} onChange={e=>setTerm(e.target.value)} aria-label="البحث عن منتج بالعربي أو English أو مسح الباركود" placeholder="ابحث باسم المنتج بأي لهجة أو English..." data-testid="input-pos-search"/><kbd>⌘ K</kbd></label>
-          {wholesaleEnabled&&<div className="sale-type-tabs" role="group" aria-label="قسم البيع">
-            <button type="button" className={saleType==='retail'?'is-active':''} aria-pressed={saleType==='retail'} onClick={()=>switchSaleType('retail')}><b>القطاعي</b><small>سعر القطاعي</small></button>
-            <button type="button" className={saleType==='wholesale'?'is-active':''} aria-pressed={saleType==='wholesale'} onClick={()=>switchSaleType('wholesale')}><b>الجملة</b><small>سعر الجملة</small></button>
+          {wholesaleEnabled&&(canSellRetail||canSellWholesale)&&<div className={`sale-type-tabs ${canSellRetail&&canSellWholesale?'':'sale-type-tabs-single'}`} role="group" aria-label="قسم البيع">
+            {canSellRetail&&<button type="button" className={saleType==='retail'?'is-active':''} aria-pressed={saleType==='retail'} onClick={()=>switchSaleType('retail')}><b>القطاعي</b><small>سعر القطاعي</small></button>}
+            {canSellWholesale&&<button type="button" className={saleType==='wholesale'?'is-active':''} aria-pressed={saleType==='wholesale'} onClick={()=>switchSaleType('wholesale')}><b>الجملة</b><small>سعر الجملة</small></button>}
           </div>}
           {products.isLoading
             ? <div className="product-grid">{[1,2,3,4].map(i=><div className="product-skeleton" key={i}/>)}</div>
