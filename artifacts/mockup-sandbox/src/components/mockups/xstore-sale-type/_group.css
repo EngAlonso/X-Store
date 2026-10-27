@@ -1,0 +1,247 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap");
+
+:root {
+  --brand: #0b4619;
+  --brand-soft: #eaf2ec;
+  --surface: #ffffff;
+  --canvas: #f8f9fa;
+}
+
+.dark {
+  --brand: #0b4619;
+  --brand-soft: #eaf2ec;
+  --surface: #ffffff;
+  --canvas: #f8f9fa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-width: 320px;
+  background: var(--canvas);
+  color: #2d3d35;
+  font-family: "IBM Plex Sans Arabic", "DM Sans", sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #88b894;
+  outline-offset: 2px;
+}
+
+.pos-type-preview {
+  min-height: 100vh;
+  padding: 22px;
+  direction: rtl;
+  background: #f8faf7;
+}
+
+.preview-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 14px;
+}
+
+.preview-heading span {
+  color: #647b6b;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.preview-heading h1 {
+  margin: 3px 0 0;
+  color: #293c32;
+  font-size: 22px;
+}
+
+.preview-heading p {
+  margin: 0 0 2px;
+  color: #6f7e74;
+  font-size: 11px;
+}
+
+.pos-products {
+  min-height: 226px;
+  padding: 16px;
+  border: 1px solid #e2e9e0;
+  border-radius: 15px;
+  background: #f2f5ef;
+}
+
+.pos-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 49px;
+  margin-bottom: 15px;
+  padding: 0 14px;
+  border: 1px solid #dce5dc;
+  border-radius: 11px;
+  background: #fcfdf9;
+  color: #72847a;
+}
+
+.pos-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #344b40;
+  font-size: 12px;
+  text-align: right;
+}
+
+.pos-search kbd {
+  flex-shrink: 0;
+  padding: 4px 6px;
+  border: 1px solid #e0e8df;
+  border-radius: 6px;
+  background: #f4f7f1;
+  color: #77877d;
+  font: 10px "DM Sans", sans-serif;
+}
+
+.sale-type-tabs {
+  margin-bottom: 15px;
+}
+
+.sample-products {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sample-product {
+  min-height: 138px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid #e1e8df;
+  border-radius: 13px;
+  background: #fffefa;
+  color: #35493e;
+  text-align: right;
+}
+
+.sample-product small {
+  color: #6f8175;
+  font-size: 10px;
+}
+
+.sample-product strong {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.sample-product span {
+  margin-top: auto;
+  color: #32634b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sale-type-tabs--clear {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sale-type-tabs--clear button {
+  min-width: 0;
+  min-height: 66px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 14px;
+  border: 1px solid #dfe8df;
+  border-radius: 11px;
+  background: #fffefa;
+  color: #344b40;
+  text-align: right;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.sale-type-tabs--clear button:hover {
+  border-color: #a7c1a9;
+  transform: translateY(-1px);
+}
+
+.sale-type-tabs--clear button.is-active {
+  border-color: #82a68a;
+  background: #e8f1e8;
+  box-shadow: inset 0 0 0 1px #82a68a;
+}
+
+.sale-type-tabs--clear button b {
+  color: #2d5038;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.sale-type-tabs--clear button small {
+  display: block;
+  color: #68796f;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+@media (max-width: 560px) {
+  .pos-type-preview {
+    padding: 14px;
+  }
+
+  .preview-heading h1 {
+    font-size: 20px;
+  }
+
+  .pos-products {
+    padding: 12px;
+  }
+
+  .sale-type-tabs--clear {
+    gap: 8px;
+  }
+
+  .sale-type-tabs--clear button {
+    min-height: 60px;
+    padding: 9px 11px;
+  }
+
+  .sale-type-tabs--clear button b {
+    font-size: 13px;
+  }
+
+  .sale-type-tabs--clear button small {
+    font-size: 10px;
+  }
+}
