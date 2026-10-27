@@ -179,6 +179,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     ? await db
         .select({
           name: xstoreTenants.name,
+          storeType: xstoreTenants.storeType,
           countryCode: xstoreTenants.countryCode,
           currency: xstoreTenants.currency,
           vatRate: xstoreTenants.vatRate,
