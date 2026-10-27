@@ -14,7 +14,10 @@ export interface Product {
   /** @nullable */
   barcode: string | null;
   category: string;
-  price: number;
+  /** @nullable */
+  price: number | null;
+  /** @nullable */
+  wholesalePrice: number | null;
   /** @nullable */
   costPrice: number | null;
   quantity: number;

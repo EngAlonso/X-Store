@@ -15,8 +15,16 @@ export interface ProductUpdate {
   barcode?: string | null;
   /** @minLength 1 */
   category?: string;
-  /** @minimum 0 */
-  price?: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  price?: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  wholesalePrice?: number | null;
   /** @minimum 0 */
   costPrice?: number;
   /** @minimum 0 */

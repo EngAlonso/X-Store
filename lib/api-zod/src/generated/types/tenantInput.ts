@@ -29,6 +29,7 @@ export interface TenantInput {
   /** @minLength 1 */
   businessType: string;
   storeType: StoreType;
+  wholesaleEnabled?: boolean;
   /**
      * @minLength 2
      * @maxLength 2

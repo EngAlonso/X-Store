@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { HoldSaleInputPaymentMethod } from './holdSaleInputPaymentMethod';
+import type { HoldSaleInputSaleType } from './holdSaleInputSaleType';
 import type { SaleLineInput } from './saleLineInput';
 
 export interface HoldSaleInput {
@@ -14,6 +15,7 @@ export interface HoldSaleInput {
      * @maxLength 80
      */
   reference?: string;
+  saleType?: HoldSaleInputSaleType;
   /** @minItems 1 */
   items: SaleLineInput[];
   /**

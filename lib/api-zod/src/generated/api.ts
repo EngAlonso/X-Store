@@ -108,7 +108,8 @@ export const CreateInitialPlatformOwnerResponse = zod.object({
   "countryCode": zod.string().min(createInitialPlatformOwnerResponseCountryCodeMin).max(createInitialPlatformOwnerResponseCountryCodeMax).regex(createInitialPlatformOwnerResponseCountryCodeRegExp).nullable(),
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
   "vatRate": zod.number().min(createInitialPlatformOwnerResponseVatRateMin).max(createInitialPlatformOwnerResponseVatRateMax).nullable(),
-  "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable()
+  "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable(),
+  "wholesaleEnabled": zod.boolean()
 })
 
 
@@ -150,7 +151,8 @@ export const LoginXStoreWithPhoneResponse = zod.object({
   "countryCode": zod.string().min(loginXStoreWithPhoneResponseCountryCodeMin).max(loginXStoreWithPhoneResponseCountryCodeMax).regex(loginXStoreWithPhoneResponseCountryCodeRegExp).nullable(),
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
   "vatRate": zod.number().min(loginXStoreWithPhoneResponseVatRateMin).max(loginXStoreWithPhoneResponseVatRateMax).nullable(),
-  "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable()
+  "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable(),
+  "wholesaleEnabled": zod.boolean()
 })
 
 
@@ -186,7 +188,8 @@ export const GetXStoreSessionResponse = zod.object({
   "countryCode": zod.string().min(getXStoreSessionResponseCountryCodeMin).max(getXStoreSessionResponseCountryCodeMax).regex(getXStoreSessionResponseCountryCodeRegExp).nullable(),
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
   "vatRate": zod.number().min(getXStoreSessionResponseVatRateMin).max(getXStoreSessionResponseVatRateMax).nullable(),
-  "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable()
+  "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable(),
+  "wholesaleEnabled": zod.boolean()
 })
 
 
@@ -245,6 +248,7 @@ export const GetXStoreDashboardResponse = zod.object({
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
   "storeType": zod.union([zod.literal('clothing_shoes'),zod.literal('grocery_supermarket'),zod.literal('electronics_accessories'),zod.literal('perfume_beauty'),zod.literal('cafe'),zod.literal('restaurant'),zod.literal(null)]).nullable(),
+  "wholesaleEnabled": zod.boolean(),
   "countryCode": zod.string().min(getXStoreDashboardResponseLatestTenantsItemCountryCodeMin).max(getXStoreDashboardResponseLatestTenantsItemCountryCodeMax).regex(getXStoreDashboardResponseLatestTenantsItemCountryCodeRegExp),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
@@ -258,6 +262,7 @@ export const GetXStoreDashboardResponse = zod.object({
   "tenantId": zod.string(),
   "tenantName": zod.string().nullish(),
   "invoiceNo": zod.string(),
+  "saleType": zod.enum(['retail', 'wholesale']),
   "cashierName": zod.string(),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
@@ -341,6 +346,7 @@ export const ListXStoreTenantsResponseItem = zod.object({
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
   "storeType": zod.union([zod.literal('clothing_shoes'),zod.literal('grocery_supermarket'),zod.literal('electronics_accessories'),zod.literal('perfume_beauty'),zod.literal('cafe'),zod.literal('restaurant'),zod.literal(null)]).nullable(),
+  "wholesaleEnabled": zod.boolean(),
   "countryCode": zod.string().min(listXStoreTenantsResponseCountryCodeMin).max(listXStoreTenantsResponseCountryCodeMax).regex(listXStoreTenantsResponseCountryCodeRegExp),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
@@ -363,6 +369,7 @@ export const createXStoreTenantBodyPhoneMax = 20;
 export const createXStoreTenantBodyOwnerPasswordMax = 128;
 
 
+export const createXStoreTenantBodyWholesaleEnabledDefault = false;
 export const createXStoreTenantBodyCountryCodeMin = 2;
 export const createXStoreTenantBodyCountryCodeMax = 2;
 
@@ -378,6 +385,7 @@ export const CreateXStoreTenantBody = zod.object({
   "email": zod.string().email().nullish(),
   "businessType": zod.string().min(1),
   "storeType": zod.enum(['clothing_shoes', 'grocery_supermarket', 'electronics_accessories', 'perfume_beauty', 'cafe', 'restaurant']),
+  "wholesaleEnabled": zod.boolean().default(createXStoreTenantBodyWholesaleEnabledDefault),
   "countryCode": zod.string().min(createXStoreTenantBodyCountryCodeMin).max(createXStoreTenantBodyCountryCodeMax).regex(createXStoreTenantBodyCountryCodeRegExp),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
@@ -399,6 +407,7 @@ export const CreateXStoreTenantResponse = zod.object({
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
   "storeType": zod.union([zod.literal('clothing_shoes'),zod.literal('grocery_supermarket'),zod.literal('electronics_accessories'),zod.literal('perfume_beauty'),zod.literal('cafe'),zod.literal('restaurant'),zod.literal(null)]).nullable(),
+  "wholesaleEnabled": zod.boolean(),
   "countryCode": zod.string().min(createXStoreTenantResponseCountryCodeMin).max(createXStoreTenantResponseCountryCodeMax).regex(createXStoreTenantResponseCountryCodeRegExp),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
@@ -438,6 +447,7 @@ export const UpdateXStoreTenantResponse = zod.object({
   "email": zod.string().email().nullable(),
   "businessType": zod.string(),
   "storeType": zod.union([zod.literal('clothing_shoes'),zod.literal('grocery_supermarket'),zod.literal('electronics_accessories'),zod.literal('perfume_beauty'),zod.literal('cafe'),zod.literal('restaurant'),zod.literal(null)]).nullable(),
+  "wholesaleEnabled": zod.boolean(),
   "countryCode": zod.string().min(updateXStoreTenantResponseCountryCodeMin).max(updateXStoreTenantResponseCountryCodeMax).regex(updateXStoreTenantResponseCountryCodeRegExp),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']),
   "status": zod.enum(['active', 'trial', 'suspended']),
@@ -760,7 +770,8 @@ export const ListXStoreProductsResponseItem = zod.object({
   "sku": zod.string(),
   "barcode": zod.string().nullable(),
   "category": zod.string(),
-  "price": zod.number(),
+  "price": zod.number().nullable(),
+  "wholesalePrice": zod.number().nullable(),
   "costPrice": zod.number().nullable(),
   "quantity": zod.number().int(),
   "color": zod.string().nullable(),
@@ -779,6 +790,8 @@ export const ListXStoreProductsResponse = zod.array(ListXStoreProductsResponseIt
 
 export const createXStoreProductBodyPriceMin = 0;
 
+export const createXStoreProductBodyWholesalePriceMin = 0;
+
 export const createXStoreProductBodyCostPriceMin = 0;
 
 export const createXStoreProductBodyQuantityMin = 0;
@@ -790,7 +803,8 @@ export const CreateXStoreProductBody = zod.object({
   "sku": zod.string().min(1),
   "barcode": zod.string().nullish(),
   "category": zod.string().min(1),
-  "price": zod.number().min(createXStoreProductBodyPriceMin).optional(),
+  "price": zod.number().min(createXStoreProductBodyPriceMin).nullish(),
+  "wholesalePrice": zod.number().min(createXStoreProductBodyWholesalePriceMin).nullish(),
   "costPrice": zod.number().min(createXStoreProductBodyCostPriceMin).optional(),
   "quantity": zod.number().int().min(createXStoreProductBodyQuantityMin),
   "color": zod.string().nullish(),
@@ -806,7 +820,8 @@ export const CreateXStoreProductResponse = zod.object({
   "sku": zod.string(),
   "barcode": zod.string().nullable(),
   "category": zod.string(),
-  "price": zod.number(),
+  "price": zod.number().nullable(),
+  "wholesalePrice": zod.number().nullable(),
   "costPrice": zod.number().nullable(),
   "quantity": zod.number().int(),
   "color": zod.string().nullable(),
@@ -828,6 +843,8 @@ export const UpdateXStoreProductParams = zod.object({
 
 export const updateXStoreProductBodyPriceMin = 0;
 
+export const updateXStoreProductBodyWholesalePriceMin = 0;
+
 export const updateXStoreProductBodyCostPriceMin = 0;
 
 export const updateXStoreProductBodyQuantityMin = 0;
@@ -839,7 +856,8 @@ export const UpdateXStoreProductBody = zod.object({
   "sku": zod.string().min(1).optional(),
   "barcode": zod.string().nullish(),
   "category": zod.string().min(1).optional(),
-  "price": zod.number().min(updateXStoreProductBodyPriceMin).optional(),
+  "price": zod.number().min(updateXStoreProductBodyPriceMin).nullish(),
+  "wholesalePrice": zod.number().min(updateXStoreProductBodyWholesalePriceMin).nullish(),
   "costPrice": zod.number().min(updateXStoreProductBodyCostPriceMin).optional(),
   "quantity": zod.number().int().min(updateXStoreProductBodyQuantityMin).optional(),
   "color": zod.string().nullish(),
@@ -855,7 +873,8 @@ export const UpdateXStoreProductResponse = zod.object({
   "sku": zod.string(),
   "barcode": zod.string().nullable(),
   "category": zod.string(),
-  "price": zod.number(),
+  "price": zod.number().nullable(),
+  "wholesalePrice": zod.number().nullable(),
   "costPrice": zod.number().nullable(),
   "quantity": zod.number().int(),
   "color": zod.string().nullable(),
@@ -886,6 +905,7 @@ export const ListXStoreSalesResponseItem = zod.object({
   "tenantId": zod.string(),
   "tenantName": zod.string().nullish(),
   "invoiceNo": zod.string(),
+  "saleType": zod.enum(['retail', 'wholesale']),
   "cashierName": zod.string(),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
@@ -940,6 +960,7 @@ export const ListXStoreSalesResponse = zod.array(ListXStoreSalesResponseItem)
  */
 
 
+export const checkoutXStoreSaleBodySaleTypeDefault = `retail`;
 export const checkoutXStoreSaleBodyInvoiceNoMax = 80;
 
 
@@ -961,6 +982,7 @@ export const CheckoutXStoreSaleBody = zod.object({
   "productId": zod.string(),
   "quantity": zod.number().int().min(1)
 })).min(1),
+  "saleType": zod.enum(['retail', 'wholesale']).default(checkoutXStoreSaleBodySaleTypeDefault),
   "invoiceNo": zod.string().min(1).max(checkoutXStoreSaleBodyInvoiceNoMax).regex(checkoutXStoreSaleBodyInvoiceNoRegExp).optional(),
   "discountAmount": zod.number().min(checkoutXStoreSaleBodyDiscountAmountMin),
   "paymentMethod": zod.enum(['cash', 'card', 'wallet', 'instapay']),
@@ -979,6 +1001,7 @@ export const CheckoutXStoreSaleResponse = zod.object({
   "tenantId": zod.string(),
   "tenantName": zod.string().nullish(),
   "invoiceNo": zod.string(),
+  "saleType": zod.enum(['retail', 'wholesale']),
   "cashierName": zod.string(),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
@@ -1042,6 +1065,7 @@ export const GetXStoreSaleInvoiceItemsResponseItem = zod.object({
   "name": zod.string(),
   "sku": zod.string(),
   "unitPrice": zod.number(),
+  "saleType": zod.enum(['retail', 'wholesale']),
   "refundUnitAmount": zod.number(),
   "quantity": zod.number().int(),
   "returnedQuantity": zod.number().int(),
@@ -1089,6 +1113,7 @@ export const ListXStoreHeldSalesResponseItem = zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
   "reference": zod.string(),
+  "saleType": zod.enum(['retail', 'wholesale']),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
   "items": zod.array(zod.object({
@@ -1112,7 +1137,7 @@ export const ListXStoreHeldSalesResponse = zod.array(ListXStoreHeldSalesResponse
  */
 export const holdXStoreSaleBodyReferenceMax = 80;
 
-
+export const holdXStoreSaleBodySaleTypeDefault = `retail`;
 
 export const holdXStoreSaleBodyCustomerNameMax = 150;
 
@@ -1128,6 +1153,7 @@ export const holdXStoreSaleBodyTransferSenderMax = 80;
 
 export const HoldXStoreSaleBody = zod.object({
   "reference": zod.string().min(1).max(holdXStoreSaleBodyReferenceMax).optional(),
+  "saleType": zod.enum(['retail', 'wholesale']).default(holdXStoreSaleBodySaleTypeDefault),
   "items": zod.array(zod.object({
   "productId": zod.string(),
   "quantity": zod.number().int().min(1)
@@ -1151,6 +1177,7 @@ export const HoldXStoreSaleResponse = zod.object({
   "id": zod.string(),
   "tenantId": zod.string(),
   "reference": zod.string(),
+  "saleType": zod.enum(['retail', 'wholesale']),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
   "items": zod.array(zod.object({

@@ -6,11 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { SaleInputPaymentMethod } from './saleInputPaymentMethod';
+import type { SaleInputSaleType } from './saleInputSaleType';
 import type { SaleLineInput } from './saleLineInput';
 
 export interface SaleInput {
   /** @minItems 1 */
   items: SaleLineInput[];
+  saleType?: SaleInputSaleType;
   /**
      * @minLength 1
      * @maxLength 80

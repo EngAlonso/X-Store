@@ -21,6 +21,7 @@ export interface Tenant {
   businessType: string;
   /** @nullable */
   storeType: TenantStoreType;
+  wholesaleEnabled: boolean;
   /**
      * @minLength 2
      * @maxLength 2

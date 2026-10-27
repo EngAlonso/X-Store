@@ -7,11 +7,13 @@
  */
 import type { HeldSaleLine } from './heldSaleLine';
 import type { HeldSalePaymentMethod } from './heldSalePaymentMethod';
+import type { HeldSaleSaleType } from './heldSaleSaleType';
 
 export interface HeldSale {
   id: string;
   tenantId: string;
   reference: string;
+  saleType: HeldSaleSaleType;
   /** @nullable */
   customerName: string | null;
   /** @nullable */

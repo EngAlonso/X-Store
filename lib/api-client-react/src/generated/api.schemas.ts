@@ -92,6 +92,7 @@ export interface SessionUser {
   vatRate: number | null;
   /** @nullable */
   invoiceFormat: SessionUserInvoiceFormat;
+  wholesaleEnabled: boolean;
 }
 
 export type StoreSettingsInvoiceFormat = typeof StoreSettingsInvoiceFormat[keyof typeof StoreSettingsInvoiceFormat];
@@ -309,6 +310,7 @@ export interface Tenant {
   businessType: string;
   /** @nullable */
   storeType: TenantStoreType;
+  wholesaleEnabled: boolean;
   /**
      * @minLength 2
      * @maxLength 2
@@ -323,6 +325,14 @@ export interface Tenant {
   branchCount: number;
   createdAt: string;
 }
+
+export type SaleSaleType = typeof SaleSaleType[keyof typeof SaleSaleType];
+
+
+export const SaleSaleType = {
+  retail: 'retail',
+  wholesale: 'wholesale',
+} as const;
 
 export interface SaleLineItem {
   productId: string;
@@ -381,6 +391,7 @@ export interface Sale {
   /** @nullable */
   tenantName?: string | null;
   invoiceNo: string;
+  saleType: SaleSaleType;
   cashierName: string;
   /** @nullable */
   customerName: string | null;
@@ -478,6 +489,7 @@ export interface TenantInput {
   /** @minLength 1 */
   businessType: string;
   storeType: StoreType;
+  wholesaleEnabled?: boolean;
   /**
      * @minLength 2
      * @maxLength 2
@@ -685,7 +697,10 @@ export interface Product {
   /** @nullable */
   barcode: string | null;
   category: string;
-  price: number;
+  /** @nullable */
+  price: number | null;
+  /** @nullable */
+  wholesalePrice: number | null;
   /** @nullable */
   costPrice: number | null;
   quantity: number;
@@ -708,8 +723,16 @@ export interface ProductInput {
   barcode?: string | null;
   /** @minLength 1 */
   category: string;
-  /** @minimum 0 */
-  price?: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  price?: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  wholesalePrice?: number | null;
   /** @minimum 0 */
   costPrice?: number;
   /** @minimum 0 */
@@ -733,8 +756,16 @@ export interface ProductUpdate {
   barcode?: string | null;
   /** @minLength 1 */
   category?: string;
-  /** @minimum 0 */
-  price?: number;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  price?: number | null;
+  /**
+     * @minimum 0
+     * @nullable
+     */
+  wholesalePrice?: number | null;
   /** @minimum 0 */
   costPrice?: number;
   /** @minimum 0 */
@@ -755,6 +786,14 @@ export interface SaleLineInput {
   quantity: number;
 }
 
+export type SaleInputSaleType = typeof SaleInputSaleType[keyof typeof SaleInputSaleType];
+
+
+export const SaleInputSaleType = {
+  retail: 'retail',
+  wholesale: 'wholesale',
+} as const;
+
 export type SaleInputPaymentMethod = typeof SaleInputPaymentMethod[keyof typeof SaleInputPaymentMethod];
 
 
@@ -768,6 +807,7 @@ export const SaleInputPaymentMethod = {
 export interface SaleInput {
   /** @minItems 1 */
   items: SaleLineInput[];
+  saleType?: SaleInputSaleType;
   /**
      * @minLength 1
      * @maxLength 80
@@ -796,11 +836,20 @@ export interface SaleInput {
   customerPhone?: string | null;
 }
 
+export type SaleInvoiceItemSaleType = typeof SaleInvoiceItemSaleType[keyof typeof SaleInvoiceItemSaleType];
+
+
+export const SaleInvoiceItemSaleType = {
+  retail: 'retail',
+  wholesale: 'wholesale',
+} as const;
+
 export interface SaleInvoiceItem {
   productId: string;
   name: string;
   sku: string;
   unitPrice: number;
+  saleType: SaleInvoiceItemSaleType;
   refundUnitAmount: number;
   quantity: number;
   returnedQuantity: number;
@@ -818,6 +867,14 @@ export interface ProfitLossReport {
   grossProfit: number;
 }
 
+export type HoldSaleInputSaleType = typeof HoldSaleInputSaleType[keyof typeof HoldSaleInputSaleType];
+
+
+export const HoldSaleInputSaleType = {
+  retail: 'retail',
+  wholesale: 'wholesale',
+} as const;
+
 export type HoldSaleInputPaymentMethod = typeof HoldSaleInputPaymentMethod[keyof typeof HoldSaleInputPaymentMethod];
 
 
@@ -834,6 +891,7 @@ export interface HoldSaleInput {
      * @maxLength 80
      */
   reference?: string;
+  saleType?: HoldSaleInputSaleType;
   /** @minItems 1 */
   items: SaleLineInput[];
   /**
@@ -866,6 +924,14 @@ export interface HeldSaleLine {
   unitPrice: number;
 }
 
+export type HeldSaleSaleType = typeof HeldSaleSaleType[keyof typeof HeldSaleSaleType];
+
+
+export const HeldSaleSaleType = {
+  retail: 'retail',
+  wholesale: 'wholesale',
+} as const;
+
 export type HeldSalePaymentMethod = typeof HeldSalePaymentMethod[keyof typeof HeldSalePaymentMethod];
 
 
@@ -880,6 +946,7 @@ export interface HeldSale {
   id: string;
   tenantId: string;
   reference: string;
+  saleType: HeldSaleSaleType;
   /** @nullable */
   customerName: string | null;
   /** @nullable */

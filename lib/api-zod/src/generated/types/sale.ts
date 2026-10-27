@@ -8,6 +8,7 @@
 import type { SaleExchangeEvent } from './saleExchangeEvent';
 import type { SaleLineItem } from './saleLineItem';
 import type { SalePaymentMethod } from './salePaymentMethod';
+import type { SaleSaleType } from './saleSaleType';
 import type { SaleStatus } from './saleStatus';
 
 export interface Sale {
@@ -16,6 +17,7 @@ export interface Sale {
   /** @nullable */
   tenantName?: string | null;
   invoiceNo: string;
+  saleType: SaleSaleType;
   cashierName: string;
   /** @nullable */
   customerName: string | null;

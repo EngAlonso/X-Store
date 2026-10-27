@@ -138,6 +138,19 @@ const storeTypeOptions = [
 function storeTypeName(value: string | null | undefined) {
   return storeTypeOptions.find((type) => type.value === value)?.label ?? 'غير محدد';
 }
+type SaleType = Sale['saleType'];
+const wholesaleEligibleStoreTypes = new Set([
+  'clothing_shoes',
+  'grocery_supermarket',
+  'electronics_accessories',
+  'perfume_beauty',
+]);
+function storeTypeSupportsWholesale(value: string | null | undefined) {
+  return Boolean(value && wholesaleEligibleStoreTypes.has(value));
+}
+function salePriceForProduct(product: Product, saleType: SaleType) {
+  return saleType === 'wholesale' ? product.wholesalePrice : product.price;
+}
 const CurrencyContext = createContext<StoreCurrency>('SAR');
 function ProductIconSymbol({ symbol, kind }: { symbol: string; kind: ProductIconKind }) {
   if (kind === 'jacket') {
@@ -876,6 +889,8 @@ function TenantsPage() {
   const credentials=useUpdateXStoreTenantCredentials();
   const [search,setSearch]=useState('');
   const [dialog,setDialog]=useState(false);
+  const [selectedStoreType,setSelectedStoreType]=useState('');
+  const [wholesaleEnabled,setWholesaleEnabled]=useState(false);
   const [accessTenant,setAccessTenant]=useState<Tenant|null>(null);
   const [notice,setNotice]=useState('');
   const filtered=useMemo(()=> (tenants.data||[]).filter(t=>`${t.name} ${t.ownerName} ${t.phone} ${t.email||''} ${t.businessType} ${storeTypeName(t.storeType)} ${getPhoneCountry(t.countryCode).name}`.toLowerCase().includes(search.toLowerCase())),[tenants.data,search]);
@@ -899,10 +914,11 @@ function TenantsPage() {
       email:String(f.get('email')||'').trim()||null,
       businessType:String(f.get('businessType')),
       storeType:String(f.get('storeType')) as (typeof storeTypeOptions)[number]['value'],
+      wholesaleEnabled:storeTypeSupportsWholesale(selectedStoreType)&&wholesaleEnabled,
       countryCode:String(f.get('countryCode')),
        currency:String(f.get('currency')) as StoreCurrency,
       plan:String(f.get('plan')) as 'monthly'|'annual'|'half_yearly'|'lifetime',
-    }},{onSuccess:()=>{refreshTenants();setDialog(false);setNotice('تم إنشاء المتجر وحساب المالك');}});
+    }},{onSuccess:()=>{refreshTenants();setDialog(false);setSelectedStoreType('');setWholesaleEnabled(false);setNotice('تم إنشاء المتجر وحساب المالك');}});
   }
   function submitCredentials(e:FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -910,21 +926,22 @@ function TenantsPage() {
     const f=new FormData(e.currentTarget);
     credentials.mutate({tenantId:accessTenant.id,data:{phone:String(f.get('phone')),password:String(f.get('password'))}},{onSuccess:()=>{refreshTenants();setAccessTenant(null);setNotice('تم تحديث بيانات دخول مالك المتجر');}});
   }
-  return <><PageTitle eyebrow="إدارة المنصة" title="المتاجر" desc="إدارة المتاجر والاشتراكات وإنشاء بيانات دخول كل مالك." action={<button onClick={()=>setDialog(true)} className="button button-primary" data-testid="button-add-tenant"><Plus size={17}/> إضافة متجر</button>}/>
+  return <><PageTitle eyebrow="إدارة المنصة" title="المتاجر" desc="إدارة المتاجر والاشتراكات وإنشاء بيانات دخول كل مالك." action={<button onClick={()=>{setSelectedStoreType('');setWholesaleEnabled(false);setDialog(true)}} className="button button-primary" data-testid="button-add-tenant"><Plus size={17}/> إضافة متجر</button>}/>
     <div className="tenant-summary"><span><Store size={17}/> {fmt(filtered.length)} متجر</span><span><CircleCheck size={17}/> {fmt(filtered.filter(t=>t.status==='active').length)} نشط</span><span><Clock3 size={17}/> {fmt(filtered.filter(t=>t.status==='trial').length)} تجريبي</span></div>
     <Card><SectionHead title="قائمة المتاجر" detail="تحديث الحالة وتغيير بيانات دخول المالك مسجلان في سجل التدقيق."/>
       <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم المتجر أو المالك أو الهاتف" data-testid="input-search-tenants"/></label><span className="result-count">{fmt(filtered.length)} نتيجة</span></div>
-      {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع المتجر والنشاط</th><th>العملة الأساسية</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td><b>{storeTypeName(t.storeType)}</b><small>{t.businessType} · {getPhoneCountry(t.countryCode).name} (+{getPhoneCountry(t.countryCode).callingCode})</small></td><td><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></td></tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
+      {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع المتجر والنشاط</th><th>العملة الأساسية</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td><b>{storeTypeName(t.storeType)}</b><small>{t.businessType} · {getPhoneCountry(t.countryCode).name} (+{getPhoneCountry(t.countryCode).callingCode}) · {t.wholesaleEnabled?'الجملة مفعلة':'الجملة غير مفعلة'}</small></td><td><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></td></tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
     </Card>
     {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
-    {dialog&&<Modal title="إضافة متجر وحساب مالكه" close={()=>setDialog(false)}><form className="form-grid" onSubmit={submit}>
-      <Field label="اسم المتجر" name="name" required/><label className="field"><span>نوع المتجر</span><select name="storeType" defaultValue="" required><option value="" disabled>اختر نوع المتجر</option>{storeTypeOptions.map(type=><option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
+    {dialog&&<Modal title="إضافة متجر وحساب مالكه" close={()=>{setDialog(false);setSelectedStoreType('');setWholesaleEnabled(false)}}><form className="form-grid" onSubmit={submit}>
+      <Field label="اسم المتجر" name="name" required/><label className="field"><span>نوع المتجر</span><select name="storeType" value={selectedStoreType} onChange={e=>{setSelectedStoreType(e.target.value);if(!storeTypeSupportsWholesale(e.target.value))setWholesaleEnabled(false)}} required><option value="" disabled>اختر نوع المتجر</option>{storeTypeOptions.map(type=><option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
       <Field label="اسم المالك" name="ownerName" required/>
       <Field label="رقم هاتف الدخول" name="phone" type="tel" required placeholder="+20 10 1234 5678"/>
       <Field label="كلمة مرور المالك" name="ownerPassword" type="password" required maxLength={128} placeholder="اكتب كلمة المرور"/>
       <Field label="البريد الإلكتروني (اختياري)" name="email" type="email"/>
       <Field label="وصف النشاط" name="businessType" required placeholder="مثال: ملابس رجالي أو أزياء نسائية"/>
-      <div className="role-hint field-wide"><Store size={16}/><span>كل الأنواع تستخدم النظام الحالي مؤقتاً؛ سنخصص نظام كل نوع بعد تحديد احتياجاته.</span></div>
+      {storeTypeSupportsWholesale(selectedStoreType)&&<label className="role-hint field-wide"><input type="checkbox" checked={wholesaleEnabled} onChange={e=>setWholesaleEnabled(e.target.checked)}/><span>تفعيل قسم بيع الجملة لهذا المتجر. يمكنك اختيار أسعار الجملة والقطاعي لكل منتج.</span></label>}
+      {!selectedStoreType&&<div className="role-hint field-wide"><Store size={16}/><span>يمكن تفعيل الجملة للملابس والأحذية، والبقالة، والإلكترونيات، والعطور والتجميل فقط.</span></div>}
        <label className="field"><span>دولة المتجر</span><select name="countryCode" defaultValue="EG" required>{phoneCountries.map(country=><option key={country.countryCode} value={country.countryCode}>{country.name} (+{country.callingCode})</option>)}</select></label>
        <div className="role-hint field-wide"><Phone size={16}/><span>سيُستخدم مفتاح الدولة تلقائيًا في أرقام العملاء على فواتير هذا المتجر.</span></div>
        <label className="field"><span>العملة الأساسية</span><select name="currency" defaultValue="SAR">{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></label>
@@ -1439,6 +1456,10 @@ function InventoryPage() {
   const [notice, setNotice] = useState('');
   const isWarehouseManager = hasAppRole(session.data, ['warehouse_manager']);
   const canManage = session.data?.role === 'tenant_admin' || isWarehouseManager;
+  const wholesaleEnabled = session.data?.wholesaleEnabled ?? false;
+  const canViewCost = hasAppRole(session.data, ['tenant_admin', 'warehouse_manager', 'accountant', 'platform_admin']);
+  const pricingOnlyEdit = isWarehouseManager && Boolean(edit);
+  const [priceFormError, setPriceFormError] = useState('');
   const allProducts = q.data || [];
   const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))]
     .sort((a,b) => a.localeCompare(b,'ar'));
@@ -1456,28 +1477,72 @@ function InventoryPage() {
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
-    const data = {
-      name: String(f.get('name')),
-      sku: edit?.sku ?? `XST-${crypto.randomUUID().replaceAll('-', '').slice(0, 16).toUpperCase()}`,
-      barcode: String(f.get('barcode') || '') || null,
-      category: edit ? edit.category : 'عام',
-      price: isWarehouseManager ? 0 : Number(f.get('price')),
-      costPrice: isWarehouseManager ? 0 : Number(f.get('costPrice') || 0),
-      quantity: Number(f.get('quantity')),
-      color: String(f.get('color') || '') || null,
-      size: String(f.get('size') || '') || null,
-      partNumber: String(f.get('partNumber') || '') || null,
-      expiresAt: edit?.expiresAt?.slice(0, 10) || null,
+    const retailPriceText = String(f.get('price') || '').trim();
+    const wholesalePriceText = wholesaleEnabled
+      ? String(f.get('wholesalePrice') || '').trim()
+      : '';
+    const retailPrice = retailPriceText ? Number(retailPriceText) : null;
+    const wholesalePrice = wholesalePriceText
+      ? Number(wholesalePriceText)
+      : null;
+    if (
+      (retailPrice === null && wholesalePrice === null) ||
+      (retailPrice !== null &&
+        (!Number.isFinite(retailPrice) || retailPrice < 0)) ||
+      (wholesalePrice !== null &&
+        (!Number.isFinite(wholesalePrice) || wholesalePrice < 0))
+    ) {
+      setPriceFormError('أدخل سعرًا صحيحًا واحدًا على الأقل: قطاعي أو جملة.');
+      return;
+    }
+    setPriceFormError('');
+    const costPriceText = String(f.get('costPrice') || '').trim();
+    const priceData = {
+      price: retailPrice,
+      wholesalePrice,
+      ...(costPriceText ? { costPrice: Number(costPriceText) } : {}),
     };
+    const quantity = Number(f.get('quantity'));
     const done = () => {
       qc.invalidateQueries({ queryKey: getListXStoreProductsQueryKey() });
       qc.invalidateQueries({ queryKey: getGetXStoreDashboardQueryKey() });
       setDialog(false);
       setEdit(null);
+      setPriceFormError('');
       setNotice('تم حفظ بيانات المنتج');
     };
-    if (edit) update.mutate({ productId: edit.id, data }, { onSuccess: done });
-    else create.mutate({ data }, { onSuccess: done });
+    if (edit) {
+      const data = isWarehouseManager
+        ? { ...priceData, quantity }
+        : {
+            ...priceData,
+            name: String(f.get('name')),
+            sku: edit.sku,
+            barcode: String(f.get('barcode') || '') || null,
+            category: edit.category,
+            quantity,
+            color: String(f.get('color') || '') || null,
+            size: String(f.get('size') || '') || null,
+            partNumber: String(f.get('partNumber') || '') || null,
+            expiresAt: edit.expiresAt?.slice(0, 10) || null,
+          };
+      update.mutate({ productId: edit.id, data }, { onSuccess: done });
+    } else {
+      create.mutate({
+        data: {
+          ...priceData,
+          name: String(f.get('name')),
+          sku: `XST-${crypto.randomUUID().replaceAll('-', '').slice(0, 16).toUpperCase()}`,
+          barcode: String(f.get('barcode') || '') || null,
+          category: 'عام',
+          quantity,
+          color: String(f.get('color') || '') || null,
+          size: String(f.get('size') || '') || null,
+          partNumber: String(f.get('partNumber') || '') || null,
+          expiresAt: null,
+        },
+      }, { onSuccess: done });
+    }
   }
 
   const changeQuantity = (p: Product, delta: number) =>
@@ -1489,7 +1554,7 @@ function InventoryPage() {
       },
     );
   const inventoryValue = (q.data || []).reduce(
-    (total, product) => total + product.price * product.quantity,
+    (total, product) => total + (product.price ?? 0) * product.quantity,
     0,
   );
 
@@ -1538,12 +1603,12 @@ function InventoryPage() {
                     <td className="ltr-id inventory-sku">{p.sku}</td>
                     <td><span className="inventory-category-chip">{p.category}</span></td>
                     <td><div className="inventory-variants">{p.color&&<span>{p.color}</span>}{p.size&&<span>{p.size}</span>}{!p.color&&!p.size&&<small>—</small>}</div></td>
-                    {!isWarehouseManager && <td className="inventory-price">{money(p.price)}</td>}
+                    <td className="inventory-price"><div>قطاعي: {p.price===null?'—':money(p.price)}</div>{wholesaleEnabled&&<div>جملة: {p.wholesalePrice===null?'—':money(p.wholesalePrice)}</div>}{canViewCost&&<small>التكلفة: {p.costPrice===null?'—':money(p.costPrice)}</small>}</td>
                     <td><div className="inventory-quantity"><b className={`quantity ${p.quantity<=5?'quantity-low':''}`}>{fmt(p.quantity)}</b><span className={`inventory-stock-status ${p.quantity<=0?'is-out':p.quantity<=5?'is-low':'is-available'}`}>{p.quantity<=0?'نفد':p.quantity<=5?'منخفض':'متاح'}</span></div></td>
                     {canManage&&<td><div className="inventory-row-actions">
                       <button className="qty-control" aria-label={`تقليل كمية ${p.name}`} title="تقليل الكمية" disabled={p.quantity<=0} onClick={()=>changeQuantity(p,-1)} data-testid={`button-inventory-decrease-${p.id}`}><Minus size={16}/></button>
                       <button className="qty-control" aria-label={`زيادة كمية ${p.name}`} title="زيادة الكمية" onClick={()=>changeQuantity(p,1)} data-testid={`button-inventory-increase-${p.id}`}><Plus size={16}/></button>
-                      {!isWarehouseManager&&<button className="inventory-edit-button" onClick={()=>{setEdit(p);setDialog(true)}} data-testid={`button-edit-product-${p.id}`}>تعديل البيانات</button>}
+                      <button className="inventory-edit-button" onClick={()=>{setPriceFormError('');setEdit(p);setDialog(true)}} data-testid={`button-edit-product-${p.id}`}>تعديل البيانات</button>
                     </div></td>}
                   </tr>})}</tbody>
                 </table></div>
@@ -1553,19 +1618,19 @@ function InventoryPage() {
                   <div className="inventory-mobile-head"><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><ProductIconSymbol symbol={symbol} kind={kind}/></span><span className="inventory-product-copy"><b>{p.name}</b><small className="ltr-id">{p.sku}</small></span></div><span className={`inventory-stock-status ${p.quantity<=0?'is-out':p.quantity<=5?'is-low':'is-available'}`}>{p.quantity<=0?'نفد المخزون':p.quantity<=5?'رصيد منخفض':'متاح'}</span></div>
                   <div className="inventory-mobile-details">
                     <div><small>التصنيف</small><b>{p.category}</b></div>
-                    {!isWarehouseManager&&<div><small>سعر البيع</small><b>{money(p.price)}</b></div>}
+                    <div className="inventory-mobile-prices"><small>الأسعار</small><b>قطاعي: {p.price===null?'—':money(p.price)}</b>{wholesaleEnabled&&<b>جملة: {p.wholesalePrice===null?'—':money(p.wholesalePrice)}</b>}{canViewCost&&<b>التكلفة: {p.costPrice===null?'—':money(p.costPrice)}</b>}</div>
                     <div><small>الكمية المتاحة</small><b className={p.quantity<=5?'quantity-low':''}>{fmt(p.quantity)} وحدة</b></div>
                     <div className="inventory-mobile-variants"><small>اللون والمقاس</small><b>{[p.color,p.size].filter(Boolean).join(' · ')||'—'}</b></div>
                     {(p.partNumber||p.barcode)&&<div className="inventory-mobile-variants"><small>بيانات إضافية</small><b>{p.partNumber?`رقم القطعة: ${p.partNumber}`:`باركود: ${p.barcode}`}</b></div>}
                   </div>
-                  {canManage&&<div className="inventory-mobile-actions"><div><span>تحديث الكمية</span><button className="qty-control" aria-label={`تقليل كمية ${p.name}`} disabled={p.quantity<=0} onClick={()=>changeQuantity(p,-1)} data-testid={`button-inventory-mobile-decrease-${p.id}`}><Minus size={16}/></button><button className="qty-control" aria-label={`زيادة كمية ${p.name}`} onClick={()=>changeQuantity(p,1)} data-testid={`button-inventory-mobile-increase-${p.id}`}><Plus size={16}/></button></div>{!isWarehouseManager&&<button className="inventory-edit-button" onClick={()=>{setEdit(p);setDialog(true)}} data-testid={`button-edit-product-mobile-${p.id}`}>تعديل المنتج</button>}</div>}
+                  {canManage&&<div className="inventory-mobile-actions"><div><span>تحديث الكمية</span><button className="qty-control" aria-label={`تقليل كمية ${p.name}`} disabled={p.quantity<=0} onClick={()=>changeQuantity(p,-1)} data-testid={`button-inventory-mobile-decrease-${p.id}`}><Minus size={16}/></button><button className="qty-control" aria-label={`زيادة كمية ${p.name}`} onClick={()=>changeQuantity(p,1)} data-testid={`button-inventory-mobile-increase-${p.id}`}><Plus size={16}/></button></div><button className="inventory-edit-button" onClick={()=>{setPriceFormError('');setEdit(p);setDialog(true)}} data-testid={`button-edit-product-mobile-${p.id}`}>تعديل المنتج</button></div>}
                 </article>})}
               </div>
             </>
             : <div className="inventory-empty" role="status" data-testid="status-inventory-empty"><span className="inventory-empty-icon"><Package size={24}/></span><b>{allProducts.length?'لا توجد منتجات مطابقة':'المخزون فارغ حتى الآن'}</b><span>{allProducts.length?'غيّر البحث أو الفلاتر لعرض منتجات أخرى.':'أضف منتجاتك لتبدأ متابعة الكميات والأسعار من هنا.'}</span>{(search||categoryFilter!=='__all__'||stockFilter!=='all')&&<button className="button button-quiet" onClick={()=>{setSearch('');setCategoryFilter('__all__');setStockFilter('all')}} data-testid="button-clear-inventory-filters">مسح البحث والفلاتر</button>}</div>
       }
     </Card>
-    {dialog && <Modal className="product-modal" title={edit ? 'تعديل المنتج' : 'إضافة منتج'} close={() => { setDialog(false); setEdit(null); }}>
+    {dialog && <Modal className="product-modal" title={edit ? 'تعديل المنتج' : 'إضافة منتج'} close={() => { setDialog(false); setEdit(null); setPriceFormError(''); }}>
       <form className={`form-grid product-form ${isWarehouseManager ? 'product-form--warehouse' : ''}`} onSubmit={submit}>
         <div className="product-form-intro field-wide">
           <span className="product-form-icon"><Package size={21}/></span>
@@ -1575,32 +1640,35 @@ function InventoryPage() {
           </div>
           <span className="product-form-required-note"><i/> الحقول المطلوبة عليها علامة *</span>
         </div>
-        <div className="product-form-section field-wide">
-          <span className="product-form-section-number">01</span>
-          <div><b>بيانات المنتج</b><small>الاسم والباركود للتعرّف عليه بسهولة.</small></div>
-        </div>
-        <Field className="product-form-field" label="اسم المنتج" name="name" required placeholder="مثال: تيشيرت قطني أسود" defaultValue={edit?.name}/>
-        <Field className="product-form-field" label="الباركود (اختياري)" name="barcode" placeholder="اكتب الرقم أو امسح الكود" defaultValue={edit?.barcode || ''}/>
+        {!pricingOnlyEdit ? <>
+          <div className="product-form-section field-wide">
+            <span className="product-form-section-number">01</span>
+            <div><b>بيانات المنتج</b><small>الاسم والباركود للتعرّف عليه بسهولة.</small></div>
+          </div>
+          <Field className="product-form-field" label="اسم المنتج" name="name" required placeholder="مثال: تيشيرت قطني أسود" defaultValue={edit?.name}/>
+          <Field className="product-form-field" label="الباركود (اختياري)" name="barcode" placeholder="اكتب الرقم أو امسح الكود" defaultValue={edit?.barcode || ''}/>
+        </> : <div className="role-hint field-wide"><ShieldCheck size={16}/><span>تعديل الأسعار والكمية للمنتج: {edit?.name}. لا يمكنك تغيير بياناته الأساسية.</span></div>}
         <div className="product-form-section field-wide">
           <span className="product-form-section-number">02</span>
           <div>
-            <b>{isWarehouseManager ? 'الكمية والمخزون' : 'السعر والمخزون'}</b>
-            <small>{isWarehouseManager ? 'أدخل الكمية المتاحة؛ يحدد مالك المتجر الأسعار.' : 'أدخل أسعار الوحدة والكمية المتاحة.'}</small>
+            <b>أسعار البيع والمخزون</b>
+            <small>أدخل سعرًا واحدًا على الأقل؛ تكلفة المنتج اختيارية.</small>
           </div>
         </div>
-        {!isWarehouseManager && <>
-          <Field className="product-form-field" label="سعر البيع" name="price" type="number" min={0} step={0.01} required placeholder="0.00" defaultValue={edit ? String(edit.price) : ''}/>
-          <Field className="product-form-field" label="سعر التكلفة (اختياري)" name="costPrice" type="number" min={0} step={0.01} placeholder="اتركه فارغًا لو غير متاح" defaultValue={edit ? String(edit.costPrice ?? 0) : ''}/>
-        </>}
+        <Field className="product-form-field" label="سعر القطاعي" name="price" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر الجملة" defaultValue={edit?.price===null?'':edit?String(edit.price):''}/>
+        {wholesaleEnabled&&<Field className="product-form-field" label="سعر الجملة" name="wholesalePrice" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر القطاعي" defaultValue={edit?.wholesalePrice===null?'':edit?String(edit.wholesalePrice):''}/>}
+        <Field className="product-form-field" label="سعر التكلفة (اختياري)" name="costPrice" type="number" min={0} step={0.01} placeholder="اتركه فارغًا لو غير متاح" defaultValue={edit ? String(edit.costPrice ?? 0) : ''}/>
         <Field className={`product-form-field ${isWarehouseManager ? 'field-wide' : ''}`} label="الكمية" name="quantity" type="number" min={0} step={1} required placeholder="0" defaultValue={edit ? String(edit.quantity) : '0'}/>
-        <div className="product-form-section field-wide">
-          <span className="product-form-section-number">03</span>
-          <div><b>تفاصيل إضافية</b><small>كل هذه المعلومات اختيارية.</small></div>
-        </div>
-        <Field className="product-form-field" label="اللون (اختياري)" name="color" placeholder="مثال: أسود" defaultValue={edit?.color || ''}/>
-        <Field className="product-form-field" label="المقاس (اختياري)" name="size" placeholder="مثال: M أو 42" defaultValue={edit?.size || ''}/>
-        <Field className="product-form-field field-wide" label="رقم القطعة (اختياري)" name="partNumber" placeholder="رقم الموديل أو كود المورد" defaultValue={edit?.partNumber || ''}/>
-        {isWarehouseManager && <div className="role-hint field-wide"><ShieldCheck size={16}/><span>يمكنك إضافة بيانات المنتج وتحديث الكمية؛ يحدد مالك المتجر الأسعار.</span></div>}
+        {!pricingOnlyEdit&&<>
+          <div className="product-form-section field-wide">
+            <span className="product-form-section-number">03</span>
+            <div><b>تفاصيل إضافية</b><small>كل هذه المعلومات اختيارية.</small></div>
+          </div>
+          <Field className="product-form-field" label="اللون (اختياري)" name="color" placeholder="مثال: أسود" defaultValue={edit?.color || ''}/>
+          <Field className="product-form-field" label="المقاس (اختياري)" name="size" placeholder="مثال: M أو 42" defaultValue={edit?.size || ''}/>
+          <Field className="product-form-field field-wide" label="رقم القطعة (اختياري)" name="partNumber" placeholder="رقم الموديل أو كود المورد" defaultValue={edit?.partNumber || ''}/>
+        </>}
+        {priceFormError&&<div className="form-error field-wide" role="alert">{priceFormError}</div>}
         {(create.isError || update.isError) && <div className="form-error">تعذر حفظ المنتج. يرجى مراجعة البيانات.</div>}
         <div className="modal-actions">
           <button type="button" className="button button-quiet" onClick={() => { setDialog(false); setEdit(null); }}>إلغاء</button>
@@ -1653,7 +1721,9 @@ function PosPage() {
   const qc=useQueryClient(), products=useListXStoreProducts(), held=useListXStoreHeldSales(), session=useGetXStoreSession(), checkout=useCheckoutXStoreSale(), hold=useHoldXStoreSale(), release=useReleaseXStoreHeldSale(), exchange=useCreateXStoreExchange();
   const money=useMoney(), currency=useContext(CurrencyContext);
   const vatRate=session.data?.vatRate??.15;
+  const wholesaleEnabled=session.data?.wholesaleEnabled??false;
   const [cart,setCart]=useState<Record<string,number>>({}),[term,setTerm]=useState(''),[discount,setDiscount]=useState('0'),[received,setReceived]=useState(''),[payment,setPayment]=useState<'cash'|'card'|'wallet'|'instapay'>('cash'),[transferSender,setTransferSender]=useState(''),[heldOpen,setHeldOpen]=useState(false),[exchangeOpen,setExchangeOpen]=useState(false),[notice,setNotice]=useState('');
+  const [saleType,setSaleType]=useState<SaleType>('retail');
   const [exchangeInvoiceNo,setExchangeInvoiceNo]=useState(''),[exchangeLoadedInvoiceNo,setExchangeLoadedInvoiceNo]=useState(''),[exchangeReturnItems,setExchangeReturnItems]=useState<Record<string,number>>({});
   const [exchangeReplacementProductId,setExchangeReplacementProductId]=useState(''),[exchangeReplacementQuantity,setExchangeReplacementQuantity]=useState(1);
   const [exchangeAmountReceived,setExchangeAmountReceived]=useState('');
@@ -1675,27 +1745,39 @@ function PosPage() {
     if (!value.trim()) setPhoneCountryOverride(null);
     setCustomerPhone(value);
   }
-  const visible=(products.data||[]).filter(p=>matchesProductSearch(p,term));
-  const cartLines=(products.data||[]).filter(p=>cart[p.id]).map(p=>({...p,count:cart[p.id]}));
+  const visible=(products.data||[]).filter(p=>matchesProductSearch(p,term)&&salePriceForProduct(p,saleType)!==null);
+  const cartLines=(products.data||[]).filter(p=>cart[p.id]).map(p=>({...p,count:cart[p.id],salePrice:salePriceForProduct(p,saleType)??0}));
    useEffect(()=>{if(!cartLines.length){if(customerPhone)setCustomerPhone('');if(phoneCountryOverride)setPhoneCountryOverride(null);if(customerName)setCustomerName('')}},[cartLines.length,customerPhone,phoneCountryOverride,customerName]);
-  const subtotal=roundMoney(cartLines.reduce((s,p)=>s+p.price*p.count,0)), disc=Math.min(subtotal,roundMoney(Math.max(0,Number(discount)||0))), tax=roundMoney((subtotal-disc)*vatRate), total=roundMoney(subtotal-disc+tax);
+  const subtotal=roundMoney(cartLines.reduce((s,p)=>s+p.salePrice*p.count,0)), disc=Math.min(subtotal,roundMoney(Math.max(0,Number(discount)||0))), tax=roundMoney((subtotal-disc)*vatRate), total=roundMoney(subtotal-disc+tax);
   const exchangeReturnedAmount=roundMoney(Object.entries(exchangeReturnItems).reduce((sum,[productId,quantity])=>{
     const item=exchangeInvoiceItems.data?.find(line=>line.productId===productId);
     return sum+(item?item.refundUnitAmount*quantity:0);
   },0));
+  const exchangeSaleType=exchangeInvoiceItems.data?.[0]?.saleType??'retail';
   const exchangeReplacementProduct=(products.data||[]).find(product=>product.id===exchangeReplacementProductId);
-  const exchangeReplacementSubtotal=roundMoney((exchangeReplacementProduct?.price||0)*exchangeReplacementQuantity);
+  const exchangeReplacementPrice=exchangeReplacementProduct?salePriceForProduct(exchangeReplacementProduct,exchangeSaleType):null;
+  const exchangeReplacementSubtotal=roundMoney((exchangeReplacementPrice??0)*exchangeReplacementQuantity);
   const exchangeReplacementTotal=roundMoney(exchangeReplacementSubtotal+roundMoney(exchangeReplacementSubtotal*vatRate));
   const exchangeBalanceDue=roundMoney(exchangeReplacementTotal-exchangeReturnedAmount);
   const exchangeChangeAmount=roundMoney(Math.max(0,(Number(exchangeAmountReceived)||0)-Math.max(0,exchangeBalanceDue)));
   useEffect(()=>{setExchangeAmountReceived(exchangeBalanceDue>0?String(exchangeBalanceDue):'0')},[exchangeBalanceDue]);
+  useEffect(()=>{setExchangeReplacementProductId('');setExchangeReplacementQuantity(1)},[exchangeLoadedInvoiceNo,exchangeSaleType]);
+  function switchSaleType(next:SaleType) {
+    if(next===saleType)return;
+    if(cartLines.length&&!window.confirm('سيتم تفريغ الطلب الحالي قبل تغيير قسم البيع. هل تريد المتابعة؟'))return;
+    setCart({});
+    setDiscount('0');
+    setReceived('');
+    setSaleType(next);
+    setInvoiceReference(createHeldInvoiceReference());
+  }
   const add=(p:Product)=>setCart(c=>({...c,[p.id]:Math.min(p.quantity,(c[p.id]||0)+1)}));
   const mutateCart=(id:string,n:number)=>setCart(c=>{const value=(c[id]||0)+n;if(value<=0){const next={...c};delete next[id];return next}return {...c,[id]:value}});
    const cashAmount=Number(received);
    const cashAmountInvalid=payment==='cash'&&(!received.trim()||!Number.isFinite(cashAmount)||cashAmount<=0||roundMoney(cashAmount)<total);
    const transferSenderInvalid=(payment==='wallet'||payment==='instapay')&&!transferSender.trim();
-   function finish(){if(!cartLines.length||customerPhoneInvalid||cashAmountInvalid||transferSenderInvalid)return;checkout.mutate({data:{invoiceNo:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:payment==='cash'?roundMoney(cashAmount):total,transferSender:payment==='wallet'||payment==='instapay'?transferSender.trim():null,customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreProfitLossReportQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
-   function park(){if(!cartLines.length||customerPhoneInvalid)return;hold.mutate({data:{reference:invoiceReference,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null,discountAmount:disc,paymentMethod:payment,transferSender:transferSender.trim()||null,amountReceived:roundMoney(Number(received)||0)}},{onSuccess:heldSale=>{setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice(`تم تعليق الفاتورة ${heldSale.reference}`)}})}
+   function finish(){if(!cartLines.length||customerPhoneInvalid||cashAmountInvalid||transferSenderInvalid)return;checkout.mutate({data:{invoiceNo:invoiceReference,saleType,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:payment==='cash'?roundMoney(cashAmount):total,transferSender:payment==='wallet'||payment==='instapay'?transferSender.trim():null,customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreProfitLossReportQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
+   function park(){if(!cartLines.length||customerPhoneInvalid)return;hold.mutate({data:{reference:invoiceReference,saleType,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null,discountAmount:disc,paymentMethod:payment,transferSender:transferSender.trim()||null,amountReceived:roundMoney(Number(received)||0)}},{onSuccess:heldSale=>{setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice(`تم تعليق الفاتورة ${heldSale.reference}`)}})}
    function clearCurrentCart(){setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference())}
   function closeExchange(){setExchangeOpen(false);setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setExchangeReplacementProductId('');setExchangeReplacementQuantity(1);setExchangeAmountReceived('')}
    function submitExchange(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);const returnItems=Object.entries(exchangeReturnItems).map(([productId,quantity])=>({productId,quantity}));if(!exchangeLoadedInvoiceNo||exchangeLoadedInvoiceNo!==exchangeInvoiceNo.trim()||!returnItems.length||!exchangeReplacementProductId)return;exchange.mutate({data:{invoiceNo:exchangeLoadedInvoiceNo,returnItems,replacementItems:[{productId:exchangeReplacementProductId,quantity:exchangeReplacementQuantity}],discountAmount:0,paymentMethod:String(f.get('paymentMethod')) as 'cash'|'card'|'wallet',amountReceived:Number(exchangeAmountReceived)||0}},{onSuccess:r=>{closeExchange();const settlement=r.changeAmount>0?(r.balanceDue>0?`الباقي للعميل ${money(r.changeAmount)}`:`المبلغ المسترد للعميل ${money(r.changeAmount)}`):'';setNotice([`تم الاستبدال · ${r.exchangeInvoiceNo}`,settlement].filter(Boolean).join(' · '));qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreProfitLossReportQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo)})}})}
@@ -1710,6 +1792,10 @@ function PosPage() {
       <div className="pos-layout">
         <section className="pos-products">
           <label className="search-box pos-search"><Search size={18}/><input autoFocus value={term} onChange={e=>setTerm(e.target.value)} aria-label="البحث عن منتج بالعربي أو English أو مسح الباركود" placeholder="ابحث باسم المنتج بأي لهجة أو English..." data-testid="input-pos-search"/><kbd>⌘ K</kbd></label>
+          {wholesaleEnabled&&<div className="sale-type-tabs" role="group" aria-label="قسم البيع">
+            <button type="button" className={saleType==='retail'?'is-active':''} aria-pressed={saleType==='retail'} onClick={()=>switchSaleType('retail')}><b>القطاعي</b><small>سعر القطاعي</small></button>
+            <button type="button" className={saleType==='wholesale'?'is-active':''} aria-pressed={saleType==='wholesale'} onClick={()=>switchSaleType('wholesale')}><b>الجملة</b><small>سعر الجملة</small></button>
+          </div>}
           {products.isLoading
             ? <div className="product-grid">{[1,2,3,4].map(i=><div className="product-skeleton" key={i}/>)}</div>
             : products.isError
@@ -1718,7 +1804,7 @@ function PosPage() {
                 ? <div className="product-grid">{visible.map(p=>{const {symbol,tone,kind}=getProductIcon(p);return <button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} aria-label={`إضافة ${p.name} إلى الفاتورة`} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
                     <span className={`product-art art-${tone}`} data-product-icon={kind}><ProductIconSymbol symbol={symbol} kind={kind}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
                     <span className="tile-category">{p.category}</span><b>{p.name}</b><small className="ltr-id">{p.sku}</small>
-                    <span className="tile-bottom"><strong>{money(p.price)}</strong><span>متاح {fmt(p.quantity)}</span></span>
+                    <span className="tile-bottom"><strong>{money(salePriceForProduct(p,saleType)??0)}</strong><span>متاح {fmt(p.quantity)}</span></span>
                   </button>})}</div>
                 : <div className="state-box"><div className="empty-symbol"><Package/></div><b>{term?'لا توجد نتائج':'لا توجد منتجات'}</b><span>{term?'جرّب البحث بكلمة مختلفة.':'أضف المنتجات إلى المخزون لتبدأ البيع.'}</span></div>
           }
@@ -1728,9 +1814,9 @@ function PosPage() {
           <div className="cart-invoice-number"><span>رقم الفاتورة</span><b className="ltr-id">{invoiceReference}</b></div>
           <div className="cart-lines">
             {cartLines.map(p=>{const {symbol,tone,kind}=getProductIcon(p);return <div className="cart-line" key={p.id}>
-              <span className={`cart-line-art art-${tone}`} data-product-icon={kind}><ProductIconSymbol symbol={symbol} kind={kind}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.price)}</small></div>
+              <span className={`cart-line-art art-${tone}`} data-product-icon={kind}><ProductIconSymbol symbol={symbol} kind={kind}/></span><div className="cart-line-title"><b>{p.name}</b><small>{money(p.salePrice)}</small></div>
               <div className="stepper"><button onClick={()=>mutateCart(p.id,-1)} aria-label="إنقاص"><Minus size={13}/></button><b>{p.count}</b><button onClick={()=>mutateCart(p.id,1)} aria-label="زيادة" disabled={p.count>=p.quantity}><Plus size={13}/></button></div>
-              <strong>{money(p.price*p.count)}</strong>
+              <strong>{money(p.salePrice*p.count)}</strong>
             </div>})}
             {!cartLines.length&&<div className="cart-empty"><div className="cart-empty-icon"><ShoppingCart size={20}/></div><b>السلة فارغة</b><span>اختر منتجاً لإضافته إلى الفاتورة.</span></div>}
           </div>
@@ -1762,13 +1848,14 @@ function PosPage() {
             <div className="held-item-main">
               <b className="ltr-id">{h.reference}</b>
               <small>{h.customerName||'عميل نقدي'} · {fmt(h.itemCount)} أصناف</small>
-              <small className="held-status">معلّقة · غير مدفوعة</small>
+               <small className="held-status">{h.saleType==='wholesale'?'بيع جملة':'بيع قطاعي'} · معلّقة</small>
             </div>
             <strong>{money(h.estimatedTotal)}</strong>
             <div className="held-actions">
               {whatsappUrl&&<a className="button button-whatsapp button-small" href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label={`إرسال الفاتورة ${h.reference} عبر واتساب`}><MessageCircle size={14}/> واتساب</a>}
               <button className="button button-primary button-small" disabled={release.isPending||cartLines.length>0} onClick={()=>release.mutate({heldSaleId:h.id},{onSuccess:()=>{
                 setCart(Object.fromEntries(h.items.map(item=>[item.productId,item.quantity])));
+                 setSaleType(h.saleType);
                 setDiscount(String(h.discountAmount));
                 setReceived(h.amountReceived?String(h.amountReceived):'');
                 setTransferSender(h.transferSender||'');
@@ -1789,7 +1876,7 @@ function PosPage() {
       </div></Modal>}
       {exchangeOpen&&<Modal title="استبدال منتج" close={closeExchange}><form className="form-grid" onSubmit={submitExchange}>
         <InvoiceReturnPicker invoiceNo={exchangeInvoiceNo} setInvoiceNo={setExchangeInvoiceNo} loadedInvoiceNo={exchangeLoadedInvoiceNo} setLoadedInvoiceNo={setExchangeLoadedInvoiceNo} selectedItems={exchangeReturnItems} setSelectedItems={setExchangeReturnItems} testIdPrefix="exchange"/>
-        <label className="field"><span>المنتج البديل</span><select name="replacementProduct" value={exchangeReplacementProductId} onChange={event=>setExchangeReplacementProductId(event.target.value)} required><option value="" disabled>اختر المنتج البديل</option>{products.data?.filter(p=>p.quantity>0).map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku} · {money(p.price)}</option>)}</select></label>
+        <label className="field"><span>المنتج البديل · {exchangeSaleType==='wholesale'?'سعر الجملة':'سعر القطاعي'}</span><select name="replacementProduct" value={exchangeReplacementProductId} onChange={event=>setExchangeReplacementProductId(event.target.value)} required><option value="" disabled>اختر المنتج البديل</option>{products.data?.filter(p=>p.quantity>0&&salePriceForProduct(p,exchangeSaleType)!==null).map(p=><option key={p.id} value={p.id}>{p.name} · {p.sku} · {money(salePriceForProduct(p,exchangeSaleType)??0)}</option>)}</select></label>
         <label className="field"><span>كمية المنتج البديل</span><input name="replacementQuantity" type="number" min={1} max={exchangeReplacementProduct?.quantity||1} step={1} value={exchangeReplacementQuantity} onChange={event=>setExchangeReplacementQuantity(Math.max(1,Math.min(exchangeReplacementProduct?.quantity||1,Number(event.target.value)||1)))} required/></label>
         <label className="field"><span>طريقة الدفع / التسوية</span><select name="paymentMethod"><option value="cash">نقداً</option><option value="card">بطاقة</option><option value="wallet">محفظة</option></select></label>
         {exchangeLoadedInvoiceNo&&exchangeReplacementProduct&&Object.keys(exchangeReturnItems).length>0&&<div className="exchange-price-summary field-wide" aria-live="polite"><div><span>قيمة المنتجات المرتجعة</span><b>{money(exchangeReturnedAmount)}</b></div><div><span>قيمة المنتج البديل شامل الضريبة</span><b>{money(exchangeReplacementTotal)}</b></div><div className={`exchange-price-difference ${exchangeBalanceDue>0?'exchange-due':exchangeBalanceDue<0?'exchange-refund':''}`}><span>فرق السعر</span><strong>{exchangeBalanceDue>0?`على العميل ${money(exchangeBalanceDue)}`:exchangeBalanceDue<0?`على المتجر رد ${money(Math.abs(exchangeBalanceDue))} للعميل`:'لا يوجد فرق سعر'}</strong></div></div>}

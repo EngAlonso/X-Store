@@ -38,6 +38,9 @@ export const xstoreInvoiceFormats = [
 ] as const;
 export type XStoreInvoiceFormat = (typeof xstoreInvoiceFormats)[number];
 
+export const xstoreSaleTypes = ["retail", "wholesale"] as const;
+export type XStoreSaleType = (typeof xstoreSaleTypes)[number];
+
 export type XStoreLine = {
   productId: string;
   quantity: number;
@@ -61,6 +64,7 @@ export const xstoreTenants = pgTable("xstore_tenants", {
     .$type<XStoreInvoiceFormat>()
     .notNull()
     .default("wide"),
+  wholesaleEnabled: boolean("wholesale_enabled").notNull().default(false),
   status: text("status").notNull().default("trial"),
   plan: text("plan").notNull().default("monthly"),
   subscriptionEndsAt: date("subscription_ends_at", { mode: "string" }),
@@ -199,9 +203,8 @@ export const xstoreProducts = pgTable(
     sku: text("sku").notNull(),
     barcode: text("barcode"),
     category: text("category").notNull(),
-    price: numeric("price", { precision: 12, scale: 2 })
-      .notNull()
-      .default("0"),
+    price: numeric("price", { precision: 12, scale: 2 }),
+    wholesalePrice: numeric("wholesale_price", { precision: 12, scale: 2 }),
     costPrice: numeric("cost_price", { precision: 12, scale: 2 })
       .notNull()
       .default("0"),
@@ -245,6 +248,10 @@ export const xstoreSales = pgTable(
       .notNull()
       .references(() => xstoreUsers.id),
     invoiceNo: text("invoice_no").notNull(),
+    saleType: text("sale_type")
+      .$type<XStoreSaleType>()
+      .notNull()
+      .default("retail"),
     customerName: text("customer_name"),
     customerPhone: text("customer_phone"),
     itemCount: integer("item_count").notNull(),
@@ -317,6 +324,10 @@ export const xstoreHeldSales = pgTable(
       .notNull()
       .references(() => xstoreUsers.id),
     reference: text("reference").notNull(),
+    saleType: text("sale_type")
+      .$type<XStoreSaleType>()
+      .notNull()
+      .default("retail"),
     customerName: text("customer_name"),
     customerPhone: text("customer_phone"),
     items: jsonb("items").$type<XStoreLine[]>().notNull(),

@@ -41,4 +41,5 @@ export interface SessionUser {
   vatRate: number | null;
   /** @nullable */
   invoiceFormat: SessionUserInvoiceFormat;
+  wholesaleEnabled: boolean;
 }

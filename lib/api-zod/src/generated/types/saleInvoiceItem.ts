@@ -5,12 +5,14 @@
  * X-Store point-of-sale and inventory API
  * OpenAPI spec version: 0.1.0
  */
+import type { SaleInvoiceItemSaleType } from './saleInvoiceItemSaleType';
 
 export interface SaleInvoiceItem {
   productId: string;
   name: string;
   sku: string;
   unitPrice: number;
+  saleType: SaleInvoiceItemSaleType;
   refundUnitAmount: number;
   quantity: number;
   returnedQuantity: number;

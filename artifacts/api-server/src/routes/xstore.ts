@@ -139,6 +139,25 @@ class DomainError extends Error {
 const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 const toNumber = (value: string | number | null | undefined) =>
   Number(value ?? 0);
+const wholesaleStoreTypes = new Set([
+  "clothing_shoes",
+  "grocery_supermarket",
+  "electronics_accessories",
+  "perfume_beauty",
+]);
+function isWholesaleStoreType(storeType: string | null | undefined): boolean {
+  return Boolean(storeType && wholesaleStoreTypes.has(storeType));
+}
+function tenantAllowsWholesale(
+  tenant:
+    | { storeType: string | null; wholesaleEnabled: boolean }
+    | null
+    | undefined,
+): boolean {
+  return Boolean(
+    tenant?.wholesaleEnabled && isWholesaleStoreType(tenant.storeType),
+  );
+}
 const iso = (value: Date) => value.toISOString();
 const dbDate = (value: Date | string | null | undefined) =>
   value === undefined || value === null
@@ -164,6 +183,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
           currency: xstoreTenants.currency,
           vatRate: xstoreTenants.vatRate,
           invoiceFormat: xstoreTenants.invoiceFormat,
+          wholesaleEnabled: xstoreTenants.wholesaleEnabled,
         })
         .from(xstoreTenants)
         .where(eq(xstoreTenants.id, user.tenantId))
@@ -183,6 +203,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     currency: tenant?.currency ?? null,
     vatRate: tenant ? toNumber(tenant.vatRate) : null,
     invoiceFormat: tenant?.invoiceFormat ?? null,
+    wholesaleEnabled: tenantAllowsWholesale(tenant),
   };
 }
 
@@ -469,17 +490,31 @@ function exchangeEventFromAudit(log: {
 }
 
 function productDto(product: XStoreProduct, user: XStoreUser) {
+  const canViewSellingPrices = hasRole(user, [
+    "platform_admin",
+    "tenant_admin",
+    "cashier",
+    "warehouse_manager",
+    "accountant",
+  ]);
   return {
     ...product,
-    price: hasRole(user, [
+    price: canViewSellingPrices
+      ? product.price === null
+        ? null
+        : toNumber(product.price)
+      : 0,
+    wholesalePrice: canViewSellingPrices
+      ? product.wholesalePrice === null
+        ? null
+        : toNumber(product.wholesalePrice)
+      : null,
+    costPrice: hasRole(user, [
       "platform_admin",
       "tenant_admin",
-      "cashier",
+      "warehouse_manager",
       "accountant",
     ])
-      ? toNumber(product.price)
-      : 0,
-    costPrice: hasRole(user, ["platform_admin", "tenant_admin", "accountant"])
       ? toNumber(product.costPrice)
       : null,
     barcode: product.barcode ?? null,
@@ -1096,6 +1131,12 @@ router.post("/xstore/tenants", async (req, res): Promise<void> => {
     return;
   }
   const input = parsed.data;
+  if (input.wholesaleEnabled && !isWholesaleStoreType(input.storeType)) {
+    res.status(400).json({
+      error: "Wholesale sales are not available for cafes or restaurants.",
+    });
+    return;
+  }
   let phone: string;
   try {
     phone = normalizePhone(input.phone);
@@ -1129,6 +1170,7 @@ router.post("/xstore/tenants", async (req, res): Promise<void> => {
           email: input.email?.trim().toLowerCase() || null,
           businessType: input.businessType,
           storeType: input.storeType,
+          wholesaleEnabled: input.wholesaleEnabled ?? false,
           countryCode: input.countryCode,
           currency: input.currency,
           status: "trial",
@@ -2009,13 +2051,30 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  if (parsed.data.price == null && parsed.data.wholesalePrice == null) {
+    res.status(400).json({
+      error: "Enter at least a retail price or a wholesale price.",
+    });
+    return;
+  }
+  const [tenant] = await db
+    .select({
+      storeType: xstoreTenants.storeType,
+      wholesaleEnabled: xstoreTenants.wholesaleEnabled,
+    })
+    .from(xstoreTenants)
+    .where(eq(xstoreTenants.id, tenantId))
+    .limit(1);
+  if (!tenant) {
+    res.status(404).json({ error: "Store not found." });
+    return;
+  }
   if (
-    hasRole(actor, ["warehouse_manager"]) &&
-    ((parsed.data.price !== undefined && parsed.data.price !== 0) ||
-      (parsed.data.costPrice !== undefined && parsed.data.costPrice !== 0))
+    parsed.data.wholesalePrice != null &&
+    !tenantAllowsWholesale(tenant)
   ) {
-    res.status(403).json({
-      error: "Warehouse managers can add stock but cannot set selling prices.",
+    res.status(400).json({
+      error: "Wholesale prices are not enabled for this store.",
     });
     return;
   }
@@ -2024,14 +2083,12 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
     .values({
       ...parsed.data,
       tenantId,
-      price: String(
-        hasRole(actor, ["warehouse_manager"]) ? 0 : parsed.data.price,
-      ),
-      costPrice: String(
-        hasRole(actor, ["warehouse_manager"])
-          ? 0
-          : (parsed.data.costPrice ?? 0),
-      ),
+      price: parsed.data.price == null ? null : String(parsed.data.price),
+      wholesalePrice:
+        parsed.data.wholesalePrice == null
+          ? null
+          : String(parsed.data.wholesalePrice),
+      costPrice: String(parsed.data.costPrice ?? 0),
       barcode: parsed.data.barcode ?? null,
       color: parsed.data.color ?? null,
       size: parsed.data.size ?? null,
@@ -2074,23 +2131,73 @@ router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  if (
-    hasRole(actor, ["warehouse_manager"]) &&
-    Object.keys(parsed.data).some((key) => key !== "quantity")
-  ) {
-    res.status(403).json({
-      error: "Warehouse managers can only adjust product quantities.",
-    });
-    return;
-  }
   const clauses = [eq(xstoreProducts.id, params.data.productId)];
   if (actor.role !== "platform_admin" && actor.tenantId) {
     clauses.push(eq(xstoreProducts.tenantId, actor.tenantId));
   }
+  const [existingProduct] = await db
+    .select()
+    .from(xstoreProducts)
+    .where(and(...clauses))
+    .limit(1);
+  if (!existingProduct) {
+    res.status(404).json({ error: "Product not found." });
+    return;
+  }
+  if (
+    hasRole(actor, ["warehouse_manager"]) &&
+    Object.keys(parsed.data).some(
+      (key) =>
+        !["quantity", "price", "wholesalePrice", "costPrice"].includes(key),
+    )
+  ) {
+    res.status(403).json({
+      error: "Warehouse managers can only update stock and prices.",
+    });
+    return;
+  }
+  const [tenant] = await db
+    .select({
+      storeType: xstoreTenants.storeType,
+      wholesaleEnabled: xstoreTenants.wholesaleEnabled,
+    })
+    .from(xstoreTenants)
+    .where(eq(xstoreTenants.id, existingProduct.tenantId))
+    .limit(1);
+  const nextRetailPrice =
+    parsed.data.price === undefined
+      ? existingProduct.price
+      : parsed.data.price;
+  const nextWholesalePrice =
+    parsed.data.wholesalePrice === undefined
+      ? existingProduct.wholesalePrice
+      : parsed.data.wholesalePrice;
+  if (nextRetailPrice == null && nextWholesalePrice == null) {
+    res.status(400).json({
+      error: "Enter at least a retail price or a wholesale price.",
+    });
+    return;
+  }
+  if (nextWholesalePrice != null && !tenantAllowsWholesale(tenant)) {
+    res.status(400).json({
+      error: "Wholesale prices are not enabled for this store.",
+    });
+    return;
+  }
   const update = {
     ...parsed.data,
     price:
-      parsed.data.price === undefined ? undefined : String(parsed.data.price),
+      parsed.data.price === undefined
+        ? undefined
+        : parsed.data.price === null
+          ? null
+          : String(parsed.data.price),
+    wholesalePrice:
+      parsed.data.wholesalePrice === undefined
+        ? undefined
+        : parsed.data.wholesalePrice === null
+          ? null
+          : String(parsed.data.wholesalePrice),
     costPrice:
       parsed.data.costPrice === undefined
         ? undefined
@@ -2275,7 +2382,10 @@ router.get(
     if (!tenantId) return;
 
     const [sale] = await db
-      .select({ id: xstoreSales.id })
+      .select({
+        id: xstoreSales.id,
+        saleType: xstoreSales.saleType,
+      })
       .from(xstoreSales)
       .where(
         and(
@@ -2334,6 +2444,7 @@ router.get(
       GetXStoreSaleInvoiceItemsResponse.parse(
         items.map((item) => ({
           ...item,
+          saleType: sale.saleType,
           unitPrice: toNumber(item.unitPrice),
           refundUnitAmount:
             toNumber(item.unitPrice) *
@@ -2488,10 +2599,21 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
     return;
   }
   const [tenant] = await db
-    .select({ name: xstoreTenants.name })
+    .select({
+      name: xstoreTenants.name,
+      storeType: xstoreTenants.storeType,
+      wholesaleEnabled: xstoreTenants.wholesaleEnabled,
+    })
     .from(xstoreTenants)
     .where(eq(xstoreTenants.id, tenantId))
     .limit(1);
+  const saleType = parsed.data.saleType ?? "retail";
+  if (saleType === "wholesale" && !tenantAllowsWholesale(tenant)) {
+    res.status(403).json({
+      error: "Wholesale sales are not enabled for this store.",
+    });
+    return;
+  }
   try {
     const { sale, items } = await db.transaction(async (tx) => {
       const lines = mergedLines(parsed.data.items);
@@ -2521,10 +2643,20 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
             409,
           );
         }
+        const selectedPrice =
+          saleType === "wholesale"
+            ? product.wholesalePrice
+            : product.price;
+        if (selectedPrice === null) {
+          throw new DomainError(
+            `${product.name} has no ${saleType} price.`,
+            409,
+          );
+        }
         priced.push({
           product,
           quantity: line.quantity,
-          unitPrice: toNumber(product.price),
+          unitPrice: toNumber(selectedPrice),
         });
       }
       const subtotal = roundMoney(
@@ -2557,6 +2689,7 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
           tenantId,
           cashierUserId: actor.id,
           invoiceNo: requestedInvoiceNo || invoiceNumber(),
+          saleType,
           customerName: parsed.data.customerName?.trim() || null,
           customerPhone,
           itemCount: priced.reduce((sum, line) => sum + line.quantity, 0),
@@ -2675,6 +2808,21 @@ router.post("/xstore/held-sales", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Store settings not found." });
     return;
   }
+  const saleType = parsed.data.saleType ?? "retail";
+  const [tenant] = await db
+    .select({
+      storeType: xstoreTenants.storeType,
+      wholesaleEnabled: xstoreTenants.wholesaleEnabled,
+    })
+    .from(xstoreTenants)
+    .where(eq(xstoreTenants.id, tenantId))
+    .limit(1);
+  if (saleType === "wholesale" && !tenantAllowsWholesale(tenant)) {
+    res.status(403).json({
+      error: "Wholesale sales are not enabled for this store.",
+    });
+    return;
+  }
   const priced: XStoreLine[] = [];
   let subtotal = 0;
   for (const line of mergedLines(parsed.data.items)) {
@@ -2692,12 +2840,20 @@ router.post("/xstore/held-sales", async (req, res): Promise<void> => {
       res.status(404).json({ error: "A product in the cart was not found." });
       return;
     }
+    const selectedPrice =
+      saleType === "wholesale" ? product.wholesalePrice : product.price;
+    if (selectedPrice === null) {
+      res.status(409).json({
+        error: `${product.name} has no ${saleType} price.`,
+      });
+      return;
+    }
     priced.push({
       productId: product.id,
       quantity: line.quantity,
-      unitPrice: toNumber(product.price),
+      unitPrice: toNumber(selectedPrice),
     });
-    subtotal += toNumber(product.price) * line.quantity;
+    subtotal += toNumber(selectedPrice) * line.quantity;
   }
   subtotal = roundMoney(subtotal);
   const discountAmount = Math.min(
@@ -2714,6 +2870,7 @@ router.post("/xstore/held-sales", async (req, res): Promise<void> => {
       reference:
         parsed.data.reference?.trim() ||
         `H-${crypto.randomUUID().slice(0, 6).toUpperCase()}`,
+      saleType,
       customerName: parsed.data.customerName?.trim() || null,
       customerPhone,
       items: priced,
@@ -3237,10 +3394,20 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
         if (product.quantity < line.quantity) {
           throw new DomainError(`Not enough stock for ${product.name}.`, 409);
         }
+        const selectedPrice =
+          original.saleType === "wholesale"
+            ? product.wholesalePrice
+            : product.price;
+        if (selectedPrice === null) {
+          throw new DomainError(
+            `${product.name} has no ${original.saleType} price.`,
+            409,
+          );
+        }
         replacementLines.push({
           product,
           quantity: line.quantity,
-          unitPrice: toNumber(product.price),
+          unitPrice: toNumber(selectedPrice),
         });
       }
       const subtotal = roundMoney(
@@ -3267,6 +3434,7 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
             tenantId,
             cashierUserId: actor.id,
             invoiceNo: exchangeInvoiceNo,
+            saleType: original.saleType,
             itemCount: replacementLines.reduce(
               (sum, line) => sum + line.quantity,
               0,
