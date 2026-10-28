@@ -7,7 +7,7 @@ export function offlineLicensePublicKeyDefine(options: { required?: boolean } = 
   if (!privateKeyText) {
     if (options.required) {
       throw new Error(
-        "XSTORE_OFFLINE_LICENSE_PRIVATE_KEY must contain a valid Ed25519 PKCS#8 private key.",
+        "XSTORE_OFFLINE_LICENSE_PRIVATE_KEY is missing from this build environment.",
       );
     }
     return {
@@ -21,7 +21,7 @@ export function offlineLicensePublicKeyDefine(options: { required?: boolean } = 
   } catch {
     if (options.required) {
       throw new Error(
-        "XSTORE_OFFLINE_LICENSE_PRIVATE_KEY must contain a valid Ed25519 PKCS#8 private key.",
+        "XSTORE_OFFLINE_LICENSE_PRIVATE_KEY must be a valid Ed25519 PKCS#8 PEM private key.",
       );
     }
     return {
@@ -32,7 +32,7 @@ export function offlineLicensePublicKeyDefine(options: { required?: boolean } = 
   if (privateKey.asymmetricKeyType !== "ed25519") {
     if (options.required) {
       throw new Error(
-        "XSTORE_OFFLINE_LICENSE_PRIVATE_KEY must contain a valid Ed25519 PKCS#8 private key.",
+        "XSTORE_OFFLINE_LICENSE_PRIVATE_KEY must be a valid Ed25519 PKCS#8 PEM private key.",
       );
     }
     return {
