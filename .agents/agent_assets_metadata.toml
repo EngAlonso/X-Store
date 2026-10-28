@@ -14,3 +14,17 @@ mtime_ms = 1793222652248
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:58fb8d9a-212e-4e71-9573-06daa78d6a68/2d460867-e725-4d24-8553-06afe051df0d/45ec3b9d-0f2f-4cb8-ae9f-05423d59c952"
 storage_version_token = "1793222657077996"
 content_type = "text/plain"
+
+[[outputs]]
+id = "B1MaP7K9cKahK39NAMhCk"
+uri = "file://artifacts/x-store/dist/xstore-offline-license-private-one-line.txt"
+type = "text"
+title = "مفتاح X-Store الخاص — صيغة سطر واحد"
+description = "ملف PEM خاص بصيغة سطر واحد مع فواصل أسطر مهروبة. استخدم هذا الملف بدل السابق، والصق محتواه كاملًا داخل نموذج Secrets الآمن تحت XSTORE_OFFLINE_LICENSE_PRIVATE_KEY."
+logical_id = "63f652fb-ede2-495a-a0d7-0334ca79b4ef"
+content_hash = "sha256:c5bde833707a854423191d27b18fa1cb19ef49cd6b564df911f2123e71b5c331"
+size = 122
+mtime_ms = 1793223056016
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:58fb8d9a-212e-4e71-9573-06daa78d6a68/63f652fb-ede2-495a-a0d7-0334ca79b4ef/95e6b962-19d2-4927-8e17-ec492d33e8f9"
+storage_version_token = "1793223078706637"
+content_type = "text/plain"
