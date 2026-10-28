@@ -8,3 +8,9 @@ The user wants a separate Windows edition that runs on one computer per store wi
 **Why:** the user wants to collect payment, configure a standalone offline copy for each merchant, and leave without needing to know or receive the merchant's data.
 
 **How to apply:** keep this edition independent from the hosted X-Store service, use local persistence, and make the no-network/no-sync boundary explicit. Exclude platform-wide tenant and subscription administration unless the user explicitly changes this requirement. Do not assume how offline licenses or renewals work until the user defines them.
+
+**Linux packaging note:** the NSIS installer target could not finish without Wine; a portable Windows x64 executable built successfully with executable resource editing disabled. That portable file is a self-extracting app, not a setup wizard, and has not been launched on Windows.
+
+**Why:** Replit's build host is Linux, so a successful package build does not prove native Windows behavior or backup-path handling.
+
+**How to apply:** use the portable target for a distributable preview; create the NSIS installer on Windows or Linux with Wine, then smoke-test launch, persistence, backup, and restore on Windows before merchant delivery.
