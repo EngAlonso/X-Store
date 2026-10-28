@@ -12,7 +12,12 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { timingSafeEqual } from "node:crypto";
+import {
+  createPrivateKey,
+  randomUUID,
+  sign as signBytes,
+  timingSafeEqual,
+} from "node:crypto";
 import { Router, type IRouter, type Request } from "express";
 import {
   CreateInitialPlatformOwnerBody,
@@ -31,6 +36,8 @@ import {
   CreateXStoreReturnBatchResponse,
   CreateXStoreSubscriptionPaymentBody,
   CreateXStoreSubscriptionPaymentResponse,
+  IssueXStoreOfflineLicenseBody,
+  IssueXStoreOfflineLicenseResponse,
   CreateXStoreTenantBody,
   CreateXStoreTenantResponse,
   DeleteXStoreTeamMemberParams,
@@ -539,6 +546,22 @@ function planEndDate(plan: string, from: Date): string | null {
   else if (plan === "annual") date.setFullYear(date.getFullYear() + 1);
   else date.setMonth(date.getMonth() + 1);
   return date.toISOString().slice(0, 10);
+}
+
+function offlineLicenseEndDate(
+  plan: "monthly" | "half_yearly" | "annual" | "lifetime",
+  from: Date,
+): string | null {
+  if (plan === "lifetime") return null;
+  const months = plan === "half_yearly" ? 6 : plan === "annual" ? 12 : 1;
+  const targetMonth = new Date(
+    Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + months, 1),
+  );
+  const lastDay = new Date(
+    Date.UTC(targetMonth.getUTCFullYear(), targetMonth.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  targetMonth.setUTCDate(Math.min(from.getUTCDate(), lastDay));
+  return targetMonth.toISOString().slice(0, 10);
 }
 
 function mergedLines(lines: XStoreLine[]) {
@@ -2032,6 +2055,73 @@ router.post("/xstore/subscription-payments", async (req, res): Promise<void> => 
       createdAt: iso(payment.createdAt),
     }),
   );
+});
+
+router.post("/xstore/offline-licenses/issue", async (req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (actor.role !== "platform_admin") {
+    res.status(403).json({ error: "Only the platform owner can issue offline licenses." });
+    return;
+  }
+  const parsed = IssueXStoreOfflineLicenseBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const privateKeyText = process.env.XSTORE_OFFLINE_LICENSE_PRIVATE_KEY
+    ?.replace(/\\n/g, "\n")
+    .trim();
+  if (!privateKeyText) {
+    res.status(503).json({
+      error: "مفتاح إصدار تراخيص الأوفلاين غير مهيأ على الخادم.",
+    });
+    return;
+  }
+
+  let privateKey: ReturnType<typeof createPrivateKey>;
+  try {
+    privateKey = createPrivateKey(privateKeyText);
+    if (privateKey.asymmetricKeyType !== "ed25519") {
+      throw new Error("The configured offline signing key is not Ed25519.");
+    }
+  } catch (error) {
+    req.log.error({ error }, "Offline license signing key is invalid");
+    res.status(503).json({
+      error: "إعداد مفتاح إصدار تراخيص الأوفلاين غير صالح على الخادم.",
+    });
+    return;
+  }
+
+  const { request, plan } = parsed.data;
+  const issuedAt = new Date();
+  const payload = {
+    version: 1 as const,
+    licenseId: randomUUID(),
+    installationId: request.installationId,
+    storeName: request.storeName.trim(),
+    plan,
+    issuedAt: issuedAt.toISOString(),
+    expiresAt: offlineLicenseEndDate(plan, issuedAt),
+  };
+  const signature = signBytes(
+    null,
+    Buffer.from(JSON.stringify(payload), "utf8"),
+    privateKey,
+  ).toString("base64");
+  const license = { payload, signature };
+
+  await audit(
+    actor,
+    "offline_license.issued",
+    null,
+    "offline_license",
+    payload.licenseId,
+    `Issued ${plan} offline license for ${payload.storeName || "unnamed store"}`,
+  );
+
+  res.setHeader("Cache-Control", "no-store");
+  res.status(201).json(IssueXStoreOfflineLicenseResponse.parse(license));
 });
 
 router.get("/xstore/products", async (req, res): Promise<void> => {

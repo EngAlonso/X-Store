@@ -763,6 +763,45 @@ export const CreateXStoreSubscriptionPaymentResponse = zod.object({
 
 
 /**
+ * @summary Sign an offline activation request for one installation
+ */
+export const issueXStoreOfflineLicenseBodyRequestStoreNameMax = 160;
+
+
+
+export const IssueXStoreOfflineLicenseBody = zod.object({
+  "request": zod.object({
+  "format": zod.literal("xstore-offline-activation-request"),
+  "version": zod.literal(1),
+  "installationId": zod.string().uuid(),
+  "storeName": zod.string().max(issueXStoreOfflineLicenseBodyRequestStoreNameMax),
+  "requestedAt": zod.coerce.date()
+}),
+  "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime'])
+})
+
+export const issueXStoreOfflineLicenseResponsePayloadStoreNameMax = 160;
+
+export const issueXStoreOfflineLicenseResponseSignatureMin = 88;
+export const issueXStoreOfflineLicenseResponseSignatureMax = 88;
+
+
+
+export const IssueXStoreOfflineLicenseResponse = zod.object({
+  "payload": zod.object({
+  "version": zod.literal(1),
+  "licenseId": zod.string().uuid(),
+  "installationId": zod.string().uuid(),
+  "storeName": zod.string().max(issueXStoreOfflineLicenseResponsePayloadStoreNameMax),
+  "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
+  "issuedAt": zod.coerce.date(),
+  "expiresAt": zod.coerce.date().nullable()
+}),
+  "signature": zod.string().min(issueXStoreOfflineLicenseResponseSignatureMin).max(issueXStoreOfflineLicenseResponseSignatureMax)
+})
+
+
+/**
  * @summary List products visible to the signed-in user
  */
 export const ListXStoreProductsQueryParams = zod.object({

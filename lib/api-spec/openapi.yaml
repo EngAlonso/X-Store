@@ -451,6 +451,36 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /xstore/offline-licenses/issue:
+    post:
+      operationId: issueXStoreOfflineLicense
+      tags: [xstore]
+      summary: Sign an offline activation request for one installation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfflineLicenseIssueInput"
+      responses:
+        "201":
+          description: Signed offline license
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfflineLicense"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          description: Offline license signing is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
   /xstore/products:
     get:
       operationId: listXStoreProducts
@@ -1357,6 +1387,44 @@ components:
           type: string
           enum: [cash, card, transfer]
       required: [tenantId, amount, plan, paymentMethod]
+    OfflineActivationRequest:
+      type: object
+      properties:
+        format: { type: string, const: xstore-offline-activation-request }
+        version: { type: integer, const: 1 }
+        installationId: { type: string, format: uuid }
+        storeName: { type: string, maxLength: 160 }
+        requestedAt: { type: string, format: date-time }
+      required: [format, version, installationId, storeName, requestedAt]
+    OfflineLicenseIssueInput:
+      type: object
+      properties:
+        request:
+          $ref: "#/components/schemas/OfflineActivationRequest"
+        plan:
+          type: string
+          enum: [monthly, half_yearly, annual, lifetime]
+      required: [request, plan]
+    OfflineLicensePayload:
+      type: object
+      properties:
+        version: { type: integer, const: 1 }
+        licenseId: { type: string, format: uuid }
+        installationId: { type: string, format: uuid }
+        storeName: { type: string, maxLength: 160 }
+        plan:
+          type: string
+          enum: [monthly, half_yearly, annual, lifetime]
+        issuedAt: { type: string, format: date-time }
+        expiresAt: { type: ["string", "null"], format: date }
+      required: [version, licenseId, installationId, storeName, plan, issuedAt, expiresAt]
+    OfflineLicense:
+      type: object
+      properties:
+        payload:
+          $ref: "#/components/schemas/OfflineLicensePayload"
+        signature: { type: string, minLength: 88, maxLength: 88 }
+      required: [payload, signature]
     Product:
       type: object
       properties:

@@ -40,6 +40,8 @@ import type {
   ListXStoreSalesParams,
   ListXStoreTenantsParams,
   NotFoundResponse,
+  OfflineLicense,
+  OfflineLicenseIssueInput,
   PhoneLoginInput,
   PlatformDatabaseDeleteInput,
   PlatformDatabaseDeleteResult,
@@ -1755,6 +1757,94 @@ export const useCreateXStoreSubscriptionPayment = <TError = ErrorType<BadRequest
         TContext
       > => {
       return useMutation(getCreateXStoreSubscriptionPaymentMutationOptions(options));
+    }
+
+export const getIssueXStoreOfflineLicenseUrl = () => {
+
+
+
+
+  return `/api/xstore/offline-licenses/issue`
+}
+
+/**
+ * @summary Sign an offline activation request for one installation
+ */
+export const issueXStoreOfflineLicense = async (offlineLicenseIssueInput: OfflineLicenseIssueInput, options?: Parameters<typeof customFetch>[1]): Promise<OfflineLicense> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OfflineLicense>(getIssueXStoreOfflineLicenseUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(offlineLicenseIssueInput)
+  }
+);}
+
+
+
+
+
+export const getIssueXStoreOfflineLicenseMutationKey = () => ['issueXStoreOfflineLicense'] as const;
+
+export const getIssueXStoreOfflineLicenseMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueXStoreOfflineLicense>>, TError,IssueXStoreOfflineLicenseMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof issueXStoreOfflineLicense>>, TError,IssueXStoreOfflineLicenseMutationVariables, TContext> => {
+
+const mutationKey = getIssueXStoreOfflineLicenseMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof issueXStoreOfflineLicense>>, IssueXStoreOfflineLicenseMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  issueXStoreOfflineLicense(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IssueXStoreOfflineLicenseMutationResult = NonNullable<Awaited<ReturnType<typeof issueXStoreOfflineLicense>>>
+    export type IssueXStoreOfflineLicenseMutationBody = BodyType<OfflineLicenseIssueInput>
+    export type IssueXStoreOfflineLicenseMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ApiError>
+    export type IssueXStoreOfflineLicenseMutationVariables = {data: BodyType<OfflineLicenseIssueInput>}
+
+    /**
+ * @summary Sign an offline activation request for one installation
+ */
+export const useIssueXStoreOfflineLicense = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | ApiError>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof issueXStoreOfflineLicense>>, TError,IssueXStoreOfflineLicenseMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof issueXStoreOfflineLicense>>,
+        TError,
+        IssueXStoreOfflineLicenseMutationVariables,
+        TContext
+      > => {
+      return useMutation(getIssueXStoreOfflineLicenseMutationOptions(options));
     }
 
 export const getListXStoreProductsUrl = (params?: ListXStoreProductsParams,) => {

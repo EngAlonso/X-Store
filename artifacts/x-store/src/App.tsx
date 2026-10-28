@@ -13,6 +13,7 @@ import {
   logoutXStore, useAddXStoreTeamMember, useCreateInitialPlatformOwner, useCreateXStoreExchange, useCreateXStoreProduct, useCreateXStoreReturnBatch,
   useDeleteXStoreTeamMember, useUpdateXStoreTeamMember,
   useCreateXStoreSubscriptionPayment, useCreateXStoreTenant, useGetXStoreDashboard, useGetXStoreSession, useHoldXStoreSale,
+  useIssueXStoreOfflineLicense,
   useGetXStoreAuthStatus, useGetXStoreContactSettings, useGetXStoreSaleInvoiceItems, useLoginXStoreWithPhone,
   useListXStoreAuditLogs, useListXStoreHeldSales, useListXStoreProducts, useListXStoreSales,
   useGetXStoreProfitLossReport, useListXStoreSubscriptionPayments, useListXStoreTeam, useListXStoreTenants, useReleaseXStoreHeldSale, useUpdateXStoreProduct,
@@ -263,7 +264,6 @@ const nav = [
    { href: '/pos', label: 'نقطة البيع', icon: ShoppingCart, roles: ['tenant_admin', 'cashier'] },
   { href: '/tenants', label: 'المتاجر', icon: Store, roles: ['platform_admin'] },
   { href: '/subscriptions', label: 'الاشتراكات', icon: CreditCard, roles: ['platform_admin'] },
-  { href: '/offline-license-issuer', label: 'تراخيص الأوفلاين', icon: KeyRound, roles: ['platform_admin'] },
    { href: '/inventory', label: 'المخزون', icon: Package, roles: ['tenant_admin', 'warehouse_manager'] },
   { href: '/reports', label: 'التقارير المالية', icon: Activity, roles: ['platform_admin', 'tenant_admin', 'accountant'] },
   { href: '/sales', label: 'المبيعات', icon: ReceiptText, roles: ['tenant_admin', 'cashier', 'accountant'] },
@@ -663,17 +663,18 @@ function ProtectedLayout() {
      <Route path="/platform-backup" component={PlatformBackupPage}/>
     <Route path="/store-settings" component={StoreSettingsPage}/>
     <Route component={NotFound}/>
-  </Switch></AppShell>;
+  </Switch>{location === '/subscriptions' && <OfflineLicenseIssuerPanel />}</AppShell>;
 }
 function PageTitle({ eyebrow, title, desc, action }: { eyebrow:string; title:string; desc:string; action?:ReactNode }) {
   return <div className="page-title"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{desc}</p></div>{action&&<div className="page-action">{action}</div>}</div>;
 }
-function OfflineLicenseIssuerPage() {
+function OfflineLicenseIssuerPanel() {
   const [activationRequest, setActivationRequest] = useState<OfflineActivationRequest | null>(null);
   const [plan, setPlan] = useState<OfflineLicensePlan>('monthly');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const issueOfflineLicense = useIssueXStoreOfflineLicense();
 
   async function readRequestFile(event: React.ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
@@ -701,22 +702,9 @@ function OfflineLicenseIssuerPage() {
     setError('');
     setNotice('');
     try {
-      const response = await fetch('/api/xstore/offline-licenses/issue', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request: activationRequest, plan }),
+      const result = await issueOfflineLicense.mutateAsync({
+        data: { request: activationRequest, plan },
       });
-      const result = await response.json().catch(() => null) as {
-        error?: string;
-        payload?: { licenseId?: string };
-      } | null;
-      if (!response.ok) {
-        throw new Error(result?.error || 'تعذر إصدار ملف التفعيل.');
-      }
-      if (!result?.payload?.licenseId) {
-        throw new Error('استجاب الخادم بملف تفعيل غير مكتمل.');
-      }
       const blob = new Blob([`${JSON.stringify(result, null, 2)}\n`], {
         type: 'application/json',
       });
@@ -734,10 +722,8 @@ function OfflineLicenseIssuerPage() {
     }
   }
 
-  return <section className="page" dir="rtl">
-    <PageTitle eyebrow="إدارة المنصة" title="إصدار ترخيص أوفلاين" description="حوّل طلب التفعيل القادم من المتجر إلى ملف موقّع يعمل على الجهاز المحدد فقط." />
-    <Card className="payments-panel">
-      <SectionHead title="إنشاء ملف التفعيل" detail="يحتوي الطلب على اسم المتجر ومعرّف تثبيت البرنامج فقط، ولا يتضمن المبيعات أو بيانات المخزون." />
+  return <Card className="payments-panel">
+      <SectionHead title="تفعيل نسخة الأوفلاين" detail="حوّل طلب التفعيل القادم من المتجر إلى ملف موقّع يعمل على الجهاز المحدد فقط. لا يتضمن الطلب بيانات المبيعات أو المخزون." />
       <div className="form-grid">
         <label className="field field-wide"><span>ملف طلب التفعيل</span><input type="file" accept=".json,application/json" onChange={(event) => void readRequestFile(event)} /></label>
         <label className="field"><span>مدة الترخيص</span><select value={plan} onChange={(event) => setPlan(event.target.value as OfflineLicensePlan)}><option value="monthly">شهري</option><option value="half_yearly">نصف سنوي</option><option value="annual">سنوي</option><option value="lifetime">دائم</option></select></label>
@@ -746,8 +732,11 @@ function OfflineLicenseIssuerPage() {
       {error && <div className="form-error">{error}</div>}
       {notice && <div className="notice-box success">{notice}</div>}
       <div className="form-actions"><button type="button" className="btn primary" disabled={!activationRequest || busy} onClick={() => void issueLicense()}><KeyRound size={16} />{busy ? 'جارٍ إصدار الملف…' : 'إصدار ملف التفعيل'}</button></div>
-    </Card>
-  </section>;
+  </Card>;
+}
+
+function OfflineLicenseIssuerPage() {
+  return <Redirect to="/subscriptions" />;
 }
 
 function isOfflineActivationRequest(value: unknown): value is OfflineActivationRequest {

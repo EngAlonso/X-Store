@@ -697,6 +697,61 @@ export interface SubscriptionPaymentInput {
   paymentMethod: SubscriptionPaymentInputPaymentMethod;
 }
 
+export interface OfflineActivationRequest {
+  format: 'xstore-offline-activation-request';
+  version: 1;
+  installationId: string;
+  /** @maxLength 160 */
+  storeName: string;
+  requestedAt: string;
+}
+
+export type OfflineLicenseIssueInputPlan = typeof OfflineLicenseIssueInputPlan[keyof typeof OfflineLicenseIssueInputPlan];
+
+
+export const OfflineLicenseIssueInputPlan = {
+  monthly: 'monthly',
+  half_yearly: 'half_yearly',
+  annual: 'annual',
+  lifetime: 'lifetime',
+} as const;
+
+export interface OfflineLicenseIssueInput {
+  request: OfflineActivationRequest;
+  plan: OfflineLicenseIssueInputPlan;
+}
+
+export type OfflineLicensePayloadPlan = typeof OfflineLicensePayloadPlan[keyof typeof OfflineLicensePayloadPlan];
+
+
+export const OfflineLicensePayloadPlan = {
+  monthly: 'monthly',
+  half_yearly: 'half_yearly',
+  annual: 'annual',
+  lifetime: 'lifetime',
+} as const;
+
+export interface OfflineLicensePayload {
+  version: 1;
+  licenseId: string;
+  installationId: string;
+  /** @maxLength 160 */
+  storeName: string;
+  plan: OfflineLicensePayloadPlan;
+  issuedAt: string;
+  /** @nullable */
+  expiresAt: string | null;
+}
+
+export interface OfflineLicense {
+  payload: OfflineLicensePayload;
+  /**
+     * @minLength 88
+     * @maxLength 88
+     */
+  signature: string;
+}
+
 export interface Product {
   id: string;
   tenantId: string;
