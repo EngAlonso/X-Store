@@ -4,9 +4,21 @@ import {
   migrateOfflineState,
   type OfflineState,
 } from "./model";
+import { verifyOfflineLicense } from "./licensing";
 
 const STATE_KEY = "x-store-offline-state-v1";
 const BACKUP_KEY = "x-store-offline-backup-v1";
+const INSTALLATION_ID_KEY = "x-store-offline-installation-id-v1";
+
+export async function getOfflineInstallationId(): Promise<string> {
+  if (window.xStoreOffline) return window.xStoreOffline.getInstallationId();
+  let installationId = localStorage.getItem(INSTALLATION_ID_KEY);
+  if (!installationId) {
+    installationId = crypto.randomUUID();
+    localStorage.setItem(INSTALLATION_ID_KEY, installationId);
+  }
+  return installationId;
+}
 
 export function isDesktopEdition(): boolean {
   return Boolean(window.xStoreOffline);
@@ -15,20 +27,22 @@ export function isDesktopEdition(): boolean {
 export async function loadOfflineState(): Promise<OfflineState> {
   if (window.xStoreOffline) {
     const raw = await window.xStoreOffline.getState();
-    const state = migrateOfflineState(raw);
+    const state = await validateStoredLicense(migrateOfflineState(raw));
     if (!isOfflineState(state)) throw new Error("ملف بيانات النسخة الأوف لاين غير صالح.");
     return state.schemaVersion === raw.schemaVersion
+      && !(raw.license && !state.license)
       ? state
       : window.xStoreOffline.saveState(state);
   }
 
   const raw = localStorage.getItem(STATE_KEY);
   if (!raw) return createEmptyOfflineState();
-  const parsed = migrateOfflineState(JSON.parse(raw));
+  const original = JSON.parse(raw);
+  const parsed = await validateStoredLicense(migrateOfflineState(original));
   if (!isOfflineState(parsed)) {
     throw new Error("بيانات معاينة النسخة الأوف لاين غير صالحة.");
   }
-  if (parsed.schemaVersion !== JSON.parse(raw).schemaVersion) {
+  if (parsed.schemaVersion !== original.schemaVersion || (original.license && !parsed.license)) {
     localStorage.setItem(STATE_KEY, JSON.stringify(parsed));
   }
   return parsed;
@@ -79,21 +93,27 @@ export async function restoreOfflineBackup(
 ): Promise<OfflineState> {
   if (window.xStoreOffline) {
     if (importedState) {
-      const migrated = migrateOfflineState(importedState);
+      const migrated = await validateStoredLicense(migrateOfflineState(importedState));
       if (!isOfflineState(migrated)) {
         throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
       }
       return window.xStoreOffline.restoreState(migrated);
     }
-    return window.xStoreOffline.restoreBackup();
+    const restored = await window.xStoreOffline.restoreBackup();
+    const validated = await validateStoredLicense(migrateOfflineState(restored));
+    if (!isOfflineState(validated)) throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
+    return restored.license && !validated.license
+      ? window.xStoreOffline.saveState(validated)
+      : validated;
   }
 
-  const candidate =
+  const candidate = await validateStoredLicense(
     migrateOfflineState(importedState) ??
     (() => {
       const raw = localStorage.getItem(BACKUP_KEY);
       return raw ? migrateOfflineState(JSON.parse(raw)) : null;
-    })();
+    })(),
+  );
   if (!isOfflineState(candidate)) {
     throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
   }
@@ -106,4 +126,16 @@ export async function restoreOfflineBackup(
   };
   localStorage.setItem(STATE_KEY, JSON.stringify(restored));
   return restored;
+}
+
+async function validateStoredLicense(
+  state: OfflineState | null,
+): Promise<OfflineState | null> {
+  if (!state?.license) return state;
+  try {
+    await verifyOfflineLicense(state.license, await getOfflineInstallationId());
+    return state;
+  } catch {
+    return { ...state, license: null };
+  }
 }

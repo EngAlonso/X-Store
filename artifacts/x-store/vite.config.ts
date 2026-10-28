@@ -2,6 +2,7 @@ import path from 'path';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
+import { offlineLicensePublicKeyDefine } from './vite-license-key';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
@@ -17,6 +18,7 @@ const basePath = process.env.BASE_PATH ?? '/';
 
 export default defineConfig({
   base: basePath,
+  define: offlineLicensePublicKeyDefine(),
   plugins: [
     react(),
     tailwindcss({ optimize: false }),

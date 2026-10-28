@@ -1,12 +1,14 @@
 import path from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { offlineLicensePublicKeyDefine } from "./vite-license-key";
 
 const root = path.resolve(import.meta.dirname);
 
 export default defineConfig(({ command }) => ({
   base: "./",
   plugins: [react()],
+  define: offlineLicensePublicKeyDefine(),
   resolve: {
     alias: {
       "@": path.resolve(root, "src"),

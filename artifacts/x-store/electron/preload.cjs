@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("xStoreOffline", {
   getState: () => ipcRenderer.invoke("offline:get-state"),
+  getInstallationId: () => ipcRenderer.invoke("offline:get-installation-id"),
   saveState: (state) => ipcRenderer.invoke("offline:save-state", state),
   chooseBackupFolder: () =>
     ipcRenderer.invoke("offline:choose-backup-folder"),

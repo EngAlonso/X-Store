@@ -1,8 +1,9 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const { app, BrowserWindow, dialog, ipcMain, session } = require("electron");
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 const BACKUP_PREFIX = "x-store-automatic-";
 const MAX_DAILY_BACKUPS = 30;
 const VALID_STORE_TYPES = new Set([
@@ -14,7 +15,7 @@ const VALID_STORE_TYPES = new Set([
   "restaurant",
 ]);
 const VALID_CURRENCIES = new Set(["EGP", "SAR", "AED", "USD", "EUR", "GBP"]);
-const VALID_LICENSE_DURATIONS = new Set([1, 3, 6, 12, 24, 36]);
+const VALID_LICENSE_PLANS = new Set(["monthly", "half_yearly", "annual", "lifetime"]);
 const VALID_PAYMENTS = new Set(["cash", "card", "wallet", "instapay", "transfer"]);
 const VALID_SALE_TYPES = new Set(["retail", "wholesale"]);
 const VALID_INVOICE_FORMATS = new Set(["wide", "thermal_80mm", "thermal_58mm"]);
@@ -59,6 +60,38 @@ function isDate(value) {
   return typeof value === "string" && Number.isFinite(Date.parse(value));
 }
 
+function isValidLicense(value) {
+  if (!isPlainObject(value) || !isPlainObject(value.payload)) return false;
+  const payload = value.payload;
+  const validExpiry = payload.plan === "lifetime"
+    ? payload.expiresAt === null
+    : typeof payload.expiresAt === "string" && isDate(`${payload.expiresAt}T12:00:00`);
+  return payload.version === 1 &&
+    typeof payload.licenseId === "string" && payload.licenseId.length >= 16 &&
+    typeof payload.installationId === "string" && payload.installationId.length >= 16 &&
+    typeof payload.storeName === "string" && payload.storeName.length <= 160 &&
+    VALID_LICENSE_PLANS.has(payload.plan) &&
+    isDate(payload.issuedAt) &&
+    validExpiry &&
+    typeof value.signature === "string" &&
+    /^[A-Za-z0-9+/]{86}==$/.test(value.signature);
+}
+
+async function getInstallationId() {
+  const installationIdPath = path.join(app.getPath("userData"), "installation-id");
+  try {
+    const existing = (await fs.readFile(installationIdPath, "utf8")).trim();
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(existing)) {
+      return existing;
+    }
+  } catch {
+    // A missing file is normal on the first launch.
+  }
+  const installationId = crypto.randomUUID();
+  await fs.writeFile(installationIdPath, `${installationId}\n`, { mode: 0o600 });
+  return installationId;
+}
+
 function isValidState(value) {
   if (
     !isPlainObject(value) ||
@@ -87,14 +120,7 @@ function isValidState(value) {
     typeof value.store.wholesaleEnabled !== "boolean"
   )) return false;
 
-  if (value.license !== null && (
-    !isPlainObject(value.license) ||
-    typeof value.license.startedAt !== "string" ||
-    typeof value.license.expiresAt !== "string" ||
-    !VALID_LICENSE_DURATIONS.has(value.license.months) ||
-    !isDate(value.license.startedAt) ||
-    !isDate(`${value.license.expiresAt}T12:00:00`)
-  )) return false;
+  if (value.license !== null && !isValidLicense(value.license)) return false;
 
   const backupIsValid =
     (value.backup.backupFolder === null || typeof value.backup.backupFolder === "string") &&
@@ -219,17 +245,18 @@ function isValidState(value) {
     isDate(entry.createdAt),
   );
 
-  return (!value.setupComplete || Boolean(value.store && value.license)) &&
+  return (!value.setupComplete || Boolean(value.store)) &&
     backupIsValid && productsAreValid && salesAreValid && heldAreValid &&
     returnsAreValid && exchangesAreValid && teamAreValid && auditIsValid;
 }
 
 function normalizeState(value) {
-  if (!isPlainObject(value) || ![1, 2].includes(value.schemaVersion)) return null;
+  if (!isPlainObject(value) || ![1, 2, 3].includes(value.schemaVersion)) return null;
   const normalized = {
     ...structuredClone(EMPTY_STATE),
     ...value,
     schemaVersion: SCHEMA_VERSION,
+    license: isValidLicense(value.license) ? value.license : null,
     store: value.store && isPlainObject(value.store)
       ? { ...value.store, invoiceFormat: value.store.invoiceFormat || "wide" }
       : value.store,
@@ -539,6 +566,7 @@ function createWindow() {
 
 function registerIpc() {
   ipcMain.handle("offline:get-state", () => readState());
+  ipcMain.handle("offline:get-installation-id", () => getInstallationId());
   ipcMain.handle("offline:save-state", (_event, state) => saveStateSafely(state));
   ipcMain.handle("offline:choose-backup-folder", () => chooseBackupFolder());
   ipcMain.handle("offline:create-backup", () => createBackup(true));

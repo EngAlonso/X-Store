@@ -53,6 +53,8 @@ import {
 import type { IconType } from 'react-icons';
 import PlatformBackupPage from '@/pages/platform-backup';
 import PlatformDatabasePage from '@/pages/platform-database';
+import type { OfflineActivationRequest } from './offline/licensing';
+import type { OfflineLicensePlan } from './offline/model';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -261,6 +263,7 @@ const nav = [
    { href: '/pos', label: 'نقطة البيع', icon: ShoppingCart, roles: ['tenant_admin', 'cashier'] },
   { href: '/tenants', label: 'المتاجر', icon: Store, roles: ['platform_admin'] },
   { href: '/subscriptions', label: 'الاشتراكات', icon: CreditCard, roles: ['platform_admin'] },
+  { href: '/offline-license-issuer', label: 'تراخيص الأوفلاين', icon: KeyRound, roles: ['platform_admin'] },
    { href: '/inventory', label: 'المخزون', icon: Package, roles: ['tenant_admin', 'warehouse_manager'] },
   { href: '/reports', label: 'التقارير المالية', icon: Activity, roles: ['platform_admin', 'tenant_admin', 'accountant'] },
   { href: '/sales', label: 'المبيعات', icon: ReceiptText, roles: ['tenant_admin', 'cashier', 'accountant'] },
@@ -644,13 +647,14 @@ function AppShell({ children }: { children: ReactNode }) {
 }
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
-  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
   return <AppShell><Switch>
     <Route path="/dashboard" component={DashboardPage}/><Route path="/tenants" component={TenantsPage}/>
     <Route path="/subscriptions" component={SubscriptionsPage}/>
+    <Route path="/offline-license-issuer" component={OfflineLicenseIssuerPage}/>
     <Route path="/team" component={TeamPage}/>
     <Route path="/pos" component={PosPage}/><Route path="/inventory" component={InventoryPage}/>
     <Route path="/reports" component={ReportsPage}/><Route path="/sales" component={SalesPage}/><Route path="/audit-log" component={AuditPage}/>
@@ -664,6 +668,99 @@ function ProtectedLayout() {
 function PageTitle({ eyebrow, title, desc, action }: { eyebrow:string; title:string; desc:string; action?:ReactNode }) {
   return <div className="page-title"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{desc}</p></div>{action&&<div className="page-action">{action}</div>}</div>;
 }
+function OfflineLicenseIssuerPage() {
+  const [activationRequest, setActivationRequest] = useState<OfflineActivationRequest | null>(null);
+  const [plan, setPlan] = useState<OfflineLicensePlan>('monthly');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  async function readRequestFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+    setError('');
+    setNotice('');
+    try {
+      const value: unknown = JSON.parse(await file.text());
+      if (!isOfflineActivationRequest(value)) {
+        throw new Error('ملف طلب التفعيل غير صالح أو غير متوافق.');
+      }
+      setActivationRequest(value);
+    } catch (issue) {
+      setActivationRequest(null);
+      setError(issue instanceof Error ? issue.message : 'تعذر قراءة ملف طلب التفعيل.');
+    } finally {
+      input.value = '';
+    }
+  }
+
+  async function issueLicense() {
+    if (!activationRequest) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch('/api/xstore/offline-licenses/issue', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request: activationRequest, plan }),
+      });
+      const result = await response.json().catch(() => null) as {
+        error?: string;
+        payload?: { licenseId?: string };
+      } | null;
+      if (!response.ok) {
+        throw new Error(result?.error || 'تعذر إصدار ملف التفعيل.');
+      }
+      if (!result?.payload?.licenseId) {
+        throw new Error('استجاب الخادم بملف تفعيل غير مكتمل.');
+      }
+      const blob = new Blob([`${JSON.stringify(result, null, 2)}\n`], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `xstore-offline-license-${result.payload.licenseId}.json`;
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice('تم إصدار ملف التفعيل وتنزيله. أرسله لصاحب المتجر لإدخاله على الجهاز المطلوب.');
+    } catch (issue) {
+      setError(issue instanceof Error ? issue.message : 'تعذر إصدار ملف التفعيل.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <section className="page" dir="rtl">
+    <PageTitle eyebrow="إدارة المنصة" title="إصدار ترخيص أوفلاين" description="حوّل طلب التفعيل القادم من المتجر إلى ملف موقّع يعمل على الجهاز المحدد فقط." />
+    <Card className="payments-panel">
+      <SectionHead title="إنشاء ملف التفعيل" detail="يحتوي الطلب على اسم المتجر ومعرّف تثبيت البرنامج فقط، ولا يتضمن المبيعات أو بيانات المخزون." />
+      <div className="form-grid">
+        <label className="field field-wide"><span>ملف طلب التفعيل</span><input type="file" accept=".json,application/json" onChange={(event) => void readRequestFile(event)} /></label>
+        <label className="field"><span>مدة الترخيص</span><select value={plan} onChange={(event) => setPlan(event.target.value as OfflineLicensePlan)}><option value="monthly">شهري</option><option value="half_yearly">نصف سنوي</option><option value="annual">سنوي</option><option value="lifetime">دائم</option></select></label>
+      </div>
+      {activationRequest && <div className="notice-box"><b>الطلب جاهز</b><span>المتجر: {activationRequest.storeName || 'بدون اسم'}</span><span>معرّف الجهاز: <bdi dir="ltr">{activationRequest.installationId}</bdi></span></div>}
+      {error && <div className="form-error">{error}</div>}
+      {notice && <div className="notice-box success">{notice}</div>}
+      <div className="form-actions"><button type="button" className="btn primary" disabled={!activationRequest || busy} onClick={() => void issueLicense()}><KeyRound size={16} />{busy ? 'جارٍ إصدار الملف…' : 'إصدار ملف التفعيل'}</button></div>
+    </Card>
+  </section>;
+}
+
+function isOfflineActivationRequest(value: unknown): value is OfflineActivationRequest {
+  if (!value || typeof value !== 'object') return false;
+  const request = value as Record<string, unknown>;
+  return request.format === 'xstore-offline-activation-request' &&
+    request.version === 1 &&
+    typeof request.installationId === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(request.installationId) &&
+    typeof request.storeName === 'string' && request.storeName.length <= 160 &&
+    typeof request.requestedAt === 'string' && Number.isFinite(Date.parse(request.requestedAt));
+}
+
 function Card({children,className=''}:{children:ReactNode;className?:string}) { return <section className={`panel ${className}`}>{children}</section>; }
 function SectionHead({title,detail,action}:{title:string;detail?:string;action?:ReactNode}) { return <div className="section-head"><div><h2>{title}</h2>{detail&&<span>{detail}</span>}</div>{action}</div>; }
 function StatCard({label,value,detail,icon:Icon,tint='green'}:{label:string;value:string;detail:string;icon:any;tint?:string}) {
@@ -2079,7 +2176,7 @@ function moneyLabel(amount:number) {
 }
 
 function Routed() {
-  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
+  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/offline-license-issuer" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
 }
 function App() {
   return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><SiteLayout/></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;

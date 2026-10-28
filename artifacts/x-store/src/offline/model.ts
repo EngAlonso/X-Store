@@ -16,7 +16,7 @@ export const OFFLINE_CURRENCIES = [
   { value: "GBP", label: "جنيه إسترليني" },
 ] as const;
 
-export const LICENSE_DURATIONS = [1, 3, 6, 12, 24, 36] as const;
+export const OFFLINE_LICENSE_PLANS = ["monthly", "half_yearly", "annual", "lifetime"] as const;
 export const OFFLINE_INVOICE_FORMATS = ["wide", "thermal_80mm", "thermal_58mm"] as const;
 export const OFFLINE_TEAM_PERMISSIONS = [
   "retail_sales",
@@ -31,6 +31,22 @@ export type OfflinePaymentMethod = "cash" | "card" | "wallet" | "instapay" | "tr
 export type OfflineSaleType = "retail" | "wholesale";
 export type OfflineInvoiceFormat = (typeof OFFLINE_INVOICE_FORMATS)[number];
 export type OfflineTeamPermission = (typeof OFFLINE_TEAM_PERMISSIONS)[number];
+export type OfflineLicensePlan = (typeof OFFLINE_LICENSE_PLANS)[number];
+
+export interface OfflineLicensePayload {
+  version: 1;
+  licenseId: string;
+  installationId: string;
+  storeName: string;
+  plan: OfflineLicensePlan;
+  issuedAt: string;
+  expiresAt: string | null;
+}
+
+export interface OfflineLicense {
+  payload: OfflineLicensePayload;
+  signature: string;
+}
 
 export interface OfflineStore {
   name: string;
@@ -40,12 +56,6 @@ export interface OfflineStore {
   vatRate: number;
   wholesaleEnabled: boolean;
   invoiceFormat: OfflineInvoiceFormat;
-}
-
-export interface OfflineLicense {
-  startedAt: string;
-  months: number;
-  expiresAt: string;
 }
 
 export interface OfflineProduct {
@@ -193,7 +203,7 @@ export interface OfflineBackupInfo {
 }
 
 export interface OfflineState {
-  schemaVersion: 2;
+  schemaVersion: 3;
   setupComplete: boolean;
   store: OfflineStore | null;
   license: OfflineLicense | null;
@@ -209,7 +219,7 @@ export interface OfflineState {
 
 export function createEmptyOfflineState(): OfflineState {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     setupComplete: false,
     store: null,
     license: null,
@@ -246,7 +256,8 @@ export function addMonthsToDate(dateValue: string, months: number): string {
 export function isLicenseActive(license: OfflineLicense | null, now = new Date()): boolean {
   if (!license) return false;
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  return license.expiresAt >= today;
+  const startsAt = license.payload.issuedAt.slice(0, 10);
+  return startsAt <= today && (license.payload.expiresAt === null || license.payload.expiresAt >= today);
 }
 
 export function calculateSaleItemReturn(
@@ -267,7 +278,7 @@ export function calculateSaleItemReturn(
 }
 
 export function isOfflineState(value: unknown): value is OfflineState {
-  if (!isRecord(value) || value.schemaVersion !== 2) return false;
+  if (!isRecord(value) || value.schemaVersion !== 3) return false;
   const state = value as unknown as OfflineState;
   if (
     typeof state.setupComplete !== "boolean" ||
@@ -294,14 +305,7 @@ export function isOfflineState(value: unknown): value is OfflineState {
     typeof state.store.wholesaleEnabled !== "boolean"
   )) return false;
 
-  if (state.license !== null && (
-    !isRecord(state.license) ||
-    typeof state.license.startedAt !== "string" ||
-    typeof state.license.expiresAt !== "string" ||
-    !LICENSE_DURATIONS.includes(state.license.months as (typeof LICENSE_DURATIONS)[number]) ||
-    !Number.isFinite(Date.parse(state.license.startedAt)) ||
-    !Number.isFinite(Date.parse(`${state.license.expiresAt}T12:00:00`))
-  )) return false;
+  if (state.license !== null && !isOfflineLicense(state.license)) return false;
 
   const backup = state.backup;
   const backupIsValid =
@@ -428,7 +432,7 @@ export function isOfflineState(value: unknown): value is OfflineState {
   );
 
   return (
-    (!state.setupComplete || Boolean(state.store && state.license)) &&
+    (!state.setupComplete || Boolean(state.store)) &&
     backupIsValid &&
     productsAreValid &&
     salesAreValid &&
@@ -449,7 +453,7 @@ function isDate(value: unknown): value is string {
 }
 
 export function migrateOfflineState(value: unknown): OfflineState | null {
-  if (!isRecord(value) || ![1, 2].includes(value.schemaVersion)) return null;
+  if (!isRecord(value) || ![1, 2, 3].includes(value.schemaVersion)) return null;
   const defaults = createEmptyOfflineState();
   const store = value.store && isRecord(value.store)
     ? { ...value.store, invoiceFormat: value.store.invoiceFormat ?? "wide" }
@@ -484,8 +488,9 @@ export function migrateOfflineState(value: unknown): OfflineState | null {
   const normalized = {
     ...defaults,
     ...value,
-    schemaVersion: 2,
+    schemaVersion: 3,
     store,
+    license: isOfflineLicense(value.license) ? value.license : null,
     products,
     sales,
     heldSales: value.heldSales ?? defaults.heldSales,
@@ -503,4 +508,24 @@ export function migrateOfflineState(value: unknown): OfflineState | null {
     backup: { ...defaults.backup, ...(isRecord(value.backup) ? value.backup : {}) },
   };
   return isOfflineState(normalized) ? normalized : null;
+}
+
+export function isOfflineLicense(value: unknown): value is OfflineLicense {
+  if (!isRecord(value) || !isRecord(value.payload)) return false;
+  const payload = value.payload;
+  const validPlan = OFFLINE_LICENSE_PLANS.includes(payload.plan as OfflineLicensePlan);
+  const validExpiry = payload.plan === "lifetime"
+    ? payload.expiresAt === null
+    : typeof payload.expiresAt === "string" && Number.isFinite(Date.parse(`${payload.expiresAt}T12:00:00`));
+  return (
+    payload.version === 1 &&
+    typeof payload.licenseId === "string" && payload.licenseId.length >= 16 &&
+    typeof payload.installationId === "string" && payload.installationId.length >= 16 &&
+    typeof payload.storeName === "string" && payload.storeName.length <= 160 &&
+    validPlan &&
+    typeof payload.issuedAt === "string" && Number.isFinite(Date.parse(payload.issuedAt)) &&
+    validExpiry &&
+    typeof value.signature === "string" &&
+    /^[A-Za-z0-9+/]{86}==$/.test(value.signature)
+  );
 }
