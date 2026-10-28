@@ -6,6 +6,7 @@ import {
   Trash2, Users, Wallet,
 } from "lucide-react";
 import { calculateSaleItemReturn } from "./model";
+import { createLocalPinCredential, isValidLocalPin } from "./auth";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import type {
   OfflineAuditLog, OfflinePaymentMethod, OfflineReturn, OfflineSale,
@@ -72,7 +73,7 @@ function PanelTitle({ title, detail }: { title: string; detail: string }) {
 
 type MemberValues = {
   name: string; phone: string; email: string; role: OfflineTeamRole;
-  roleName: string; permissions: OfflineTeamPermission[]; active: boolean;
+  roleName: string; permissions: OfflineTeamPermission[]; active: boolean; pin: string; confirmPin: string;
 };
 
 export function OfflineTeamPage({ state, onSave, onRemove }: {
@@ -86,29 +87,42 @@ export function OfflineTeamPage({ state, onSave, onRemove }: {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const form = useForm<MemberValues>({
-    defaultValues: { name: "", phone: "", email: "", role: "cashier", roleName: "", permissions: ["retail_sales"], active: true },
+    defaultValues: { name: "", phone: "", email: "", role: "cashier", roleName: "", permissions: ["retail_sales", "wholesale_sales"], active: true, pin: "", confirmPin: "" },
   });
   const members = state.teamMembers.filter((member) =>
     `${member.name} ${member.phone} ${member.email} ${member.roleName} ${member.permissions.join(" ")}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
   );
   const openNew = () => {
     setEditing(null); setCreating(true); setError("");
-    form.reset({ name: "", phone: "", email: "", role: "cashier", roleName: "", permissions: ["retail_sales"], active: true });
+    form.reset({ name: "", phone: "", email: "", role: "cashier", roleName: "", permissions: ["retail_sales", "wholesale_sales"], active: true, pin: "", confirmPin: "" });
   };
   const openEdit = (member: OfflineTeamMember) => {
     setEditing(member); setCreating(true); setError("");
-    form.reset({ name: member.name, phone: member.phone, email: member.email, role: member.role, roleName: member.roleName, permissions: [...member.permissions], active: member.active });
+    form.reset({ name: member.name, phone: member.phone, email: member.email, role: member.role, roleName: member.roleName, permissions: [...member.permissions], active: member.active, pin: "", confirmPin: "" });
   };
   const closeForm = () => { setCreating(false); setEditing(null); setError(""); };
   const submit = form.handleSubmit(async (values) => {
     if (!values.permissions.length) { setError("اختر صلاحية واحدة على الأقل لهذا العضو."); return; }
     if (values.role === "custom" && !values.roleName.trim()) { setError("اكتب اسمًا واضحًا للدور المخصص."); return; }
+    if ((!editing || !editing.pinHash) && !values.pin) { setError("أنشئ رمز دخول للعضو قبل حفظه."); return; }
+    if (values.pin && !isValidLocalPin(values.pin)) { setError("رمز الدخول يجب أن يتكون من 6 إلى 12 رقمًا."); return; }
+    if (values.pin !== values.confirmPin) { setError("تأكيد رمز الدخول غير مطابق."); return; }
     setSaving(true); setError("");
+    let credential = {
+      pinSalt: editing?.pinSalt ?? null,
+      pinHash: editing?.pinHash ?? null,
+      pinIterations: editing?.pinIterations ?? null,
+    };
+    if (values.pin) {
+      try { credential = await createLocalPinCredential(values.pin); }
+      catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر إعداد رمز الدخول."); setSaving(false); return; }
+    }
     const member: OfflineTeamMember = {
       id: editing?.id ?? id(), name: values.name.trim(), phone: values.phone.trim(),
       email: values.email.trim(), role: values.role,
       roleName: values.role === "custom" ? values.roleName.trim() : roleOptions.find((role) => role.value === values.role)?.label ?? values.roleName,
-      permissions: values.permissions, active: values.active, createdAt: editing?.createdAt ?? new Date().toISOString(),
+      permissions: values.permissions, active: values.active, ...credential,
+      createdAt: editing?.createdAt ?? new Date().toISOString(),
     };
     try { await onSave(member, editing?.id); closeForm(); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر حفظ بيانات العضو."); }
@@ -127,13 +141,13 @@ export function OfflineTeamPage({ state, onSave, onRemove }: {
 
   return <section className="op-page" dir="rtl" data-testid="page-offline-team">
     <Heading eyebrow="إدارة الوصول المحلي" title="فريق المتجر" description="أضف أفراد الفريق وحدد ما يمكن لكل شخص تنفيذه على هذا الجهاز." icon={Users} />
-    <div className="op-team-summary"><span className="op-summary-icon"><LockKeyhole size={18} /></span><div><b>صلاحيات محفوظة محليًا</b><small>لا يوجد حساب سحابي أو مزامنة للفريق.</small></div><strong data-testid="text-team-count">{latin(state.teamMembers.length)} عضو</strong></div>
+    <div className="op-team-summary"><span className="op-summary-icon"><LockKeyhole size={18} /></span><div><b>دخول وصلاحيات محلية</b><small>رمز مستقل لكل عضو؛ لا يوجد حساب سحابي أو مزامنة.</small></div><strong data-testid="text-team-count">{latin(state.teamMembers.length)} عضو</strong></div>
     <ErrorNotice>{error}</ErrorNotice>
     <section className="op-panel">
       <div className="op-panel-toolbar"><PanelTitle title="أعضاء الفريق" detail="الأدوار والصلاحيات الممنوحة لهذا المتجر" /><button type="button" className="op-button op-primary" onClick={openNew} data-testid="button-add-team-member"><Plus size={16} /> إضافة عضو</button></div>
       <div className="op-search-row"><label className="op-search"><Search size={16} /><span className="op-sr-only">البحث عن عضو</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث بالاسم أو الهاتف أو الدور" data-testid="input-search-team" /></label><span className="op-muted" data-testid="text-team-results">{latin(members.length)} نتيجة</span></div>
       {members.length ? <div className="op-table-wrap"><table className="op-table"><thead><tr><th>العضو</th><th>الدور</th><th>الصلاحيات</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>{members.map((member) => <tr key={member.id} data-testid={`row-team-member-${member.id}`}>
-        <td><b>{member.name}</b><small dir="ltr">{member.phone || member.email || "لا توجد بيانات اتصال"}</small></td>
+         <td><b>{member.name}</b><small dir="ltr">{member.phone || member.email || "لا توجد بيانات اتصال"}</small><small className="op-login-status">{member.pinHash ? "تسجيل الدخول مفعّل" : "يحتاج رمز دخول"}</small></td>
         <td><span className="op-role">{member.roleName}</span></td>
         <td><div className="op-tags">{member.permissions.map((permission) => <span key={permission}>{permissionOptions.find((item) => item.id === permission)?.title ?? permission}</span>)}</div></td>
         <td><span className={`op-status ${member.active ? "is-active" : "is-paused"}`}>{member.active ? "نشط" : "موقوف"}</span></td>
@@ -150,6 +164,11 @@ export function OfflineTeamPage({ state, onSave, onRemove }: {
           <FormField control={form.control} name="role" render={({ field }) => <FormItem className="op-field"><FormLabel>الدور</FormLabel><FormControl><select {...field} onChange={(event) => { const role = event.target.value as OfflineTeamRole; field.onChange(role); const defaults = roleOptions.find((item) => item.value === role)?.permissions ?? []; form.setValue("permissions", [...defaults], { shouldDirty: true }); if (role !== "custom") form.setValue("roleName", roleOptions.find((item) => item.value === role)?.label ?? ""); }} data-testid="select-team-role">{roleOptions.map((role) => <option value={role.value} key={role.value}>{role.label}</option>)}</select></FormControl><FormMessage /></FormItem>} />
           {form.watch("role") === "custom" && <FormField control={form.control} name="roleName" render={({ field }) => <FormItem className="op-field"><FormLabel>اسم الدور المخصص</FormLabel><FormControl><input {...field} placeholder="مثال: مشرف صالة" data-testid="input-team-role-name" /></FormControl><FormMessage /></FormItem>} />}
         </div>
+        <div className="op-form-grid op-pin-grid">
+          <FormField control={form.control} name="pin" render={({ field }) => <FormItem className="op-field"><FormLabel>{editing?.pinHash ? "تغيير رمز الدخول · اختياري" : "رمز الدخول · مطلوب"}</FormLabel><FormControl><input {...field} type="password" inputMode="numeric" autoComplete="new-password" maxLength={12} onChange={(event) => field.onChange(event.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="6 إلى 12 رقمًا" data-testid="input-team-pin" /></FormControl><FormMessage /></FormItem>} />
+          <FormField control={form.control} name="confirmPin" render={({ field }) => <FormItem className="op-field"><FormLabel>تأكيد رمز الدخول</FormLabel><FormControl><input {...field} type="password" inputMode="numeric" autoComplete="new-password" maxLength={12} onChange={(event) => field.onChange(event.target.value.replace(/\D/g, "").slice(0, 12))} placeholder={editing?.pinHash ? "عند تغيير الرمز" : "أعد كتابة الرمز"} data-testid="input-team-pin-confirm" /></FormControl><FormMessage /></FormItem>} />
+        </div>
+        <p className="op-pin-note">تغيير الرمز يُبطل الرمز السابق. لا تحفظ نسخة من الرمز نفسه في النظام.</p>
         <fieldset className="op-permissions"><legend>الصلاحيات الممنوحة</legend><p>اختر صراحةً المهام التي يستطيع العضو تنفيذها.</p><div className="op-permission-grid">{permissionOptions.map((permission) => <label className="op-permission" key={permission.id}><input type="checkbox" checked={form.watch("permissions").includes(permission.id)} onChange={(event) => permissionChange(permission.id, event.target.checked)} data-testid={`checkbox-permission-${permission.id}`} /><span><b>{permission.title}</b><small>{permission.detail}</small></span></label>)}</div></fieldset>
         <FormField control={form.control} name="active" render={({ field }) => <FormItem className="op-toggle"><FormControl><input type="checkbox" checked={field.value} onChange={field.onChange} data-testid="checkbox-team-active" /></FormControl><FormLabel>السماح للعضو بالعمل حاليًا</FormLabel></FormItem>} />
         <ErrorNotice>{error}</ErrorNotice>

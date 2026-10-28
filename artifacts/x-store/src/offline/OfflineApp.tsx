@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity, Archive, ArrowDownToLine, ArrowLeft, ArrowUpRight, BarChart3, Check,
   ChevronDown, CircleAlert, Clock3, CreditCard, FileText, FolderOpen,
-  LayoutDashboard, LifeBuoy, LockKeyhole, Package, Plus, Printer, Receipt,
+  LayoutDashboard, LifeBuoy, LockKeyhole, LogOut, Package, Plus, Printer, Receipt,
   Search, Settings, ShieldCheck, ShoppingCart, Store, Trash2, Upload, Wallet,
   Users, RotateCcw, ClipboardList, ChartNoAxesCombined, Pause, Play,
   ArrowLeftRight, Smartphone, Banknote, X,
@@ -10,9 +10,9 @@ import {
 import {
   addMonthsToDate, createEmptyOfflineState,
   isLicenseActive, isOfflineState, migrateOfflineState, LICENSE_DURATIONS,
-  OFFLINE_CURRENCIES, OFFLINE_STORE_TYPES,
+  OFFLINE_CURRENCIES, OFFLINE_STORE_TYPES, OFFLINE_TEAM_PERMISSIONS,
   type OfflineHeldSale, type OfflineProduct,
-  type OfflineSale, type OfflineState, type OfflineTeamMember,
+  type OfflineSale, type OfflineState, type OfflineTeamMember, type OfflineTeamPermission,
 } from "./model";
 import {
   OfflineAuditPage, OfflineReportsPage, OfflineReturnsPage, OfflineTeamPage,
@@ -21,6 +21,7 @@ import {
   applyOfflineExchange, applyOfflineReturn, createAuditEntry,
   type OfflineExchangeRequest, type OfflineReturnRequest,
 } from "./transactions";
+import { createLocalPinCredential, isValidLocalPin, verifyLocalPin } from "./auth";
 import {
   chooseOfflineBackupFolder, createManualOfflineBackup, isDesktopEdition,
   loadOfflineState, restoreOfflineBackup, saveOfflineState,
@@ -40,6 +41,20 @@ const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "backup", label: "النسخ الاحتياطي", icon: Archive },
   { id: "settings", label: "الإعدادات والترخيص", icon: Settings },
 ];
+const salesPermissions: OfflineTeamPermission[] = ["retail_sales", "wholesale_sales"];
+function canAccessOfflinePage(member: OfflineTeamMember, page: Page) {
+  if (member.role === "tenant_admin" || page === "dashboard") return true;
+  if (page === "products") return member.permissions.includes("warehouse_manager");
+  if (page === "pos" || page === "sales" || page === "returns") {
+    return salesPermissions.some((permission) => member.permissions.includes(permission));
+  }
+  if (page === "reports" || page === "audit") return member.permissions.includes("accountant");
+  return false;
+}
+function assertOfflinePermission(member: OfflineTeamMember, permissions: OfflineTeamPermission[]) {
+  if (member.role === "tenant_admin" || permissions.some((permission) => member.permissions.includes(permission))) return;
+  throw new Error("ليس لديك صلاحية لتنفيذ هذه العملية.");
+}
 const localDate = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -74,6 +89,8 @@ function OfflineSetup({ onComplete }: { onComplete: (state: OfflineState) => Pro
   const [wholesaleEnabled, setWholesaleEnabled] = useState(false);
   const [months, setMonths] = useState<number>(12);
   const [folder, setFolder] = useState<string | null>(null);
+  const [ownerPin, setOwnerPin] = useState("");
+  const [ownerPinConfirm, setOwnerPinConfirm] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const desktop = isDesktopEdition();
@@ -86,14 +103,25 @@ function OfflineSetup({ onComplete }: { onComplete: (state: OfflineState) => Pro
     event.preventDefault();
     if (!name.trim() || !businessType.trim()) { setError("أدخل اسم المتجر ونشاطه للمتابعة."); return; }
     if (desktop && !folder) { setError("اختر مجلدًا خارج مجلد البرنامج لحفظ النسخ الاحتياطية."); return; }
+    if (!isValidLocalPin(ownerPin)) { setError("رمز دخول المالك يجب أن يتكون من 6 إلى 12 رقمًا."); return; }
+    if (ownerPin !== ownerPinConfirm) { setError("تأكيد رمز الدخول غير مطابق."); return; }
     setSaving(true); setError("");
-    const startedAt = localDate();
-    const initial = createEmptyOfflineState();
-    initial.setupComplete = true;
-    initial.store = { name: name.trim(), businessType: businessType.trim(), storeType, currency, vatRate: Number(vatRate) || 0, wholesaleEnabled: supportsWholesale && wholesaleEnabled, invoiceFormat: "wide" };
-    initial.license = { startedAt, months, expiresAt: addMonthsToDate(startedAt, months) };
-    initial.backup.backupFolder = folder;
-    try { await onComplete(initial); } catch (e) { setError(e instanceof Error ? e.message : "تعذر حفظ الإعدادات."); }
+    try {
+      const credential = await createLocalPinCredential(ownerPin);
+      const startedAt = localDate();
+      const initial = createEmptyOfflineState();
+      initial.setupComplete = true;
+      initial.store = { name: name.trim(), businessType: businessType.trim(), storeType, currency, vatRate: Number(vatRate) || 0, wholesaleEnabled: supportsWholesale && wholesaleEnabled, invoiceFormat: "wide" };
+      initial.license = { startedAt, months, expiresAt: addMonthsToDate(startedAt, months) };
+      initial.backup.backupFolder = folder;
+      initial.teamMembers = [{
+        id: makeId(), name: "صاحب المتجر", phone: "", email: "",
+        role: "tenant_admin", roleName: "مالك المتجر", permissions: [...OFFLINE_TEAM_PERMISSIONS],
+        active: true, ...credential, createdAt: new Date().toISOString(),
+      }];
+      initial.auditLogs = [createAuditEntry("تهيئة رمز الدخول", "عضو فريق", initial.teamMembers[0].id, "تم إعداد دخول مالك المتجر.")];
+      await onComplete(initial);
+    } catch (e) { setError(e instanceof Error ? e.message : "تعذر حفظ الإعدادات."); }
     finally { setSaving(false); }
   }
   return <main className="of-setup" dir="rtl">
@@ -109,6 +137,10 @@ function OfflineSetup({ onComplete }: { onComplete: (state: OfflineState) => Pro
           <Field label="نسبة ضريبة القيمة المضافة" hint="اكتب 0 إذا لم تكن الضريبة مطبقة."><div className="of-input-suffix"><input type="number" min="0" max="100" step="0.01" value={vatRate} onChange={(e) => setVatRate(e.target.value)} /><b>%</b></div></Field>
           <Field label="مدة الترخيص المحلي"><select value={months} onChange={(e) => setMonths(Number(e.target.value))}>{LICENSE_DURATIONS.map((duration) => <option key={duration} value={duration}>{digits(duration)} {duration === 1 ? "شهر" : "أشهر"}</option>)}</select></Field>
         </div>
+        <div className="of-form-grid of-owner-pin-fields">
+          <Field label="رمز دخول المالك" hint="من 6 إلى 12 رقمًا. يُحفظ بصورة مشفّرة أحاديًا على هذا الجهاز."><input required type="password" inputMode="numeric" autoComplete="new-password" maxLength={12} value={ownerPin} onChange={(e) => setOwnerPin(e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="••••••" /></Field>
+          <Field label="تأكيد رمز الدخول"><input required type="password" inputMode="numeric" autoComplete="new-password" maxLength={12} value={ownerPinConfirm} onChange={(e) => setOwnerPinConfirm(e.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="أعد كتابة الرمز" /></Field>
+        </div>
         {supportsWholesale && <label className="of-toggle-row"><span><b>تفعيل البيع بالجملة</b><small>إضافة سعر جملة للمنتجات وإتاحته عند البيع.</small></span><input type="checkbox" checked={wholesaleEnabled} onChange={(e) => setWholesaleEnabled(e.target.checked)} /><i /></label>}
         <div className="of-folder-choice"><div className="of-folder-copy"><span className="of-folder-icon"><FolderOpen size={18} /></span><span><b>مجلد النسخ الاحتياطي</b><small>{folder || (desktop ? "اختر مكان حفظ النسخ الاحتياطية" : "معاينة: النسخ محفوظة داخل المتصفح فقط")}</small></span></div><button type="button" className="of-button of-button-secondary" onClick={selectFolder}><FolderOpen size={15} /> اختيار مجلد</button></div>
         {!desktop && <div className="of-preview-note"><CircleAlert size={15} /> معاينة المتصفح لا تتيح اختيار مجلد ويندوز أو إنشاء ملف نسخ احتياطي فعلي. تتوفر هذه الوظائف في إصدار Windows.</div>}
@@ -120,9 +152,117 @@ function OfflineSetup({ onComplete }: { onComplete: (state: OfflineState) => Pro
   </main>;
 }
 
+function OfflineAdminPinSetup({ state, onComplete }: {
+  state: OfflineState;
+  onComplete: (member: OfflineTeamMember) => Promise<void>;
+}) {
+  const existing = state.teamMembers.find((member) => member.role === "tenant_admin");
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!isValidLocalPin(pin)) { setError("رمز الدخول يجب أن يتكون من 6 إلى 12 رقمًا."); return; }
+    if (pin !== confirmPin) { setError("تأكيد رمز الدخول غير مطابق."); return; }
+    setSaving(true);
+    setError("");
+    try {
+      const credential = await createLocalPinCredential(pin);
+      await onComplete({
+        id: existing?.id ?? makeId(),
+        name: existing?.name || "صاحب المتجر",
+        phone: existing?.phone ?? "",
+        email: existing?.email ?? "",
+        role: "tenant_admin",
+        roleName: "مالك المتجر",
+        permissions: [...OFFLINE_TEAM_PERMISSIONS],
+        active: true,
+        createdAt: existing?.createdAt ?? new Date().toISOString(),
+        ...credential,
+      });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر إعداد رمز الدخول.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  return <main className="of-setup of-local-auth" dir="rtl">
+    <header className="of-setup-top"><BrandMark /><span className="of-local-badge"><LockKeyhole size={15} /> دخول محلي للمتجر</span></header>
+    <section className="of-setup-card of-auth-card">
+      <div className="of-setup-intro"><div className="of-setup-icon"><ShieldCheck size={23} /></div><div><span className="of-kicker">تهيئة الوصول</span><h1>أنشئ رمز دخول المالك</h1><p>بيانات هذا المتجر موجودة بالفعل على الجهاز. أضف رمزًا للمالك للمتابعة بأمان.</p></div></div>
+      <form onSubmit={(event) => void submit(event)}>
+        <div className="of-form-grid">
+          <Field label="رمز دخول المالك" hint="من 6 إلى 12 رقمًا؛ لا يُحفظ الرمز نفسه."><input required type="password" inputMode="numeric" autoComplete="new-password" maxLength={12} value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="••••••" /></Field>
+          <Field label="تأكيد رمز الدخول"><input required type="password" inputMode="numeric" autoComplete="new-password" maxLength={12} value={confirmPin} onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="أعد كتابة الرمز" /></Field>
+        </div>
+        {error && <div className="of-error"><CircleAlert size={15} />{error}</div>}
+        <div className="of-setup-footer"><span><LockKeyhole size={14} /> يتم حفظ تجزئة الرمز محليًا</span><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ الرمز والمتابعة"}<ArrowLeft size={16} /></button></div>
+      </form>
+      <div className="of-auth-boundary"><CircleAlert size={14} /> هذا قفل دخول للتطبيق فقط؛ لا يقوم بتشفير ملف البيانات أو حماية حساب Windows.</div>
+    </section>
+    <p className="of-setup-footnote">X-Store Offline <i /> يعمل دون اتصال بالإنترنت</p>
+  </main>;
+}
+
+function OfflineLogin({ state, onLogin }: {
+  state: OfflineState;
+  onLogin: (memberId: string) => void;
+}) {
+  const members = state.teamMembers.filter((member) => member.active && member.pinSalt && member.pinHash && member.pinIterations);
+  const [memberId, setMemberId] = useState(members[0]?.id ?? "");
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    const member = members.find((item) => item.id === memberId);
+    if (!member?.pinSalt || !member.pinHash || !member.pinIterations) {
+      setError("اختر عضو فريق نشطًا لديه رمز دخول.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const valid = await verifyLocalPin(pin, {
+        pinSalt: member.pinSalt,
+        pinHash: member.pinHash,
+        pinIterations: member.pinIterations,
+      });
+      if (!valid) {
+        setPin("");
+        setError("رمز الدخول غير صحيح.");
+        return;
+      }
+      onLogin(member.id);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر التحقق من رمز الدخول.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return <main className="of-setup of-local-auth" dir="rtl">
+    <header className="of-setup-top"><BrandMark /><span className="of-local-badge"><ShieldCheck size={15} /> بيانات محلية</span></header>
+    <section className="of-setup-card of-auth-card">
+      <div className="of-setup-intro"><div className="of-setup-icon"><LockKeyhole size={23} /></div><div><span className="of-kicker">{state.store?.name ?? "X-Store"}</span><h1>تسجيل الدخول</h1><p>اختر حسابك وأدخل رمز الدخول المحلي للمتابعة.</p></div></div>
+      <form onSubmit={(event) => void submit(event)}>
+        <div className="of-form-grid of-login-fields">
+          <Field label="عضو الفريق"><select value={memberId} onChange={(event) => { setMemberId(event.target.value); setError(""); }}><option value="">اختر الحساب</option>{members.map((member) => <option key={member.id} value={member.id}>{member.name} · {member.roleName}</option>)}</select></Field>
+          <Field label="رمز الدخول"><input required type="password" inputMode="numeric" autoComplete="current-password" maxLength={12} value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 12))} placeholder="••••••" /></Field>
+        </div>
+        {error && <div className="of-error" role="alert"><CircleAlert size={15} />{error}</div>}
+        <div className="of-setup-footer"><span><LockKeyhole size={14} /> دخول على هذا الجهاز فقط</span><button className="of-button of-button-primary" disabled={busy || !members.length}>{busy ? "جارٍ التحقق..." : "دخول"}<ArrowLeft size={16} /></button></div>
+      </form>
+      <div className="of-auth-boundary"><CircleAlert size={14} /> رمز الدخول لا يشفّر ملف البيانات؛ استخدم حساب Windows موثوقًا.</div>
+    </section>
+    <p className="of-setup-footnote">X-Store Offline <i /> لا يوجد اتصال أو مزامنة سحابية</p>
+  </main>;
+}
+
 export default function OfflineApp() {
   const [state, setState] = useState<OfflineState | null>(null);
   const [page, setPage] = useState<Page>("dashboard");
+  const [authenticatedMemberId, setAuthenticatedMemberId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -148,6 +288,19 @@ export default function OfflineApp() {
   }
   async function completeSetup(initial: OfflineState) {
     await persist(initial);
+    setAuthenticatedMemberId(initial.teamMembers[0]?.id ?? null);
+    setPage("dashboard");
+  }
+  async function completeAdminPinSetup(member: OfflineTeamMember) {
+    if (!state) throw new Error("تعذر تحميل بيانات المتجر.");
+    const existing = state.teamMembers.find((item) => item.role === "tenant_admin");
+    const owner = { ...member, id: existing?.id ?? member.id, createdAt: existing?.createdAt ?? member.createdAt };
+    await persist({
+      ...state,
+      teamMembers: [owner, ...state.teamMembers.filter((item) => item.id !== owner.id)],
+      auditLogs: [createAuditEntry("تهيئة رمز الدخول", "عضو فريق", owner.id, "تم إعداد دخول مالك المتجر.", owner.name), ...state.auditLogs],
+    });
+    setAuthenticatedMemberId(owner.id);
     setPage("dashboard");
   }
 
@@ -156,14 +309,44 @@ export default function OfflineApp() {
   if (!state?.setupComplete || !state.store) return <OfflineSetup onComplete={completeSetup} />;
 
   const currentState = state as OfflineState;
+  const hasActiveOwnerPin = currentState.teamMembers.some((member) =>
+    member.role === "tenant_admin" && member.active && Boolean(member.pinSalt && member.pinHash && member.pinIterations),
+  );
+  if (!hasActiveOwnerPin) return <OfflineAdminPinSetup state={currentState} onComplete={completeAdminPinSetup} />;
+  const currentMember = currentState.teamMembers.find((member) =>
+    member.id === authenticatedMemberId && member.active && member.pinSalt && member.pinHash && member.pinIterations,
+  );
+  if (!currentMember) return <OfflineLogin state={currentState} onLogin={setAuthenticatedMemberId} />;
   const active = isLicenseActive(currentState.license);
   const currency = currentState.store!.currency;
-  const todaySales = currentState.sales.filter((sale) => sale.createdAt.slice(0, 10) === localDate());
+  const canViewAllSales = currentMember.role === "tenant_admin" || currentMember.permissions.includes("accountant");
+  const canViewRetailSales = canViewAllSales || currentMember.permissions.includes("retail_sales");
+  const canViewWholesaleSales = canViewAllSales || currentMember.permissions.includes("wholesale_sales");
+  const visibleSales = currentState.sales.filter((sale) =>
+    (sale.saleType === "wholesale" ? canViewWholesaleSales : canViewRetailSales),
+  );
+  const visibleSaleIds = new Set(visibleSales.map((sale) => sale.id));
+  const visibleInvoiceNumbers = new Set(visibleSales.map((sale) => sale.invoiceNumber));
+  const viewState: OfflineState = {
+    ...currentState,
+    sales: visibleSales,
+    returns: currentState.returns.filter((entry) => visibleSaleIds.has(entry.saleId)),
+    exchanges: currentState.exchanges.filter((entry) => visibleInvoiceNumbers.has(entry.originalInvoiceNumber)),
+  };
+  const posState: OfflineState = {
+    ...currentState,
+    heldSales: currentState.heldSales.filter((sale) =>
+      sale.saleType === "wholesale" ? canViewWholesaleSales : canViewRetailSales,
+    ),
+  };
+  const todaySales = visibleSales.filter((sale) => sale.createdAt.slice(0, 10) === localDate());
   const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
   const lowStock = currentState.products.filter((product) => product.quantity <= 5);
+  const canViewInventoryCosts = currentMember.role === "tenant_admin" || currentMember.permissions.includes("accountant") || currentMember.permissions.includes("warehouse_manager");
   const title = navItems.find((item) => item.id === page)?.label ?? "الرئيسية";
 
   async function updateProduct(product: OfflineProduct, editingId?: string) {
+    assertOfflinePermission(currentMember, ["warehouse_manager"]);
     const conflict = currentState.products.find((item) =>
       item.id !== editingId && ((product.sku && item.sku === product.sku) || (product.barcode && item.barcode === product.barcode)),
     );
@@ -173,6 +356,7 @@ export default function OfflineApp() {
       "منتج",
       editingId ?? product.id,
       `${product.name} · الكمية ${digits(product.quantity)}`,
+      currentMember.name,
     );
     const next = {
       ...currentState,
@@ -183,6 +367,7 @@ export default function OfflineApp() {
     setNotice(editingId ? "تم تحديث المنتج." : "تمت إضافة المنتج.");
   }
   async function removeProduct(id: string) {
+    assertOfflinePermission(currentMember, ["warehouse_manager"]);
     if (!window.confirm("هل تريد حذف هذا المنتج؟")) return;
     if (currentState.sales.some((sale) => sale.items.some((item) => item.productId === id)) ||
       currentState.heldSales.some((sale) => sale.items.some((item) => item.productId === id))) {
@@ -193,11 +378,12 @@ export default function OfflineApp() {
     await persist({
       ...currentState,
       products: currentState.products.filter((item) => item.id !== id),
-      auditLogs: [createAuditEntry("حذف منتج", "منتج", id, product?.name ?? id), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("حذف منتج", "منتج", id, product?.name ?? id, currentMember.name), ...currentState.auditLogs],
     });
     setNotice("تم حذف المنتج.");
   }
   async function completeSale(sale: OfflineSale) {
+    assertOfflinePermission(currentMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
     if (!active) throw new Error("انتهت مدة الترخيص المحلي. تواصل مع مورّد النظام لتجديده.");
     for (const line of sale.items) {
       const product = currentState.products.find((item) => item.id === line.productId);
@@ -213,36 +399,44 @@ export default function OfflineApp() {
       ...currentState,
       products: nextProducts,
       sales: [sale, ...currentState.sales],
-      auditLogs: [createAuditEntry("إتمام عملية بيع", "فاتورة بيع", sale.invoiceNumber, `${sale.items.reduce((sum, item) => sum + item.quantity, 0)} وحدة · ${money(sale.total, currency)}`), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("إتمام عملية بيع", "فاتورة بيع", sale.invoiceNumber, `${sale.items.reduce((sum, item) => sum + item.quantity, 0)} وحدة · ${money(sale.total, currency)}`, currentMember.name), ...currentState.auditLogs],
     });
     setNotice(`تم حفظ الفاتورة ${sale.invoiceNumber}.`);
     setSaleDetail(sale);
   }
   async function holdSale(heldSale: OfflineHeldSale) {
+    assertOfflinePermission(currentMember, [heldSale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
     await persist({
       ...currentState,
       heldSales: [heldSale, ...currentState.heldSales],
-      auditLogs: [createAuditEntry("تعليق فاتورة", "فاتورة معلقة", heldSale.reference, heldSale.customerName || "عميل نقدي"), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("تعليق فاتورة", "فاتورة معلقة", heldSale.reference, heldSale.customerName || "عميل نقدي", currentMember.name), ...currentState.auditLogs],
     });
     setNotice(`تم تعليق الفاتورة ${heldSale.reference}.`);
   }
   async function releaseHeldSale(id: string) {
     const heldSale = currentState.heldSales.find((item) => item.id === id);
     if (!heldSale) throw new Error("لم يتم العثور على الفاتورة المعلقة.");
+    assertOfflinePermission(currentMember, [heldSale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
     await persist({
       ...currentState,
       heldSales: currentState.heldSales.filter((item) => item.id !== id),
-      auditLogs: [createAuditEntry("استعادة فاتورة معلقة", "فاتورة معلقة", heldSale.reference, "استُعيدت إلى شاشة نقطة البيع."), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("استعادة فاتورة معلقة", "فاتورة معلقة", heldSale.reference, "استُعيدت إلى شاشة نقطة البيع.", currentMember.name), ...currentState.auditLogs],
     });
     return heldSale;
   }
   async function recordReturn(request: OfflineReturnRequest) {
-    const result = applyOfflineReturn(currentState, request);
+    const sale = currentState.sales.find((item) => item.id === request.saleId);
+    if (!sale) throw new Error("لم يتم العثور على الفاتورة المحددة.");
+    assertOfflinePermission(currentMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
+    const result = applyOfflineReturn(currentState, { ...request, actorName: currentMember.name });
     await persist(result.state);
     setNotice(`تم تسجيل المرتجع · ${money(result.refundAmount, currency)}.`);
   }
   async function recordExchange(request: OfflineExchangeRequest) {
-    const result = applyOfflineExchange(currentState, request);
+    const sale = currentState.sales.find((item) => item.id === request.saleId);
+    if (!sale) throw new Error("لم يتم العثور على الفاتورة المحددة.");
+    assertOfflinePermission(currentMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
+    const result = applyOfflineExchange(currentState, { ...request, actorName: currentMember.name });
     await persist(result.state);
     const settlement = result.exchange.changeAmount > 0
       ? result.exchange.balanceDue > 0
@@ -252,74 +446,116 @@ export default function OfflineApp() {
     setNotice([`تم الاستبدال · ${result.exchange.replacementInvoiceNumber}`, settlement].filter(Boolean).join(" · "));
   }
   async function saveTeamMember(member: OfflineTeamMember, editingId?: string) {
+    assertOfflinePermission(currentMember, ["warehouse_manager"]);
+    if (currentMember.role !== "tenant_admin") throw new Error("إدارة حسابات الفريق متاحة لمالك المتجر فقط.");
+    if (!member.active || !member.pinSalt || !member.pinHash || !member.pinIterations) {
+      throw new Error("فعّل العضو وتحقق من إعداد رمز دخوله قبل الحفظ.");
+    }
+    if (editingId === currentMember.id && member.role !== "tenant_admin") {
+      throw new Error("لا يمكنك تغيير دور حساب المالك الذي تستخدمه الآن.");
+    }
+    const remainingAdmin = currentState.teamMembers.some((item) =>
+      item.id !== editingId && item.role === "tenant_admin" && item.active && item.pinHash && item.pinSalt,
+    );
+    if (!remainingAdmin && (member.role !== "tenant_admin" || !member.active)) {
+      throw new Error("يجب إبقاء حساب مالك نشط واحد على الأقل.");
+    }
     const nextMembers = editingId
       ? currentState.teamMembers.map((item) => item.id === editingId ? { ...member, id: editingId } : item)
       : [member, ...currentState.teamMembers];
     await persist({
       ...currentState,
       teamMembers: nextMembers,
-      auditLogs: [createAuditEntry(editingId ? "تعديل عضو فريق" : "إضافة عضو فريق", "عضو فريق", editingId ?? member.id, `${member.name} · ${member.roleName}`), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry(editingId ? "تعديل عضو فريق" : "إضافة عضو فريق", "عضو فريق", editingId ?? member.id, `${member.name} · ${member.roleName}`, currentMember.name), ...currentState.auditLogs],
     });
     setNotice(editingId ? "تم تحديث بيانات عضو الفريق." : "تمت إضافة عضو للفريق.");
   }
   async function removeTeamMember(id: string) {
+    if (currentMember.role !== "tenant_admin") throw new Error("إدارة حسابات الفريق متاحة لمالك المتجر فقط.");
+    if (id === currentMember.id) throw new Error("لا يمكنك إزالة حساب الدخول الذي تستخدمه الآن.");
     const member = currentState.teamMembers.find((item) => item.id === id);
+    if (member?.role === "tenant_admin" && member.active && !currentState.teamMembers.some((item) => item.id !== id && item.role === "tenant_admin" && item.active && item.pinHash && item.pinSalt)) {
+      throw new Error("لا يمكن إزالة آخر حساب مالك نشط.");
+    }
     await persist({
       ...currentState,
       teamMembers: currentState.teamMembers.filter((item) => item.id !== id),
-      auditLogs: [createAuditEntry("إزالة عضو فريق", "عضو فريق", id, member?.name ?? id), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("إزالة عضو فريق", "عضو فريق", id, member?.name ?? id, currentMember.name), ...currentState.auditLogs],
     });
     setNotice("تمت إزالة العضو من الفريق.");
   }
   async function chooseFolder() {
+    if (currentMember.role !== "tenant_admin") throw new Error("إعداد النسخ الاحتياطي متاح لمالك المتجر فقط.");
     try {
       const folder = await chooseOfflineBackupFolder();
       if (!folder) return;
-      await persist({ ...currentState, backup: { ...currentState.backup, backupFolder: folder, lastError: null } });
+      await persist({
+        ...currentState,
+        backup: { ...currentState.backup, backupFolder: folder, lastError: null },
+        auditLogs: [createAuditEntry("تغيير مجلد النسخ", "نسخة احتياطية", currentState.store?.name ?? "المتجر", "تم تحديث مجلد النسخ المحلي.", currentMember.name), ...currentState.auditLogs],
+      });
       setNotice(desktop ? "تم تحديث مجلد النسخ الاحتياطي." : "هذه معاينة؛ لا يمثل المسار مجلدًا حقيقيًا على ويندوز.");
     } catch (e) { setSaveError(e instanceof Error ? e.message : "تعذر اختيار المجلد."); }
   }
   async function manualBackup() {
-    try { const saved = await createManualOfflineBackup(); setState(saved); setNotice(desktop ? "تم إنشاء النسخة الاحتياطية." : "تم حفظ نسخة معاينة داخل المتصفح؛ ليست ملفًا على الجهاز."); }
+    if (currentMember.role !== "tenant_admin") { setSaveError("إنشاء النسخ الاحتياطية متاح لمالك المتجر فقط."); return; }
+    try {
+      const saved = await createManualOfflineBackup();
+      const withAudit = { ...saved, auditLogs: [createAuditEntry("إنشاء نسخة احتياطية", "نسخة احتياطية", currentState.store.name, "تم إنشاء نسخة محلية.", currentMember.name), ...saved.auditLogs] };
+      await persist(withAudit);
+      setNotice(desktop ? "تم إنشاء النسخة الاحتياطية." : "تم حفظ نسخة معاينة داخل المتصفح؛ ليست ملفًا على الجهاز.");
+    }
     catch (e) { setSaveError(e instanceof Error ? e.message : "تعذر إنشاء النسخة الاحتياطية."); }
   }
   async function restoreFile(event: React.ChangeEvent<HTMLInputElement>) {
+    if (currentMember.role !== "tenant_admin") { setSaveError("استعادة النسخة الاحتياطية متاحة لمالك المتجر فقط."); return; }
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
     try {
-      const parsed: unknown = JSON.parse(await file.text());
-      if (!isOfflineState(parsed)) { setSaveError("ملف غير صالح أو غير متوافق مع X-Store Offline."); return; }
+      const raw: unknown = JSON.parse(await file.text());
+      const parsed = migrateOfflineState(raw);
+      if (!parsed || !isOfflineState(parsed)) { setSaveError("ملف غير صالح أو غير متوافق مع X-Store Offline."); return; }
       if (!window.confirm("سيتم استبدال بيانات المتجر الحالية بمحتوى الملف. هل تريد المتابعة؟")) return;
       const restored = await restoreOfflineBackup(parsed);
-      setState(restored); setNotice("تم استرجاع البيانات بنجاح.");
+      setState(restored); setAuthenticatedMemberId(null); setNotice("تم استرجاع البيانات بنجاح. سجّل الدخول من جديد.");
     } catch (e) { setSaveError(e instanceof Error ? e.message : "تعذر قراءة ملف النسخة الاحتياطية."); }
   }
   async function updateSettings(store: OfflineState["store"]) {
     if (!store) return;
+    if (currentMember.role !== "tenant_admin") throw new Error("إعدادات المتجر متاحة لمالك المتجر فقط.");
     await persist({
       ...currentState,
       store,
-      auditLogs: [createAuditEntry("تحديث إعدادات المتجر", "إعدادات", store.name, "تحديث بيانات النشاط والضريبة والفواتير."), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("تحديث إعدادات المتجر", "إعدادات", store.name, "تحديث بيانات النشاط والضريبة والفواتير.", currentMember.name), ...currentState.auditLogs],
     });
     setNotice("تم حفظ إعدادات المتجر.");
+  }
+  function goToPage(nextPage: Page) {
+    if (!canAccessOfflinePage(currentMember, nextPage)) {
+      setSaveError("لا تملك صلاحية لفتح هذه الصفحة.");
+      return;
+    }
+    setPage(nextPage);
+    setSaleDetail(null);
+    setSaveError("");
   }
   return <div className="of-app" dir="rtl">
     <aside className="of-sidebar">
       <div className="of-sidebar-brand"><BrandMark /><span className="of-edition">نسخة مستقلة · Windows</span></div>
       <div className="of-shop-chip"><span className="of-shop-avatar"><Store size={18} /></span><span><b>{state.store.name}</b><small>{state.store.businessType}</small></span><ChevronDown size={15} /></div>
-      <nav className="of-nav">{navItems.map(({ id, label, icon: Icon }) => <button key={id} className={`of-nav-item ${page === id ? "selected" : ""}`} onClick={() => { setPage(id); setSaleDetail(null); }}><Icon size={18} /><span>{label}</span>{id === "products" && lowStock.length > 0 && <i>{digits(lowStock.length)}</i>}</button>)}</nav>
+      <nav className="of-nav">{navItems.filter(({ id }) => canAccessOfflinePage(currentMember, id)).map(({ id, label, icon: Icon }) => <button key={id} className={`of-nav-item ${page === id ? "selected" : ""}`} onClick={() => goToPage(id)}><Icon size={18} /><span>{label}</span>{id === "products" && lowStock.length > 0 && <i>{digits(lowStock.length)}</i>}</button>)}</nav>
        <div className="of-sidebar-bottom"><div className={`of-license-chip ${active ? "" : "expired"}`}><span className="of-license-status"><ShieldCheck size={16} /></span><span><b>{active ? "الترخيص نشط" : "انتهى الترخيص"}</b><small>{state.license ? `ينتهي ${state.license.expiresAt}` : "غير محدد"}</small></span></div><div className="of-device-note"><LockKeyhole size={14} /> لا توجد مزامنة أو اتصال سحابي</div></div>
     </aside>
     <div className="of-main">
-      <header className="of-topbar"><div className="of-mobile-brand"><BrandMark compact /></div><div className="of-breadcrumb"><span>المتجر</span><i>/</i><b>{title}</b></div><div className="of-top-right"><span className="of-online-state"><i /> يعمل دون إنترنت</span><span className="of-top-date">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span><button className="of-avatar" title={state.store.name}>{state.store.name.slice(0, 1)}</button></div></header>
+      <header className="of-topbar"><div className="of-mobile-brand"><BrandMark compact /></div><div className="of-breadcrumb"><span>المتجر</span><i>/</i><b>{title}</b></div><div className="of-top-right"><span className="of-online-state"><i /> يعمل دون إنترنت</span><span className="of-top-date">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span><span className="of-current-user" title={currentMember.roleName}>{currentMember.name}</span><button className="of-avatar" title={currentMember.name}>{currentMember.name.slice(0, 1)}</button><button className="of-logout-button" onClick={() => { setAuthenticatedMemberId(null); setSaleDetail(null); setSaveError(""); }} aria-label="تسجيل الخروج" title="تسجيل الخروج"><LogOut size={16} /><span>خروج</span></button></div></header>
       {(saveError || state.backup.lastError) && <div className="of-alert"><CircleAlert size={17} /><span>{saveError || state.backup.lastError}</span><button aria-label="إغلاق" onClick={() => { setSaveError(""); if (state.backup.lastError) void persist({ ...state, backup: { ...state.backup, lastError: null } }); }}><X size={15} /></button></div>}
       <main className="of-content">
-        {page === "dashboard" && <Dashboard state={state} todaySales={todaySales} todayRevenue={todayRevenue} lowStock={lowStock} currency={currency} onNavigate={setPage} onSale={setSaleDetail} />}
+        {page === "dashboard" && <Dashboard state={viewState} todaySales={todaySales} todayRevenue={todayRevenue} lowStock={lowStock} currency={currency} canViewSales={canViewAllSales || currentMember.permissions.some((permission) => salesPermissions.includes(permission))} canViewInventoryCosts={canViewInventoryCosts} canNavigate={(target) => canAccessOfflinePage(currentMember, target)} onNavigate={goToPage} onSale={setSaleDetail} />}
         {page === "products" && <ProductsPage state={state} currency={currency} onSave={updateProduct} onRemove={removeProduct} />}
-        {page === "pos" && <PosPage state={state} licenseActive={active} onComplete={completeSale} onHold={holdSale} onRelease={releaseHeldSale} onReturns={() => setPage("returns")} />}
-        {page === "sales" && <SalesPage state={state} currency={currency} onSelect={setSaleDetail} />}
-        {page === "returns" && <OfflineReturnsPage state={state} currency={currency} onReturn={recordReturn} onExchange={recordExchange} />}
+        {page === "pos" && <PosPage state={posState} licenseActive={active} canSellRetail={canViewRetailSales} canSellWholesale={currentMember.role === "tenant_admin" || currentMember.permissions.includes("wholesale_sales")} cashierName={currentMember.name} onComplete={completeSale} onHold={holdSale} onRelease={releaseHeldSale} onReturns={() => goToPage("returns")} />}
+        {page === "sales" && <SalesPage state={viewState} currency={currency} onSelect={setSaleDetail} />}
+        {page === "returns" && <OfflineReturnsPage state={viewState} currency={currency} onReturn={recordReturn} onExchange={recordExchange} />}
         {page === "team" && <OfflineTeamPage state={state} onSave={saveTeamMember} onRemove={removeTeamMember} />}
         {page === "reports" && <OfflineReportsPage state={state} currency={currency} />}
         {page === "audit" && <OfflineAuditPage state={state} />}

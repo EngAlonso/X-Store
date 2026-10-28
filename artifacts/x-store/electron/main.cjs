@@ -202,6 +202,10 @@ function isValidState(value) {
     Array.isArray(member.permissions) &&
     member.permissions.every((permission) => VALID_TEAM_PERMISSIONS.has(permission)) &&
     typeof member.active === "boolean" &&
+    ((member.pinSalt === null && member.pinHash === null && member.pinIterations === null) ||
+      (typeof member.pinSalt === "string" && /^[a-f0-9]{32}$/i.test(member.pinSalt) &&
+        typeof member.pinHash === "string" && /^[a-f0-9]{64}$/i.test(member.pinHash) &&
+        Number.isInteger(member.pinIterations) && member.pinIterations >= 100000 && member.pinIterations <= 1000000)) &&
     isDate(member.createdAt),
   );
   const auditIsValid = value.auditLogs.every((entry) =>
@@ -250,7 +254,9 @@ function normalizeState(value) {
     heldSales: value.heldSales ?? [],
     returns: value.returns ?? [],
     exchanges: value.exchanges ?? [],
-    teamMembers: value.teamMembers ?? [],
+    teamMembers: Array.isArray(value.teamMembers) ? value.teamMembers.map((member) => isPlainObject(member)
+      ? { ...member, pinSalt: member.pinSalt ?? null, pinHash: member.pinHash ?? null, pinIterations: member.pinIterations ?? null }
+      : member) : [],
     auditLogs: value.auditLogs ?? [],
     backup: { ...EMPTY_STATE.backup, ...(isPlainObject(value.backup) ? value.backup : {}) },
   };

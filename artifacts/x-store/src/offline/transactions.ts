@@ -11,6 +11,7 @@ export type OfflineReturnRequest = {
   saleId: string;
   items: { productId: string; quantity: number }[];
   reason: string;
+  actorName?: string;
 };
 
 export type OfflineExchangeRequest = OfflineReturnRequest & {
@@ -88,7 +89,7 @@ export function applyOfflineReturn(
     invoiceNumber: sale.invoiceNumber,
     createdAt: new Date().toISOString(),
     reason: request.reason.trim(),
-    cashierName: "صاحب المتجر",
+    cashierName: request.actorName ?? "صاحب المتجر",
     items: returnItems,
     refundAmount,
     costAmount: roundMoney(costAmount),
@@ -102,7 +103,7 @@ export function applyOfflineReturn(
       sales: state.sales.map((item) => item.id === sale.id ? { ...item, items: saleLines } : item),
       returns: [record, ...state.returns],
       auditLogs: [
-        createAuditEntry("تسجيل مرتجع", "فاتورة بيع", sale.invoiceNumber, `${returnItems.reduce((sum, item) => sum + item.quantity, 0)} وحدة · ${request.reason.trim()}`),
+        createAuditEntry("تسجيل مرتجع", "فاتورة بيع", sale.invoiceNumber, `${returnItems.reduce((sum, item) => sum + item.quantity, 0)} وحدة · ${request.reason.trim()}`, request.actorName),
         ...state.auditLogs,
       ],
     },
@@ -214,7 +215,7 @@ export function applyOfflineExchange(
     total,
     amountReceived,
     changeAmount,
-    cashierName: "صاحب المتجر",
+    cashierName: request.actorName ?? "صاحب المتجر",
     exchangeOfInvoiceNumber: original.invoiceNumber,
   };
 
@@ -229,7 +230,7 @@ export function applyOfflineExchange(
     invoiceNumber: original.invoiceNumber,
     createdAt,
     reason: request.reason.trim() ? `استبدال · ${request.reason.trim()}` : "استبدال",
-    cashierName: "صاحب المتجر",
+    cashierName: request.actorName ?? "صاحب المتجر",
     items: returnItems,
     refundAmount,
     costAmount: roundMoney(returnedCost),
@@ -247,7 +248,7 @@ export function applyOfflineExchange(
       returns: [returnRecord, ...state.returns],
       exchanges: [exchange, ...state.exchanges],
       auditLogs: [
-        createAuditEntry("تسجيل استبدال", "فاتورة بيع", replacementInvoiceNumber, `الأصلية ${original.invoiceNumber} · المرتجع ${roundMoney(refundAmount)} · البديل ${roundMoney(total)}`),
+        createAuditEntry("تسجيل استبدال", "فاتورة بيع", replacementInvoiceNumber, `الأصلية ${original.invoiceNumber} · المرتجع ${roundMoney(refundAmount)} · البديل ${roundMoney(total)}`, request.actorName),
         ...state.auditLogs,
       ],
     },

@@ -169,6 +169,9 @@ export interface OfflineTeamMember {
   roleName: string;
   permissions: OfflineTeamPermission[];
   active: boolean;
+  pinSalt: string | null;
+  pinHash: string | null;
+  pinIterations: number | null;
   createdAt: string;
 }
 
@@ -406,6 +409,10 @@ export function isOfflineState(value: unknown): value is OfflineState {
     Array.isArray(member.permissions) &&
     member.permissions.every((permission) => OFFLINE_TEAM_PERMISSIONS.includes(permission)) &&
     typeof member.active === "boolean" &&
+    ((member.pinSalt === null && member.pinHash === null && member.pinIterations === null) ||
+      (typeof member.pinSalt === "string" && /^[a-f0-9]{32}$/i.test(member.pinSalt) &&
+        typeof member.pinHash === "string" && /^[a-f0-9]{64}$/i.test(member.pinHash) &&
+        Number.isInteger(member.pinIterations) && member.pinIterations >= 100_000 && member.pinIterations <= 1_000_000)) &&
     isDate(member.createdAt),
   );
   const auditIsValid = state.auditLogs.every((entry) =>
@@ -483,7 +490,14 @@ export function migrateOfflineState(value: unknown): OfflineState | null {
     heldSales: value.heldSales ?? defaults.heldSales,
     returns: value.returns ?? defaults.returns,
     exchanges: value.exchanges ?? defaults.exchanges,
-    teamMembers: value.teamMembers ?? defaults.teamMembers,
+    teamMembers: Array.isArray(value.teamMembers)
+      ? value.teamMembers.map((member) => isRecord(member) ? {
+        ...member,
+        pinSalt: member.pinSalt ?? null,
+        pinHash: member.pinHash ?? null,
+        pinIterations: member.pinIterations ?? null,
+      } : member)
+      : defaults.teamMembers,
     auditLogs: value.auditLogs ?? defaults.auditLogs,
     backup: { ...defaults.backup, ...(isRecord(value.backup) ? value.backup : {}) },
   };
