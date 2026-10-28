@@ -4,12 +4,15 @@ import {
   ChevronDown, CircleAlert, Clock3, CreditCard, FileText, FolderOpen,
   LayoutDashboard, LifeBuoy, LockKeyhole, Package, Plus, Printer, Receipt,
   Search, Settings, ShieldCheck, ShoppingCart, Store, Trash2, Upload, Wallet,
-  X,
+  Users, RotateCcw, ClipboardList, ChartNoAxesCombined, Pause, Play,
+  ArrowLeftRight, Smartphone, Banknote, X,
 } from "lucide-react";
 import {
-  addMonthsToDate, createEmptyOfflineState, isLicenseActive, isOfflineState,
-  LICENSE_DURATIONS, OFFLINE_CURRENCIES, OFFLINE_STORE_TYPES,
-  type OfflineProduct, type OfflineSale, type OfflineState,
+  addMonthsToDate, calculateSaleItemReturn, createEmptyOfflineState,
+  isLicenseActive, isOfflineState, migrateOfflineState, LICENSE_DURATIONS,
+  OFFLINE_CURRENCIES, OFFLINE_STORE_TYPES,
+  type OfflineExchange, type OfflineHeldSale, type OfflineProduct,
+  type OfflineReturn, type OfflineSale, type OfflineState, type OfflineTeamMember,
 } from "./model";
 import {
   chooseOfflineBackupFolder, createManualOfflineBackup, isDesktopEdition,
@@ -17,13 +20,17 @@ import {
 } from "./storage";
 import "./offline.css";
 
-type Page = "dashboard" | "products" | "pos" | "sales" | "backup" | "settings";
+type Page = "dashboard" | "products" | "pos" | "sales" | "returns" | "team" | "reports" | "audit" | "backup" | "settings";
 type CartRow = { product: OfflineProduct; quantity: number };
 const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "الرئيسية", icon: LayoutDashboard },
   { id: "products", label: "المنتجات والمخزون", icon: Package },
   { id: "pos", label: "نقطة البيع", icon: ShoppingCart },
   { id: "sales", label: "سجل المبيعات", icon: Receipt },
+  { id: "returns", label: "المرتجعات والاستبدال", icon: RotateCcw },
+  { id: "team", label: "فريق المتجر", icon: Users },
+  { id: "reports", label: "التقارير المالية", icon: ChartNoAxesCombined },
+  { id: "audit", label: "سجل النشاط", icon: ClipboardList },
   { id: "backup", label: "النسخ الاحتياطي", icon: Archive },
   { id: "settings", label: "الإعدادات والترخيص", icon: Settings },
 ];
@@ -72,7 +79,7 @@ function OfflineSetup({ onComplete }: { onComplete: (state: OfflineState) => Pro
     const startedAt = localDate();
     const initial = createEmptyOfflineState();
     initial.setupComplete = true;
-    initial.store = { name: name.trim(), businessType: businessType.trim(), storeType, currency, vatRate: Number(vatRate) || 0, wholesaleEnabled: supportsWholesale && wholesaleEnabled };
+    initial.store = { name: name.trim(), businessType: businessType.trim(), storeType, currency, vatRate: Number(vatRate) || 0, wholesaleEnabled: supportsWholesale && wholesaleEnabled, invoiceFormat: "wide" };
     initial.license = { startedAt, months, expiresAt: addMonthsToDate(startedAt, months) };
     initial.backup.backupFolder = folder;
     try { await onComplete(initial); } catch (e) { setError(e instanceof Error ? e.message : "تعذر حفظ الإعدادات."); }
@@ -281,18 +288,24 @@ function ProductDialog({ initial, wholesale, currency, onClose, onSave }: { init
   const [cost, setCost] = useState(String(initial?.costPrice ?? ""));
   const [wholesalePrice, setWholesalePrice] = useState(String(initial?.wholesalePrice ?? ""));
   const [quantity, setQuantity] = useState(String(initial?.quantity ?? ""));
+  const [color, setColor] = useState(initial?.color ?? "");
+  const [size, setSize] = useState(initial?.size ?? "");
+  const [partNumber, setPartNumber] = useState(initial?.partNumber ?? "");
+  const [expiresAt, setExpiresAt] = useState(initial?.expiresAt ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || Number(price) < 0 || !Number.isFinite(Number(price)) || Number(quantity) < 0) { setError("تحقق من اسم المنتج والسعر والكمية."); return; }
+    if (!name.trim() || Number(price) < 0 || !Number.isFinite(Number(price)) || !Number.isFinite(Number(cost)) || Number(cost) < 0 || !Number.isInteger(Number(quantity)) || Number(quantity) < 0 || (wholesalePrice !== "" && (!Number.isFinite(Number(wholesalePrice)) || Number(wholesalePrice) < 0))) { setError("تحقق من اسم المنتج والأسعار والكمية."); return; }
     setSaving(true); setError("");
-    try { await onSave({ id: initial?.id ?? makeId(), name: name.trim(), sku: sku.trim(), barcode: barcode.trim(), category: category.trim(), costPrice: Number(cost) || 0, price: Number(price), wholesalePrice: wholesale && wholesalePrice !== "" ? Number(wholesalePrice) : null, quantity: Number(quantity) || 0, createdAt: initial?.createdAt ?? new Date().toISOString() }); }
+    try { await onSave({ id: initial?.id ?? makeId(), name: name.trim(), sku: sku.trim(), barcode: barcode.trim(), category: category.trim(), costPrice: Number(cost) || 0, price: Number(price), wholesalePrice: wholesale && wholesalePrice !== "" ? Number(wholesalePrice) : null, quantity: Number(quantity) || 0, color: color.trim(), size: size.trim(), partNumber: partNumber.trim(), expiresAt: expiresAt || null, createdAt: initial?.createdAt ?? new Date().toISOString() }); }
     catch (err) { setError(err instanceof Error ? err.message : "تعذر حفظ المنتج."); } finally { setSaving(false); }
   }
   return <div className="of-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><section className="of-dialog" role="dialog" aria-modal="true" aria-labelledby="product-dialog-title"><header className="of-dialog-head"><div><span className="of-kicker">بيانات المخزون</span><h2 id="product-dialog-title">{initial ? "تعديل المنتج" : "إضافة منتج جديد"}</h2></div><button onClick={onClose} aria-label="إغلاق"><X size={18} /></button></header><form onSubmit={submit}><div className="of-form-grid">
     <Field label="اسم المنتج"><input autoFocus required value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم المنتج" /></Field><Field label="التصنيف"><input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثال: إكسسوارات" /></Field>
     <Field label="رمز المنتج (SKU)"><input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="اختياري" /></Field><Field label="الباركود"><input value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="اختياري" /></Field>
+    <Field label="اللون"><input value={color} onChange={(e) => setColor(e.target.value)} placeholder="اختياري" /></Field><Field label="المقاس"><input value={size} onChange={(e) => setSize(e.target.value)} placeholder="اختياري" /></Field>
+    <Field label="رقم القطعة"><input value={partNumber} onChange={(e) => setPartNumber(e.target.value)} placeholder="اختياري" /></Field><Field label="تاريخ انتهاء الصلاحية"><input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} /></Field>
     <Field label={`سعر البيع (${currency})`}><input required type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} /></Field><Field label={`سعر التكلفة (${currency})`}><input type="number" min="0" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
     {wholesale && <Field label={`سعر الجملة (${currency})`}><input type="number" min="0" step="0.01" value={wholesalePrice} onChange={(e) => setWholesalePrice(e.target.value)} placeholder="اختياري" /></Field>}<Field label="الكمية المتاحة"><input required type="number" min="0" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></Field>
     </div>{error && <div className="of-error"><CircleAlert size={15} />{error}</div>}<div className="of-dialog-actions"><button type="button" className="of-button of-button-secondary" onClick={onClose}>إلغاء</button><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ المنتج"}</button></div></form></section></div>;

@@ -1,6 +1,7 @@
 import {
   createEmptyOfflineState,
   isOfflineState,
+  migrateOfflineState,
   type OfflineState,
 } from "./model";
 
@@ -13,27 +14,35 @@ export function isDesktopEdition(): boolean {
 
 export async function loadOfflineState(): Promise<OfflineState> {
   if (window.xStoreOffline) {
-    const state = await window.xStoreOffline.getState();
+    const raw = await window.xStoreOffline.getState();
+    const state = migrateOfflineState(raw);
     if (!isOfflineState(state)) throw new Error("ملف بيانات النسخة الأوف لاين غير صالح.");
-    return state;
+    return state.schemaVersion === raw.schemaVersion
+      ? state
+      : window.xStoreOffline.saveState(state);
   }
 
   const raw = localStorage.getItem(STATE_KEY);
   if (!raw) return createEmptyOfflineState();
-  const parsed: unknown = JSON.parse(raw);
+  const parsed = migrateOfflineState(JSON.parse(raw));
   if (!isOfflineState(parsed)) {
     throw new Error("بيانات معاينة النسخة الأوف لاين غير صالحة.");
+  }
+  if (parsed.schemaVersion !== JSON.parse(raw).schemaVersion) {
+    localStorage.setItem(STATE_KEY, JSON.stringify(parsed));
   }
   return parsed;
 }
 
 export async function saveOfflineState(state: OfflineState): Promise<OfflineState> {
-  if (window.xStoreOffline) return window.xStoreOffline.saveState(state);
+  const migrated = migrateOfflineState(state);
+  if (!isOfflineState(migrated)) throw new Error("بيانات المتجر غير صالحة.");
+  if (window.xStoreOffline) return window.xStoreOffline.saveState(migrated);
 
   const saved: OfflineState = {
-    ...state,
+    ...migrated,
     backup: {
-      ...state.backup,
+      ...migrated.backup,
       lastAutomaticBackupAt: new Date().toISOString(),
       lastError: null,
     },
@@ -69,15 +78,21 @@ export async function restoreOfflineBackup(
   importedState?: OfflineState,
 ): Promise<OfflineState> {
   if (window.xStoreOffline) {
-    if (importedState) return window.xStoreOffline.restoreState(importedState);
+    if (importedState) {
+      const migrated = migrateOfflineState(importedState);
+      if (!isOfflineState(migrated)) {
+        throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
+      }
+      return window.xStoreOffline.restoreState(migrated);
+    }
     return window.xStoreOffline.restoreBackup();
   }
 
   const candidate =
-    importedState ??
+    migrateOfflineState(importedState) ??
     (() => {
       const raw = localStorage.getItem(BACKUP_KEY);
-      return raw ? (JSON.parse(raw) as unknown) : null;
+      return raw ? migrateOfflineState(JSON.parse(raw)) : null;
     })();
   if (!isOfflineState(candidate)) {
     throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");

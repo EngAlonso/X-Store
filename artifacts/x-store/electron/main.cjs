@@ -2,7 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { app, BrowserWindow, dialog, ipcMain, session } = require("electron");
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const BACKUP_PREFIX = "x-store-automatic-";
 const MAX_DAILY_BACKUPS = 30;
 const VALID_STORE_TYPES = new Set([
@@ -15,8 +15,15 @@ const VALID_STORE_TYPES = new Set([
 ]);
 const VALID_CURRENCIES = new Set(["EGP", "SAR", "AED", "USD", "EUR", "GBP"]);
 const VALID_LICENSE_DURATIONS = new Set([1, 3, 6, 12, 24, 36]);
-const VALID_PAYMENTS = new Set(["cash", "card", "transfer"]);
+const VALID_PAYMENTS = new Set(["cash", "card", "wallet", "instapay", "transfer"]);
 const VALID_SALE_TYPES = new Set(["retail", "wholesale"]);
+const VALID_INVOICE_FORMATS = new Set(["wide", "thermal_80mm", "thermal_58mm"]);
+const VALID_TEAM_PERMISSIONS = new Set([
+  "retail_sales",
+  "wholesale_sales",
+  "warehouse_manager",
+  "accountant",
+]);
 const EMPTY_STATE = {
   schemaVersion: SCHEMA_VERSION,
   setupComplete: false,
@@ -24,6 +31,11 @@ const EMPTY_STATE = {
   license: null,
   products: [],
   sales: [],
+  heldSales: [],
+  returns: [],
+  exchanges: [],
+  teamMembers: [],
+  auditLogs: [],
   backup: {
     backupFolder: null,
     lastAutomaticBackupAt: null,
@@ -43,6 +55,10 @@ function isPlainObject(value) {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
 
+function isDate(value) {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
 function isValidState(value) {
   if (
     !isPlainObject(value) ||
@@ -50,99 +66,195 @@ function isValidState(value) {
     typeof value.setupComplete !== "boolean" ||
     !Array.isArray(value.products) ||
     !Array.isArray(value.sales) ||
+    !Array.isArray(value.heldSales) ||
+    !Array.isArray(value.returns) ||
+    !Array.isArray(value.exchanges) ||
+    !Array.isArray(value.teamMembers) ||
+    !Array.isArray(value.auditLogs) ||
     !isPlainObject(value.backup)
-  ) {
-    return false;
-  }
+  ) return false;
 
-  if (value.store !== null && value.store !== undefined) {
-    if (
-      !isPlainObject(value.store) ||
-      typeof value.store.name !== "string" ||
-      typeof value.store.businessType !== "string" ||
-      !VALID_STORE_TYPES.has(value.store.storeType) ||
-      !VALID_CURRENCIES.has(value.store.currency) ||
-      !Number.isFinite(value.store.vatRate) ||
-      value.store.vatRate < 0 ||
-      value.store.vatRate > 100 ||
-      typeof value.store.wholesaleEnabled !== "boolean"
-    ) {
-      return false;
-    }
-  }
+  if (value.store !== null && (
+    !isPlainObject(value.store) ||
+    typeof value.store.name !== "string" ||
+    typeof value.store.businessType !== "string" ||
+    !VALID_STORE_TYPES.has(value.store.storeType) ||
+    !VALID_CURRENCIES.has(value.store.currency) ||
+    !VALID_INVOICE_FORMATS.has(value.store.invoiceFormat) ||
+    !Number.isFinite(value.store.vatRate) ||
+    value.store.vatRate < 0 ||
+    value.store.vatRate > 100 ||
+    typeof value.store.wholesaleEnabled !== "boolean"
+  )) return false;
 
-  if (value.license !== null && value.license !== undefined) {
-    if (
-      !isPlainObject(value.license) ||
-      typeof value.license.startedAt !== "string" ||
-      typeof value.license.expiresAt !== "string" ||
-      !VALID_LICENSE_DURATIONS.has(value.license.months) ||
-      !Number.isFinite(Date.parse(value.license.startedAt)) ||
-      !Number.isFinite(Date.parse(`${value.license.expiresAt}T12:00:00`))
-    ) {
-      return false;
-    }
-  }
+  if (value.license !== null && (
+    !isPlainObject(value.license) ||
+    typeof value.license.startedAt !== "string" ||
+    typeof value.license.expiresAt !== "string" ||
+    !VALID_LICENSE_DURATIONS.has(value.license.months) ||
+    !isDate(value.license.startedAt) ||
+    !isDate(`${value.license.expiresAt}T12:00:00`)
+  )) return false;
 
-  const productsAreValid = value.products.every(
-    (product) =>
-      isPlainObject(product) &&
-      typeof product.id === "string" &&
-      typeof product.name === "string" &&
-      typeof product.sku === "string" &&
-      typeof product.barcode === "string" &&
-      typeof product.category === "string" &&
-      Number.isFinite(product.costPrice) &&
-      product.costPrice >= 0 &&
-      Number.isFinite(product.price) &&
-      product.price >= 0 &&
-      (product.wholesalePrice === null ||
-        (Number.isFinite(product.wholesalePrice) && product.wholesalePrice >= 0)) &&
-      Number.isInteger(product.quantity) &&
-      product.quantity >= 0 &&
-      Number.isFinite(Date.parse(product.createdAt)),
-  );
-  const salesAreValid = value.sales.every(
-    (sale) =>
-      isPlainObject(sale) &&
-      typeof sale.id === "string" &&
-      typeof sale.invoiceNumber === "string" &&
-      Number.isFinite(Date.parse(sale.createdAt)) &&
-      typeof sale.customerName === "string" &&
-      VALID_PAYMENTS.has(sale.paymentMethod) &&
-      VALID_SALE_TYPES.has(sale.saleType) &&
-      Number.isFinite(sale.subtotal) &&
-      Number.isFinite(sale.taxAmount) &&
-      Number.isFinite(sale.total) &&
-      Array.isArray(sale.items) &&
-      sale.items.every(
-        (item) =>
-          isPlainObject(item) &&
-          typeof item.productId === "string" &&
-          typeof item.name === "string" &&
-          typeof item.sku === "string" &&
-          Number.isInteger(item.quantity) &&
-          item.quantity > 0 &&
-          Number.isFinite(item.unitPrice) &&
-          Number.isFinite(item.lineTotal),
-      ),
-  );
   const backupIsValid =
-    (value.backup.backupFolder === null ||
-      typeof value.backup.backupFolder === "string") &&
-    (value.backup.lastAutomaticBackupAt === null ||
-      typeof value.backup.lastAutomaticBackupAt === "string") &&
-    (value.backup.lastManualBackupAt === null ||
-      typeof value.backup.lastManualBackupAt === "string") &&
-    (value.backup.lastError === null ||
-      typeof value.backup.lastError === "string");
-
-  return (
-    (!value.setupComplete || Boolean(value.store && value.license)) &&
-    productsAreValid &&
-    salesAreValid &&
-    backupIsValid
+    (value.backup.backupFolder === null || typeof value.backup.backupFolder === "string") &&
+    (value.backup.lastAutomaticBackupAt === null || isDate(value.backup.lastAutomaticBackupAt)) &&
+    (value.backup.lastManualBackupAt === null || isDate(value.backup.lastManualBackupAt)) &&
+    (value.backup.lastError === null || typeof value.backup.lastError === "string");
+  const productsAreValid = value.products.every((product) =>
+    isPlainObject(product) &&
+    typeof product.id === "string" &&
+    typeof product.name === "string" &&
+    typeof product.sku === "string" &&
+    typeof product.barcode === "string" &&
+    typeof product.category === "string" &&
+    Number.isFinite(product.costPrice) && product.costPrice >= 0 &&
+    Number.isFinite(product.price) && product.price >= 0 &&
+    (product.wholesalePrice === null || (Number.isFinite(product.wholesalePrice) && product.wholesalePrice >= 0)) &&
+    Number.isInteger(product.quantity) && product.quantity >= 0 &&
+    typeof product.color === "string" &&
+    typeof product.size === "string" &&
+    typeof product.partNumber === "string" &&
+    (product.expiresAt === null || isDate(`${product.expiresAt}T12:00:00`)) &&
+    isDate(product.createdAt),
   );
+  const validLine = (item) =>
+    isPlainObject(item) &&
+    typeof item.productId === "string" &&
+    typeof item.name === "string" &&
+    typeof item.sku === "string" &&
+    Number.isInteger(item.quantity) && item.quantity > 0 &&
+    Number.isFinite(item.unitPrice) && item.unitPrice >= 0 &&
+    Number.isFinite(item.unitCost) && item.unitCost >= 0 &&
+    Number.isFinite(item.lineTotal) && item.lineTotal >= 0 &&
+    Number.isInteger(item.returnedQuantity) && item.returnedQuantity >= 0 &&
+    item.returnedQuantity <= item.quantity;
+  const salesAreValid = value.sales.every((sale) =>
+    isPlainObject(sale) &&
+    typeof sale.id === "string" &&
+    typeof sale.invoiceNumber === "string" &&
+    isDate(sale.createdAt) &&
+    typeof sale.customerName === "string" &&
+    typeof sale.customerPhone === "string" &&
+    VALID_PAYMENTS.has(sale.paymentMethod) &&
+    VALID_SALE_TYPES.has(sale.saleType) &&
+    typeof sale.transferSender === "string" &&
+    typeof sale.cashierName === "string" &&
+    (sale.exchangeOfInvoiceNumber === null || typeof sale.exchangeOfInvoiceNumber === "string") &&
+    Number.isFinite(sale.subtotal) && sale.subtotal >= 0 &&
+    Number.isFinite(sale.discountAmount) && sale.discountAmount >= 0 && sale.discountAmount <= sale.subtotal &&
+    Number.isFinite(sale.taxAmount) && sale.taxAmount >= 0 &&
+    Number.isFinite(sale.total) && sale.total >= 0 &&
+    Number.isFinite(sale.amountReceived) && sale.amountReceived >= 0 &&
+    Number.isFinite(sale.changeAmount) && sale.changeAmount >= 0 &&
+    Array.isArray(sale.items) && sale.items.length > 0 && sale.items.every(validLine),
+  );
+  const heldAreValid = value.heldSales.every((held) =>
+    isPlainObject(held) &&
+    typeof held.id === "string" &&
+    typeof held.reference === "string" &&
+    isDate(held.createdAt) &&
+    typeof held.customerName === "string" &&
+    typeof held.customerPhone === "string" &&
+    VALID_PAYMENTS.has(held.paymentMethod) &&
+    VALID_SALE_TYPES.has(held.saleType) &&
+    typeof held.transferSender === "string" &&
+    Number.isFinite(held.subtotal) &&
+    Number.isFinite(held.discountAmount) &&
+    Number.isFinite(held.taxAmount) &&
+    Number.isFinite(held.estimatedTotal) &&
+    Number.isFinite(held.amountReceived) &&
+    Array.isArray(held.items) && held.items.length > 0 &&
+    held.items.every((item) => validLine({ ...item, lineTotal: item.quantity * item.unitPrice, returnedQuantity: 0 })),
+  );
+  const returnsAreValid = value.returns.every((record) =>
+    isPlainObject(record) &&
+    typeof record.id === "string" &&
+    typeof record.saleId === "string" &&
+    typeof record.invoiceNumber === "string" &&
+    isDate(record.createdAt) &&
+    typeof record.reason === "string" &&
+    typeof record.cashierName === "string" &&
+    Number.isFinite(record.refundAmount) && record.refundAmount >= 0 &&
+    Number.isFinite(record.costAmount) && record.costAmount >= 0 &&
+    Array.isArray(record.items) && record.items.length > 0 &&
+    record.items.every((item) => isPlainObject(item) && typeof item.productId === "string" && typeof item.name === "string" && Number.isInteger(item.quantity) && item.quantity > 0 && Number.isFinite(item.refundAmount) && item.refundAmount >= 0 && Number.isFinite(item.costAmount) && item.costAmount >= 0),
+  );
+  const exchangesAreValid = value.exchanges.every((exchange) =>
+    isPlainObject(exchange) &&
+    typeof exchange.id === "string" &&
+    typeof exchange.originalInvoiceNumber === "string" &&
+    typeof exchange.replacementInvoiceNumber === "string" &&
+    isDate(exchange.createdAt) &&
+    Number.isFinite(exchange.returnedAmount) && exchange.returnedAmount >= 0 &&
+    Number.isFinite(exchange.replacementAmount) && exchange.replacementAmount >= 0 &&
+    Number.isFinite(exchange.balanceDue) &&
+    Number.isFinite(exchange.changeAmount) && exchange.changeAmount >= 0,
+  );
+  const teamAreValid = value.teamMembers.every((member) =>
+    isPlainObject(member) &&
+    typeof member.id === "string" &&
+    typeof member.name === "string" &&
+    typeof member.phone === "string" &&
+    typeof member.email === "string" &&
+    ["tenant_admin", "cashier", "warehouse_manager", "accountant", "custom"].includes(member.role) &&
+    typeof member.roleName === "string" &&
+    Array.isArray(member.permissions) &&
+    member.permissions.every((permission) => VALID_TEAM_PERMISSIONS.has(permission)) &&
+    typeof member.active === "boolean" &&
+    isDate(member.createdAt),
+  );
+  const auditIsValid = value.auditLogs.every((entry) =>
+    isPlainObject(entry) &&
+    typeof entry.id === "string" &&
+    typeof entry.actorName === "string" &&
+    typeof entry.action === "string" &&
+    typeof entry.entityType === "string" &&
+    typeof entry.entityId === "string" &&
+    typeof entry.details === "string" &&
+    isDate(entry.createdAt),
+  );
+
+  return (!value.setupComplete || Boolean(value.store && value.license)) &&
+    backupIsValid && productsAreValid && salesAreValid && heldAreValid &&
+    returnsAreValid && exchangesAreValid && teamAreValid && auditIsValid;
+}
+
+function normalizeState(value) {
+  if (!isPlainObject(value) || ![1, 2].includes(value.schemaVersion)) return null;
+  const normalized = {
+    ...structuredClone(EMPTY_STATE),
+    ...value,
+    schemaVersion: SCHEMA_VERSION,
+    store: value.store && isPlainObject(value.store)
+      ? { ...value.store, invoiceFormat: value.store.invoiceFormat || "wide" }
+      : value.store,
+    products: Array.isArray(value.products) ? value.products.map((product) => isPlainObject(product)
+      ? { ...product, color: product.color || "", size: product.size || "", partNumber: product.partNumber || "", expiresAt: product.expiresAt || null }
+      : product) : value.products,
+    sales: Array.isArray(value.sales) ? value.sales.map((sale) => isPlainObject(sale)
+      ? {
+        ...sale,
+        customerPhone: sale.customerPhone || "",
+        transferSender: sale.transferSender || "",
+        discountAmount: sale.discountAmount ?? 0,
+        amountReceived: sale.amountReceived ?? sale.total ?? 0,
+        changeAmount: sale.changeAmount ?? 0,
+        cashierName: sale.cashierName || "صاحب المتجر",
+        exchangeOfInvoiceNumber: sale.exchangeOfInvoiceNumber ?? null,
+        items: Array.isArray(sale.items) ? sale.items.map((item) => isPlainObject(item)
+          ? { ...item, unitCost: item.unitCost ?? 0, returnedQuantity: item.returnedQuantity ?? 0 }
+          : item) : sale.items,
+      }
+      : sale) : value.sales,
+    heldSales: value.heldSales ?? [],
+    returns: value.returns ?? [],
+    exchanges: value.exchanges ?? [],
+    teamMembers: value.teamMembers ?? [],
+    auditLogs: value.auditLogs ?? [],
+    backup: { ...EMPTY_STATE.backup, ...(isPlainObject(value.backup) ? value.backup : {}) },
+  };
+  return isValidState(normalized) ? normalized : null;
 }
 
 function enqueueWrite(operation) {
@@ -165,10 +277,14 @@ async function readState() {
   try {
     const raw = await fs.readFile(statePath, "utf8");
     const parsed = JSON.parse(raw);
-    if (!isValidState(parsed)) {
+    const normalized = normalizeState(parsed);
+    if (!normalized) {
       throw new Error("ملف بيانات المتجر تالف أو غير متوافق.");
     }
-    return parsed;
+    if (parsed.schemaVersion !== SCHEMA_VERSION) {
+      await atomicWrite(statePath, `${JSON.stringify(normalized, null, 2)}\n`);
+    }
+    return normalized;
   } catch (error) {
     if (error && error.code === "ENOENT") return structuredClone(EMPTY_STATE);
     throw error;
@@ -245,14 +361,15 @@ async function writeAutomaticBackup(state) {
 }
 
 async function saveState(nextState) {
-  if (!isValidState(nextState)) {
+  const normalized = normalizeState(nextState);
+  if (!normalized) {
     throw new Error("رفض حفظ بيانات غير صالحة.");
   }
-  if (app.isPackaged && nextState.backup.backupFolder) {
+  if (app.isPackaged && normalized.backup.backupFolder) {
     const installRoot = path.resolve(
       path.dirname(path.dirname(app.getAppPath())),
     );
-    const backupFolder = path.resolve(nextState.backup.backupFolder);
+    const backupFolder = path.resolve(normalized.backup.backupFolder);
     const relative = path.relative(installRoot, backupFolder);
     const isInsideInstall =
       relative === "" ||
@@ -263,7 +380,7 @@ async function saveState(nextState) {
       throw new Error("اختر مجلدًا خارج مجلد تثبيت البرنامج.");
     }
   }
-  let current = structuredClone(nextState);
+  let current = structuredClone(normalized);
   await atomicWrite(statePath, `${JSON.stringify(current, null, 2)}\n`);
   current = await writeAutomaticBackup(current);
   await atomicWrite(statePath, `${JSON.stringify(current, null, 2)}\n`);
@@ -303,7 +420,8 @@ async function createBackup(manual = true) {
 }
 
 async function restoreState(importedState) {
-  if (!isValidState(importedState)) {
+  const normalizedImport = normalizeState(importedState);
+  if (!normalizedImport) {
     throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
   }
   return enqueueWrite(async () => {
@@ -327,11 +445,11 @@ async function restoreState(importedState) {
       }
     }
     const restored = {
-      ...structuredClone(importedState),
+      ...structuredClone(normalizedImport),
       backup: {
-        ...importedState.backup,
+        ...normalizedImport.backup,
         backupFolder:
-          current.backup.backupFolder || importedState.backup.backupFolder,
+          current.backup.backupFolder || normalizedImport.backup.backupFolder,
         lastError: null,
       },
     };

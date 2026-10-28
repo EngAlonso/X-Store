@@ -17,11 +17,20 @@ export const OFFLINE_CURRENCIES = [
 ] as const;
 
 export const LICENSE_DURATIONS = [1, 3, 6, 12, 24, 36] as const;
+export const OFFLINE_INVOICE_FORMATS = ["wide", "thermal_80mm", "thermal_58mm"] as const;
+export const OFFLINE_TEAM_PERMISSIONS = [
+  "retail_sales",
+  "wholesale_sales",
+  "warehouse_manager",
+  "accountant",
+] as const;
 
 export type OfflineStoreType = (typeof OFFLINE_STORE_TYPES)[number]["value"];
 export type OfflineCurrency = (typeof OFFLINE_CURRENCIES)[number]["value"];
-export type OfflinePaymentMethod = "cash" | "card" | "transfer";
+export type OfflinePaymentMethod = "cash" | "card" | "wallet" | "instapay" | "transfer";
 export type OfflineSaleType = "retail" | "wholesale";
+export type OfflineInvoiceFormat = (typeof OFFLINE_INVOICE_FORMATS)[number];
+export type OfflineTeamPermission = (typeof OFFLINE_TEAM_PERMISSIONS)[number];
 
 export interface OfflineStore {
   name: string;
@@ -30,6 +39,7 @@ export interface OfflineStore {
   currency: OfflineCurrency;
   vatRate: number;
   wholesaleEnabled: boolean;
+  invoiceFormat: OfflineInvoiceFormat;
 }
 
 export interface OfflineLicense {
@@ -48,6 +58,10 @@ export interface OfflineProduct {
   price: number;
   wholesalePrice: number | null;
   quantity: number;
+  color: string;
+  size: string;
+  partNumber: string;
+  expiresAt: string | null;
   createdAt: string;
 }
 
@@ -57,7 +71,9 @@ export interface OfflineSaleLine {
   sku: string;
   quantity: number;
   unitPrice: number;
+  unitCost: number;
   lineTotal: number;
+  returnedQuantity: number;
 }
 
 export interface OfflineSale {
@@ -65,12 +81,105 @@ export interface OfflineSale {
   invoiceNumber: string;
   createdAt: string;
   customerName: string;
+  customerPhone: string;
   paymentMethod: OfflinePaymentMethod;
   saleType: OfflineSaleType;
+  transferSender: string;
   items: OfflineSaleLine[];
   subtotal: number;
+  discountAmount: number;
   taxAmount: number;
   total: number;
+  amountReceived: number;
+  changeAmount: number;
+  cashierName: string;
+  exchangeOfInvoiceNumber: string | null;
+}
+
+export interface OfflineHeldSaleLine {
+  productId: string;
+  name: string;
+  sku: string;
+  quantity: number;
+  unitPrice: number;
+  unitCost: number;
+}
+
+export interface OfflineHeldSale {
+  id: string;
+  reference: string;
+  createdAt: string;
+  customerName: string;
+  customerPhone: string;
+  paymentMethod: OfflinePaymentMethod;
+  saleType: OfflineSaleType;
+  transferSender: string;
+  items: OfflineHeldSaleLine[];
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  estimatedTotal: number;
+  amountReceived: number;
+}
+
+export interface OfflineReturnItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  refundAmount: number;
+  costAmount: number;
+}
+
+export interface OfflineReturn {
+  id: string;
+  saleId: string;
+  invoiceNumber: string;
+  createdAt: string;
+  reason: string;
+  cashierName: string;
+  items: OfflineReturnItem[];
+  refundAmount: number;
+  costAmount: number;
+}
+
+export interface OfflineExchange {
+  id: string;
+  originalInvoiceNumber: string;
+  replacementInvoiceNumber: string;
+  createdAt: string;
+  returnedAmount: number;
+  replacementAmount: number;
+  balanceDue: number;
+  changeAmount: number;
+}
+
+export type OfflineTeamRole =
+  | "tenant_admin"
+  | "cashier"
+  | "warehouse_manager"
+  | "accountant"
+  | "custom";
+
+export interface OfflineTeamMember {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  role: OfflineTeamRole;
+  roleName: string;
+  permissions: OfflineTeamPermission[];
+  active: boolean;
+  createdAt: string;
+}
+
+export interface OfflineAuditLog {
+  id: string;
+  actorName: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  details: string;
+  createdAt: string;
 }
 
 export interface OfflineBackupInfo {
@@ -81,23 +190,33 @@ export interface OfflineBackupInfo {
 }
 
 export interface OfflineState {
-  schemaVersion: 1;
+  schemaVersion: 2;
   setupComplete: boolean;
   store: OfflineStore | null;
   license: OfflineLicense | null;
   products: OfflineProduct[];
   sales: OfflineSale[];
+  heldSales: OfflineHeldSale[];
+  returns: OfflineReturn[];
+  exchanges: OfflineExchange[];
+  teamMembers: OfflineTeamMember[];
+  auditLogs: OfflineAuditLog[];
   backup: OfflineBackupInfo;
 }
 
 export function createEmptyOfflineState(): OfflineState {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     setupComplete: false,
     store: null,
     license: null,
     products: [],
     sales: [],
+    heldSales: [],
+    returns: [],
+    exchanges: [],
+    teamMembers: [],
+    auditLogs: [],
     backup: {
       backupFolder: null,
       lastAutomaticBackupAt: null,
@@ -127,94 +246,245 @@ export function isLicenseActive(license: OfflineLicense | null, now = new Date()
   return license.expiresAt >= today;
 }
 
+export function calculateSaleItemReturn(
+  sale: OfflineSale,
+  item: OfflineSaleLine,
+  quantity: number,
+): { refundAmount: number; costAmount: number } {
+  const discountShare = sale.subtotal > 0
+    ? Math.min(1, sale.discountAmount / sale.subtotal)
+    : 0;
+  const taxableSubtotal = Math.max(0, sale.subtotal - sale.discountAmount);
+  const taxRate = taxableSubtotal > 0 ? sale.taxAmount / taxableSubtotal : 0;
+  const discountedLineAmount = item.unitPrice * quantity * (1 - discountShare);
+  return {
+    refundAmount: Math.round(discountedLineAmount * (1 + taxRate) * 100) / 100,
+    costAmount: Math.round(item.unitCost * quantity * 100) / 100,
+  };
+}
+
 export function isOfflineState(value: unknown): value is OfflineState {
-  if (!value || typeof value !== "object") return false;
-  const state = value as Partial<OfflineState>;
+  if (!isRecord(value) || value.schemaVersion !== 2) return false;
+  const state = value as unknown as OfflineState;
   if (
-    state.schemaVersion !== 1 ||
     typeof state.setupComplete !== "boolean" ||
     !Array.isArray(state.products) ||
     !Array.isArray(state.sales) ||
-    !state.backup ||
-    typeof state.backup !== "object"
-  ) {
-    return false;
-  }
-  if (state.store !== null && state.store !== undefined) {
-    if (
-      typeof state.store.name !== "string" ||
-      typeof state.store.businessType !== "string" ||
-      !OFFLINE_STORE_TYPES.some((item) => item.value === state.store?.storeType) ||
-      !OFFLINE_CURRENCIES.some((item) => item.value === state.store?.currency) ||
-      !Number.isFinite(state.store.vatRate) ||
-      state.store.vatRate < 0 ||
-      state.store.vatRate > 100 ||
-      typeof state.store.wholesaleEnabled !== "boolean"
-    ) {
-      return false;
-    }
-  }
-  if (state.license !== null && state.license !== undefined) {
-    if (
-      typeof state.license.startedAt !== "string" ||
-      typeof state.license.expiresAt !== "string" ||
-      !LICENSE_DURATIONS.includes(state.license.months as (typeof LICENSE_DURATIONS)[number]) ||
-      !Number.isFinite(Date.parse(state.license.startedAt)) ||
-      !Number.isFinite(Date.parse(`${state.license.expiresAt}T12:00:00`))
-    ) {
-      return false;
-    }
-  }
+    !Array.isArray(state.heldSales) ||
+    !Array.isArray(state.returns) ||
+    !Array.isArray(state.exchanges) ||
+    !Array.isArray(state.teamMembers) ||
+    !Array.isArray(state.auditLogs) ||
+    !isRecord(state.backup)
+  ) return false;
+
+  if (state.store !== null && (
+    !isRecord(state.store) ||
+    typeof state.store.name !== "string" ||
+    typeof state.store.businessType !== "string" ||
+    !OFFLINE_STORE_TYPES.some((item) => item.value === state.store?.storeType) ||
+    !OFFLINE_CURRENCIES.some((item) => item.value === state.store?.currency) ||
+    !OFFLINE_INVOICE_FORMATS.includes(state.store.invoiceFormat) ||
+    !Number.isFinite(state.store.vatRate) ||
+    state.store.vatRate < 0 ||
+    state.store.vatRate > 100 ||
+    typeof state.store.wholesaleEnabled !== "boolean"
+  )) return false;
+
+  if (state.license !== null && (
+    !isRecord(state.license) ||
+    typeof state.license.startedAt !== "string" ||
+    typeof state.license.expiresAt !== "string" ||
+    !LICENSE_DURATIONS.includes(state.license.months as (typeof LICENSE_DURATIONS)[number]) ||
+    !Number.isFinite(Date.parse(state.license.startedAt)) ||
+    !Number.isFinite(Date.parse(`${state.license.expiresAt}T12:00:00`))
+  )) return false;
+
   const backup = state.backup;
-  const validBackupInfo =
+  const backupIsValid =
     (backup.backupFolder === null || typeof backup.backupFolder === "string") &&
-    (backup.lastAutomaticBackupAt === null ||
-      (typeof backup.lastAutomaticBackupAt === "string" &&
-        Number.isFinite(Date.parse(backup.lastAutomaticBackupAt)))) &&
-    (backup.lastManualBackupAt === null ||
-      (typeof backup.lastManualBackupAt === "string" &&
-        Number.isFinite(Date.parse(backup.lastManualBackupAt)))) &&
+    (backup.lastAutomaticBackupAt === null || isDate(backup.lastAutomaticBackupAt)) &&
+    (backup.lastManualBackupAt === null || isDate(backup.lastManualBackupAt)) &&
     (backup.lastError === null || typeof backup.lastError === "string");
-  const productsAreValid = state.products.every(
-    (product) =>
-      typeof product.id === "string" &&
-      typeof product.name === "string" &&
-      typeof product.sku === "string" &&
-      typeof product.barcode === "string" &&
-      typeof product.category === "string" &&
-      Number.isFinite(product.costPrice) &&
-      product.costPrice >= 0 &&
-      Number.isFinite(product.price) &&
-      product.price >= 0 &&
-      (product.wholesalePrice === null ||
-        (Number.isFinite(product.wholesalePrice) && product.wholesalePrice >= 0)) &&
-      Number.isInteger(product.quantity) &&
-      product.quantity >= 0 &&
-      Number.isFinite(Date.parse(product.createdAt)),
+
+  const productsAreValid = state.products.every((product) =>
+    isRecord(product) &&
+    typeof product.id === "string" &&
+    typeof product.name === "string" &&
+    typeof product.sku === "string" &&
+    typeof product.barcode === "string" &&
+    typeof product.category === "string" &&
+    Number.isFinite(product.costPrice) && product.costPrice >= 0 &&
+    Number.isFinite(product.price) && product.price >= 0 &&
+    (product.wholesalePrice === null || (Number.isFinite(product.wholesalePrice) && product.wholesalePrice >= 0)) &&
+    Number.isInteger(product.quantity) && product.quantity >= 0 &&
+    typeof product.color === "string" &&
+    typeof product.size === "string" &&
+    typeof product.partNumber === "string" &&
+    (product.expiresAt === null || (typeof product.expiresAt === "string" && Number.isFinite(Date.parse(`${product.expiresAt}T12:00:00`)))) &&
+    isDate(product.createdAt),
   );
-  const salesAreValid = state.sales.every(
-    (sale) =>
-      typeof sale.id === "string" &&
-      typeof sale.invoiceNumber === "string" &&
-      Number.isFinite(Date.parse(sale.createdAt)) &&
-      typeof sale.customerName === "string" &&
-      ["cash", "card", "transfer"].includes(sale.paymentMethod) &&
-      ["retail", "wholesale"].includes(sale.saleType) &&
-      Number.isFinite(sale.subtotal) &&
-      Number.isFinite(sale.taxAmount) &&
-      Number.isFinite(sale.total) &&
-      Array.isArray(sale.items) &&
-      sale.items.every(
-        (item) =>
-          typeof item.productId === "string" &&
-          typeof item.name === "string" &&
-          typeof item.sku === "string" &&
-          Number.isInteger(item.quantity) &&
-          item.quantity > 0 &&
-          Number.isFinite(item.unitPrice) &&
-          Number.isFinite(item.lineTotal),
-      ),
+  const saleLineIsValid = (item: unknown) =>
+    isRecord(item) &&
+    typeof item.productId === "string" &&
+    typeof item.name === "string" &&
+    typeof item.sku === "string" &&
+    Number.isInteger(item.quantity) && item.quantity > 0 &&
+    Number.isFinite(item.unitPrice) && item.unitPrice >= 0 &&
+    Number.isFinite(item.unitCost) && item.unitCost >= 0 &&
+    Number.isFinite(item.lineTotal) && item.lineTotal >= 0 &&
+    Number.isInteger(item.returnedQuantity) && item.returnedQuantity >= 0 &&
+    item.returnedQuantity <= item.quantity;
+  const salesAreValid = state.sales.every((sale) =>
+    isRecord(sale) &&
+    typeof sale.id === "string" &&
+    typeof sale.invoiceNumber === "string" &&
+    isDate(sale.createdAt) &&
+    typeof sale.customerName === "string" &&
+    typeof sale.customerPhone === "string" &&
+    ["cash", "card", "wallet", "instapay", "transfer"].includes(sale.paymentMethod) &&
+    ["retail", "wholesale"].includes(sale.saleType) &&
+    typeof sale.transferSender === "string" &&
+    typeof sale.cashierName === "string" &&
+    (sale.exchangeOfInvoiceNumber === null || typeof sale.exchangeOfInvoiceNumber === "string") &&
+    Number.isFinite(sale.subtotal) && sale.subtotal >= 0 &&
+    Number.isFinite(sale.discountAmount) && sale.discountAmount >= 0 && sale.discountAmount <= sale.subtotal &&
+    Number.isFinite(sale.taxAmount) && sale.taxAmount >= 0 &&
+    Number.isFinite(sale.total) && sale.total >= 0 &&
+    Number.isFinite(sale.amountReceived) && sale.amountReceived >= 0 &&
+    Number.isFinite(sale.changeAmount) && sale.changeAmount >= 0 &&
+    Array.isArray(sale.items) && sale.items.length > 0 && sale.items.every(saleLineIsValid),
   );
-  if (state.setupComplete && (!state.store || !state.license)) return false;
-  return validBackupInfo && productsAreValid && salesAreValid;
+  const heldSalesAreValid = state.heldSales.every((held) =>
+    isRecord(held) &&
+    typeof held.id === "string" &&
+    typeof held.reference === "string" &&
+    isDate(held.createdAt) &&
+    typeof held.customerName === "string" &&
+    typeof held.customerPhone === "string" &&
+    ["cash", "card", "wallet", "instapay", "transfer"].includes(held.paymentMethod) &&
+    ["retail", "wholesale"].includes(held.saleType) &&
+    typeof held.transferSender === "string" &&
+    Number.isFinite(held.subtotal) && Number.isFinite(held.discountAmount) &&
+    Number.isFinite(held.taxAmount) && Number.isFinite(held.estimatedTotal) &&
+    Number.isFinite(held.amountReceived) &&
+    Array.isArray(held.items) && held.items.length > 0 &&
+    held.items.every((item) => saleLineIsValid({ ...item, lineTotal: item.quantity * item.unitPrice, returnedQuantity: 0 })),
+  );
+  const returnsAreValid = state.returns.every((record) =>
+    isRecord(record) &&
+    typeof record.id === "string" &&
+    typeof record.saleId === "string" &&
+    typeof record.invoiceNumber === "string" &&
+    isDate(record.createdAt) &&
+    typeof record.reason === "string" &&
+    typeof record.cashierName === "string" &&
+    Number.isFinite(record.refundAmount) && record.refundAmount >= 0 &&
+    Number.isFinite(record.costAmount) && record.costAmount >= 0 &&
+    Array.isArray(record.items) && record.items.length > 0 &&
+    record.items.every((item) => isRecord(item) && typeof item.productId === "string" && typeof item.name === "string" && Number.isInteger(item.quantity) && item.quantity > 0 && Number.isFinite(item.refundAmount) && item.refundAmount >= 0 && Number.isFinite(item.costAmount) && item.costAmount >= 0),
+  );
+  const exchangesAreValid = state.exchanges.every((exchange) =>
+    isRecord(exchange) &&
+    typeof exchange.id === "string" &&
+    typeof exchange.originalInvoiceNumber === "string" &&
+    typeof exchange.replacementInvoiceNumber === "string" &&
+    isDate(exchange.createdAt) &&
+    Number.isFinite(exchange.returnedAmount) && exchange.returnedAmount >= 0 &&
+    Number.isFinite(exchange.replacementAmount) && exchange.replacementAmount >= 0 &&
+    Number.isFinite(exchange.balanceDue) &&
+    Number.isFinite(exchange.changeAmount) && exchange.changeAmount >= 0,
+  );
+  const teamIsValid = state.teamMembers.every((member) =>
+    isRecord(member) &&
+    typeof member.id === "string" &&
+    typeof member.name === "string" &&
+    typeof member.phone === "string" &&
+    typeof member.email === "string" &&
+    ["tenant_admin", "cashier", "warehouse_manager", "accountant", "custom"].includes(member.role) &&
+    typeof member.roleName === "string" &&
+    Array.isArray(member.permissions) &&
+    member.permissions.every((permission) => OFFLINE_TEAM_PERMISSIONS.includes(permission)) &&
+    typeof member.active === "boolean" &&
+    isDate(member.createdAt),
+  );
+  const auditIsValid = state.auditLogs.every((entry) =>
+    isRecord(entry) &&
+    typeof entry.id === "string" &&
+    typeof entry.actorName === "string" &&
+    typeof entry.action === "string" &&
+    typeof entry.entityType === "string" &&
+    typeof entry.entityId === "string" &&
+    typeof entry.details === "string" &&
+    isDate(entry.createdAt),
+  );
+
+  return (
+    (!state.setupComplete || Boolean(state.store && state.license)) &&
+    backupIsValid &&
+    productsAreValid &&
+    salesAreValid &&
+    heldSalesAreValid &&
+    returnsAreValid &&
+    exchangesAreValid &&
+    teamIsValid &&
+    auditIsValid
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, any> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function isDate(value: unknown): value is string {
+  return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
+export function migrateOfflineState(value: unknown): OfflineState | null {
+  if (!isRecord(value) || ![1, 2].includes(value.schemaVersion)) return null;
+  const defaults = createEmptyOfflineState();
+  const store = value.store && isRecord(value.store)
+    ? { ...value.store, invoiceFormat: value.store.invoiceFormat ?? "wide" }
+    : value.store;
+  const products = Array.isArray(value.products)
+    ? value.products.map((product) => isRecord(product) ? {
+      ...product,
+      color: product.color ?? "",
+      size: product.size ?? "",
+      partNumber: product.partNumber ?? "",
+      expiresAt: product.expiresAt ?? null,
+    } : product)
+    : value.products;
+  const sales = Array.isArray(value.sales)
+    ? value.sales.map((sale) => isRecord(sale) ? {
+      ...sale,
+      customerPhone: sale.customerPhone ?? "",
+      transferSender: sale.transferSender ?? "",
+      discountAmount: sale.discountAmount ?? 0,
+      amountReceived: sale.amountReceived ?? sale.total ?? 0,
+      changeAmount: sale.changeAmount ?? 0,
+      cashierName: sale.cashierName ?? "صاحب المتجر",
+      exchangeOfInvoiceNumber: sale.exchangeOfInvoiceNumber ?? null,
+      items: Array.isArray(sale.items) ? sale.items.map((item) => isRecord(item) ? {
+        ...item,
+        unitCost: item.unitCost ?? 0,
+        returnedQuantity: item.returnedQuantity ?? 0,
+      } : item) : sale.items,
+    } : sale)
+    : value.sales;
+  const normalized = {
+    ...defaults,
+    ...value,
+    schemaVersion: 2,
+    store,
+    products,
+    sales,
+    heldSales: value.heldSales ?? defaults.heldSales,
+    returns: value.returns ?? defaults.returns,
+    exchanges: value.exchanges ?? defaults.exchanges,
+    teamMembers: value.teamMembers ?? defaults.teamMembers,
+    auditLogs: value.auditLogs ?? defaults.auditLogs,
+    backup: { ...defaults.backup, ...(isRecord(value.backup) ? value.backup : {}) },
+  };
+  return isOfflineState(normalized) ? normalized : null;
 }
