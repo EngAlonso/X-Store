@@ -439,3 +439,87 @@
   .of-print-invoice { border: 0 !important; padding: 15mm !important; }
   .of-table { min-width: 0 !important; }
 }
+
+/* Shared local POS, inventory and invoice controls */
+.of-pos-head-actions { display: flex; align-items: center; gap: 8px; }
+.of-pos-head-actions .of-button { min-height: 36px; padding-inline: 10px; font-size: 10px !important; }
+.of-held-count { min-width: 19px; height: 19px; display: inline-grid; place-items: center; border-radius: 20px; color: #31543a; background: #eaf2ec; font-size: 9px; }
+.of-sale-tabs { display: flex; gap: 3px; padding: 3px; flex: 0 0 auto; border: 1px solid #e0e8e1; border-radius: 8px; background: #f7f9f6; }
+.of-sale-tabs button { min-height: 30px; padding: 0 10px; border: 0; border-radius: 6px; color: #748177; background: transparent; font-size: 10px; }
+.of-sale-tabs button.chosen { color: #164126; background: #fff; box-shadow: 0 1px 4px #1c47220c; font-weight: 700; }
+.of-inventory-stats .of-stat-value { font-size: 18px; }
+.of-cart-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; padding: 0 0 10px; }
+.of-cart-fields .of-field { gap: 5px; }
+.of-cart-fields .of-field>span, .of-cart-panel>.of-field>span { color: #718075; font-size: 9px; }
+.of-cart-fields input, .of-cart-panel>.of-field input { width: 100%; min-width: 0; height: 36px; padding: 0 9px; border: 1px solid #dfe7df; border-radius: 7px; background: #fff; color: #34463a; font-size: 10px; }
+.of-invoice-reference { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin: 0 0 10px; padding: 8px 10px; border-radius: 7px; background: #f4f7f3; color: #839087; font-size: 9px; }
+.of-invoice-reference b { color: #395440; font: 700 10px "Segoe UI", Tahoma, sans-serif; }
+.of-discount-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 0; color: #748177; font-size: 10px; }
+.of-discount-row label { display: flex; align-items: center; gap: 5px; }
+.of-discount-row input { width: 100px; height: 33px; padding: 0 8px; text-align: left; border: 1px solid #dfe7df; border-radius: 7px; background: #fff; color: #33473a; font: 600 10px "Segoe UI", Tahoma, sans-serif; }
+.of-discount-row b { color: #829087; font-size: 9px; font-weight: 500; }
+.of-cash-change { display: flex; justify-content: space-between; padding: 8px 10px; margin-top: -4px; margin-bottom: 9px; border-radius: 7px; color: #47734f; background: #eff6ef; font-size: 10px; }
+.of-cash-change b { font: 700 11px "Segoe UI", Tahoma, sans-serif; }
+.of-cash-change.short { color: #9c5148; background: #fbefed; }
+.of-cart-actions { display: grid; grid-template-columns: minmax(90px, .75fr) minmax(0, 1.45fr); gap: 8px; margin-top: 11px; }
+.of-cart-actions .of-button { min-width: 0; }
+.of-sales-phone { display: block; margin-top: 3px; color: #94a096; font: 9px "Segoe UI", Tahoma, sans-serif; text-align: right; }
+.of-held-dialog { width: min(100%, 680px); }
+.of-held-list { display: grid; gap: 8px; max-height: min(65vh, 510px); overflow: auto; padding-top: 10px; }
+.of-held-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 13px; padding: 12px; border: 1px solid #e5ebe5; border-radius: 9px; background: #fff; }
+.of-held-item>div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.of-held-item>div>b { color: #395440; font: 700 11px "Segoe UI", Tahoma, sans-serif; }
+.of-held-item>div>small, .of-held-item time { color: #879389; font-size: 9px; }
+.of-held-item time { font-family: "Segoe UI", Tahoma, sans-serif; }
+.of-held-item>strong { color: #2e5138; font: 700 11px "Segoe UI", Tahoma, sans-serif; white-space: nowrap; }
+.of-held-item .of-button { min-height: 33px; padding-inline: 9px; font-size: 9px !important; }
+.of-inline-hint { margin: 10px 0 0; padding: 9px 11px; color: #836c2f; background: #fbf6e8; border: 1px solid #eee4c6; border-radius: 7px; font-size: 9px; line-height: 1.6; }
+.of-invoice-format-picker { min-width: 0; margin: 16px 0 0; padding: 13px; border: 1px solid #e5ebe5; border-radius: 9px; }
+.of-invoice-format-picker legend { padding: 0 5px; color: #46594a; font-size: 10px; font-weight: 700; }
+.of-invoice-format-picker>p { margin: 0 0 10px; color: #879389; font-size: 9px; }
+.of-invoice-format-picker>div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.of-invoice-format-picker button { min-height: 86px; display: flex; align-items: center; justify-content: center; gap: 5px; flex-direction: column; padding: 9px 6px; border: 1px solid #e3e9e3; border-radius: 8px; color: #647368; background: #fff; }
+.of-invoice-format-picker button.chosen { border-color: #6f9b79; color: #1f542e; background: #f1f7f1; box-shadow: 0 0 0 2px #e3f0e4; }
+.of-invoice-format-picker button b { font-size: 10px; }
+.of-invoice-format-picker button small { color: #96a097; font-size: 8px; }
+.of-invoice-dialog.of-invoice-thermal_80mm { width: min(100%, 420px); }
+.of-invoice-dialog.of-invoice-thermal_58mm { width: min(100%, 360px); }
+.of-invoice-thermal_80mm .of-print-invoice, .of-invoice-thermal_58mm .of-print-invoice { padding: 12px; }
+.of-invoice-thermal_58mm .of-invoice-meta { grid-template-columns: 1fr; gap: 8px; }
+.of-invoice-thermal_58mm .of-invoice-dialog .of-table { font-size: 8px; }
+.of-invoice-thermal_58mm .of-invoice-totals { width: 100%; }
+.of-invoice-actions .of-button { min-height: 34px; padding-inline: 9px; font-size: 9px !important; }
+
+@media (max-width: 780px) {
+  .of-nav { width: max-content; min-width: 100%; justify-content: flex-start; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .of-nav::-webkit-scrollbar { display: none; }
+  .of-nav-item { width: 72px; min-width: 72px; flex: 0 0 72px; }
+  .of-pos-head-actions { flex-wrap: wrap; justify-content: flex-start; }
+  .of-pos-head-actions .of-button { flex: 1; }
+}
+@media (max-width: 520px) {
+  .of-pos-head-actions { width: 100%; }
+  .of-pos-head-actions .of-button { flex: 1 1 45%; white-space: normal; }
+  .of-cart-fields { grid-template-columns: 1fr; }
+  .of-invoice-format-picker>div { grid-template-columns: 1fr; }
+  .of-invoice-format-picker button { min-height: 52px; display: grid; grid-template-columns: auto 1fr; justify-items: start; justify-content: start; text-align: right; }
+  .of-invoice-format-picker button svg { grid-row: span 2; }
+  .of-held-item { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .of-held-item>strong { grid-column: 2; grid-row: 1; }
+  .of-held-item .of-button { grid-column: 1 / -1; width: 100%; }
+  .of-invoice-actions>div:last-child { flex-wrap: wrap; justify-content: flex-start; }
+  .of-invoice-actions>div:last-child .of-button { white-space: normal; }
+}
+@media print {
+  @page { margin: 8mm; }
+  .of-invoice-dialog.of-invoice-thermal_80mm { width: 80mm !important; max-width: 80mm !important; margin: 0 !important; }
+  .of-invoice-dialog.of-invoice-thermal_58mm { width: 58mm !important; max-width: 58mm !important; margin: 0 !important; }
+  .of-invoice-dialog.of-invoice-thermal_80mm .of-print-invoice { width: 80mm !important; padding: 4mm !important; }
+  .of-invoice-dialog.of-invoice-thermal_58mm .of-print-invoice { width: 58mm !important; padding: 3mm !important; }
+  .of-invoice-thermal_80mm .of-invoice-meta, .of-invoice-thermal_58mm .of-invoice-meta { grid-template-columns: 1fr !important; gap: 5px !important; }
+  .of-invoice-thermal_80mm .of-table, .of-invoice-thermal_58mm .of-table { font-size: 7pt !important; }
+  .of-invoice-thermal_80mm .of-table th, .of-invoice-thermal_80mm .of-table td,
+  .of-invoice-thermal_58mm .of-table th, .of-invoice-thermal_58mm .of-table td { padding: 4px 2px !important; }
+  .of-invoice-thermal_80mm .of-invoice-brand, .of-invoice-thermal_58mm .of-invoice-brand { padding-bottom: 6px !important; }
+  .of-invoice-thermal_58mm .of-invoice-totals { width: 100% !important; }
+}

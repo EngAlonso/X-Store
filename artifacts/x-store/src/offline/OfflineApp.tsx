@@ -8,12 +8,19 @@ import {
   ArrowLeftRight, Smartphone, Banknote, X,
 } from "lucide-react";
 import {
-  addMonthsToDate, calculateSaleItemReturn, createEmptyOfflineState,
+  addMonthsToDate, createEmptyOfflineState,
   isLicenseActive, isOfflineState, migrateOfflineState, LICENSE_DURATIONS,
   OFFLINE_CURRENCIES, OFFLINE_STORE_TYPES,
-  type OfflineExchange, type OfflineHeldSale, type OfflineProduct,
-  type OfflineReturn, type OfflineSale, type OfflineState, type OfflineTeamMember,
+  type OfflineHeldSale, type OfflineProduct,
+  type OfflineSale, type OfflineState, type OfflineTeamMember,
 } from "./model";
+import {
+  OfflineAuditPage, OfflineReportsPage, OfflineReturnsPage, OfflineTeamPage,
+} from "./OfflineOperationsPages";
+import {
+  applyOfflineExchange, applyOfflineReturn, createAuditEntry,
+  type OfflineExchangeRequest, type OfflineReturnRequest,
+} from "./transactions";
 import {
   chooseOfflineBackupFolder, createManualOfflineBackup, isDesktopEdition,
   loadOfflineState, restoreOfflineBackup, saveOfflineState,
@@ -21,7 +28,6 @@ import {
 import "./offline.css";
 
 type Page = "dashboard" | "products" | "pos" | "sales" | "returns" | "team" | "reports" | "audit" | "backup" | "settings";
-type CartRow = { product: OfflineProduct; quantity: number };
 const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "الرئيسية", icon: LayoutDashboard },
   { id: "products", label: "المنتجات والمخزون", icon: Package },
@@ -39,6 +45,11 @@ const localDate = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+function createHeldInvoiceReference() {
+  const date = localDate().replaceAll("-", "");
+  return `XS-${date}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
 const digits = (value: number | string) => String(value).replace(/[٠-٩]/g, (n) => String("٠١٢٣٤٥٦٧٨٩".indexOf(n)));
 const money = (value: number, currency: string) => `${digits(new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value))} ${currency}`;
 const dateTime = (value: string) => new Date(value).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
@@ -153,24 +164,112 @@ export default function OfflineApp() {
   const title = navItems.find((item) => item.id === page)?.label ?? "الرئيسية";
 
   async function updateProduct(product: OfflineProduct, editingId?: string) {
-    const next = { ...currentState, products: editingId ? currentState.products.map((item) => item.id === editingId ? { ...product, id: editingId } : item) : [product, ...currentState.products] };
+    const conflict = currentState.products.find((item) =>
+      item.id !== editingId && ((product.sku && item.sku === product.sku) || (product.barcode && item.barcode === product.barcode)),
+    );
+    if (conflict) throw new Error("رمز المنتج أو الباركود مستخدم بالفعل.");
+    const audit = createAuditEntry(
+      editingId ? "تعديل منتج" : "إضافة منتج",
+      "منتج",
+      editingId ?? product.id,
+      `${product.name} · الكمية ${digits(product.quantity)}`,
+    );
+    const next = {
+      ...currentState,
+      products: editingId ? currentState.products.map((item) => item.id === editingId ? { ...product, id: editingId } : item) : [product, ...currentState.products],
+      auditLogs: [audit, ...currentState.auditLogs],
+    };
     await persist(next);
     setNotice(editingId ? "تم تحديث المنتج." : "تمت إضافة المنتج.");
   }
   async function removeProduct(id: string) {
     if (!window.confirm("هل تريد حذف هذا المنتج؟")) return;
-    await persist({ ...currentState, products: currentState.products.filter((product) => product.id !== id) });
+    if (currentState.sales.some((sale) => sale.items.some((item) => item.productId === id)) ||
+      currentState.heldSales.some((sale) => sale.items.some((item) => item.productId === id))) {
+      setSaveError("لا يمكن حذف منتج مرتبط بفاتورة سابقة. اجعل كميته صفرًا بدلًا من ذلك.");
+      return;
+    }
+    const product = currentState.products.find((item) => item.id === id);
+    await persist({
+      ...currentState,
+      products: currentState.products.filter((item) => item.id !== id),
+      auditLogs: [createAuditEntry("حذف منتج", "منتج", id, product?.name ?? id), ...currentState.auditLogs],
+    });
     setNotice("تم حذف المنتج.");
   }
   async function completeSale(sale: OfflineSale) {
     if (!active) throw new Error("انتهت مدة الترخيص المحلي. تواصل مع مورّد النظام لتجديده.");
+    for (const line of sale.items) {
+      const product = currentState.products.find((item) => item.id === line.productId);
+      if (!product || product.quantity < line.quantity) {
+        throw new Error(`الكمية المتاحة من ${line.name} لم تعد كافية لإتمام البيع.`);
+      }
+    }
     const nextProducts = currentState.products.map((product) => {
       const sold = sale.items.find((item) => item.productId === product.id);
-      return sold ? { ...product, quantity: Math.max(0, product.quantity - sold.quantity) } : product;
+      return sold ? { ...product, quantity: product.quantity - sold.quantity } : product;
     });
-    await persist({ ...currentState, products: nextProducts, sales: [sale, ...currentState.sales] });
+    await persist({
+      ...currentState,
+      products: nextProducts,
+      sales: [sale, ...currentState.sales],
+      auditLogs: [createAuditEntry("إتمام عملية بيع", "فاتورة بيع", sale.invoiceNumber, `${sale.items.reduce((sum, item) => sum + item.quantity, 0)} وحدة · ${money(sale.total, currency)}`), ...currentState.auditLogs],
+    });
     setNotice(`تم حفظ الفاتورة ${sale.invoiceNumber}.`);
-    setPage("sales");
+    setSaleDetail(sale);
+  }
+  async function holdSale(heldSale: OfflineHeldSale) {
+    await persist({
+      ...currentState,
+      heldSales: [heldSale, ...currentState.heldSales],
+      auditLogs: [createAuditEntry("تعليق فاتورة", "فاتورة معلقة", heldSale.reference, heldSale.customerName || "عميل نقدي"), ...currentState.auditLogs],
+    });
+    setNotice(`تم تعليق الفاتورة ${heldSale.reference}.`);
+  }
+  async function releaseHeldSale(id: string) {
+    const heldSale = currentState.heldSales.find((item) => item.id === id);
+    if (!heldSale) throw new Error("لم يتم العثور على الفاتورة المعلقة.");
+    await persist({
+      ...currentState,
+      heldSales: currentState.heldSales.filter((item) => item.id !== id),
+      auditLogs: [createAuditEntry("استعادة فاتورة معلقة", "فاتورة معلقة", heldSale.reference, "استُعيدت إلى شاشة نقطة البيع."), ...currentState.auditLogs],
+    });
+    return heldSale;
+  }
+  async function recordReturn(request: OfflineReturnRequest) {
+    const result = applyOfflineReturn(currentState, request);
+    await persist(result.state);
+    setNotice(`تم تسجيل المرتجع · ${money(result.refundAmount, currency)}.`);
+  }
+  async function recordExchange(request: OfflineExchangeRequest) {
+    const result = applyOfflineExchange(currentState, request);
+    await persist(result.state);
+    const settlement = result.exchange.changeAmount > 0
+      ? result.exchange.balanceDue > 0
+        ? `الباقي للعميل ${money(result.exchange.changeAmount, currency)}`
+        : `المبلغ المسترد للعميل ${money(result.exchange.changeAmount, currency)}`
+      : "";
+    setNotice([`تم الاستبدال · ${result.exchange.replacementInvoiceNumber}`, settlement].filter(Boolean).join(" · "));
+  }
+  async function saveTeamMember(member: OfflineTeamMember, editingId?: string) {
+    const nextMembers = editingId
+      ? currentState.teamMembers.map((item) => item.id === editingId ? { ...member, id: editingId } : item)
+      : [member, ...currentState.teamMembers];
+    await persist({
+      ...currentState,
+      teamMembers: nextMembers,
+      auditLogs: [createAuditEntry(editingId ? "تعديل عضو فريق" : "إضافة عضو فريق", "عضو فريق", editingId ?? member.id, `${member.name} · ${member.roleName}`), ...currentState.auditLogs],
+    });
+    setNotice(editingId ? "تم تحديث بيانات عضو الفريق." : "تمت إضافة عضو للفريق.");
+  }
+  async function removeTeamMember(id: string) {
+    const member = currentState.teamMembers.find((item) => item.id === id);
+    await persist({
+      ...currentState,
+      teamMembers: currentState.teamMembers.filter((item) => item.id !== id),
+      auditLogs: [createAuditEntry("إزالة عضو فريق", "عضو فريق", id, member?.name ?? id), ...currentState.auditLogs],
+    });
+    setNotice("تمت إزالة العضو من الفريق.");
   }
   async function chooseFolder() {
     try {
@@ -198,7 +297,11 @@ export default function OfflineApp() {
   }
   async function updateSettings(store: OfflineState["store"]) {
     if (!store) return;
-    await persist({ ...currentState, store });
+    await persist({
+      ...currentState,
+      store,
+      auditLogs: [createAuditEntry("تحديث إعدادات المتجر", "إعدادات", store.name, "تحديث بيانات النشاط والضريبة والفواتير."), ...currentState.auditLogs],
+    });
     setNotice("تم حفظ إعدادات المتجر.");
   }
   return <div className="of-app" dir="rtl">
@@ -214,8 +317,12 @@ export default function OfflineApp() {
       <main className="of-content">
         {page === "dashboard" && <Dashboard state={state} todaySales={todaySales} todayRevenue={todayRevenue} lowStock={lowStock} currency={currency} onNavigate={setPage} onSale={setSaleDetail} />}
         {page === "products" && <ProductsPage state={state} currency={currency} onSave={updateProduct} onRemove={removeProduct} />}
-        {page === "pos" && <PosPage state={state} licenseActive={active} onComplete={completeSale} />}
+        {page === "pos" && <PosPage state={state} licenseActive={active} onComplete={completeSale} onHold={holdSale} onRelease={releaseHeldSale} onReturns={() => setPage("returns")} />}
         {page === "sales" && <SalesPage state={state} currency={currency} onSelect={setSaleDetail} />}
+        {page === "returns" && <OfflineReturnsPage state={state} currency={currency} onReturn={recordReturn} onExchange={recordExchange} />}
+        {page === "team" && <OfflineTeamPage state={state} onSave={saveTeamMember} onRemove={removeTeamMember} />}
+        {page === "reports" && <OfflineReportsPage state={state} currency={currency} />}
+        {page === "audit" && <OfflineAuditPage state={state} />}
         {page === "backup" && <BackupPage state={state} desktop={desktop} onChooseFolder={chooseFolder} onBackup={manualBackup} onRestore={() => fileInput.current?.click()} />}
         {page === "settings" && <SettingsPage state={state} onSave={updateSettings} />}
       </main>
@@ -269,13 +376,33 @@ function EmptyState({ icon: Icon, title, copy, action }: { icon: typeof Receipt;
 
 function ProductsPage({ state, currency, onSave, onRemove }: { state: OfflineState; currency: string; onSave: (product: OfflineProduct, id?: string) => Promise<void>; onRemove: (id: string) => Promise<void> }) {
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("__all__");
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
   const [modal, setModal] = useState<OfflineProduct | "new" | null>(null);
-  const products = state.products.filter((p) => `${p.name} ${p.sku} ${p.barcode} ${p.category}`.toLowerCase().includes(query.toLowerCase()));
+  const categories = [...new Set(state.products.map((product) => product.category).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "ar"));
+  const lowStockCount = state.products.filter((product) => product.quantity > 0 && product.quantity <= 5).length;
+  const outOfStockCount = state.products.filter((product) => product.quantity <= 0).length;
+  const inventoryValue = state.products.reduce((sum, product) => sum + (product.price ?? 0) * product.quantity, 0);
+  const products = state.products.filter((product) => {
+    const matchesQuery = `${product.name} ${product.sku} ${product.barcode} ${product.category}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
+    const matchesCategory = categoryFilter === "__all__" || product.category === categoryFilter;
+    const matchesStock = stockFilter === "all" ||
+      (stockFilter === "low" && product.quantity > 0 && product.quantity <= 5) ||
+      (stockFilter === "out" && product.quantity <= 0);
+    return matchesQuery && matchesCategory && matchesStock;
+  });
   return <section className="of-page">
     <PageHeading kicker="إدارة المخزون" title="المنتجات" description="أضف المنتجات وتابع الكميات والأسعار المتاحة." action={<button className="of-button of-button-primary" onClick={() => setModal("new")}><Plus size={16} /> إضافة منتج</button>} />
-    <div className="of-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث بالاسم أو الرمز أو التصنيف..." /><kbd>بحث</kbd></label><span className="of-result-count">{digits(products.length)} منتج</span></div>
-    <section className="of-panel of-inventory-panel">{products.length ? <div className="of-table-scroll"><table className="of-table of-product-table"><thead><tr><th>المنتج</th><th>التصنيف</th><th>سعر البيع</th><th>سعر التكلفة</th><th>الكمية</th><th>الرمز</th><th /></tr></thead><tbody>{products.map((product) => <tr key={product.id}><td><b className="of-product-title">{product.name}</b><small>{product.barcode || "—"}</small></td><td>{product.category || "—"}</td><td className="of-number">{money(product.price, currency)}</td><td className="of-number">{money(product.costPrice, currency)}</td><td><span className={`of-quantity ${product.quantity <= 5 ? "low" : ""}`}>{digits(product.quantity)}</span></td><td className="of-code">{product.sku || "—"}</td><td><div className="of-row-actions"><button title="تعديل المنتج" onClick={() => setModal(product)}><Settings size={15} /></button><button title="حذف المنتج" onClick={() => void onRemove(product.id)}><Trash2 size={15} /></button></div></td></tr>)}</tbody></table></div> : <EmptyState icon={Package} title={query ? "لا توجد نتائج" : "قائمة المنتجات فارغة"} copy={query ? "جرّب البحث باسم أو رمز مختلف." : "أضف منتجات متجرك لتبدأ متابعة المخزون وإتمام المبيعات."} action={!query ? <button className="of-button of-button-primary" onClick={() => setModal("new")}><Plus size={16} /> إضافة أول منتج</button> : undefined} />}</section>
-    {modal && <ProductDialog initial={modal === "new" ? null : modal} wholesale={state.store?.wholesaleEnabled ?? false} currency={currency} onClose={() => setModal(null)} onSave={async (p) => { await onSave(p, modal === "new" ? undefined : modal.id); setModal(null); }} />}
+    <div className="of-stats-grid of-inventory-stats">
+      <StatCard label="إجمالي المنتجات" value={digits(state.products.length)} caption="منتجات مسجلة في المتجر" icon={Package} tone="blue" />
+      <StatCard label="قريب من النفاد" value={digits(lowStockCount)} caption="رصيد من 1 إلى 5 وحدات" icon={Activity} tone="gold" />
+      <StatCard label="قيمة المخزون" value={money(inventoryValue, currency)} caption="محسوبة بسعر البيع" icon={BarChart3} tone="green" />
+      <StatCard label="التصنيفات" value={digits(categories.length)} caption={`${digits(outOfStockCount)} منتج نفد` } icon={Archive} tone="red" />
+    </div>
+    <div className="of-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث بالعربي أو English أو بالكود والباركود..." /><kbd>بحث</kbd></label><select aria-label="التصنيف" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="__all__">كل التصنيفات</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select><select aria-label="حالة المخزون" value={stockFilter} onChange={(event) => setStockFilter(event.target.value as typeof stockFilter)}><option value="all">كل الكميات</option><option value="low">قريب من النفاد</option><option value="out">نفد المخزون</option></select><span className="of-result-count">{digits(products.length)} من {digits(state.products.length)} منتج</span></div>
+    <section className="of-panel of-inventory-panel">{products.length ? <div className="of-table-scroll"><table className="of-table of-product-table"><thead><tr><th>المنتج</th><th>التصنيف</th><th>سعر القطاعي</th>{OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale && <th>سعر الجملة</th>}<th>سعر التكلفة</th><th>الكمية</th><th>الرمز</th><th /></tr></thead><tbody>{products.map((product) => <tr key={product.id}><td><b className="of-product-title">{product.name}</b><small>{product.barcode || "—"}</small></td><td>{product.category || "—"}</td><td className="of-number">{product.price === null ? "—" : money(product.price, currency)}</td>{OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale && <td className="of-number">{product.wholesalePrice === null ? "—" : money(product.wholesalePrice, currency)}</td>}<td className="of-number">{money(product.costPrice, currency)}</td><td><span className={`of-quantity ${product.quantity <= 5 ? "low" : ""}`}>{digits(product.quantity)}</span></td><td className="of-code">{product.sku || "—"}</td><td><div className="of-row-actions"><button title="تعديل المنتج" onClick={() => setModal(product)}><Settings size={15} /></button><button title="حذف المنتج" onClick={() => void onRemove(product.id)}><Trash2 size={15} /></button></div></td></tr>)}</tbody></table></div> : <EmptyState icon={Package} title={query || categoryFilter !== "__all__" || stockFilter !== "all" ? "لا توجد نتائج" : "قائمة المنتجات فارغة"} copy={query || categoryFilter !== "__all__" || stockFilter !== "all" ? "عدّل البحث أو فلاتر المخزون والتصنيف." : "أضف منتجات متجرك لتبدأ متابعة المخزون وإتمام المبيعات."} action={!query && categoryFilter === "__all__" && stockFilter === "all" ? <button className="of-button of-button-primary" onClick={() => setModal("new")}><Plus size={16} /> إضافة أول منتج</button> : undefined} />}</section>
+    {modal && <ProductDialog initial={modal === "new" ? null : modal} wholesale={OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale ?? false} currency={currency} onClose={() => setModal(null)} onSave={async (p) => { await onSave(p, modal === "new" ? undefined : modal.id); setModal(null); }} />}
   </section>;
 }
 
@@ -296,9 +423,11 @@ function ProductDialog({ initial, wholesale, currency, onClose, onSave }: { init
   const [error, setError] = useState("");
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || Number(price) < 0 || !Number.isFinite(Number(price)) || !Number.isFinite(Number(cost)) || Number(cost) < 0 || !Number.isInteger(Number(quantity)) || Number(quantity) < 0 || (wholesalePrice !== "" && (!Number.isFinite(Number(wholesalePrice)) || Number(wholesalePrice) < 0))) { setError("تحقق من اسم المنتج والأسعار والكمية."); return; }
+    const retailPrice = price.trim() === "" ? null : Number(price);
+    const bulkPrice = wholesale && wholesalePrice.trim() !== "" ? Number(wholesalePrice) : null;
+    if (!name.trim() || (retailPrice === null && bulkPrice === null) || (retailPrice !== null && (!Number.isFinite(retailPrice) || retailPrice < 0)) || !Number.isFinite(Number(cost)) || Number(cost) < 0 || !Number.isInteger(Number(quantity)) || Number(quantity) < 0 || (bulkPrice !== null && (!Number.isFinite(bulkPrice) || bulkPrice < 0))) { setError("أدخل سعرًا قطاعيًا أو سعر جملة واحدًا على الأقل، وتحقق من الكمية والتكلفة."); return; }
     setSaving(true); setError("");
-    try { await onSave({ id: initial?.id ?? makeId(), name: name.trim(), sku: sku.trim(), barcode: barcode.trim(), category: category.trim(), costPrice: Number(cost) || 0, price: Number(price), wholesalePrice: wholesale && wholesalePrice !== "" ? Number(wholesalePrice) : null, quantity: Number(quantity) || 0, color: color.trim(), size: size.trim(), partNumber: partNumber.trim(), expiresAt: expiresAt || null, createdAt: initial?.createdAt ?? new Date().toISOString() }); }
+    try { await onSave({ id: initial?.id ?? makeId(), name: name.trim(), sku: sku.trim(), barcode: barcode.trim(), category: category.trim(), costPrice: Number(cost) || 0, price: retailPrice, wholesalePrice: bulkPrice, quantity: Number(quantity) || 0, color: color.trim(), size: size.trim(), partNumber: partNumber.trim(), expiresAt: expiresAt || null, createdAt: initial?.createdAt ?? new Date().toISOString() }); }
     catch (err) { setError(err instanceof Error ? err.message : "تعذر حفظ المنتج."); } finally { setSaving(false); }
   }
   return <div className="of-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><section className="of-dialog" role="dialog" aria-modal="true" aria-labelledby="product-dialog-title"><header className="of-dialog-head"><div><span className="of-kicker">بيانات المخزون</span><h2 id="product-dialog-title">{initial ? "تعديل المنتج" : "إضافة منتج جديد"}</h2></div><button onClick={onClose} aria-label="إغلاق"><X size={18} /></button></header><form onSubmit={submit}><div className="of-form-grid">
@@ -306,50 +435,221 @@ function ProductDialog({ initial, wholesale, currency, onClose, onSave }: { init
     <Field label="رمز المنتج (SKU)"><input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="اختياري" /></Field><Field label="الباركود"><input value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="اختياري" /></Field>
     <Field label="اللون"><input value={color} onChange={(e) => setColor(e.target.value)} placeholder="اختياري" /></Field><Field label="المقاس"><input value={size} onChange={(e) => setSize(e.target.value)} placeholder="اختياري" /></Field>
     <Field label="رقم القطعة"><input value={partNumber} onChange={(e) => setPartNumber(e.target.value)} placeholder="اختياري" /></Field><Field label="تاريخ انتهاء الصلاحية"><input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} /></Field>
-    <Field label={`سعر البيع (${currency})`}><input required type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} /></Field><Field label={`سعر التكلفة (${currency})`}><input type="number" min="0" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
-    {wholesale && <Field label={`سعر الجملة (${currency})`}><input type="number" min="0" step="0.01" value={wholesalePrice} onChange={(e) => setWholesalePrice(e.target.value)} placeholder="اختياري" /></Field>}<Field label="الكمية المتاحة"><input required type="number" min="0" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></Field>
+     <Field label={`سعر القطاعي (${currency})`} hint="يمكن تركه فارغًا إذا كان المنتج يباع بالجملة فقط."><input type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} /></Field><Field label={`سعر التكلفة (${currency})`}><input type="number" min="0" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
+     {wholesale && <Field label={`سعر الجملة (${currency})`} hint="يمكن تركه فارغًا إذا لم يكن للمنتج سعر جملة."><input type="number" min="0" step="0.01" value={wholesalePrice} onChange={(e) => setWholesalePrice(e.target.value)} placeholder="اختياري" /></Field>}<Field label="الكمية المتاحة"><input required type="number" min="0" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></Field>
     </div>{error && <div className="of-error"><CircleAlert size={15} />{error}</div>}<div className="of-dialog-actions"><button type="button" className="of-button of-button-secondary" onClick={onClose}>إلغاء</button><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ المنتج"}</button></div></form></section></div>;
 }
 
-function PosPage({ state, licenseActive, onComplete }: { state: OfflineState; licenseActive: boolean; onComplete: (sale: OfflineSale) => Promise<void> }) {
+function PosPage({ state, licenseActive, onComplete, onHold, onRelease, onReturns }: {
+  state: OfflineState;
+  licenseActive: boolean;
+  onComplete: (sale: OfflineSale) => Promise<void>;
+  onHold: (sale: OfflineHeldSale) => Promise<void>;
+  onRelease: (id: string) => Promise<OfflineHeldSale>;
+  onReturns: () => void;
+}) {
   const [query, setQuery] = useState("");
-  const [cart, setCart] = useState<CartRow[]>([]);
-  const [customer, setCustomer] = useState("");
-  const [payment, setPayment] = useState<"cash" | "card" | "transfer">("cash");
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [payment, setPayment] = useState<OfflineSale["paymentMethod"]>("cash");
   const [saleType, setSaleType] = useState<"retail" | "wholesale">("retail");
+  const [discount, setDiscount] = useState("0");
+  const [received, setReceived] = useState("");
+  const [transferSender, setTransferSender] = useState("");
+  const [invoiceReference, setInvoiceReference] = useState(createHeldInvoiceReference);
+  const [heldOpen, setHeldOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const items = state.products.filter((p) => p.quantity > 0 && `${p.name} ${p.sku} ${p.barcode}`.toLowerCase().includes(query.toLowerCase()));
-  const subtotal = cart.reduce((sum, row) => sum + (saleType === "wholesale" && row.product.wholesalePrice !== null ? row.product.wholesalePrice : row.product.price) * row.quantity, 0);
-  const tax = subtotal * ((state.store?.vatRate ?? 0) / 100);
-  const total = subtotal + tax;
+  const currency = state.store?.currency ?? "EGP";
+  const wholesaleEnabled = state.store?.wholesaleEnabled ?? false;
+  const priceFor = (product: OfflineProduct) => saleType === "wholesale" ? product.wholesalePrice : product.price;
+  const visibleProducts = state.products.filter((product) =>
+    product.quantity > 0 && priceFor(product) !== null &&
+    `${product.name} ${product.sku} ${product.barcode} ${product.category}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()),
+  );
+  const cartLines = Object.entries(cart).flatMap(([productId, quantity]) => {
+    const product = state.products.find((item) => item.id === productId);
+    const price = product ? priceFor(product) : null;
+    return product && price !== null && quantity > 0 ? [{ product, quantity, price }] : [];
+  });
+  const subtotal = roundMoney(cartLines.reduce((sum, row) => sum + row.price * row.quantity, 0));
+  const discountAmount = Math.min(subtotal, roundMoney(Math.max(0, Number(discount) || 0)));
+  const taxableSubtotal = Math.max(0, subtotal - discountAmount);
+  const tax = roundMoney(taxableSubtotal * ((state.store?.vatRate ?? 0) / 100));
+  const total = roundMoney(taxableSubtotal + tax);
+  const cashAmount = Number(received);
+  const cashAmountInvalid = payment === "cash" && (!received.trim() || !Number.isFinite(cashAmount) || roundMoney(cashAmount) < total);
+  const transferSenderInvalid = (payment === "wallet" || payment === "instapay" || payment === "transfer") && !transferSender.trim();
+
+  function resetSale() {
+    setCart({});
+    setCustomerName("");
+    setCustomerPhone("");
+    setDiscount("0");
+    setReceived("");
+    setTransferSender("");
+    setPayment("cash");
+    setInvoiceReference(createHeldInvoiceReference());
+  }
   function add(product: OfflineProduct) {
-    setCart((prev) => { const existing = prev.find((row) => row.product.id === product.id); if (existing) return prev.map((row) => row.product.id === product.id ? { ...row, quantity: Math.min(product.quantity, row.quantity + 1) } : row); return [...prev, { product, quantity: 1 }]; });
+    setError("");
+    setCart((current) => ({ ...current, [product.id]: Math.min(product.quantity, (current[product.id] ?? 0) + 1) }));
   }
   function setQuantity(id: string, quantity: number) {
-    if (quantity <= 0) setCart((prev) => prev.filter((row) => row.product.id !== id));
-    else setCart((prev) => prev.map((row) => row.product.id === id ? { ...row, quantity: Math.min(row.product.quantity, quantity) } : row));
+    setCart((current) => {
+      if (quantity <= 0) {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      }
+      const product = state.products.find((item) => item.id === id);
+      return { ...current, [id]: Math.min(product?.quantity ?? 0, Math.floor(quantity)) };
+    });
+  }
+  function switchSaleType(next: "retail" | "wholesale") {
+    if (next === saleType || (next === "wholesale" && !wholesaleEnabled)) return;
+    if (cartLines.length && !window.confirm("سيتم تفريغ الطلب الحالي قبل تغيير قسم البيع. هل تريد المتابعة؟")) return;
+    resetSale();
+    setSaleType(next);
   }
   async function checkout() {
-    if (!cart.length) return;
-    if (!licenseActive) { setError("انتهت مدة الترخيص المحلي. تواصل مع مورّد النظام لتجديده."); return; }
-    setBusy(true); setError("");
+    if (!cartLines.length || !licenseActive || cashAmountInvalid || transferSenderInvalid) return;
+    setBusy(true);
+    setError("");
     const createdAt = new Date().toISOString();
-    const sale: OfflineSale = { id: makeId(), invoiceNumber: `XS-${createdAt.slice(2, 10).replace(/-/g, "")}-${digits(String(state.sales.length + 1).padStart(3, "0"))}`, createdAt, customerName: customer.trim(), paymentMethod: payment, saleType, items: cart.map(({ product, quantity }) => ({ productId: product.id, name: product.name, sku: product.sku, quantity, unitPrice: saleType === "wholesale" && product.wholesalePrice !== null ? product.wholesalePrice : product.price, lineTotal: quantity * (saleType === "wholesale" && product.wholesalePrice !== null ? product.wholesalePrice : product.price) })), subtotal, taxAmount: tax, total };
-    try { await onComplete(sale); setCart([]); setCustomer(""); }
-    catch (e) { setError(e instanceof Error ? e.message : "تعذر حفظ الفاتورة."); } finally { setBusy(false); }
+    const sale: OfflineSale = {
+      id: makeId(),
+      invoiceNumber: invoiceReference,
+      createdAt,
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      paymentMethod: payment,
+      saleType,
+      transferSender: payment === "wallet" || payment === "instapay" || payment === "transfer" ? transferSender.trim() : "",
+      items: cartLines.map(({ product, quantity, price }) => ({
+        productId: product.id,
+        name: product.name,
+        sku: product.sku,
+        quantity,
+        unitPrice: price,
+        unitCost: product.costPrice,
+        lineTotal: roundMoney(quantity * price),
+        returnedQuantity: 0,
+      })),
+      subtotal,
+      discountAmount,
+      taxAmount: tax,
+      total,
+      amountReceived: payment === "cash" ? roundMoney(cashAmount) : total,
+      changeAmount: payment === "cash" ? roundMoney(Math.max(0, cashAmount - total)) : 0,
+      cashierName: "صاحب المتجر",
+      exchangeOfInvoiceNumber: null,
+    };
+    try {
+      await onComplete(sale);
+      resetSale();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر حفظ الفاتورة.");
+    } finally {
+      setBusy(false);
+    }
   }
+  async function parkSale() {
+    if (!cartLines.length || transferSenderInvalid) return;
+    setBusy(true);
+    setError("");
+    const createdAt = new Date().toISOString();
+    const heldSale: OfflineHeldSale = {
+      id: makeId(),
+      reference: invoiceReference,
+      createdAt,
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      paymentMethod: payment,
+      saleType,
+      transferSender: transferSender.trim(),
+      items: cartLines.map(({ product, quantity, price }) => ({
+        productId: product.id,
+        name: product.name,
+        sku: product.sku,
+        quantity,
+        unitPrice: price,
+        unitCost: product.costPrice,
+      })),
+      subtotal,
+      discountAmount,
+      taxAmount: tax,
+      estimatedTotal: total,
+      amountReceived: roundMoney(Math.max(0, Number(received) || 0)),
+    };
+    try {
+      await onHold(heldSale);
+      resetSale();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر تعليق الفاتورة.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function restoreHeld(heldSale: OfflineHeldSale) {
+    if (cartLines.length) return;
+    setBusy(true);
+    setError("");
+    try {
+      const restored = await onRelease(heldSale.id);
+      setCart(Object.fromEntries(restored.items.map((item) => [item.productId, item.quantity])));
+      setCustomerName(restored.customerName);
+      setCustomerPhone(restored.customerPhone);
+      setSaleType(restored.saleType);
+      setDiscount(String(restored.discountAmount));
+      setReceived(restored.amountReceived ? String(restored.amountReceived) : "");
+      setTransferSender(restored.transferSender);
+      setPayment(restored.paymentMethod);
+      setInvoiceReference(restored.reference);
+      setHeldOpen(false);
+      setError("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر استعادة الفاتورة المعلقة.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return <section className="of-page">
-    <PageHeading kicker="نقطة البيع" title="عملية بيع جديدة" description="اختر المنتجات، راجع الفاتورة، ثم أكمل عملية البيع." action={<span className="of-pos-safe"><LockKeyhole size={14} /> حفظ محلي مباشر</span>} />
-    <div className="of-pos-layout"><section className="of-panel of-pos-products"><div className="of-pos-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث عن منتج أو امسح الباركود..." /></label>{state.store?.wholesaleEnabled && <select aria-label="نوع البيع" value={saleType} onChange={(e) => setSaleType(e.target.value as typeof saleType)}><option value="retail">بيع تجزئة</option><option value="wholesale">بيع جملة</option></select>}</div>
-      {items.length ? <div className="of-pos-grid">{items.map((product) => <button key={product.id} className="of-pos-product" onClick={() => add(product)}><span className="of-pos-product-icon"><Package size={19} /></span><b>{product.name}</b><small>{product.sku || product.category || "منتج"}</small><strong>{money(saleType === "wholesale" && product.wholesalePrice !== null ? product.wholesalePrice : product.price, state.store?.currency ?? "EGP")}</strong><i>متاح {digits(product.quantity)}</i><span className="of-pos-add"><Plus size={15} /></span></button>)}</div> : <EmptyState icon={Package} title={query ? "لا توجد منتجات مطابقة" : "لا توجد منتجات جاهزة للبيع"} copy={query ? "تحقق من كتابة الاسم أو الرمز." : "أضف منتجاتك من صفحة المخزون لتظهر هنا."} />}
-    </section><aside className="of-panel of-cart-panel"><header className="of-cart-head"><div><h2>الفاتورة الحالية</h2><p>{digits(cart.reduce((n, row) => n + row.quantity, 0))} قطعة</p></div><button className="of-clear-cart" onClick={() => setCart([])} disabled={!cart.length}>تفريغ</button></header>
-      <label className="of-cart-customer"><span>اسم العميل <small>اختياري</small></span><input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="عميل نقدي" /></label>
-      <div className="of-cart-lines">{cart.length ? cart.map(({ product, quantity }) => <div className="of-cart-line" key={product.id}><div className="of-cart-line-name"><b>{product.name}</b><small>{money(saleType === "wholesale" && product.wholesalePrice !== null ? product.wholesalePrice : product.price, state.store?.currency ?? "EGP")}</small></div><div className="of-stepper"><button onClick={() => setQuantity(product.id, quantity - 1)} aria-label="تقليل الكمية">−</button><span>{digits(quantity)}</span><button onClick={() => setQuantity(product.id, quantity + 1)} aria-label="زيادة الكمية" disabled={quantity >= product.quantity}>+</button></div><b className="of-line-total">{money(quantity * (saleType === "wholesale" && product.wholesalePrice !== null ? product.wholesalePrice : product.price), state.store?.currency ?? "EGP")}</b></div>) : <div className="of-cart-empty"><ShoppingCart size={22} /><span>لم تتم إضافة منتجات</span><small>اختر منتجًا من القائمة للبدء</small></div>}</div>
-      <label className="of-payment-label">طريقة الدفع</label><div className="of-payment-options">{([{ id: "cash", title: "نقدي", icon: Wallet }, { id: "card", title: "بطاقة", icon: CreditCard }, { id: "transfer", title: "تحويل", icon: ArrowUpRight }] as const).map(({ id, title, icon: Icon }) => <button key={id} className={payment === id ? "chosen" : ""} onClick={() => setPayment(id)}><Icon size={15} />{title}</button>)}</div>
-      <div className="of-totals"><div><span>الإجمالي قبل الضريبة</span><b>{money(subtotal, state.store?.currency ?? "EGP")}</b></div><div><span>الضريبة ({digits(state.store?.vatRate ?? 0)}%)</span><b>{money(tax, state.store?.currency ?? "EGP")}</b></div><div className="of-grand-total"><span>الإجمالي</span><b>{money(total, state.store?.currency ?? "EGP")}</b></div></div>
-       {!licenseActive && <div className="of-error"><CircleAlert size={15} />انتهت مدة الترخيص؛ لا يمكن تسجيل مبيعات جديدة.</div>}{error && <div className="of-error"><CircleAlert size={15} />{error}</div>}<button className="of-button of-button-primary of-checkout" disabled={!cart.length || busy || !licenseActive} onClick={() => void checkout()}><Receipt size={17} />{busy ? "جارٍ إتمام البيع..." : "إتمام البيع"}</button>
-    </aside></div>
+    <PageHeading kicker="نقطة البيع" title="صندوق البيع" description="ابحث عن المنتجات، أضف الخصم، واختر طريقة الدفع." action={<div className="of-pos-head-actions"><button className="of-button of-button-secondary" onClick={onReturns}><ArrowLeftRight size={15} /> مرتجع أو استبدال</button><button className="of-button of-button-secondary" onClick={() => setHeldOpen(true)}><Pause size={15} /> الفواتير المعلقة <b className="of-held-count">{digits(state.heldSales.length)}</b></button></div>} />
+    <div className="of-pos-layout"><section className="of-panel of-pos-products">
+      <div className="of-pos-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث باسم المنتج أو الكود أو امسح الباركود..." /></label>
+        {wholesaleEnabled && <div className="of-sale-tabs" role="group" aria-label="نوع البيع"><button className={saleType === "retail" ? "chosen" : ""} onClick={() => switchSaleType("retail")}>القطاعي</button><button className={saleType === "wholesale" ? "chosen" : ""} onClick={() => switchSaleType("wholesale")}>الجملة</button></div>}
+      </div>
+      {visibleProducts.length ? <div className="of-pos-grid">{visibleProducts.map((product) => <button key={product.id} className="of-pos-product" onClick={() => add(product)}><span className="of-pos-product-icon"><Package size={19} /></span><b>{product.name}</b><small>{product.sku || product.category || "منتج"}</small><strong>{money(priceFor(product) ?? 0, currency)}</strong><i>متاح {digits(product.quantity)}</i><span className="of-pos-add"><Plus size={15} /></span></button>)}</div> : <EmptyState icon={Package} title={query ? "لا توجد منتجات مطابقة" : "لا توجد منتجات جاهزة للبيع"} copy={query ? "جرّب البحث باسم المنتج أو رمزه." : saleType === "wholesale" ? "لا توجد منتجات متاحة بسعر الجملة. أضف أسعار الجملة من المخزون." : "أضف منتجات بسعر قطاعي إلى المخزون لتظهر هنا."} />}
+    </section>
+      <aside className="of-panel of-cart-panel"><header className="of-cart-head"><div><h2>الطلب الحالي</h2><p>{digits(cartLines.reduce((sum, row) => sum + row.quantity, 0))} وحدة · {saleType === "retail" ? "قطاعي" : "جملة"}</p></div><button className="of-clear-cart" onClick={resetSale} disabled={!cartLines.length}>تفريغ</button></header>
+        <div className="of-invoice-reference"><span>رقم الفاتورة</span><b dir="ltr">{invoiceReference}</b></div>
+        <div className="of-cart-lines">{cartLines.length ? cartLines.map(({ product, quantity, price }) => <div className="of-cart-line" key={product.id}><div className="of-cart-line-name"><b>{product.name}</b><small>{money(price, currency)}</small></div><div className="of-stepper"><button onClick={() => setQuantity(product.id, quantity - 1)} aria-label="تقليل الكمية">−</button><span>{digits(quantity)}</span><button onClick={() => setQuantity(product.id, quantity + 1)} aria-label="زيادة الكمية" disabled={quantity >= product.quantity}>+</button></div><b className="of-line-total">{money(quantity * price, currency)}</b></div>) : <div className="of-cart-empty"><ShoppingCart size={22} /><span>السلة فارغة</span><small>اختر منتجًا من القائمة للبدء</small></div>}</div>
+        <div className="of-cart-fields">
+          <Field label="اسم العميل · اختياري"><input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="عميل نقدي" maxLength={150} /></Field>
+          <Field label="رقم هاتف العميل · اختياري"><input type="tel" dir="ltr" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="+20 10 1234 5678" maxLength={40} /></Field>
+        </div>
+        <div className="of-discount-row"><span>الخصم</span><label><input aria-label="قيمة الخصم" type="number" min="0" max={subtotal} step="0.01" value={discount} onChange={(event) => setDiscount(event.target.value)} disabled={!cartLines.length} /><b>{currency}</b></label></div>
+        <label className="of-payment-label">طريقة الدفع</label><div className="of-payment-options">{([{ id: "cash", title: "نقدي", icon: Wallet }, { id: "card", title: "بطاقة", icon: CreditCard }, { id: "wallet", title: "محفظة", icon: Smartphone }, { id: "instapay", title: "إنستا باي", icon: ArrowUpRight }, { id: "transfer", title: "تحويل", icon: ArrowUpRight }] as const).map(({ id, title, icon: Icon }) => <button key={id} className={payment === id ? "chosen" : ""} onClick={() => setPayment(id)}><Icon size={15} />{title}</button>)}</div>
+        {payment === "cash" && <Field label="المبلغ النقدي المستلم · إلزامي"><input type="number" min={total} step="0.01" value={received} onChange={(event) => setReceived(event.target.value)} placeholder={String(total)} /></Field>}
+        {(payment === "wallet" || payment === "instapay" || payment === "transfer") && <Field label="رقم أو حساب المرسل · إلزامي"><input dir="ltr" maxLength={80} value={transferSender} onChange={(event) => setTransferSender(event.target.value)} placeholder={payment === "instapay" ? "رقم الهاتف أو عنوان InstaPay" : payment === "transfer" ? "رقم الحساب أو مرجع التحويل" : "رقم المحفظة المحوِّل منها"} /></Field>}
+        <div className="of-totals"><div><span>المجموع الفرعي</span><b>{money(subtotal, currency)}</b></div><div><span>الخصم</span><b>− {money(discountAmount, currency)}</b></div><div><span>ضريبة القيمة المضافة · {digits(state.store?.vatRate ?? 0)}%</span><b>{money(tax, currency)}</b></div><div className="of-grand-total"><span>الإجمالي</span><b>{money(total, currency)}</b></div></div>
+          {payment === "cash" && received.trim() && Number.isFinite(cashAmount) && <div className={`of-cash-change ${cashAmount >= total ? "" : "short"}`}><span>{cashAmount >= total ? "الباقي للعميل" : "المتبقي"}</span><b>{money(Math.abs(cashAmount - total), currency)}</b></div>}
+        {!licenseActive && <div className="of-error"><CircleAlert size={15} />انتهت مدة الترخيص؛ لا يمكن تسجيل مبيعات جديدة.</div>}
+        {transferSenderInvalid && <div className="of-error"><CircleAlert size={15} />اكتب رقم أو حساب المرسل لاستكمال بيانات التحويل.</div>}
+        {cashAmountInvalid && received.trim() && <div className="of-error"><CircleAlert size={15} />يجب أن يغطي المبلغ النقدي إجمالي الفاتورة.</div>}
+        {error && <div className="of-error"><CircleAlert size={15} />{error}</div>}
+        <div className="of-cart-actions"><button className="of-button of-button-secondary" disabled={!cartLines.length || busy || transferSenderInvalid} onClick={() => void parkSale()}><Pause size={15} /> تعليق</button><button className="of-button of-button-primary of-checkout" disabled={!cartLines.length || busy || !licenseActive || cashAmountInvalid || transferSenderInvalid} onClick={() => void checkout()}><Receipt size={16} />{busy ? "جارٍ الحفظ..." : "إتمام البيع"}</button></div>
+      </aside>
+    </div>
+    {heldOpen && <div className="of-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) setHeldOpen(false); }}><section className="of-dialog of-held-dialog" role="dialog" aria-modal="true" aria-labelledby="held-title">
+      <header className="of-dialog-head"><div><span className="of-kicker">نقطة البيع</span><h2 id="held-title">الفواتير المعلقة</h2></div><button onClick={() => setHeldOpen(false)} aria-label="إغلاق"><X size={18} /></button></header>
+      {cartLines.length > 0 && <div className="of-inline-hint">أفرغ الطلب الحالي قبل استعادة فاتورة معلقة حتى لا تفقد بياناته.</div>}
+      {state.heldSales.length ? <div className="of-held-list">{state.heldSales.map((held) => <article className="of-held-item" key={held.id}><div><b dir="ltr">{held.reference}</b><small>{held.customerName || "عميل نقدي"} · {digits(held.items.reduce((sum, item) => sum + item.quantity, 0))} وحدة · {held.saleType === "retail" ? "قطاعي" : "جملة"}</small><time>{dateTime(held.createdAt)}</time></div><strong>{money(held.estimatedTotal, currency)}</strong><button className="of-button of-button-primary" disabled={busy || cartLines.length > 0} onClick={() => void restoreHeld(held)}><Play size={14} /> استعادة</button></article>)}</div> : <EmptyState icon={Pause} title="لا توجد فواتير معلقة" copy="يمكنك تعليق طلب من شاشة البيع واستعادته لاحقًا." />}
+      {error && <div className="of-error"><CircleAlert size={15} />{error}</div>}
+    </section></div>}
   </section>;
 }
 
@@ -357,20 +657,65 @@ function SalesPage({ state, currency, onSelect }: { state: OfflineState; currenc
   const [query, setQuery] = useState("");
   const [period, setPeriod] = useState("all");
   const filtered = useMemo(() => state.sales.filter((sale) => {
-    const matches = `${sale.invoiceNumber} ${sale.customerName}`.toLowerCase().includes(query.toLowerCase());
+    const matches = `${sale.invoiceNumber} ${sale.customerName} ${sale.customerPhone} ${sale.transferSender}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase());
     const dayAge = (Date.now() - new Date(sale.createdAt).getTime()) / 86400000;
-    return matches && (period === "all" || (period === "today" && sale.createdAt.slice(0, 10) === localDate()) || (period === "week" && dayAge <= 7));
+    const saleDate = new Date(sale.createdAt);
+    const localDay = `${saleDate.getFullYear()}-${String(saleDate.getMonth() + 1).padStart(2, "0")}-${String(saleDate.getDate()).padStart(2, "0")}`;
+    return matches && (period === "all" || (period === "today" && localDay === localDate()) || (period === "week" && dayAge <= 7));
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [state.sales, query, period]);
   const sum = filtered.reduce((n, sale) => n + sale.total, 0);
   return <section className="of-page"><PageHeading kicker="سجل المعاملات" title="المبيعات والفواتير" description="راجع عمليات البيع السابقة وتفاصيل كل فاتورة." />
     <div className="of-sales-summary"><span className="of-summary-icon"><Receipt size={19} /></span><div><small>إجمالي المبيعات المعروضة</small><b>{money(sum, currency)}</b></div><i /><div><small>عدد الفواتير</small><b>{digits(filtered.length)}</b></div></div>
-    <div className="of-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث برقم الفاتورة أو اسم العميل..." /></label><select value={period} onChange={(e) => setPeriod(e.target.value)}><option value="all">كل الفترات</option><option value="today">اليوم</option><option value="week">آخر 7 أيام</option></select></div>
-    <section className="of-panel of-sales-table">{filtered.length ? <div className="of-table-scroll"><table className="of-table"><thead><tr><th>الفاتورة</th><th>العميل</th><th>التاريخ والوقت</th><th>طريقة الدفع</th><th>نوع البيع</th><th>الإجمالي</th><th /></tr></thead><tbody>{filtered.map((sale) => <tr key={sale.id} onClick={() => onSelect(sale)}><td><b className="of-invoice-number">{sale.invoiceNumber}</b></td><td>{sale.customerName || "عميل نقدي"}</td><td>{dateTime(sale.createdAt)}</td><td>{sale.paymentMethod === "cash" ? "نقدي" : sale.paymentMethod === "card" ? "بطاقة" : "تحويل"}</td><td>{sale.saleType === "retail" ? "تجزئة" : "جملة"}</td><td className="of-number"><b>{money(sale.total, currency)}</b></td><td><ArrowUpRight size={15} /></td></tr>)}</tbody></table></div> : <EmptyState icon={FileText} title={query ? "لا توجد فواتير مطابقة" : "لا توجد فواتير بعد"} copy={query ? "غيّر كلمات البحث أو الفترة المحددة." : "ستظهر فواتيرك بعد تسجيل عمليات البيع."} />}</section>
+    <div className="of-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث برقم الفاتورة أو العميل أو الهاتف..." /></label><select value={period} onChange={(e) => setPeriod(e.target.value)}><option value="all">كل الفترات</option><option value="today">اليوم</option><option value="week">آخر 7 أيام</option></select></div>
+    <section className="of-panel of-sales-table">{filtered.length ? <div className="of-table-scroll"><table className="of-table"><thead><tr><th>الفاتورة</th><th>العميل</th><th>التاريخ والوقت</th><th>طريقة الدفع</th><th>نوع البيع</th><th>الإجمالي</th><th /></tr></thead><tbody>{filtered.map((sale) => <tr key={sale.id} onClick={() => onSelect(sale)}><td><b className="of-invoice-number">{sale.invoiceNumber}</b></td><td>{sale.customerName || "عميل نقدي"}{sale.customerPhone && <small className="of-sales-phone" dir="ltr">{sale.customerPhone}</small>}</td><td>{dateTime(sale.createdAt)}</td><td>{sale.paymentMethod === "cash" ? "نقدي" : sale.paymentMethod === "card" ? "بطاقة" : sale.paymentMethod === "wallet" ? "محفظة" : sale.paymentMethod === "instapay" ? "إنستا باي" : "تحويل"}</td><td>{sale.saleType === "retail" ? "قطاعي" : "جملة"}</td><td className="of-number"><b>{money(sale.total, currency)}</b></td><td><ArrowUpRight size={15} /></td></tr>)}</tbody></table></div> : <EmptyState icon={FileText} title={query ? "لا توجد فواتير مطابقة" : "لا توجد فواتير بعد"} copy={query ? "غيّر كلمات البحث أو الفترة المحددة." : "ستظهر فواتيرك بعد تسجيل عمليات البيع."} />}</section>
   </section>;
 }
 
 function InvoiceDialog({ sale, store, currency, onClose }: { sale: OfflineSale; store: OfflineState["store"]; currency: string; onClose: () => void }) {
-  return <div className="of-overlay of-invoice-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><section className="of-dialog of-invoice-dialog" role="dialog" aria-modal="true" aria-labelledby="invoice-title"><header className="of-dialog-head of-invoice-actions"><div><span className="of-kicker">تفاصيل المعاملة</span><h2 id="invoice-title">{sale.invoiceNumber}</h2></div><div><button className="of-button of-button-secondary" onClick={() => window.print()}><Printer size={15} /> طباعة الفاتورة</button><button className="of-icon-button" onClick={onClose} aria-label="إغلاق"><X size={18} /></button></div></header><article className="of-print-invoice"><div className="of-invoice-brand"><BrandMark compact /><div><b>{store?.name}</b><small>{store?.businessType}</small></div></div><div className="of-invoice-meta"><div><span>رقم الفاتورة</span><b>{sale.invoiceNumber}</b></div><div><span>التاريخ</span><b>{dateTime(sale.createdAt)}</b></div><div><span>العميل</span><b>{sale.customerName || "عميل نقدي"}</b></div><div><span>طريقة الدفع</span><b>{sale.paymentMethod === "cash" ? "نقدي" : sale.paymentMethod === "card" ? "بطاقة" : "تحويل"}</b></div></div><div className="of-table-scroll"><table className="of-table"><thead><tr><th>المنتج</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={`${item.productId}-${index}`}><td><b>{item.name}</b><small>{item.sku}</small></td><td>{digits(item.quantity)}</td><td className="of-number">{money(item.unitPrice, currency)}</td><td className="of-number">{money(item.lineTotal, currency)}</td></tr>)}</tbody></table></div><div className="of-invoice-totals"><div><span>الإجمالي قبل الضريبة</span><b>{money(sale.subtotal, currency)}</b></div><div><span>الضريبة</span><b>{money(sale.taxAmount, currency)}</b></div><div className="of-invoice-final"><span>الإجمالي المستحق</span><b>{money(sale.total, currency)}</b></div></div><div className="of-invoice-thanks">شكرًا لزيارتكم</div></article></section></div>;
+  const format = store?.invoiceFormat ?? "wide";
+  const paymentLabel = sale.paymentMethod === "cash" ? "نقدي"
+    : sale.paymentMethod === "card" ? "بطاقة"
+      : sale.paymentMethod === "wallet" ? "محفظة"
+        : sale.paymentMethod === "instapay" ? "إنستا باي"
+          : "تحويل";
+  function exportText() {
+    const rows = [
+      store?.name ?? "X-Store",
+      store?.businessType ?? "",
+      `رقم الفاتورة: ${sale.invoiceNumber}`,
+      `التاريخ: ${dateTime(sale.createdAt)}`,
+      `العميل: ${sale.customerName || "عميل نقدي"}`,
+      sale.customerPhone ? `الهاتف: ${sale.customerPhone}` : "",
+      `نوع البيع: ${sale.saleType === "wholesale" ? "جملة" : "قطاعي"}`,
+      `طريقة الدفع: ${paymentLabel}`,
+      sale.transferSender ? `بيانات التحويل: ${sale.transferSender}` : "",
+      sale.exchangeOfInvoiceNumber ? `استبدال عن الفاتورة: ${sale.exchangeOfInvoiceNumber}` : "",
+      "----------------------------------------",
+      "الصنف | الكمية | سعر الوحدة | الإجمالي",
+      ...sale.items.map((item) => `${item.name} | ${digits(item.quantity)} | ${money(item.unitPrice, currency)} | ${money(item.lineTotal, currency)}`),
+      "----------------------------------------",
+      `المجموع الفرعي: ${money(sale.subtotal, currency)}`,
+      `الخصم: ${money(sale.discountAmount, currency)}`,
+      `ضريبة القيمة المضافة: ${money(sale.taxAmount, currency)}`,
+      `الإجمالي المستحق: ${money(sale.total, currency)}`,
+      `المبلغ المستلم: ${money(sale.amountReceived, currency)}`,
+      `الباقي: ${money(sale.changeAmount, currency)}`,
+      "شكرًا لزيارتكم",
+    ].filter(Boolean);
+    const blob = new Blob(["\uFEFF", rows.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${sale.invoiceNumber}.txt`;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  return <div className="of-overlay of-invoice-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className={`of-dialog of-invoice-dialog of-invoice-${format}`} role="dialog" aria-modal="true" aria-labelledby="invoice-title"><header className="of-dialog-head of-invoice-actions"><div><span className="of-kicker">تفاصيل المعاملة</span><h2 id="invoice-title">{sale.invoiceNumber}</h2></div><div><button className="of-button of-button-secondary" onClick={exportText}><ArrowDownToLine size={15} /> تصدير TXT</button><button className="of-button of-button-secondary" onClick={() => window.print()}><Printer size={15} /> طباعة الفاتورة</button><button className="of-icon-button" onClick={onClose} aria-label="إغلاق"><X size={18} /></button></div></header><article className="of-print-invoice">
+    <div className="of-invoice-brand"><BrandMark compact /><div><b>{store?.name}</b><small>{store?.businessType}</small></div></div>
+    <div className="of-invoice-meta"><div><span>رقم الفاتورة</span><b dir="ltr">{sale.invoiceNumber}</b></div><div><span>التاريخ</span><b>{dateTime(sale.createdAt)}</b></div><div><span>العميل</span><b>{sale.customerName || "عميل نقدي"}</b></div>{sale.customerPhone && <div><span>الهاتف</span><b dir="ltr">{sale.customerPhone}</b></div>}<div><span>نوع البيع</span><b>{sale.saleType === "wholesale" ? "جملة" : "قطاعي"}</b></div><div><span>طريقة الدفع</span><b>{paymentLabel}</b></div>{sale.transferSender && <div><span>بيانات التحويل</span><b dir="ltr">{sale.transferSender}</b></div>}{sale.exchangeOfInvoiceNumber && <div><span>استبدال عن</span><b dir="ltr">{sale.exchangeOfInvoiceNumber}</b></div>}</div>
+    <div className="of-table-scroll"><table className="of-table"><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={`${item.productId}-${index}`}><td><b>{item.name}</b>{item.sku && <small>{item.sku}</small>}</td><td>{digits(item.quantity)}</td><td className="of-number">{money(item.unitPrice, currency)}</td><td className="of-number">{money(item.lineTotal, currency)}</td></tr>)}</tbody></table></div>
+    <div className="of-invoice-totals"><div><span>المجموع الفرعي</span><b>{money(sale.subtotal, currency)}</b></div><div><span>الخصم</span><b>− {money(sale.discountAmount, currency)}</b></div><div><span>ضريبة القيمة المضافة</span><b>{money(sale.taxAmount, currency)}</b></div><div className="of-invoice-final"><span>الإجمالي المستحق</span><b>{money(sale.total, currency)}</b></div><div><span>المبلغ المستلم</span><b>{money(sale.amountReceived, currency)}</b></div><div><span>الباقي</span><b>{money(sale.changeAmount, currency)}</b></div></div>
+    <div className="of-invoice-thanks">شكرًا لزيارتكم</div></article></section></div>;
 }
 
 function BackupPage({ state, desktop, onChooseFolder, onBackup, onRestore }: { state: OfflineState; desktop: boolean; onChooseFolder: () => void; onBackup: () => void; onRestore: () => void }) {
@@ -389,6 +734,7 @@ function SettingsPage({ state, onSave }: { state: OfflineState; onSave: (store: 
   const [currency, setCurrency] = useState(state.store?.currency ?? "EGP");
   const [vatRate, setVatRate] = useState(String(state.store?.vatRate ?? 0));
   const [wholesaleEnabled, setWholesaleEnabled] = useState(state.store?.wholesaleEnabled ?? false);
+  const [invoiceFormat, setInvoiceFormat] = useState<NonNullable<OfflineState["store"]>["invoiceFormat"]>(state.store?.invoiceFormat ?? "wide");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const active = isLicenseActive(state.license);
@@ -397,12 +743,17 @@ function SettingsPage({ state, onSave }: { state: OfflineState; onSave: (store: 
     e.preventDefault();
     if (!name.trim() || !businessType.trim()) { setError("اسم المتجر والنشاط مطلوبان."); return; }
     setSaving(true); setError("");
-    try { await onSave({ name: name.trim(), businessType: businessType.trim(), storeType, currency, vatRate: Number(vatRate) || 0, wholesaleEnabled: supports && wholesaleEnabled }); }
+    try { await onSave({ name: name.trim(), businessType: businessType.trim(), storeType, currency, vatRate: Number(vatRate) || 0, wholesaleEnabled: supports && wholesaleEnabled, invoiceFormat }); }
     catch (err) { setError(err instanceof Error ? err.message : "تعذر حفظ الإعدادات."); } finally { setSaving(false); }
   }
   return <section className="of-page"><PageHeading kicker="إدارة الحساب المحلي" title="الإعدادات والترخيص" description="تعديل بيانات النشاط ومراجعة حالة الترخيص على هذا الجهاز." />
     <div className="of-settings-grid"><section className="of-panel of-settings-panel"><div className="of-panel-head"><div><h2>بيانات المتجر</h2><p>تُستخدم هذه البيانات في لوحة العمل والفواتير.</p></div><span className="of-settings-head-icon"><Store size={18} /></span></div><form onSubmit={submit}><div className="of-form-grid"><Field label="اسم المتجر"><input required value={name} onChange={(e) => setName(e.target.value)} /></Field><Field label="النشاط التجاري"><input required value={businessType} onChange={(e) => setBusinessType(e.target.value)} /></Field><Field label="نوع المتجر"><select value={storeType} onChange={(e) => { setStoreType(e.target.value as typeof storeType); setWholesaleEnabled(false); }}>{OFFLINE_STORE_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field><Field label="العملة"><select value={currency} onChange={(e) => setCurrency(e.target.value as typeof currency)}>{OFFLINE_CURRENCIES.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value})</option>)}</select></Field><Field label="ضريبة القيمة المضافة (%)"><input type="number" min="0" max="100" step="0.01" value={vatRate} onChange={(e) => setVatRate(e.target.value)} /></Field></div>
       {supports && <label className="of-toggle-row"><span><b>البيع بالجملة</b><small>إظهار سعر الجملة أثناء إتمام البيع.</small></span><input type="checkbox" checked={wholesaleEnabled} onChange={(e) => setWholesaleEnabled(e.target.checked)} /><i /></label>}
+      <fieldset className="of-invoice-format-picker"><legend>تنسيق الفاتورة</legend><p>يُطبق على الطباعة ويمكن تغييره لاحقًا دون تعديل الفواتير المحفوظة.</p><div>{([
+        { value: "wide", title: "عريضة", detail: "ورقة مكتبية", icon: FileText },
+        { value: "thermal_80mm", title: "حراري 80 مم", detail: "طابعة نقاط بيع", icon: Receipt },
+        { value: "thermal_58mm", title: "حراري 58 مم", detail: "طابعة صغيرة", icon: Printer },
+      ] as const).map(({ value, title, detail, icon: Icon }) => <button key={value} type="button" className={invoiceFormat === value ? "chosen" : ""} onClick={() => setInvoiceFormat(value)}><Icon size={18} /><b>{title}</b><small>{detail}</small></button>)}</div></fieldset>
       {error && <div className="of-error"><CircleAlert size={15} />{error}</div>}<div className="of-settings-save"><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ التغييرات"}</button></div>
     </form></section>
       <aside className="of-panel of-license-panel"><span className={`of-license-large-icon ${active ? "" : "expired"}`}><ShieldCheck size={22} /></span><span className="of-kicker">حالة الترخيص</span><h2>{active ? "ترخيصك نشط" : "الترخيص منتهٍ"}</h2><p>الترخيص محفوظ محليًا ولا يحتاج إلى اتصال بالإنترنت.</p><div className="of-license-details"><div><span>تاريخ البداية</span><b>{state.license?.startedAt ?? "—"}</b></div><div><span>تاريخ الانتهاء</span><b>{state.license?.expiresAt ?? "—"}</b></div><div><span>المدة المحددة</span><b>{state.license ? `${digits(state.license.months)} شهر` : "—"}</b></div></div><div className="of-license-caption"><LockKeyhole size={14} /> تُحدد المدة عند الإعداد الأول، ولا يحتاج البرنامج إلى اتصال بالإنترنت.</div></aside></div>

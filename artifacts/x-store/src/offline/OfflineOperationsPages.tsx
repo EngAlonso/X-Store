@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   Activity, ArrowDownLeft, ArrowLeftRight, Banknote, CalendarDays, CircleAlert,
   FileClock, FileText, LockKeyhole, Plus, RotateCcw, Search, ShieldCheck,
   Trash2, Users, Wallet,
 } from "lucide-react";
+import { calculateSaleItemReturn } from "./model";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import type {
   OfflineAuditLog, OfflinePaymentMethod, OfflineReturn, OfflineSale,
@@ -28,7 +29,7 @@ const permissionOptions: { id: OfflineTeamPermission; title: string; detail: str
 ];
 const roleOptions: { value: OfflineTeamRole; label: string; permissions: OfflineTeamPermission[] }[] = [
   { value: "tenant_admin", label: "مالك المتجر", permissions: permissionOptions.map((p) => p.id) },
-  { value: "cashier", label: "أمين الصندوق", permissions: ["retail_sales"] },
+  { value: "cashier", label: "أمين الصندوق", permissions: ["retail_sales", "wholesale_sales"] },
   { value: "warehouse_manager", label: "مدير المخزون", permissions: ["warehouse_manager"] },
   { value: "accountant", label: "محاسب", permissions: ["accountant"] },
   { value: "custom", label: "دور مخصص", permissions: [] },
@@ -43,6 +44,7 @@ const latin = (value: number | string) =>
   String(value).replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
 const amount = (value: number, currency: string) =>
   `${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)} ${currency}`;
+const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 const dateLabel = (value: string) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? "تاريخ غير معروف" : date.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
@@ -178,39 +180,45 @@ export function OfflineReturnsPage({ state, currency, onReturn, onExchange }: {
   const [selectedQuantities, setSelectedQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const returnForm = useForm<ReturnValues>({ defaultValues: { saleId: "", reason: "" } });
   const exchangeForm = useForm<ExchangeValues>({ defaultValues: { saleId: "", reason: "", replacementProductId: "", replacementQuantity: 1, paymentMethod: "cash", amountReceived: 0 } });
-  const activeForm = mode === "return" ? returnForm : exchangeForm;
+  const activeForm = exchangeForm;
   const sale = state.sales.find((item) => item.id === activeForm.watch("saleId"));
   const returnLines = useMemo(() => sale?.items.map((line) => ({ ...line, remaining: returnableQty(sale, line.productId, state) })).filter((line) => line.remaining > 0) ?? [], [sale, state]);
   const selectedItems = returnLines.map((line) => ({ productId: line.productId, quantity: Math.min(line.remaining, Math.max(0, Math.floor(selectedQuantities[line.productId] ?? 0))) })).filter((item) => item.quantity > 0);
   const replacement = state.products.find((product) => product.id === exchangeForm.watch("replacementProductId"));
+  const replacementPrice = replacement
+    ? (sale?.saleType === "wholesale" ? replacement.wholesalePrice : replacement.price)
+    : null;
   const returnedValue = selectedItems.reduce((sum, selected) => {
     const line = sale?.items.find((item) => item.productId === selected.productId);
-    return sum + (line ? line.unitPrice * selected.quantity : 0);
+    return sum + (sale && line ? calculateSaleItemReturn(sale, line, selected.quantity).refundAmount : 0);
   }, 0);
   const replacementQty = Math.max(1, Math.floor(Number(exchangeForm.watch("replacementQuantity")) || 1));
-  const replacementValue = (replacement?.price ?? 0) * replacementQty;
+  const replacementSubtotal = (replacementPrice ?? 0) * replacementQty;
+  const replacementValue = roundMoney(replacementSubtotal * (1 + (state.store?.vatRate ?? 0) / 100));
   const difference = replacementValue - returnedValue;
   const chooseSale = (saleId: string) => {
-    returnForm.setValue("saleId", saleId); exchangeForm.setValue("saleId", saleId);
+    exchangeForm.setValue("saleId", saleId);
     setSelectedQuantities({}); setError("");
   };
+  useEffect(() => {
+    exchangeForm.setValue("amountReceived", Math.max(0, difference), { shouldValidate: true });
+  }, [difference, exchangeForm.setValue]);
   const setQty = (productId: string, value: number, max: number) => setSelectedQuantities((current) => ({
     ...current, [productId]: Math.min(max, Math.max(0, Math.floor(Number.isFinite(value) ? value : 0))),
   }));
-  const submitReturn = returnForm.handleSubmit(async (values) => {
+  const submitReturn = exchangeForm.handleSubmit(async (values) => {
     if (!selectedItems.length) { setError("حدد كمية واحدة على الأقل للإرجاع."); return; }
     if (!values.reason.trim()) { setError("اكتب سبب الإرجاع."); return; }
     setBusy(true); setError("");
-    try { await onReturn({ saleId: values.saleId, items: selectedItems, reason: values.reason.trim() }); setSelectedQuantities({}); returnForm.reset({ saleId: "", reason: "" }); }
+    try { await onReturn({ saleId: values.saleId, items: selectedItems, reason: values.reason.trim() }); setSelectedQuantities({}); exchangeForm.reset({ saleId: "", reason: "", replacementProductId: "", replacementQuantity: 1, paymentMethod: "cash", amountReceived: 0 }); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "تعذر تسجيل المرتجع."); }
     finally { setBusy(false); }
   });
   const submitExchange = exchangeForm.handleSubmit(async (values) => {
     if (!selectedItems.length) { setError("حدد الأصناف والكميات المطلوب إرجاعها."); return; }
     if (!values.reason.trim()) { setError("اكتب سبب الاستبدال."); return; }
-    if (!replacement || replacement.quantity < replacementQty) { setError("اختر منتجًا بديلًا بكمية متاحة كافية."); return; }
+    if (!replacement || replacementPrice === null || replacement.quantity < replacementQty) { setError("اختر منتجًا بديلًا له سعر بيع وكمية متاحة كافية."); return; }
     if (difference > 0 && values.amountReceived < difference) { setError("المبلغ المستلم أقل من فرق السعر المستحق."); return; }
     setBusy(true); setError("");
     try {
@@ -239,7 +247,7 @@ export function OfflineReturnsPage({ state, currency, onReturn, onExchange }: {
           {mode === "exchange" && <div className="op-exchange-box">
             <h3>المنتج البديل</h3>
             <div className="op-form-grid">
-              <FormField control={exchangeForm.control} name="replacementProductId" rules={{ required: "اختر المنتج البديل." }} render={({ field }) => <FormItem className="op-field"><FormLabel>الصنف المتاح</FormLabel><FormControl><select {...field} data-testid="select-replacement-product"><option value="">اختر منتجًا من المخزون</option>{state.products.filter((product) => product.quantity > 0).map((product) => <option key={product.id} value={product.id}>{product.name} · متاح {latin(product.quantity)} · {amount(product.price, currency)}</option>)}</select></FormControl><FormMessage /></FormItem>} />
+              <FormField control={exchangeForm.control} name="replacementProductId" rules={{ required: "اختر المنتج البديل." }} render={({ field }) => <FormItem className="op-field"><FormLabel>الصنف المتاح</FormLabel><FormControl><select {...field} data-testid="select-replacement-product"><option value="">اختر منتجًا من المخزون</option>{state.products.filter((product) => product.quantity > 0 && (sale?.saleType === "wholesale" ? product.wholesalePrice !== null : product.price !== null)).map((product) => { const price = sale?.saleType === "wholesale" ? product.wholesalePrice : product.price; return <option key={product.id} value={product.id}>{product.name} · متاح {latin(product.quantity)} · {amount(price ?? 0, currency)}</option>; })}</select></FormControl><FormMessage /></FormItem>} />
               <FormField control={exchangeForm.control} name="replacementQuantity" rules={{ required: "أدخل الكمية.", min: { value: 1, message: "الكمية لا تقل عن 1." }, max: { value: replacement?.quantity ?? 1, message: "الكمية تتجاوز المخزون المتاح." } }} render={({ field }) => <FormItem className="op-field"><FormLabel>كمية البديل</FormLabel><FormControl><input {...field} type="number" min="1" max={replacement?.quantity ?? 1} step="1" onChange={(event) => field.onChange(Number(event.target.value))} data-testid="input-replacement-quantity" /></FormControl><FormMessage /></FormItem>} />
             </div>
             <div className="op-difference" data-testid="text-exchange-difference"><span><small>قيمة المرتجع</small><b>{amount(returnedValue, currency)}</b></span><i /><span><small>قيمة البديل</small><b>{amount(replacementValue, currency)}</b></span><strong className={difference > 0 ? "due" : difference < 0 ? "credit" : ""}><small>{difference > 0 ? "المتبقي على العميل" : difference < 0 ? "المبلغ المستحق للعميل" : "فرق السعر"}</small><b>{amount(Math.abs(difference), currency)}</b></strong></div>
@@ -263,18 +271,36 @@ export function OfflineReportsPage({ state, currency }: { state: OfflineState; c
   const [error, setError] = useState("");
   const validRange = from <= to;
   const report = useMemo(() => {
-    const start = `${from}T00:00:00`;
-    const end = `${to}T23:59:59.999`;
-    const sales = validRange ? state.sales.filter((sale) => sale.createdAt >= start && sale.createdAt <= end) : [];
-    const returns: OfflineReturn[] = validRange ? state.returns.filter((record) => record.createdAt >= start && record.createdAt <= end) : [];
+    const inRange = (date: string) => {
+      const value = new Date(date);
+      if (Number.isNaN(value.getTime())) return false;
+      const localDay = `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+      return validRange && localDay >= from && localDay <= to;
+    };
+    const sales = validRange ? state.sales.filter((sale) => inRange(sale.createdAt)) : [];
+    const saleIds = new Set(sales.map((sale) => sale.id));
+    const returns: OfflineReturn[] = validRange ? state.returns.filter((record) => saleIds.has(record.saleId)) : [];
+    const netSales = sales.reduce((sum, sale) => sum + sale.subtotal - sale.discountAmount, 0);
+    const refundedTax = returns.reduce((sum, record) => {
+      const sale = sales.find((item) => item.id === record.saleId);
+      const taxableTotal = sale ? sale.subtotal - sale.discountAmount + sale.taxAmount : 0;
+      return sum + (taxableTotal > 0 ? record.refundAmount * sale!.taxAmount / taxableTotal : 0);
+    }, 0);
+    const returnAmount = returns.reduce((sum, record) => {
+      const sale = sales.find((item) => item.id === record.saleId);
+      const taxableTotal = sale ? sale.subtotal - sale.discountAmount + sale.taxAmount : 0;
+      const taxPart = taxableTotal > 0 ? record.refundAmount * sale!.taxAmount / taxableTotal : 0;
+      return sum + record.refundAmount - taxPart;
+    }, 0);
+    const costOfGoods = sales.reduce((sum, sale) => sum + sale.items.reduce((lineSum, line) => lineSum + line.unitCost * Math.max(0, line.quantity - line.returnedQuantity), 0), 0);
+    const taxCollected = sales.reduce((sum, sale) => sum + sale.taxAmount, 0) - refundedTax;
     const grossSales = sales.reduce((sum, sale) => sum + sale.total, 0);
-    const returnAmount = returns.reduce((sum, record) => sum + record.refundAmount, 0);
-    const costOfGoods = sales.reduce((sum, sale) => sum + sale.items.reduce((lineSum, line) => lineSum + line.unitCost * Math.max(0, line.quantity - line.returnedQuantity), 0), 0) -
-      returns.reduce((sum, record) => sum + record.costAmount, 0);
     return {
-      sales, returns, grossSales, returnAmount, netSales: grossSales - returnAmount,
-      costOfGoods: Math.max(0, costOfGoods), grossProfit: grossSales - returnAmount - Math.max(0, costOfGoods),
-      exchangeCount: state.exchanges.filter((exchange) => exchange.createdAt >= start && exchange.createdAt <= end).length,
+      sales, returns, grossSales, returnAmount, netSales,
+      costOfGoods: Math.max(0, costOfGoods),
+      taxCollected: roundMoney(taxCollected),
+      grossProfit: roundMoney(netSales - returnAmount - Math.max(0, costOfGoods)),
+      exchangeCount: state.exchanges.filter((exchange) => inRange(exchange.createdAt)).length,
       payments: paymentOptions.map((method) => ({ ...method, total: sales.filter((sale) => sale.paymentMethod === method.value).reduce((sum, sale) => sum + sale.total, 0) })).filter((item) => item.total > 0),
     };
   }, [from, to, state.sales, state.returns, state.exchanges, validRange]);
@@ -282,7 +308,7 @@ export function OfflineReportsPage({ state, currency }: { state: OfflineState; c
     if (!validRange) { setError("تحقق من ترتيب تاريخ البداية والنهاية."); return; }
     const rows = [
       ["نوع السجل", "رقم الفاتورة", "التاريخ", "المبلغ", "طريقة الدفع"],
-      ...report.sales.map((sale) => ["بيع", sale.invoiceNumber, sale.createdAt, String(sale.total), paymentOptions.find((item) => item.value === sale.paymentMethod)?.label ?? sale.paymentMethod]),
+      ...report.sales.map((sale) => ["بيع", sale.invoiceNumber, sale.createdAt, String(roundMoney(sale.subtotal - sale.discountAmount)), paymentOptions.find((item) => item.value === sale.paymentMethod)?.label ?? sale.paymentMethod]),
       ...report.returns.map((record) => ["مرتجع", record.invoiceNumber, record.createdAt, String(-record.refundAmount), "استرداد"]),
     ];
     const csv = `\uFEFF${rows.map((row) => row.map((cell) => `"${cell.replaceAll('"', '""')}"`).join(",")).join("\r\n")}`;
@@ -293,7 +319,7 @@ export function OfflineReportsPage({ state, currency }: { state: OfflineState; c
     link.click(); URL.revokeObjectURL(url); setError("");
   };
   return <section className="op-page" dir="rtl" data-testid="page-offline-reports">
-    <Heading eyebrow="قراءة محلية للفترة" title="التقارير المالية" description="ملخص المبيعات والمرتجعات وتكلفة البضائع من سجلات هذا الجهاز." icon={Activity} />
+        <Heading eyebrow="الأداء المالي" title="التقارير المالية" description="ملخص المبيعات والمرتجعات وتكلفة البضائع والربح الإجمالي للفترة المحددة." icon={Activity} />
     <div className="op-panel op-report-panel">
       <div className="op-report-filters"><div className="op-filter-title"><span><CalendarDays size={17} /></span><div><b>الفترة الزمنية</b><small>تُحسب النتائج عند تغيير التواريخ</small></div></div>
         <label className="op-field"><span>من تاريخ</span><input type="date" value={from} max={to} onChange={(event) => setFrom(event.target.value)} data-testid="input-report-from" /></label>
@@ -303,12 +329,13 @@ export function OfflineReportsPage({ state, currency }: { state: OfflineState; c
       {!validRange && <ErrorNotice>تاريخ البداية يجب ألا يتجاوز تاريخ النهاية.</ErrorNotice>}
       <div className="op-report-range" data-testid="text-report-range"><span>نطاق التقرير</span><b dir="ltr">{from} — {to}</b></div>
       <div className="op-report-stats">
-        <Stat label="الفواتير المكتملة" value={latin(report.sales.length)} caption="عملية بيع ضمن الفترة" icon={FileText} />
-        <Stat label="إجمالي المبيعات" value={amount(report.grossSales, currency)} caption="قبل خصم المرتجعات" icon={Banknote} tone="gold" />
+        <Stat label="عدد الفواتير" value={latin(report.sales.length)} caption="عمليات البيع في الفترة" icon={FileText} />
+        <Stat label="صافي المبيعات" value={amount(report.netSales, currency)} caption="بعد الخصومات وقبل المرتجعات" icon={Banknote} tone="gold" />
         <Stat label="قيمة المرتجعات" value={amount(report.returnAmount, currency)} caption={`${latin(report.returns.length)} حركة إرجاع`} icon={RotateCcw} tone="red" />
-        <Stat label="صافي المبيعات" value={amount(report.netSales, currency)} caption="المبيعات بعد الاسترداد" icon={Wallet} tone="blue" />
+        <Stat label="تكلفة البضائع" value={amount(report.costOfGoods, currency)} caption="تكلفة الأصناف غير المرتجعة" icon={Wallet} tone="blue" />
       </div>
-      <div className="op-profit-band"><span><span className="op-profit-icon"><Activity size={18} /></span><span><b>الربح الإجمالي التقديري</b><small>صافي المبيعات بعد تكلفة الأصناف المرتبطة بالفواتير والمرتجعات.</small></span></span><strong data-testid="text-report-gross-profit">{amount(report.grossProfit, currency)}</strong></div>
+      <div className="op-report-stats op-report-tax"><Stat label="صافي الضريبة" value={amount(report.taxCollected, currency)} caption="بعد تسوية ضريبة المرتجعات" icon={Banknote} tone="gold" /></div>
+      <div className="op-profit-band"><span><span className="op-profit-icon"><Activity size={18} /></span><span><b>الربح الإجمالي</b><small>لا يشمل المصاريف التشغيلية. صافي المبيعات بعد المرتجعات وتكلفة البضائع.</small></span></span><strong data-testid="text-report-gross-profit">{amount(report.grossProfit, currency)}</strong></div>
       <ErrorNotice>{error}</ErrorNotice>
     </div>
     <div className="op-report-lower">

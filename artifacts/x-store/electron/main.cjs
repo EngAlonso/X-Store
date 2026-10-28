@@ -109,7 +109,7 @@ function isValidState(value) {
     typeof product.barcode === "string" &&
     typeof product.category === "string" &&
     Number.isFinite(product.costPrice) && product.costPrice >= 0 &&
-    Number.isFinite(product.price) && product.price >= 0 &&
+    (product.price === null || (Number.isFinite(product.price) && product.price >= 0)) &&
     (product.wholesalePrice === null || (Number.isFinite(product.wholesalePrice) && product.wholesalePrice >= 0)) &&
     Number.isInteger(product.quantity) && product.quantity >= 0 &&
     typeof product.color === "string" &&
@@ -230,7 +230,7 @@ function normalizeState(value) {
       ? { ...value.store, invoiceFormat: value.store.invoiceFormat || "wide" }
       : value.store,
     products: Array.isArray(value.products) ? value.products.map((product) => isPlainObject(product)
-      ? { ...product, color: product.color || "", size: product.size || "", partNumber: product.partNumber || "", expiresAt: product.expiresAt || null }
+      ? { ...product, price: product.price ?? null, color: product.color || "", size: product.size || "", partNumber: product.partNumber || "", expiresAt: product.expiresAt || null }
       : product) : value.products,
     sales: Array.isArray(value.sales) ? value.sales.map((sale) => isPlainObject(sale)
       ? {
