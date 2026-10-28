@@ -537,6 +537,12 @@ export const TenantUpdatePlan = {
 } as const;
 
 export interface TenantUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  businessType?: string;
+  storeType?: StoreType;
+  wholesaleEnabled?: boolean;
   currency?: StoreCurrency;
   status?: TenantUpdateStatus;
   plan?: TenantUpdatePlan;

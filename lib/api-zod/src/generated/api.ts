@@ -419,13 +419,21 @@ export const CreateXStoreTenantResponse = zod.object({
 
 
 /**
- * @summary Update a tenant's status or subscription
+ * @summary Update tenant details, status, or subscription
  */
 export const UpdateXStoreTenantParams = zod.object({
   "tenantId": zod.coerce.string()
 })
 
+
+
+
+
 export const UpdateXStoreTenantBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "businessType": zod.string().min(1).optional(),
+  "storeType": zod.enum(['clothing_shoes', 'grocery_supermarket', 'electronics_accessories', 'perfume_beauty', 'cafe', 'restaurant']).optional(),
+  "wholesaleEnabled": zod.boolean().optional(),
   "currency": zod.enum(['EGP', 'SAR', 'AED', 'USD', 'EUR', 'GBP']).optional(),
   "status": zod.enum(['active', 'trial', 'suspended']).optional(),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']).optional(),

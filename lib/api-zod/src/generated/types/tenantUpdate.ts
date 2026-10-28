@@ -6,10 +6,17 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { StoreCurrency } from './storeCurrency';
+import type { StoreType } from './storeType';
 import type { TenantUpdatePlan } from './tenantUpdatePlan';
 import type { TenantUpdateStatus } from './tenantUpdateStatus';
 
 export interface TenantUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  businessType?: string;
+  storeType?: StoreType;
+  wholesaleEnabled?: boolean;
   currency?: StoreCurrency;
   status?: TenantUpdateStatus;
   plan?: TenantUpdatePlan;

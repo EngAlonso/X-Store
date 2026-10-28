@@ -951,6 +951,9 @@ td>small { display:block;margin-top:4px;color:#7f8b82;font-size:11px; }
 .empty-inline { padding:36px 12px;text-align:center;color:#77847a;font-size:13px; }
 .quick-list .status-pill { flex-shrink:0; }
 .table-toolbar { display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:14px; }
+.tenant-edit-toolbar { display:flex;align-items:flex-end;gap:10px;margin:0 0 14px; }
+.tenant-edit-toolbar .field { width:min(100%,360px); }
+.tenant-edit-toolbar .button { min-height:39px; }
 .search-box { min-height:40px;display:flex;align-items:center;gap:9px;padding:0 12px;border:1px solid #e0e6e1;border-radius:9px;background:#fff;color:#859188; }
 .search-box:focus-within { border-color:#8dad96;box-shadow:0 0 0 3px #dcebe0; }
 .search-box input { width:100%;min-width:180px;border:0;outline:0;background:transparent;color:#344138;font-size:11px; }
@@ -1263,6 +1266,8 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   .tenant-summary { gap:13px;justify-content:space-between;padding:12px;font-size:9px; }
   .tenant-summary span { gap:5px; }
   .tenant-summary svg { width:14px; }
+  .tenant-edit-toolbar { align-items:stretch;flex-direction:column; }
+  .tenant-edit-toolbar .field { width:100%; }
   .table-toolbar { gap:8px; }
   .search-box { min-height:37px; }
   .search-box input { min-width:0;font-size:12px; }

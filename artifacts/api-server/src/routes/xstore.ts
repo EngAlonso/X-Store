@@ -1235,7 +1235,7 @@ router.post("/xstore/tenants", async (req, res): Promise<void> => {
 router.patch("/xstore/tenants/:tenantId", async (req, res): Promise<void> => {
   const actor = getXStoreUser(res);
   if (actor.role !== "platform_admin") {
-    res.status(403).json({ error: "Only the platform owner can change subscriptions." });
+    res.status(403).json({ error: "Only the platform owner can manage stores." });
     return;
   }
   const params = UpdateXStoreTenantParams.safeParse(req.params);
@@ -1248,10 +1248,41 @@ router.patch("/xstore/tenants/:tenantId", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+  const [existingTenant] = await db
+    .select({
+      storeType: xstoreTenants.storeType,
+      wholesaleEnabled: xstoreTenants.wholesaleEnabled,
+    })
+    .from(xstoreTenants)
+    .where(eq(xstoreTenants.id, params.data.tenantId))
+    .limit(1);
+  if (!existingTenant) {
+    res.status(404).json({ error: "Store not found." });
+    return;
+  }
+  const nextStoreType = parsed.data.storeType ?? existingTenant.storeType;
+  const nextStoreSupportsWholesale = isWholesaleStoreType(nextStoreType);
+  if (parsed.data.wholesaleEnabled === true && !nextStoreSupportsWholesale) {
+    res.status(400).json({
+      error: "Wholesale sales are not available for cafes or restaurants.",
+    });
+    return;
+  }
+  const name = parsed.data.name?.trim();
+  const businessType = parsed.data.businessType?.trim();
+  if (name === "" || businessType === "") {
+    res.status(400).json({ error: "Store name and activity cannot be blank." });
+    return;
+  }
   const update = {
     ...parsed.data,
+    ...(name !== undefined ? { name } : {}),
+    ...(businessType !== undefined ? { businessType } : {}),
     subscriptionEndsAt: dbDate(parsed.data.subscriptionEndsAt),
   };
+  if (!nextStoreSupportsWholesale) {
+    update.wholesaleEnabled = false;
+  }
   if (update.plan === "lifetime" && update.subscriptionEndsAt === undefined) {
     update.subscriptionEndsAt = null;
   }
@@ -1270,7 +1301,7 @@ router.patch("/xstore/tenants/:tenantId", async (req, res): Promise<void> => {
     tenant.id,
     "tenant",
     tenant.id,
-    `Updated status or subscription for ${tenant.name}`,
+    `Updated store details or subscription for ${tenant.name}`,
   );
   res.json(UpdateXStoreTenantResponse.parse(tenantDto(tenant)));
 });

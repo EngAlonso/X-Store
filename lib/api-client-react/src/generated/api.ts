@@ -930,7 +930,7 @@ export const getUpdateXStoreTenantUrl = (tenantId: string,) => {
 }
 
 /**
- * @summary Update a tenant's status or subscription
+ * @summary Update tenant details, status, or subscription
  */
 export const updateXStoreTenant = async (tenantId: string,
     tenantUpdate: TenantUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Tenant> => {
@@ -997,7 +997,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateXStoreTenantMutationVariables = {tenantId: string;data: BodyType<TenantUpdate>}
 
     /**
- * @summary Update a tenant's status or subscription
+ * @summary Update tenant details, status, or subscription
  */
 export const useUpdateXStoreTenant = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ForbiddenResponse | NotFoundResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateXStoreTenant>>, TError,UpdateXStoreTenantMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

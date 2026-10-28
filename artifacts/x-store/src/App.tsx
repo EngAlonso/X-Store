@@ -915,9 +915,22 @@ function TenantsPage() {
   const [selectedStoreType,setSelectedStoreType]=useState('');
   const [wholesaleEnabled,setWholesaleEnabled]=useState(false);
   const [accessTenant,setAccessTenant]=useState<Tenant|null>(null);
+  const [editTenant,setEditTenant]=useState<Tenant|null>(null);
+  const [editStoreType,setEditStoreType]=useState('');
+  const [editWholesaleEnabled,setEditWholesaleEnabled]=useState(false);
+  const [tenantToEditId,setTenantToEditId]=useState('');
   const [notice,setNotice]=useState('');
   const filtered=useMemo(()=> (tenants.data||[]).filter(t=>`${t.name} ${t.ownerName} ${t.phone} ${t.email||''} ${t.businessType} ${storeTypeName(t.storeType)} ${getPhoneCountry(t.countryCode).name}`.toLowerCase().includes(search.toLowerCase())),[tenants.data,search]);
+  const tenantToEdit=tenants.data?.find((tenant)=>tenant.id===tenantToEditId);
   function refreshTenants(){qc.invalidateQueries({queryKey:getListXStoreTenantsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});}
+  function openTenantEdit(tenant:Tenant) {
+    update.reset();
+    setEditTenant(tenant);
+    setEditStoreType(tenant.storeType||'');
+    setEditWholesaleEnabled(
+      storeTypeSupportsWholesale(tenant.storeType)&&tenant.wholesaleEnabled,
+    );
+  }
   function changeCurrency(tenant:Tenant, currency:StoreCurrency, select:HTMLSelectElement) {
     if(currency===tenant.currency)return;
     if(!window.confirm('تغيير العملة لن يحوّل أسعار المنتجات أو المبيعات القديمة؛ ستظهر الأرقام كما هي بالعملة الجديدة. هل تريد المتابعة؟')) {
@@ -949,13 +962,50 @@ function TenantsPage() {
     const f=new FormData(e.currentTarget);
     credentials.mutate({tenantId:accessTenant.id,data:{phone:String(f.get('phone')),password:String(f.get('password'))}},{onSuccess:()=>{refreshTenants();setAccessTenant(null);setNotice('تم تحديث بيانات دخول مالك المتجر');}});
   }
+  function submitTenantEdit(e:FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if(!editTenant)return;
+    const f=new FormData(e.currentTarget);
+    const rawStoreType=String(f.get('storeType')||'');
+    const storeType=rawStoreType as (typeof storeTypeOptions)[number]['value'];
+    const name=String(f.get('name')||'').trim();
+    const businessType=String(f.get('businessType')||'').trim();
+    update.mutate({
+      tenantId:editTenant.id,
+      data:{
+        name,
+        businessType,
+        ...(rawStoreType?{storeType}:{}),
+        wholesaleEnabled:storeTypeSupportsWholesale(rawStoreType||editTenant.storeType)&&editWholesaleEnabled,
+      },
+    },{
+      onSuccess:()=>{
+        refreshTenants();
+        setEditTenant(null);
+        setNotice(`تم تحديث بيانات متجر ${name}`);
+      },
+      onError:error=>setNotice(apiErrorMessage(error,'تعذر تحديث بيانات المتجر.')),
+    });
+  }
   return <><PageTitle eyebrow="إدارة المنصة" title="المتاجر" desc="إدارة المتاجر والاشتراكات وإنشاء بيانات دخول كل مالك." action={<button onClick={()=>{setSelectedStoreType('');setWholesaleEnabled(false);setDialog(true)}} className="button button-primary" data-testid="button-add-tenant"><Plus size={17}/> إضافة متجر</button>}/>
     <div className="tenant-summary"><span><Store size={17}/> {fmt(filtered.length)} متجر</span><span><CircleCheck size={17}/> {fmt(filtered.filter(t=>t.status==='active').length)} نشط</span><span><Clock3 size={17}/> {fmt(filtered.filter(t=>t.status==='trial').length)} تجريبي</span></div>
+    <div className="tenant-edit-toolbar">
+      <label className="field"><span>اختر متجرًا لتعديل بياناته</span><select value={tenantToEditId} onChange={e=>setTenantToEditId(e.target.value)}><option value="">اختر متجرًا</option>{tenants.data?.map(tenant=><option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></label>
+      <button className="button button-quiet" type="button" disabled={!tenantToEdit||update.isPending} onClick={()=>tenantToEdit&&openTenantEdit(tenantToEdit)}><Pencil size={15}/> تعديل المتجر</button>
+    </div>
     <Card><SectionHead title="قائمة المتاجر" detail="تحديث الحالة وتغيير بيانات دخول المالك مسجلان في سجل التدقيق."/>
       <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم المتجر أو المالك أو الهاتف" data-testid="input-search-tenants"/></label><span className="result-count">{fmt(filtered.length)} نتيجة</span></div>
       {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<div className="table-wrap"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع المتجر والنشاط</th><th>العملة الأساسية</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td><b>{storeTypeName(t.storeType)}</b><small>{t.businessType} · {getPhoneCountry(t.countryCode).name} (+{getPhoneCountry(t.countryCode).callingCode}) · {t.wholesaleEnabled?'الجملة مفعلة':'الجملة غير مفعلة'}</small></td><td><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></td></tr>)}</tbody></table></div>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
     </Card>
     {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
+     {editTenant&&<Modal title={`تعديل بيانات المتجر · ${editTenant.name}`} close={()=>setEditTenant(null)}><form className="form-grid" onSubmit={submitTenantEdit}>
+       <Field label="اسم المتجر" name="name" required defaultValue={editTenant.name}/>
+       <label className="field"><span>نوع المتجر / النشاط</span><select name="storeType" value={editStoreType} required={Boolean(editTenant.storeType)} onChange={e=>{setEditStoreType(e.target.value);if(!storeTypeSupportsWholesale(e.target.value))setEditWholesaleEnabled(false)}}><option value="">غير محدد</option>{storeTypeOptions.map(type=><option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
+       <Field label="وصف النشاط" name="businessType" required defaultValue={editTenant.businessType}/>
+       <label className="role-hint field-wide"><input type="checkbox" checked={editWholesaleEnabled} disabled={!storeTypeSupportsWholesale(editStoreType||editTenant.storeType)} onChange={e=>setEditWholesaleEnabled(e.target.checked)}/><span>تفعيل قسم بيع الجملة لهذا المتجر. اختيار نشاط غير مؤهل سيوقف الجملة تلقائيًا، وإيقافها لا يحذف أسعار الجملة المحفوظة.</span></label>
+       {update.isError&&<div className="form-error">{apiErrorMessage(update.error,'تعذر تحديث بيانات المتجر.')}</div>}
+       <div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setEditTenant(null)}>إلغاء</button><button className="button button-primary" disabled={update.isPending}>{update.isPending?'جارٍ الحفظ…':'حفظ التغييرات'}</button></div>
+     </form></Modal>}
     {dialog&&<Modal title="إضافة متجر وحساب مالكه" close={()=>{setDialog(false);setSelectedStoreType('');setWholesaleEnabled(false)}}><form className="form-grid" onSubmit={submit}>
       <Field label="اسم المتجر" name="name" required/><label className="field"><span>نوع المتجر</span><select name="storeType" value={selectedStoreType} onChange={e=>{setSelectedStoreType(e.target.value);if(!storeTypeSupportsWholesale(e.target.value))setWholesaleEnabled(false)}} required><option value="" disabled>اختر نوع المتجر</option>{storeTypeOptions.map(type=><option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
       <Field label="اسم المالك" name="ownerName" required/>

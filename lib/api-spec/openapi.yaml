@@ -222,7 +222,7 @@ paths:
     patch:
       operationId: updateXStoreTenant
       tags: [xstore]
-      summary: Update a tenant's status or subscription
+      summary: Update tenant details, status, or subscription
       parameters:
         - name: tenantId
           in: path
@@ -1253,6 +1253,10 @@ components:
     TenantUpdate:
       type: object
       properties:
+        name: { type: string, minLength: 1 }
+        businessType: { type: string, minLength: 1 }
+        storeType: { $ref: "#/components/schemas/StoreType" }
+        wholesaleEnabled: { type: boolean }
         currency: { $ref: "#/components/schemas/StoreCurrency" }
         status:
           type: string
