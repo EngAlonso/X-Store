@@ -36,12 +36,12 @@ _Populate as you build — short repo map plus pointers to the source-of-truth f
 - Keep the hosted app and offline edition separate: the offline renderer does not import the hosted API client.
 - Electron blocks external network requests in the packaged offline edition; only local renderer assets and local IPC are used.
 - Offline state is stored outside the install directory; Windows backups are written to the folder selected during first-run setup and are not removed by the uninstaller.
-- The current offline build is an initial operational slice: setup, products, retail/wholesale checkout, sales history, local backup/restore, and license status.
+- The offline edition includes the store-facing hosted workflows: dashboard, inventory and quantity adjustments, retail/wholesale point of sale, held sales, sales and invoice history, returns/exchanges, financial reports, team permissions, store settings, local audit history, backup/restore, and local license status.
 - Offline license dates currently use local device data and local system time; they are not cryptographically signed or device-bound.
 
 ## Product
 
-The hosted edition manages store accounts through the X-Store API. The offline Windows edition currently supports first-run store configuration, inventory, point-of-sale, sales invoices, and local backups. Returns/exchanges, held sales, reports, team accounts, and full parity with hosted features remain to be implemented.
+The hosted edition manages store accounts through the X-Store API. The separate offline Windows edition covers store-facing POS, inventory, sales, returns/exchanges, reports, team permissions, and store settings, with local authentication, licensing, audit history, and backup/restore. Platform-wide tenant and subscription administration is intentionally excluded from the offline edition.
 
 ## User preferences
 

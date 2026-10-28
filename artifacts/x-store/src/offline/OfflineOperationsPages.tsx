@@ -104,7 +104,7 @@ export function OfflineTeamPage({ state, onSave, onRemove }: {
   const submit = form.handleSubmit(async (values) => {
     if (!values.permissions.length) { setError("اختر صلاحية واحدة على الأقل لهذا العضو."); return; }
     if (values.role === "custom" && !values.roleName.trim()) { setError("اكتب اسمًا واضحًا للدور المخصص."); return; }
-    if ((!editing || !editing.pinHash) && !values.pin) { setError("أنشئ رمز دخول للعضو قبل حفظه."); return; }
+    if (values.active && (!editing || !editing.pinHash) && !values.pin) { setError("أنشئ رمز دخول لكل عضو نشط قبل حفظه."); return; }
     if (values.pin && !isValidLocalPin(values.pin)) { setError("رمز الدخول يجب أن يتكون من 6 إلى 12 رقمًا."); return; }
     if (values.pin !== values.confirmPin) { setError("تأكيد رمز الدخول غير مطابق."); return; }
     setSaving(true); setError("");

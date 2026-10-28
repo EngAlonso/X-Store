@@ -436,6 +436,7 @@
   .of-overlay, .of-invoice-overlay { position: absolute !important; inset: 0 !important; padding: 0 !important; background: white !important; display: block !important; }
   .of-invoice-dialog { width: 100% !important; max-height: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; overflow: visible !important; }
   .of-invoice-actions, .of-invoice-actions>div:last-child { display: none !important; }
+  .of-invoice-offline-note { display: none !important; }
   .of-print-invoice { border: 0 !important; padding: 15mm !important; }
   .of-table { min-width: 0 !important; }
 }

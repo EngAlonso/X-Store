@@ -5,7 +5,7 @@ import {
   LayoutDashboard, LifeBuoy, LockKeyhole, LogOut, Package, Plus, Printer, Receipt,
   Search, Settings, ShieldCheck, ShoppingCart, Store, Trash2, Upload, Wallet,
   Users, RotateCcw, ClipboardList, ChartNoAxesCombined, Pause, Play,
-  ArrowLeftRight, Smartphone, Banknote, X,
+  ArrowLeftRight, Smartphone, Banknote, Minus, X,
 } from "lucide-react";
 import {
   addMonthsToDate, createEmptyOfflineState,
@@ -45,7 +45,11 @@ const salesPermissions: OfflineTeamPermission[] = ["retail_sales", "wholesale_sa
 function canAccessOfflinePage(member: OfflineTeamMember, page: Page) {
   if (member.role === "tenant_admin" || page === "dashboard") return true;
   if (page === "products") return member.permissions.includes("warehouse_manager");
-  if (page === "pos" || page === "sales" || page === "returns") {
+  if (page === "sales") {
+    return member.permissions.includes("accountant") ||
+      salesPermissions.some((permission) => member.permissions.includes(permission));
+  }
+  if (page === "pos" || page === "returns") {
     return salesPermissions.some((permission) => member.permissions.includes(permission));
   }
   if (page === "reports" || page === "audit") return member.permissions.includes("accountant");
@@ -317,11 +321,13 @@ export default function OfflineApp() {
     member.id === authenticatedMemberId && member.active && member.pinSalt && member.pinHash && member.pinIterations,
   );
   if (!currentMember) return <OfflineLogin state={currentState} onLogin={setAuthenticatedMemberId} />;
+  const activeMember = currentMember;
   const active = isLicenseActive(currentState.license);
   const currency = currentState.store!.currency;
-  const canViewAllSales = currentMember.role === "tenant_admin" || currentMember.permissions.includes("accountant");
-  const canViewRetailSales = canViewAllSales || currentMember.permissions.includes("retail_sales");
-  const canViewWholesaleSales = canViewAllSales || currentMember.permissions.includes("wholesale_sales");
+  const wholesaleEnabled = currentState.store?.wholesaleEnabled ?? false;
+  const canViewAllSales = activeMember.role === "tenant_admin" || activeMember.permissions.includes("accountant");
+  const canViewRetailSales = canViewAllSales || activeMember.permissions.includes("retail_sales");
+  const canViewWholesaleSales = canViewAllSales || activeMember.permissions.includes("wholesale_sales");
   const visibleSales = currentState.sales.filter((sale) =>
     (sale.saleType === "wholesale" ? canViewWholesaleSales : canViewRetailSales),
   );
@@ -339,35 +345,40 @@ export default function OfflineApp() {
       sale.saleType === "wholesale" ? canViewWholesaleSales : canViewRetailSales,
     ),
   };
-  const todaySales = visibleSales.filter((sale) => sale.createdAt.slice(0, 10) === localDate());
+  const todaySales = currentState.sales.filter((sale) => sale.createdAt.slice(0, 10) === localDate());
   const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
   const lowStock = currentState.products.filter((product) => product.quantity <= 5);
-  const canViewInventoryCosts = currentMember.role === "tenant_admin" || currentMember.permissions.includes("accountant") || currentMember.permissions.includes("warehouse_manager");
+  const canViewInventoryCosts = activeMember.role === "tenant_admin" || activeMember.permissions.includes("accountant") || activeMember.permissions.includes("warehouse_manager");
   const title = navItems.find((item) => item.id === page)?.label ?? "الرئيسية";
 
   async function updateProduct(product: OfflineProduct, editingId?: string) {
-    assertOfflinePermission(currentMember, ["warehouse_manager"]);
+    assertOfflinePermission(activeMember, ["warehouse_manager"]);
+    const existing = editingId ? currentState.products.find((item) => item.id === editingId) : undefined;
+    if (editingId && !existing) throw new Error("لم يتم العثور على المنتج المطلوب تعديله.");
+    const savedProduct = existing && activeMember.role !== "tenant_admin"
+      ? { ...product, name: existing.name, sku: existing.sku, barcode: existing.barcode, category: existing.category, color: existing.color, size: existing.size, partNumber: existing.partNumber, expiresAt: existing.expiresAt }
+      : product;
     const conflict = currentState.products.find((item) =>
-      item.id !== editingId && ((product.sku && item.sku === product.sku) || (product.barcode && item.barcode === product.barcode)),
+      item.id !== editingId && ((savedProduct.sku && item.sku === savedProduct.sku) || (savedProduct.barcode && item.barcode === savedProduct.barcode)),
     );
     if (conflict) throw new Error("رمز المنتج أو الباركود مستخدم بالفعل.");
     const audit = createAuditEntry(
       editingId ? "تعديل منتج" : "إضافة منتج",
       "منتج",
       editingId ?? product.id,
-      `${product.name} · الكمية ${digits(product.quantity)}`,
-      currentMember.name,
+      `${savedProduct.name} · الكمية ${digits(savedProduct.quantity)}`,
+      activeMember.name,
     );
     const next = {
       ...currentState,
-      products: editingId ? currentState.products.map((item) => item.id === editingId ? { ...product, id: editingId } : item) : [product, ...currentState.products],
+      products: editingId ? currentState.products.map((item) => item.id === editingId ? { ...savedProduct, id: editingId } : item) : [savedProduct, ...currentState.products],
       auditLogs: [audit, ...currentState.auditLogs],
     };
     await persist(next);
     setNotice(editingId ? "تم تحديث المنتج." : "تمت إضافة المنتج.");
   }
   async function removeProduct(id: string) {
-    assertOfflinePermission(currentMember, ["warehouse_manager"]);
+    assertOfflinePermission(activeMember, ["warehouse_manager"]);
     if (!window.confirm("هل تريد حذف هذا المنتج؟")) return;
     if (currentState.sales.some((sale) => sale.items.some((item) => item.productId === id)) ||
       currentState.heldSales.some((sale) => sale.items.some((item) => item.productId === id))) {
@@ -378,12 +389,12 @@ export default function OfflineApp() {
     await persist({
       ...currentState,
       products: currentState.products.filter((item) => item.id !== id),
-      auditLogs: [createAuditEntry("حذف منتج", "منتج", id, product?.name ?? id, currentMember.name), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("حذف منتج", "منتج", id, product?.name ?? id, activeMember.name), ...currentState.auditLogs],
     });
     setNotice("تم حذف المنتج.");
   }
   async function completeSale(sale: OfflineSale) {
-    assertOfflinePermission(currentMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
+    assertOfflinePermission(activeMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
     if (!active) throw new Error("انتهت مدة الترخيص المحلي. تواصل مع مورّد النظام لتجديده.");
     for (const line of sale.items) {
       const product = currentState.products.find((item) => item.id === line.productId);
@@ -399,44 +410,44 @@ export default function OfflineApp() {
       ...currentState,
       products: nextProducts,
       sales: [sale, ...currentState.sales],
-      auditLogs: [createAuditEntry("إتمام عملية بيع", "فاتورة بيع", sale.invoiceNumber, `${sale.items.reduce((sum, item) => sum + item.quantity, 0)} وحدة · ${money(sale.total, currency)}`, currentMember.name), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("إتمام عملية بيع", "فاتورة بيع", sale.invoiceNumber, `${sale.items.reduce((sum, item) => sum + item.quantity, 0)} وحدة · ${money(sale.total, currency)}`, activeMember.name), ...currentState.auditLogs],
     });
     setNotice(`تم حفظ الفاتورة ${sale.invoiceNumber}.`);
     setSaleDetail(sale);
   }
   async function holdSale(heldSale: OfflineHeldSale) {
-    assertOfflinePermission(currentMember, [heldSale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
+    assertOfflinePermission(activeMember, [heldSale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
     await persist({
       ...currentState,
       heldSales: [heldSale, ...currentState.heldSales],
-      auditLogs: [createAuditEntry("تعليق فاتورة", "فاتورة معلقة", heldSale.reference, heldSale.customerName || "عميل نقدي", currentMember.name), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("تعليق فاتورة", "فاتورة معلقة", heldSale.reference, heldSale.customerName || "عميل نقدي", activeMember.name), ...currentState.auditLogs],
     });
     setNotice(`تم تعليق الفاتورة ${heldSale.reference}.`);
   }
   async function releaseHeldSale(id: string) {
     const heldSale = currentState.heldSales.find((item) => item.id === id);
     if (!heldSale) throw new Error("لم يتم العثور على الفاتورة المعلقة.");
-    assertOfflinePermission(currentMember, [heldSale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
+    assertOfflinePermission(activeMember, [heldSale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
     await persist({
       ...currentState,
       heldSales: currentState.heldSales.filter((item) => item.id !== id),
-      auditLogs: [createAuditEntry("استعادة فاتورة معلقة", "فاتورة معلقة", heldSale.reference, "استُعيدت إلى شاشة نقطة البيع.", currentMember.name), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("استعادة فاتورة معلقة", "فاتورة معلقة", heldSale.reference, "استُعيدت إلى شاشة نقطة البيع.", activeMember.name), ...currentState.auditLogs],
     });
     return heldSale;
   }
   async function recordReturn(request: OfflineReturnRequest) {
     const sale = currentState.sales.find((item) => item.id === request.saleId);
     if (!sale) throw new Error("لم يتم العثور على الفاتورة المحددة.");
-    assertOfflinePermission(currentMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
-    const result = applyOfflineReturn(currentState, { ...request, actorName: currentMember.name });
+    assertOfflinePermission(activeMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
+    const result = applyOfflineReturn(currentState, { ...request, actorName: activeMember.name });
     await persist(result.state);
     setNotice(`تم تسجيل المرتجع · ${money(result.refundAmount, currency)}.`);
   }
   async function recordExchange(request: OfflineExchangeRequest) {
     const sale = currentState.sales.find((item) => item.id === request.saleId);
     if (!sale) throw new Error("لم يتم العثور على الفاتورة المحددة.");
-    assertOfflinePermission(currentMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
-    const result = applyOfflineExchange(currentState, { ...request, actorName: currentMember.name });
+    assertOfflinePermission(activeMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
+    const result = applyOfflineExchange(currentState, { ...request, actorName: activeMember.name });
     await persist(result.state);
     const settlement = result.exchange.changeAmount > 0
       ? result.exchange.balanceDue > 0
@@ -446,12 +457,12 @@ export default function OfflineApp() {
     setNotice([`تم الاستبدال · ${result.exchange.replacementInvoiceNumber}`, settlement].filter(Boolean).join(" · "));
   }
   async function saveTeamMember(member: OfflineTeamMember, editingId?: string) {
-    assertOfflinePermission(currentMember, ["warehouse_manager"]);
-    if (currentMember.role !== "tenant_admin") throw new Error("إدارة حسابات الفريق متاحة لمالك المتجر فقط.");
-    if (!member.active || !member.pinSalt || !member.pinHash || !member.pinIterations) {
-      throw new Error("فعّل العضو وتحقق من إعداد رمز دخوله قبل الحفظ.");
+    assertOfflinePermission(activeMember, ["warehouse_manager"]);
+    if (activeMember.role !== "tenant_admin") throw new Error("إدارة حسابات الفريق متاحة لمالك المتجر فقط.");
+    if (member.active && (!member.pinSalt || !member.pinHash || !member.pinIterations)) {
+      throw new Error("يجب إعداد رمز دخول لكل عضو نشط.");
     }
-    if (editingId === currentMember.id && member.role !== "tenant_admin") {
+    if (editingId === activeMember.id && member.role !== "tenant_admin") {
       throw new Error("لا يمكنك تغيير دور حساب المالك الذي تستخدمه الآن.");
     }
     const remainingAdmin = currentState.teamMembers.some((item) =>
@@ -466,13 +477,13 @@ export default function OfflineApp() {
     await persist({
       ...currentState,
       teamMembers: nextMembers,
-      auditLogs: [createAuditEntry(editingId ? "تعديل عضو فريق" : "إضافة عضو فريق", "عضو فريق", editingId ?? member.id, `${member.name} · ${member.roleName}`, currentMember.name), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry(editingId ? "تعديل عضو فريق" : "إضافة عضو فريق", "عضو فريق", editingId ?? member.id, `${member.name} · ${member.roleName}`, activeMember.name), ...currentState.auditLogs],
     });
     setNotice(editingId ? "تم تحديث بيانات عضو الفريق." : "تمت إضافة عضو للفريق.");
   }
   async function removeTeamMember(id: string) {
-    if (currentMember.role !== "tenant_admin") throw new Error("إدارة حسابات الفريق متاحة لمالك المتجر فقط.");
-    if (id === currentMember.id) throw new Error("لا يمكنك إزالة حساب الدخول الذي تستخدمه الآن.");
+    if (activeMember.role !== "tenant_admin") throw new Error("إدارة حسابات الفريق متاحة لمالك المتجر فقط.");
+    if (id === activeMember.id) throw new Error("لا يمكنك إزالة حساب الدخول الذي تستخدمه الآن.");
     const member = currentState.teamMembers.find((item) => item.id === id);
     if (member?.role === "tenant_admin" && member.active && !currentState.teamMembers.some((item) => item.id !== id && item.role === "tenant_admin" && item.active && item.pinHash && item.pinSalt)) {
       throw new Error("لا يمكن إزالة آخر حساب مالك نشط.");
@@ -480,35 +491,35 @@ export default function OfflineApp() {
     await persist({
       ...currentState,
       teamMembers: currentState.teamMembers.filter((item) => item.id !== id),
-      auditLogs: [createAuditEntry("إزالة عضو فريق", "عضو فريق", id, member?.name ?? id, currentMember.name), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("إزالة عضو فريق", "عضو فريق", id, member?.name ?? id, activeMember.name), ...currentState.auditLogs],
     });
     setNotice("تمت إزالة العضو من الفريق.");
   }
   async function chooseFolder() {
-    if (currentMember.role !== "tenant_admin") throw new Error("إعداد النسخ الاحتياطي متاح لمالك المتجر فقط.");
+    if (activeMember.role !== "tenant_admin") throw new Error("إعداد النسخ الاحتياطي متاح لمالك المتجر فقط.");
     try {
       const folder = await chooseOfflineBackupFolder();
       if (!folder) return;
       await persist({
         ...currentState,
         backup: { ...currentState.backup, backupFolder: folder, lastError: null },
-        auditLogs: [createAuditEntry("تغيير مجلد النسخ", "نسخة احتياطية", currentState.store?.name ?? "المتجر", "تم تحديث مجلد النسخ المحلي.", currentMember.name), ...currentState.auditLogs],
+        auditLogs: [createAuditEntry("تغيير مجلد النسخ", "نسخة احتياطية", currentState.store?.name ?? "المتجر", "تم تحديث مجلد النسخ المحلي.", activeMember.name), ...currentState.auditLogs],
       });
       setNotice(desktop ? "تم تحديث مجلد النسخ الاحتياطي." : "هذه معاينة؛ لا يمثل المسار مجلدًا حقيقيًا على ويندوز.");
     } catch (e) { setSaveError(e instanceof Error ? e.message : "تعذر اختيار المجلد."); }
   }
   async function manualBackup() {
-    if (currentMember.role !== "tenant_admin") { setSaveError("إنشاء النسخ الاحتياطية متاح لمالك المتجر فقط."); return; }
+    if (activeMember.role !== "tenant_admin") { setSaveError("إنشاء النسخ الاحتياطية متاح لمالك المتجر فقط."); return; }
     try {
       const saved = await createManualOfflineBackup();
-      const withAudit = { ...saved, auditLogs: [createAuditEntry("إنشاء نسخة احتياطية", "نسخة احتياطية", currentState.store.name, "تم إنشاء نسخة محلية.", currentMember.name), ...saved.auditLogs] };
+      const withAudit = { ...saved, auditLogs: [createAuditEntry("إنشاء نسخة احتياطية", "نسخة احتياطية", currentState.store?.name ?? "المتجر", "تم إنشاء نسخة محلية.", activeMember.name), ...saved.auditLogs] };
       await persist(withAudit);
       setNotice(desktop ? "تم إنشاء النسخة الاحتياطية." : "تم حفظ نسخة معاينة داخل المتصفح؛ ليست ملفًا على الجهاز.");
     }
     catch (e) { setSaveError(e instanceof Error ? e.message : "تعذر إنشاء النسخة الاحتياطية."); }
   }
   async function restoreFile(event: React.ChangeEvent<HTMLInputElement>) {
-    if (currentMember.role !== "tenant_admin") { setSaveError("استعادة النسخة الاحتياطية متاحة لمالك المتجر فقط."); return; }
+    if (activeMember.role !== "tenant_admin") { setSaveError("استعادة النسخة الاحتياطية متاحة لمالك المتجر فقط."); return; }
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
@@ -523,16 +534,16 @@ export default function OfflineApp() {
   }
   async function updateSettings(store: OfflineState["store"]) {
     if (!store) return;
-    if (currentMember.role !== "tenant_admin") throw new Error("إعدادات المتجر متاحة لمالك المتجر فقط.");
+    if (activeMember.role !== "tenant_admin") throw new Error("إعدادات المتجر متاحة لمالك المتجر فقط.");
     await persist({
       ...currentState,
       store,
-      auditLogs: [createAuditEntry("تحديث إعدادات المتجر", "إعدادات", store.name, "تحديث بيانات النشاط والضريبة والفواتير.", currentMember.name), ...currentState.auditLogs],
+      auditLogs: [createAuditEntry("تحديث إعدادات المتجر", "إعدادات", store.name, "تحديث بيانات النشاط والضريبة والفواتير.", activeMember.name), ...currentState.auditLogs],
     });
     setNotice("تم حفظ إعدادات المتجر.");
   }
   function goToPage(nextPage: Page) {
-    if (!canAccessOfflinePage(currentMember, nextPage)) {
+    if (!canAccessOfflinePage(activeMember, nextPage)) {
       setSaveError("لا تملك صلاحية لفتح هذه الصفحة.");
       return;
     }
@@ -544,17 +555,17 @@ export default function OfflineApp() {
     <aside className="of-sidebar">
       <div className="of-sidebar-brand"><BrandMark /><span className="of-edition">نسخة مستقلة · Windows</span></div>
       <div className="of-shop-chip"><span className="of-shop-avatar"><Store size={18} /></span><span><b>{state.store.name}</b><small>{state.store.businessType}</small></span><ChevronDown size={15} /></div>
-      <nav className="of-nav">{navItems.filter(({ id }) => canAccessOfflinePage(currentMember, id)).map(({ id, label, icon: Icon }) => <button key={id} className={`of-nav-item ${page === id ? "selected" : ""}`} onClick={() => goToPage(id)}><Icon size={18} /><span>{label}</span>{id === "products" && lowStock.length > 0 && <i>{digits(lowStock.length)}</i>}</button>)}</nav>
+      <nav className="of-nav">{navItems.filter(({ id }) => canAccessOfflinePage(activeMember, id)).map(({ id, label, icon: Icon }) => <button key={id} className={`of-nav-item ${page === id ? "selected" : ""}`} onClick={() => goToPage(id)}><Icon size={18} /><span>{label}</span>{id === "products" && lowStock.length > 0 && <i>{digits(lowStock.length)}</i>}</button>)}</nav>
        <div className="of-sidebar-bottom"><div className={`of-license-chip ${active ? "" : "expired"}`}><span className="of-license-status"><ShieldCheck size={16} /></span><span><b>{active ? "الترخيص نشط" : "انتهى الترخيص"}</b><small>{state.license ? `ينتهي ${state.license.expiresAt}` : "غير محدد"}</small></span></div><div className="of-device-note"><LockKeyhole size={14} /> لا توجد مزامنة أو اتصال سحابي</div></div>
     </aside>
     <div className="of-main">
-      <header className="of-topbar"><div className="of-mobile-brand"><BrandMark compact /></div><div className="of-breadcrumb"><span>المتجر</span><i>/</i><b>{title}</b></div><div className="of-top-right"><span className="of-online-state"><i /> يعمل دون إنترنت</span><span className="of-top-date">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span><span className="of-current-user" title={currentMember.roleName}>{currentMember.name}</span><button className="of-avatar" title={currentMember.name}>{currentMember.name.slice(0, 1)}</button><button className="of-logout-button" onClick={() => { setAuthenticatedMemberId(null); setSaleDetail(null); setSaveError(""); }} aria-label="تسجيل الخروج" title="تسجيل الخروج"><LogOut size={16} /><span>خروج</span></button></div></header>
+      <header className="of-topbar"><div className="of-mobile-brand"><BrandMark compact /></div><div className="of-breadcrumb"><span>المتجر</span><i>/</i><b>{title}</b></div><div className="of-top-right"><span className="of-online-state"><i /> يعمل دون إنترنت</span><span className="of-top-date">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span><span className="of-current-user" title={activeMember.roleName}>{activeMember.name}</span><button className="of-avatar" title={activeMember.name}>{activeMember.name.slice(0, 1)}</button><button className="of-logout-button" onClick={() => { setAuthenticatedMemberId(null); setSaleDetail(null); setSaveError(""); }} aria-label="تسجيل الخروج" title="تسجيل الخروج"><LogOut size={16} /><span>خروج</span></button></div></header>
       {(saveError || state.backup.lastError) && <div className="of-alert"><CircleAlert size={17} /><span>{saveError || state.backup.lastError}</span><button aria-label="إغلاق" onClick={() => { setSaveError(""); if (state.backup.lastError) void persist({ ...state, backup: { ...state.backup, lastError: null } }); }}><X size={15} /></button></div>}
       <main className="of-content">
-        {page === "dashboard" && <Dashboard state={viewState} todaySales={todaySales} todayRevenue={todayRevenue} lowStock={lowStock} currency={currency} canViewSales={canViewAllSales || currentMember.permissions.some((permission) => salesPermissions.includes(permission))} canViewInventoryCosts={canViewInventoryCosts} canNavigate={(target) => canAccessOfflinePage(currentMember, target)} onNavigate={goToPage} onSale={setSaleDetail} />}
-        {page === "products" && <ProductsPage state={state} currency={currency} onSave={updateProduct} onRemove={removeProduct} />}
-        {page === "pos" && <PosPage state={posState} licenseActive={active} canSellRetail={canViewRetailSales} canSellWholesale={currentMember.role === "tenant_admin" || currentMember.permissions.includes("wholesale_sales")} cashierName={currentMember.name} onComplete={completeSale} onHold={holdSale} onRelease={releaseHeldSale} onReturns={() => goToPage("returns")} />}
-        {page === "sales" && <SalesPage state={viewState} currency={currency} onSelect={setSaleDetail} />}
+        {page === "dashboard" && <Dashboard state={viewState} todaySales={todaySales} todayRevenue={todayRevenue} lowStock={lowStock} currency={currency} canViewSales={canViewAllSales || activeMember.permissions.some((permission) => salesPermissions.includes(permission))} canViewAmounts={canViewAllSales} canViewInventoryCosts={canViewInventoryCosts} roleName={activeMember.roleName} canNavigate={(target) => canAccessOfflinePage(activeMember, target)} onNavigate={goToPage} onSale={setSaleDetail} />}
+        {page === "products" && <ProductsPage state={state} currency={currency} canEditDetails={activeMember.role === "tenant_admin"} canDelete={activeMember.role === "tenant_admin"} onSave={updateProduct} onRemove={removeProduct} />}
+        {page === "pos" && <PosPage state={posState} licenseActive={active} canSellRetail={canViewRetailSales} canSellWholesale={wholesaleEnabled && (activeMember.role === "tenant_admin" || activeMember.permissions.includes("wholesale_sales"))} cashierName={activeMember.name} onComplete={completeSale} onHold={holdSale} onRelease={releaseHeldSale} onReturns={() => goToPage("returns")} />}
+        {page === "sales" && <SalesPage state={viewState} currency={currency} showAmounts={canViewAllSales} onSelect={setSaleDetail} />}
         {page === "returns" && <OfflineReturnsPage state={viewState} currency={currency} onReturn={recordReturn} onExchange={recordExchange} />}
         {page === "team" && <OfflineTeamPage state={state} onSave={saveTeamMember} onRemove={removeTeamMember} />}
         {page === "reports" && <OfflineReportsPage state={state} currency={currency} />}
@@ -574,32 +585,57 @@ function PageHeading({ kicker, title, description, action }: { kicker: string; t
   return <div className="of-page-heading"><div><span className="of-kicker">{kicker}</span><h1>{title}</h1><p>{description}</p></div>{action}</div>;
 }
 
-function Dashboard({ state, todaySales, todayRevenue, lowStock, currency, onNavigate, onSale }: { state: OfflineState; todaySales: OfflineSale[]; todayRevenue: number; lowStock: OfflineProduct[]; currency: string; onNavigate: (p: Page) => void; onSale: (sale: OfflineSale) => void }) {
+function Dashboard({ state, todaySales, todayRevenue, lowStock, currency, canViewSales, canViewAmounts, canViewInventoryCosts, roleName, canNavigate, onNavigate, onSale }: {
+  state: OfflineState;
+  todaySales: OfflineSale[];
+  todayRevenue: number;
+  lowStock: OfflineProduct[];
+  currency: string;
+  canViewSales: boolean;
+  canViewAmounts: boolean;
+  canViewInventoryCosts: boolean;
+  roleName: string;
+  canNavigate: (page: Page) => boolean;
+  onNavigate: (p: Page) => void;
+  onSale: (sale: OfflineSale) => void;
+}) {
   const units = state.products.reduce((sum, p) => sum + p.quantity, 0);
-  const inventoryValue = state.products.reduce((sum, p) => sum + p.costPrice * p.quantity, 0);
-  const latest = [...state.sales].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
+  const inventoryValue = state.products.reduce((sum, p) => sum + (p.price ?? 0) * p.quantity, 0);
+  const latest = canViewSales ? [...state.sales].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5) : [];
   return <section className="of-page">
-    <PageHeading kicker="ملخص المتجر" title={`مرحبًا بك في ${state.store?.name}`} description="نظرة سريعة على حركة متجرك اليوم." action={<button className="of-button of-button-primary" onClick={() => onNavigate("pos")}><Plus size={16} /> عملية بيع جديدة</button>} />
+    <PageHeading kicker="ملخص المتجر" title={`مرحبًا بك في ${state.store?.name}`} description="نظرة سريعة على حركة متجرك اليوم." action={canNavigate("pos") ? <button className="of-button of-button-primary" onClick={() => onNavigate("pos")}><Plus size={16} /> عملية بيع جديدة</button> : undefined} />
     <div className="of-stats-grid">
-      <StatCard label="مبيعات اليوم" value={money(todayRevenue, currency)} caption={`${digits(todaySales.length)} فاتورة اليوم`} icon={Wallet} tone="green" />
-      <StatCard label="عدد المنتجات" value={digits(state.products.length)} caption={`${digits(units)} وحدة في المخزون`} icon={Package} tone="blue" />
-      <StatCard label="قيمة المخزون بالتكلفة" value={money(inventoryValue, currency)} caption="قيمة تقديرية للكمية المتاحة" icon={BarChart3} tone="gold" />
-      <StatCard label="منتجات منخفضة" value={digits(lowStock.length)} caption="الكمية 5 أو أقل" icon={Activity} tone={lowStock.length ? "red" : "green"} />
+      {canViewAmounts ? <>
+        <StatCard label="مبيعات اليوم" value={digits(todaySales.length)} caption="عملية بيع مكتملة" icon={Receipt} tone="green" />
+        <StatCard label="إيراد اليوم" value={money(todayRevenue, currency)} caption="إجمالي المبيعات اليوم" icon={Wallet} tone="gold" />
+        <StatCard label="قيمة المخزون" value={canViewInventoryCosts ? money(inventoryValue, currency) : "غير متاحة"} caption="محسوبة بسعر البيع" icon={BarChart3} tone="blue" />
+        <StatCard label="الاشتراك" value={state.store?.name ?? "المتجر"} caption="مساحة العمل المحلية" icon={ShieldCheck} tone="green" />
+      </> : canViewSales ? <>
+        <StatCard label="عمليات اليوم" value={digits(todaySales.length)} caption="فواتير مكتملة" icon={Receipt} tone="green" />
+        <StatCard label="نقطة البيع" value="جاهزة" caption="ابدأ عملية جديدة" icon={ShoppingCart} tone="blue" />
+        <StatCard label="المتجر" value={state.store?.name ?? "متجرك"} caption="مساحة عمل محلية" icon={Store} tone="gold" />
+        <StatCard label="مساعدة الصندوق" value="متاحة" caption="البيع والمرتجعات" icon={ShieldCheck} tone="green" />
+      </> : <>
+        <StatCard label="منتجات منخفضة المخزون" value={digits(lowStock.length)} caption="تحتاج مراجعة" icon={Activity} tone="gold" />
+        <StatCard label="دورك" value={roleName} caption="صلاحيات محددة من مالك المتجر" icon={ShieldCheck} tone="blue" />
+        <StatCard label="مبيعات اليوم" value={digits(todaySales.length)} caption="عدد الفواتير المكتملة" icon={Receipt} tone="green" />
+        <StatCard label="البيانات المالية" value="غير متاحة" caption="ليست ضمن صلاحياتك" icon={Wallet} tone="gold" />
+      </>}
     </div>
     <div className="of-dashboard-grid">
-      <section className="of-panel of-sales-panel"><div className="of-panel-head"><div><h2>آخر المبيعات</h2><p>أحدث الفواتير المسجلة محليًا</p></div><button className="of-text-button" onClick={() => onNavigate("sales")}>عرض سجل المبيعات <ArrowUpRight size={15} /></button></div>
-        {latest.length ? <div className="of-table-scroll"><table className="of-table"><thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>التاريخ</th><th>الإجمالي</th><th /></tr></thead><tbody>{latest.map((sale) => <tr key={sale.id} onClick={() => onSale(sale)}><td><b className="of-invoice-number">{sale.invoiceNumber}</b></td><td>{sale.customerName || "عميل نقدي"}</td><td>{dateTime(sale.createdAt)}</td><td className="of-number">{money(sale.total, currency)}</td><td><ArrowUpRight size={15} /></td></tr>)}</tbody></table></div> : <EmptyState icon={Receipt} title="لا توجد مبيعات بعد" copy="ستظهر الفواتير هنا بعد إتمام أول عملية بيع." action={<button className="of-button of-button-secondary" onClick={() => onNavigate("pos")}>ابدأ أول عملية بيع</button>} />}
-      </section>
-      <section className="of-panel of-low-panel"><div className="of-panel-head"><div><h2>تنبيه المخزون</h2><p>تابع المنتجات التي قاربت على النفاد</p></div><span className="of-counter">{digits(lowStock.length)}</span></div>
+      {canViewSales && <section className="of-panel of-sales-panel"><div className="of-panel-head"><div><h2>آخر المبيعات</h2><p>أحدث الفواتير المسجلة محليًا</p></div>{canNavigate("sales") && <button className="of-text-button" onClick={() => onNavigate("sales")}>عرض سجل المبيعات <ArrowUpRight size={15} /></button>}</div>
+        {latest.length ? <div className="of-table-scroll"><table className="of-table"><thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>التاريخ</th>{canViewAmounts && <th>الإجمالي</th>}<th /></tr></thead><tbody>{latest.map((sale) => <tr key={sale.id} onClick={() => onSale(sale)}><td><b className="of-invoice-number">{sale.invoiceNumber}</b></td><td>{sale.customerName || "عميل نقدي"}</td><td>{dateTime(sale.createdAt)}</td>{canViewAmounts && <td className="of-number">{money(sale.total, currency)}</td>}<td><ArrowUpRight size={15} /></td></tr>)}</tbody></table></div> : <EmptyState icon={Receipt} title="لا توجد مبيعات بعد" copy="ستظهر الفواتير هنا بعد إتمام أول عملية بيع." action={canNavigate("pos") ? <button className="of-button of-button-secondary" onClick={() => onNavigate("pos")}>ابدأ أول عملية بيع</button> : undefined} />}
+      </section>}
+      {canViewInventoryCosts && <section className="of-panel of-low-panel"><div className="of-panel-head"><div><h2>تنبيه المخزون</h2><p>تابع المنتجات التي قاربت على النفاد</p></div><span className="of-counter">{digits(lowStock.length)}</span></div>
         {lowStock.length ? <div className="of-low-list">{lowStock.slice(0, 5).map((product) => <div className="of-low-item" key={product.id}><span className="of-product-mark"><Package size={17} /></span><span className="of-low-name"><b>{product.name}</b><small>{product.sku || "بدون رمز"}</small></span><span className={`of-stock-pill ${product.quantity === 0 ? "empty" : ""}`}>{product.quantity === 0 ? "نفد" : `متبقي ${digits(product.quantity)}`}</span></div>)}</div> : <div className="of-good-stock"><span><Check size={18} /></span><b>المخزون بحالة جيدة</b><small>لا توجد منتجات منخفضة حاليًا.</small></div>}
-        <button className="of-wide-link" onClick={() => onNavigate("products")}>إدارة المنتجات <ArrowLeft size={15} /></button>
-      </section>
+        {canNavigate("products") && <button className="of-wide-link" onClick={() => onNavigate("products")}>إدارة المنتجات <ArrowLeft size={15} /></button>}
+      </section>}
     </div>
-    <section className="of-panel of-quick-panel"><div className="of-panel-head"><div><h2>اختصارات يومية</h2><p>الوصول السريع إلى مهام المتجر</p></div></div><div className="of-quick-actions">
-      <button onClick={() => onNavigate("pos")}><span className="quick-green"><ShoppingCart size={19} /></span><b>بدء عملية بيع</b><small>إنشاء فاتورة جديدة</small><ArrowLeft size={15} /></button>
-      <button onClick={() => onNavigate("products")}><span className="quick-blue"><Package size={19} /></span><b>إضافة منتج</b><small>تحديث قائمة المخزون</small><ArrowLeft size={15} /></button>
-      <button onClick={() => onNavigate("backup")}><span className="quick-gold"><Archive size={19} /></span><b>حفظ نسخة احتياطية</b><small>حماية سجلات متجرك</small><ArrowLeft size={15} /></button>
-    </div></section>
+    {(canNavigate("pos") || canNavigate("products") || canNavigate("backup")) && <section className="of-panel of-quick-panel"><div className="of-panel-head"><div><h2>اختصارات يومية</h2><p>الوصول السريع إلى مهام المتجر</p></div></div><div className="of-quick-actions">
+      {canNavigate("pos") && <button onClick={() => onNavigate("pos")}><span className="quick-green"><ShoppingCart size={19} /></span><b>بدء عملية بيع</b><small>إنشاء فاتورة جديدة</small><ArrowLeft size={15} /></button>}
+      {canNavigate("products") && <button onClick={() => onNavigate("products")}><span className="quick-blue"><Package size={19} /></span><b>إضافة منتج</b><small>تحديث قائمة المخزون</small><ArrowLeft size={15} /></button>}
+      {canNavigate("backup") && <button onClick={() => onNavigate("backup")}><span className="quick-gold"><Archive size={19} /></span><b>حفظ نسخة احتياطية</b><small>حماية سجلات متجرك</small><ArrowLeft size={15} /></button>}
+    </div></section>}
   </section>;
 }
 
@@ -610,7 +646,14 @@ function EmptyState({ icon: Icon, title, copy, action }: { icon: typeof Receipt;
   return <div className="of-empty"><span><Icon size={22} /></span><b>{title}</b><p>{copy}</p>{action}</div>;
 }
 
-function ProductsPage({ state, currency, onSave, onRemove }: { state: OfflineState; currency: string; onSave: (product: OfflineProduct, id?: string) => Promise<void>; onRemove: (id: string) => Promise<void> }) {
+function ProductsPage({ state, currency, canEditDetails, canDelete, onSave, onRemove }: {
+  state: OfflineState;
+  currency: string;
+  canEditDetails: boolean;
+  canDelete: boolean;
+  onSave: (product: OfflineProduct, id?: string) => Promise<void>;
+  onRemove: (id: string) => Promise<void>;
+}) {
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("__all__");
   const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
@@ -628,6 +671,9 @@ function ProductsPage({ state, currency, onSave, onRemove }: { state: OfflineSta
       (stockFilter === "out" && product.quantity <= 0);
     return matchesQuery && matchesCategory && matchesStock;
   });
+  function adjustQuantity(product: OfflineProduct, delta: number) {
+    void onSave({ ...product, quantity: Math.max(0, product.quantity + delta) }, product.id);
+  }
   return <section className="of-page">
     <PageHeading kicker="إدارة المخزون" title="المنتجات" description="أضف المنتجات وتابع الكميات والأسعار المتاحة." action={<button className="of-button of-button-primary" onClick={() => setModal("new")}><Plus size={16} /> إضافة منتج</button>} />
     <div className="of-stats-grid of-inventory-stats">
@@ -637,12 +683,12 @@ function ProductsPage({ state, currency, onSave, onRemove }: { state: OfflineSta
       <StatCard label="التصنيفات" value={digits(categories.length)} caption={`${digits(outOfStockCount)} منتج نفد` } icon={Archive} tone="red" />
     </div>
     <div className="of-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث بالعربي أو English أو بالكود والباركود..." /><kbd>بحث</kbd></label><select aria-label="التصنيف" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="__all__">كل التصنيفات</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select><select aria-label="حالة المخزون" value={stockFilter} onChange={(event) => setStockFilter(event.target.value as typeof stockFilter)}><option value="all">كل الكميات</option><option value="low">قريب من النفاد</option><option value="out">نفد المخزون</option></select><span className="of-result-count">{digits(products.length)} من {digits(state.products.length)} منتج</span></div>
-    <section className="of-panel of-inventory-panel">{products.length ? <div className="of-table-scroll"><table className="of-table of-product-table"><thead><tr><th>المنتج</th><th>التصنيف</th><th>سعر القطاعي</th>{OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale && <th>سعر الجملة</th>}<th>سعر التكلفة</th><th>الكمية</th><th>الرمز</th><th /></tr></thead><tbody>{products.map((product) => <tr key={product.id}><td><b className="of-product-title">{product.name}</b><small>{product.barcode || "—"}</small></td><td>{product.category || "—"}</td><td className="of-number">{product.price === null ? "—" : money(product.price, currency)}</td>{OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale && <td className="of-number">{product.wholesalePrice === null ? "—" : money(product.wholesalePrice, currency)}</td>}<td className="of-number">{money(product.costPrice, currency)}</td><td><span className={`of-quantity ${product.quantity <= 5 ? "low" : ""}`}>{digits(product.quantity)}</span></td><td className="of-code">{product.sku || "—"}</td><td><div className="of-row-actions"><button title="تعديل المنتج" onClick={() => setModal(product)}><Settings size={15} /></button><button title="حذف المنتج" onClick={() => void onRemove(product.id)}><Trash2 size={15} /></button></div></td></tr>)}</tbody></table></div> : <EmptyState icon={Package} title={query || categoryFilter !== "__all__" || stockFilter !== "all" ? "لا توجد نتائج" : "قائمة المنتجات فارغة"} copy={query || categoryFilter !== "__all__" || stockFilter !== "all" ? "عدّل البحث أو فلاتر المخزون والتصنيف." : "أضف منتجات متجرك لتبدأ متابعة المخزون وإتمام المبيعات."} action={!query && categoryFilter === "__all__" && stockFilter === "all" ? <button className="of-button of-button-primary" onClick={() => setModal("new")}><Plus size={16} /> إضافة أول منتج</button> : undefined} />}</section>
-    {modal && <ProductDialog initial={modal === "new" ? null : modal} wholesale={OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale ?? false} currency={currency} onClose={() => setModal(null)} onSave={async (p) => { await onSave(p, modal === "new" ? undefined : modal.id); setModal(null); }} />}
+    <section className="of-panel of-inventory-panel">{products.length ? <div className="of-table-scroll"><table className="of-table of-product-table"><thead><tr><th>المنتج</th><th>التصنيف</th><th>سعر القطاعي</th>{OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale && <th>سعر الجملة</th>}<th>سعر التكلفة</th><th>الكمية</th><th>الرمز</th><th /></tr></thead><tbody>{products.map((product) => <tr key={product.id}><td><b className="of-product-title">{product.name}</b><small>{product.barcode || "—"}</small></td><td>{product.category || "—"}</td><td className="of-number">{product.price === null ? "—" : money(product.price, currency)}</td>{OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale && <td className="of-number">{product.wholesalePrice === null ? "—" : money(product.wholesalePrice, currency)}</td>}<td className="of-number">{money(product.costPrice, currency)}</td><td><span className={`of-quantity ${product.quantity <= 5 ? "low" : ""}`}>{digits(product.quantity)}</span></td><td className="of-code">{product.sku || "—"}</td><td><div className="of-row-actions"><button title="تقليل الكمية" aria-label={`تقليل كمية ${product.name}`} disabled={product.quantity <= 0} onClick={() => adjustQuantity(product, -1)} data-testid={`button-offline-stock-decrease-${product.id}`}><Minus size={15} /></button><button title="زيادة الكمية" aria-label={`زيادة كمية ${product.name}`} onClick={() => adjustQuantity(product, 1)} data-testid={`button-offline-stock-increase-${product.id}`}><Plus size={15} /></button><button title="تعديل المنتج" aria-label={`تعديل ${product.name}`} onClick={() => setModal(product)}><Settings size={15} /></button>{canDelete && <button title="حذف المنتج" aria-label={`حذف ${product.name}`} onClick={() => void onRemove(product.id)}><Trash2 size={15} /></button>}</div></td></tr>)}</tbody></table></div> : <EmptyState icon={Package} title={query || categoryFilter !== "__all__" || stockFilter !== "all" ? "لا توجد نتائج" : "قائمة المنتجات فارغة"} copy={query || categoryFilter !== "__all__" || stockFilter !== "all" ? "عدّل البحث أو فلاتر المخزون والتصنيف." : "أضف منتجات متجرك لتبدأ متابعة المخزون وإتمام المبيعات."} action={!query && categoryFilter === "__all__" && stockFilter === "all" ? <button className="of-button of-button-primary" onClick={() => setModal("new")}><Plus size={16} /> إضافة أول منتج</button> : undefined} />}</section>
+    {modal && <ProductDialog initial={modal === "new" ? null : modal} wholesale={OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale ?? false} canEditDetails={canEditDetails || modal === "new"} currency={currency} onClose={() => setModal(null)} onSave={async (p) => { await onSave(p, modal === "new" ? undefined : modal.id); setModal(null); }} />}
   </section>;
 }
 
-function ProductDialog({ initial, wholesale, currency, onClose, onSave }: { initial: OfflineProduct | null; wholesale: boolean; currency: string; onClose: () => void; onSave: (p: OfflineProduct) => Promise<void> }) {
+function ProductDialog({ initial, wholesale, canEditDetails, currency, onClose, onSave }: { initial: OfflineProduct | null; wholesale: boolean; canEditDetails: boolean; currency: string; onClose: () => void; onSave: (p: OfflineProduct) => Promise<void> }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [sku, setSku] = useState(initial?.sku ?? "");
   const [barcode, setBarcode] = useState(initial?.barcode ?? "");
@@ -667,18 +713,23 @@ function ProductDialog({ initial, wholesale, currency, onClose, onSave }: { init
     catch (err) { setError(err instanceof Error ? err.message : "تعذر حفظ المنتج."); } finally { setSaving(false); }
   }
   return <div className="of-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><section className="of-dialog" role="dialog" aria-modal="true" aria-labelledby="product-dialog-title"><header className="of-dialog-head"><div><span className="of-kicker">بيانات المخزون</span><h2 id="product-dialog-title">{initial ? "تعديل المنتج" : "إضافة منتج جديد"}</h2></div><button onClick={onClose} aria-label="إغلاق"><X size={18} /></button></header><form onSubmit={submit}><div className="of-form-grid">
-    <Field label="اسم المنتج"><input autoFocus required value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم المنتج" /></Field><Field label="التصنيف"><input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثال: إكسسوارات" /></Field>
-    <Field label="رمز المنتج (SKU)"><input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="اختياري" /></Field><Field label="الباركود"><input value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="اختياري" /></Field>
-    <Field label="اللون"><input value={color} onChange={(e) => setColor(e.target.value)} placeholder="اختياري" /></Field><Field label="المقاس"><input value={size} onChange={(e) => setSize(e.target.value)} placeholder="اختياري" /></Field>
-    <Field label="رقم القطعة"><input value={partNumber} onChange={(e) => setPartNumber(e.target.value)} placeholder="اختياري" /></Field><Field label="تاريخ انتهاء الصلاحية"><input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} /></Field>
+    {canEditDetails && <>
+      <Field label="اسم المنتج"><input autoFocus required value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم المنتج" /></Field><Field label="التصنيف"><input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثال: إكسسوارات" /></Field>
+      <Field label="رمز المنتج (SKU)"><input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="اختياري" /></Field><Field label="الباركود"><input value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="اختياري" /></Field>
+      <Field label="اللون"><input value={color} onChange={(e) => setColor(e.target.value)} placeholder="اختياري" /></Field><Field label="المقاس"><input value={size} onChange={(e) => setSize(e.target.value)} placeholder="اختياري" /></Field>
+      <Field label="رقم القطعة"><input value={partNumber} onChange={(e) => setPartNumber(e.target.value)} placeholder="اختياري" /></Field><Field label="تاريخ انتهاء الصلاحية"><input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} /></Field>
+    </>}
      <Field label={`سعر القطاعي (${currency})`} hint="يمكن تركه فارغًا إذا كان المنتج يباع بالجملة فقط."><input type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} /></Field><Field label={`سعر التكلفة (${currency})`}><input type="number" min="0" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
      {wholesale && <Field label={`سعر الجملة (${currency})`} hint="يمكن تركه فارغًا إذا لم يكن للمنتج سعر جملة."><input type="number" min="0" step="0.01" value={wholesalePrice} onChange={(e) => setWholesalePrice(e.target.value)} placeholder="اختياري" /></Field>}<Field label="الكمية المتاحة"><input required type="number" min="0" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></Field>
     </div>{error && <div className="of-error"><CircleAlert size={15} />{error}</div>}<div className="of-dialog-actions"><button type="button" className="of-button of-button-secondary" onClick={onClose}>إلغاء</button><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ المنتج"}</button></div></form></section></div>;
 }
 
-function PosPage({ state, licenseActive, onComplete, onHold, onRelease, onReturns }: {
+function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashierName, onComplete, onHold, onRelease, onReturns }: {
   state: OfflineState;
   licenseActive: boolean;
+  canSellRetail: boolean;
+  canSellWholesale: boolean;
+  cashierName: string;
   onComplete: (sale: OfflineSale) => Promise<void>;
   onHold: (sale: OfflineHeldSale) => Promise<void>;
   onRelease: (id: string) => Promise<OfflineHeldSale>;
@@ -689,7 +740,7 @@ function PosPage({ state, licenseActive, onComplete, onHold, onRelease, onReturn
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [payment, setPayment] = useState<OfflineSale["paymentMethod"]>("cash");
-  const [saleType, setSaleType] = useState<"retail" | "wholesale">("retail");
+  const [saleType, setSaleType] = useState<"retail" | "wholesale">(canSellRetail ? "retail" : "wholesale");
   const [discount, setDiscount] = useState("0");
   const [received, setReceived] = useState("");
   const [transferSender, setTransferSender] = useState("");
@@ -744,13 +795,14 @@ function PosPage({ state, licenseActive, onComplete, onHold, onRelease, onReturn
     });
   }
   function switchSaleType(next: "retail" | "wholesale") {
-    if (next === saleType || (next === "wholesale" && !wholesaleEnabled)) return;
+    if (next === saleType || (next === "wholesale" && !canSellWholesale) || (next === "retail" && !canSellRetail)) return;
     if (cartLines.length && !window.confirm("سيتم تفريغ الطلب الحالي قبل تغيير قسم البيع. هل تريد المتابعة؟")) return;
     resetSale();
     setSaleType(next);
   }
   async function checkout() {
-    if (!cartLines.length || !licenseActive || cashAmountInvalid || transferSenderInvalid) return;
+    if (!cartLines.length || !licenseActive || cashAmountInvalid || transferSenderInvalid ||
+      (saleType === "retail" && !canSellRetail) || (saleType === "wholesale" && !canSellWholesale)) return;
     setBusy(true);
     setError("");
     const createdAt = new Date().toISOString();
@@ -779,7 +831,7 @@ function PosPage({ state, licenseActive, onComplete, onHold, onRelease, onReturn
       total,
       amountReceived: payment === "cash" ? roundMoney(cashAmount) : total,
       changeAmount: payment === "cash" ? roundMoney(Math.max(0, cashAmount - total)) : 0,
-      cashierName: "صاحب المتجر",
+      cashierName,
       exchangeOfInvoiceNumber: null,
     };
     try {
@@ -792,7 +844,8 @@ function PosPage({ state, licenseActive, onComplete, onHold, onRelease, onReturn
     }
   }
   async function parkSale() {
-    if (!cartLines.length || transferSenderInvalid) return;
+    if (!cartLines.length || transferSenderInvalid ||
+      (saleType === "retail" && !canSellRetail) || (saleType === "wholesale" && !canSellWholesale)) return;
     setBusy(true);
     setError("");
     const createdAt = new Date().toISOString();
@@ -852,11 +905,16 @@ function PosPage({ state, licenseActive, onComplete, onHold, onRelease, onReturn
     }
   }
 
+  if (!canSellRetail && !canSellWholesale) return <section className="of-page">
+    <PageHeading kicker="نقطة البيع" title="صندوق البيع" description="لا توجد صلاحية بيع مفعّلة لهذا الحساب." />
+    <div className="of-panel"><EmptyState icon={ShieldCheck} title="لا يوجد نوع بيع متاح" copy="اطلب من مالك المتجر منحك صلاحية قطاعي أو جملة، والتأكد من تفعيل البيع بالجملة عند الحاجة." /></div>
+  </section>;
+
   return <section className="of-page">
     <PageHeading kicker="نقطة البيع" title="صندوق البيع" description="ابحث عن المنتجات، أضف الخصم، واختر طريقة الدفع." action={<div className="of-pos-head-actions"><button className="of-button of-button-secondary" onClick={onReturns}><ArrowLeftRight size={15} /> مرتجع أو استبدال</button><button className="of-button of-button-secondary" onClick={() => setHeldOpen(true)}><Pause size={15} /> الفواتير المعلقة <b className="of-held-count">{digits(state.heldSales.length)}</b></button></div>} />
     <div className="of-pos-layout"><section className="of-panel of-pos-products">
       <div className="of-pos-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث باسم المنتج أو الكود أو امسح الباركود..." /></label>
-        {wholesaleEnabled && <div className="of-sale-tabs" role="group" aria-label="نوع البيع"><button className={saleType === "retail" ? "chosen" : ""} onClick={() => switchSaleType("retail")}>القطاعي</button><button className={saleType === "wholesale" ? "chosen" : ""} onClick={() => switchSaleType("wholesale")}>الجملة</button></div>}
+        {wholesaleEnabled && (canSellRetail || canSellWholesale) && <div className={`of-sale-tabs ${canSellRetail && canSellWholesale ? "" : "of-sale-tabs-single"}`} role="group" aria-label="نوع البيع">{canSellRetail && <button className={saleType === "retail" ? "chosen" : ""} aria-pressed={saleType === "retail"} onClick={() => switchSaleType("retail")}>القطاعي</button>}{canSellWholesale && <button className={saleType === "wholesale" ? "chosen" : ""} aria-pressed={saleType === "wholesale"} onClick={() => switchSaleType("wholesale")}>الجملة</button>}</div>}
       </div>
       {visibleProducts.length ? <div className="of-pos-grid">{visibleProducts.map((product) => <button key={product.id} className="of-pos-product" onClick={() => add(product)}><span className="of-pos-product-icon"><Package size={19} /></span><b>{product.name}</b><small>{product.sku || product.category || "منتج"}</small><strong>{money(priceFor(product) ?? 0, currency)}</strong><i>متاح {digits(product.quantity)}</i><span className="of-pos-add"><Plus size={15} /></span></button>)}</div> : <EmptyState icon={Package} title={query ? "لا توجد منتجات مطابقة" : "لا توجد منتجات جاهزة للبيع"} copy={query ? "جرّب البحث باسم المنتج أو رمزه." : saleType === "wholesale" ? "لا توجد منتجات متاحة بسعر الجملة. أضف أسعار الجملة من المخزون." : "أضف منتجات بسعر قطاعي إلى المخزون لتظهر هنا."} />}
     </section>
@@ -889,7 +947,7 @@ function PosPage({ state, licenseActive, onComplete, onHold, onRelease, onReturn
   </section>;
 }
 
-function SalesPage({ state, currency, onSelect }: { state: OfflineState; currency: string; onSelect: (sale: OfflineSale) => void }) {
+function SalesPage({ state, currency, showAmounts, onSelect }: { state: OfflineState; currency: string; showAmounts: boolean; onSelect: (sale: OfflineSale) => void }) {
   const [query, setQuery] = useState("");
   const [period, setPeriod] = useState("all");
   const filtered = useMemo(() => state.sales.filter((sale) => {
@@ -901,9 +959,9 @@ function SalesPage({ state, currency, onSelect }: { state: OfflineState; currenc
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [state.sales, query, period]);
   const sum = filtered.reduce((n, sale) => n + sale.total, 0);
   return <section className="of-page"><PageHeading kicker="سجل المعاملات" title="المبيعات والفواتير" description="راجع عمليات البيع السابقة وتفاصيل كل فاتورة." />
-    <div className="of-sales-summary"><span className="of-summary-icon"><Receipt size={19} /></span><div><small>إجمالي المبيعات المعروضة</small><b>{money(sum, currency)}</b></div><i /><div><small>عدد الفواتير</small><b>{digits(filtered.length)}</b></div></div>
+    {showAmounts && <div className="of-sales-summary"><span className="of-summary-icon"><Receipt size={19} /></span><div><small>إجمالي المبيعات المعروضة</small><b>{money(sum, currency)}</b></div><i /><div><small>عدد الفواتير</small><b>{digits(filtered.length)}</b></div></div>}
     <div className="of-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث برقم الفاتورة أو العميل أو الهاتف..." /></label><select value={period} onChange={(e) => setPeriod(e.target.value)}><option value="all">كل الفترات</option><option value="today">اليوم</option><option value="week">آخر 7 أيام</option></select></div>
-    <section className="of-panel of-sales-table">{filtered.length ? <div className="of-table-scroll"><table className="of-table"><thead><tr><th>الفاتورة</th><th>العميل</th><th>التاريخ والوقت</th><th>طريقة الدفع</th><th>نوع البيع</th><th>الإجمالي</th><th /></tr></thead><tbody>{filtered.map((sale) => <tr key={sale.id} onClick={() => onSelect(sale)}><td><b className="of-invoice-number">{sale.invoiceNumber}</b></td><td>{sale.customerName || "عميل نقدي"}{sale.customerPhone && <small className="of-sales-phone" dir="ltr">{sale.customerPhone}</small>}</td><td>{dateTime(sale.createdAt)}</td><td>{sale.paymentMethod === "cash" ? "نقدي" : sale.paymentMethod === "card" ? "بطاقة" : sale.paymentMethod === "wallet" ? "محفظة" : sale.paymentMethod === "instapay" ? "إنستا باي" : "تحويل"}</td><td>{sale.saleType === "retail" ? "قطاعي" : "جملة"}</td><td className="of-number"><b>{money(sale.total, currency)}</b></td><td><ArrowUpRight size={15} /></td></tr>)}</tbody></table></div> : <EmptyState icon={FileText} title={query ? "لا توجد فواتير مطابقة" : "لا توجد فواتير بعد"} copy={query ? "غيّر كلمات البحث أو الفترة المحددة." : "ستظهر فواتيرك بعد تسجيل عمليات البيع."} />}</section>
+    <section className="of-panel of-sales-table">{filtered.length ? <div className="of-table-scroll"><table className="of-table"><thead><tr><th>الفاتورة</th><th>العميل</th><th>التاريخ والوقت</th><th>طريقة الدفع</th><th>نوع البيع</th>{showAmounts && <th>الإجمالي</th>}<th /></tr></thead><tbody>{filtered.map((sale) => <tr key={sale.id} onClick={() => onSelect(sale)}><td><b className="of-invoice-number">{sale.invoiceNumber}</b></td><td>{sale.customerName || "عميل نقدي"}{sale.customerPhone && <small className="of-sales-phone" dir="ltr">{sale.customerPhone}</small>}</td><td>{dateTime(sale.createdAt)}</td><td>{sale.paymentMethod === "cash" ? "نقدي" : sale.paymentMethod === "card" ? "بطاقة" : sale.paymentMethod === "wallet" ? "محفظة" : sale.paymentMethod === "instapay" ? "إنستا باي" : "تحويل"}</td><td>{sale.saleType === "retail" ? "قطاعي" : "جملة"}</td>{showAmounts && <td className="of-number"><b>{money(sale.total, currency)}</b></td>}<td><ArrowUpRight size={15} /></td></tr>)}</tbody></table></div> : <EmptyState icon={FileText} title={query ? "لا توجد فواتير مطابقة" : "لا توجد فواتير بعد"} copy={query ? "غيّر كلمات البحث أو الفترة المحددة." : "ستظهر فواتيرك بعد تسجيل عمليات البيع."} />}</section>
   </section>;
 }
 
@@ -946,7 +1004,7 @@ function InvoiceDialog({ sale, store, currency, onClose }: { sale: OfflineSale; 
     anchor.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  return <div className="of-overlay of-invoice-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className={`of-dialog of-invoice-dialog of-invoice-${format}`} role="dialog" aria-modal="true" aria-labelledby="invoice-title"><header className="of-dialog-head of-invoice-actions"><div><span className="of-kicker">تفاصيل المعاملة</span><h2 id="invoice-title">{sale.invoiceNumber}</h2></div><div><button className="of-button of-button-secondary" onClick={exportText}><ArrowDownToLine size={15} /> تصدير TXT</button><button className="of-button of-button-secondary" onClick={() => window.print()}><Printer size={15} /> طباعة الفاتورة</button><button className="of-icon-button" onClick={onClose} aria-label="إغلاق"><X size={18} /></button></div></header><article className="of-print-invoice">
+  return <div className="of-overlay of-invoice-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className={`of-dialog of-invoice-dialog of-invoice-${format}`} role="dialog" aria-modal="true" aria-labelledby="invoice-title"><header className="of-dialog-head of-invoice-actions"><div><span className="of-kicker">تفاصيل المعاملة</span><h2 id="invoice-title">{sale.invoiceNumber}</h2></div><div><button className="of-button of-button-secondary" onClick={exportText}><ArrowDownToLine size={15} /> تصدير TXT</button><button className="of-button of-button-secondary" onClick={() => window.print()}><Printer size={15} /> طباعة الفاتورة</button><button className="of-icon-button" onClick={onClose} aria-label="إغلاق"><X size={18} /></button></div></header><div className="of-inline-hint of-invoice-offline-note">إرسال الفاتورة عبر واتساب غير متاح في النسخة التي تعمل دون إنترنت؛ استخدم الطباعة أو تصدير TXT.</div><article className="of-print-invoice">
     <div className="of-invoice-brand"><BrandMark compact /><div><b>{store?.name}</b><small>{store?.businessType}</small></div></div>
     <div className="of-invoice-meta"><div><span>رقم الفاتورة</span><b dir="ltr">{sale.invoiceNumber}</b></div><div><span>التاريخ</span><b>{dateTime(sale.createdAt)}</b></div><div><span>العميل</span><b>{sale.customerName || "عميل نقدي"}</b></div>{sale.customerPhone && <div><span>الهاتف</span><b dir="ltr">{sale.customerPhone}</b></div>}<div><span>نوع البيع</span><b>{sale.saleType === "wholesale" ? "جملة" : "قطاعي"}</b></div><div><span>طريقة الدفع</span><b>{paymentLabel}</b></div>{sale.transferSender && <div><span>بيانات التحويل</span><b dir="ltr">{sale.transferSender}</b></div>}{sale.exchangeOfInvoiceNumber && <div><span>استبدال عن</span><b dir="ltr">{sale.exchangeOfInvoiceNumber}</b></div>}</div>
     <div className="of-table-scroll"><table className="of-table"><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={`${item.productId}-${index}`}><td><b>{item.name}</b>{item.sku && <small>{item.sku}</small>}</td><td>{digits(item.quantity)}</td><td className="of-number">{money(item.unitPrice, currency)}</td><td className="of-number">{money(item.lineTotal, currency)}</td></tr>)}</tbody></table></div>

@@ -410,9 +410,10 @@ export function isOfflineState(value: unknown): value is OfflineState {
     member.permissions.every((permission) => OFFLINE_TEAM_PERMISSIONS.includes(permission)) &&
     typeof member.active === "boolean" &&
     ((member.pinSalt === null && member.pinHash === null && member.pinIterations === null) ||
-      (typeof member.pinSalt === "string" && /^[a-f0-9]{32}$/i.test(member.pinSalt) &&
-        typeof member.pinHash === "string" && /^[a-f0-9]{64}$/i.test(member.pinHash) &&
-        Number.isInteger(member.pinIterations) && member.pinIterations >= 100_000 && member.pinIterations <= 1_000_000)) &&
+       (typeof member.pinSalt === "string" && /^[a-f0-9]{32}$/i.test(member.pinSalt) &&
+         typeof member.pinHash === "string" && /^[a-f0-9]{64}$/i.test(member.pinHash) &&
+         typeof member.pinIterations === "number" && Number.isInteger(member.pinIterations) &&
+         member.pinIterations >= 100_000 && member.pinIterations <= 1_000_000)) &&
     isDate(member.createdAt),
   );
   const auditIsValid = state.auditLogs.every((entry) =>
