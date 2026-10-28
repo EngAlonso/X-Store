@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "VQYRSvINo1_A3yBLYr_xR"
+uri = "file://artifacts/x-store/dist/xstore-offline-license-private.txt"
+type = "text"
+title = "مفتاح توقيع X-Store للأوفلاين"
+description = "ملف PEM خاص بمفتاح Ed25519. انسخ محتواه إلى Replit Secrets تحت XSTORE_OFFLINE_LICENSE_PRIVATE_KEY، ولا تشاركه. احذف النسخة بعد إضافته."
+logical_id = "2d460867-e725-4d24-8553-06afe051df0d"
+content_hash = "sha256:ac30f52c4842fe1f36dc649b35ab85df6722c186d376599cac78db35cc8bbe6d"
+size = 119
+mtime_ms = 1793222652248
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:58fb8d9a-212e-4e71-9573-06daa78d6a68/2d460867-e725-4d24-8553-06afe051df0d/45ec3b9d-0f2f-4cb8-ae9f-05423d59c952"
+storage_version_token = "1793222657077996"
+content_type = "text/plain"
