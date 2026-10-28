@@ -3,3 +3,4 @@
 - [Invoice line details](invoice-details.md) — completed invoices must show per-item name, quantity, unit price, and line total across print, WhatsApp, and history.
 - [Latin numerals](display-numerals.md) — show user-visible values with 0–9 across money, dates, quantities, charts, and invoice samples.
 - [Aiven production database](aiven-production-db.md) — use the same-service CA with strict TLS and apply tracked migrations to the Vercel production database.
+- [X-Store offline edition](offline-edition.md) — standalone Windows install, no internet or cloud data, one store/device, local backups in a user-selected folder.
