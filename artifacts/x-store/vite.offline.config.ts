@@ -8,7 +8,7 @@ const root = path.resolve(import.meta.dirname);
 export default defineConfig(({ command }) => ({
   base: "./",
   plugins: [react()],
-  define: offlineLicensePublicKeyDefine(),
+  define: offlineLicensePublicKeyDefine({ required: true }),
   resolve: {
     alias: {
       "@": path.resolve(root, "src"),
