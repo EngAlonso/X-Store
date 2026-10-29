@@ -2,6 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { app, BrowserWindow, dialog, ipcMain, session } = require("electron");
+const { getDeviceId } = require("./device-id.cjs");
 
 const SCHEMA_VERSION = 3;
 const BACKUP_PREFIX = "x-store-automatic-";
@@ -78,18 +79,7 @@ function isValidLicense(value) {
 }
 
 async function getInstallationId() {
-  const installationIdPath = path.join(app.getPath("userData"), "installation-id");
-  try {
-    const existing = (await fs.readFile(installationIdPath, "utf8")).trim();
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(existing)) {
-      return existing;
-    }
-  } catch {
-    // A missing file is normal on the first launch.
-  }
-  const installationId = crypto.randomUUID();
-  await fs.writeFile(installationIdPath, `${installationId}\n`, { mode: 0o600 });
-  return installationId;
+  return getDeviceId();
 }
 
 function isValidState(value) {
