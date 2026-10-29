@@ -109,6 +109,9 @@
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": false
+    },
+    "toolsets": {
+      "wine": "1.0.1"
     }
   }
 }

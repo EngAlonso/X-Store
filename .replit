@@ -91,3 +91,4 @@ DATABASE_CA_CERT = "-----BEGIN CERTIFICATE----- MIIERDCCAqygAwIBAgIUDJ38v44jlEsf
 
 [nix]
 channel = "stable-25_05"
+packages = ["wineWowPackages.stable", "libunwind"]
