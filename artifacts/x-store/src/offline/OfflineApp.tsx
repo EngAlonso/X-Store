@@ -325,6 +325,20 @@ export default function OfflineApp() {
   if (!currentMember) return <OfflineLogin state={currentState} onLogin={setAuthenticatedMemberId} />;
   const activeMember = currentMember;
   const active = isLicenseActive(currentState.license);
+  if (!active && activeMember.role !== "tenant_admin") {
+    return <main className="of-failure" dir="rtl">
+      <BrandMark />
+      <div className="of-failure-card">
+        <CircleAlert size={26} />
+        <h1>الترخيص يحتاج إعادة تفعيل</h1>
+        <p>تواصل مع مالك المتجر ليعيد التفعيل. بيانات المتجر والنسخ الاحتياطية محفوظة.</p>
+        <button className="of-button of-button-primary" onClick={() => setAuthenticatedMemberId(null)}>تسجيل الخروج</button>
+      </div>
+    </main>;
+  }
+  const pageToRender: Page = !active && page !== "settings" && page !== "backup"
+    ? "settings"
+    : page;
   const currency = currentState.store!.currency;
   const wholesaleEnabled = currentState.store?.wholesaleEnabled ?? false;
   const canViewAllSales = activeMember.role === "tenant_admin" || activeMember.permissions.includes("accountant");
@@ -351,9 +365,10 @@ export default function OfflineApp() {
   const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
   const lowStock = currentState.products.filter((product) => product.quantity <= 5);
   const canViewInventoryCosts = activeMember.role === "tenant_admin" || activeMember.permissions.includes("accountant") || activeMember.permissions.includes("warehouse_manager");
-  const title = navItems.find((item) => item.id === page)?.label ?? "الرئيسية";
+  const title = navItems.find((item) => item.id === pageToRender)?.label ?? "الرئيسية";
 
   async function updateProduct(product: OfflineProduct, editingId?: string) {
+    if (!active) throw new Error("الترخيص غير مفعّل. تواصل مع مالك المتجر.");
     assertOfflinePermission(activeMember, ["warehouse_manager"]);
     const existing = editingId ? currentState.products.find((item) => item.id === editingId) : undefined;
     if (editingId && !existing) throw new Error("لم يتم العثور على المنتج المطلوب تعديله.");
@@ -380,6 +395,7 @@ export default function OfflineApp() {
     setNotice(editingId ? "تم تحديث المنتج." : "تمت إضافة المنتج.");
   }
   async function removeProduct(id: string) {
+    if (!active) throw new Error("الترخيص غير مفعّل. تواصل مع مالك المتجر.");
     assertOfflinePermission(activeMember, ["warehouse_manager"]);
     if (!window.confirm("هل تريد حذف هذا المنتج؟")) return;
     if (currentState.sales.some((sale) => sale.items.some((item) => item.productId === id)) ||
@@ -397,7 +413,7 @@ export default function OfflineApp() {
   }
   async function completeSale(sale: OfflineSale) {
     assertOfflinePermission(activeMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
-    if (!active) throw new Error("انتهت مدة الترخيص المحلي. تواصل مع مورّد النظام لتجديده.");
+    if (!active) throw new Error("الترخيص غير مفعّل. تواصل مع مالك المتجر.");
     for (const line of sale.items) {
       const product = currentState.products.find((item) => item.id === line.productId);
       if (!product || product.quantity < line.quantity) {
@@ -418,6 +434,7 @@ export default function OfflineApp() {
     setSaleDetail(sale);
   }
   async function holdSale(heldSale: OfflineHeldSale) {
+    if (!active) throw new Error("الترخيص غير مفعّل. تواصل مع مالك المتجر.");
     assertOfflinePermission(activeMember, [heldSale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
     await persist({
       ...currentState,
@@ -427,6 +444,7 @@ export default function OfflineApp() {
     setNotice(`تم تعليق الفاتورة ${heldSale.reference}.`);
   }
   async function releaseHeldSale(id: string) {
+    if (!active) throw new Error("الترخيص غير مفعّل. تواصل مع مالك المتجر.");
     const heldSale = currentState.heldSales.find((item) => item.id === id);
     if (!heldSale) throw new Error("لم يتم العثور على الفاتورة المعلقة.");
     assertOfflinePermission(activeMember, [heldSale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
@@ -438,6 +456,7 @@ export default function OfflineApp() {
     return heldSale;
   }
   async function recordReturn(request: OfflineReturnRequest) {
+    if (!active) throw new Error("الترخيص غير مفعّل. تواصل مع مالك المتجر.");
     const sale = currentState.sales.find((item) => item.id === request.saleId);
     if (!sale) throw new Error("لم يتم العثور على الفاتورة المحددة.");
     assertOfflinePermission(activeMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
@@ -446,6 +465,7 @@ export default function OfflineApp() {
     setNotice(`تم تسجيل المرتجع · ${money(result.refundAmount, currency)}.`);
   }
   async function recordExchange(request: OfflineExchangeRequest) {
+    if (!active) throw new Error("الترخيص غير مفعّل. تواصل مع مالك المتجر.");
     const sale = currentState.sales.find((item) => item.id === request.saleId);
     if (!sale) throw new Error("لم يتم العثور على الفاتورة المحددة.");
     assertOfflinePermission(activeMember, [sale.saleType === "wholesale" ? "wholesale_sales" : "retail_sales"]);
@@ -459,6 +479,7 @@ export default function OfflineApp() {
     setNotice([`تم الاستبدال · ${result.exchange.replacementInvoiceNumber}`, settlement].filter(Boolean).join(" · "));
   }
   async function saveTeamMember(member: OfflineTeamMember, editingId?: string) {
+    if (!active) throw new Error("الترخيص غير مفعّل. تواصل مع مالك المتجر.");
     assertOfflinePermission(activeMember, ["warehouse_manager"]);
     if (activeMember.role !== "tenant_admin") throw new Error("إدارة حسابات الفريق متاحة لمالك المتجر فقط.");
     if (member.active && (!member.pinSalt || !member.pinHash || !member.pinIterations)) {
@@ -484,6 +505,7 @@ export default function OfflineApp() {
     setNotice(editingId ? "تم تحديث بيانات عضو الفريق." : "تمت إضافة عضو للفريق.");
   }
   async function removeTeamMember(id: string) {
+    if (!active) throw new Error("الترخيص غير مفعّل. تواصل مع مالك المتجر.");
     if (activeMember.role !== "tenant_admin") throw new Error("إدارة حسابات الفريق متاحة لمالك المتجر فقط.");
     if (id === activeMember.id) throw new Error("لا يمكنك إزالة حساب الدخول الذي تستخدمه الآن.");
     const member = currentState.teamMembers.find((item) => item.id === id);
@@ -571,6 +593,11 @@ export default function OfflineApp() {
     setNotice(`تم تفعيل الترخيص ${planNames[license.payload.plan]}.`);
   }
   function goToPage(nextPage: Page) {
+    if (!active && nextPage !== "settings" && nextPage !== "backup") {
+      setPage("settings");
+      setSaveError("البرنامج متوقف حتى تعيد إدارة X-Store تفعيل الترخيص.");
+      return;
+    }
     if (!canAccessOfflinePage(activeMember, nextPage)) {
       setSaveError("لا تملك صلاحية لفتح هذه الصفحة.");
       return;
@@ -583,23 +610,23 @@ export default function OfflineApp() {
     <aside className="of-sidebar">
       <div className="of-sidebar-brand"><BrandMark /><span className="of-edition">نسخة مستقلة · Windows</span></div>
       <div className="of-shop-chip"><span className="of-shop-avatar"><Store size={18} /></span><span><b>{state.store.name}</b><small>{state.store.businessType}</small></span><ChevronDown size={15} /></div>
-      <nav className="of-nav">{navItems.filter(({ id }) => canAccessOfflinePage(activeMember, id)).map(({ id, label, icon: Icon }) => <button key={id} className={`of-nav-item ${page === id ? "selected" : ""}`} onClick={() => goToPage(id)}><Icon size={18} /><span>{label}</span>{id === "products" && lowStock.length > 0 && <i>{digits(lowStock.length)}</i>}</button>)}</nav>
+      <nav className="of-nav">{navItems.filter(({ id }) => canAccessOfflinePage(activeMember, id) && (active || id === "settings" || id === "backup")).map(({ id, label, icon: Icon }) => <button key={id} className={`of-nav-item ${pageToRender === id ? "selected" : ""}`} onClick={() => goToPage(id)}><Icon size={18} /><span>{label}</span>{id === "products" && lowStock.length > 0 && <i>{digits(lowStock.length)}</i>}</button>)}</nav>
        <div className="of-sidebar-bottom"><div className={`of-license-chip ${state.license && !active ? "expired" : ""}`}><span className="of-license-status"><ShieldCheck size={16} /></span><span><b>{active ? "الترخيص نشط" : state.license ? "انتهى الترخيص" : "بانتظار التفعيل"}</b><small>{state.license?.payload.expiresAt ? `ينتهي ${state.license.payload.expiresAt}` : state.license ? "ترخيص مدى الحياة" : "صدّر طلب التفعيل من الإعدادات"}</small></span></div><div className="of-device-note"><LockKeyhole size={14} /> لا توجد مزامنة أو اتصال سحابي</div></div>
     </aside>
     <div className="of-main">
       <header className="of-topbar"><div className="of-mobile-brand"><BrandMark compact /></div><div className="of-breadcrumb"><span>المتجر</span><i>/</i><b>{title}</b></div><div className="of-top-right"><span className="of-online-state"><i /> يعمل دون إنترنت</span><span className="of-top-date">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span><span className="of-current-user" title={activeMember.roleName}>{activeMember.name}</span><button className="of-avatar" title={activeMember.name}>{activeMember.name.slice(0, 1)}</button><button className="of-logout-button" onClick={() => { setAuthenticatedMemberId(null); setSaleDetail(null); setSaveError(""); }} aria-label="تسجيل الخروج" title="تسجيل الخروج"><LogOut size={16} /><span>خروج</span></button></div></header>
       {(saveError || state.backup.lastError) && <div className="of-alert"><CircleAlert size={17} /><span>{saveError || state.backup.lastError}</span><button aria-label="إغلاق" onClick={() => { setSaveError(""); if (state.backup.lastError) void persist({ ...state, backup: { ...state.backup, lastError: null } }); }}><X size={15} /></button></div>}
       <main className="of-content">
-        {page === "dashboard" && <Dashboard state={viewState} todaySales={todaySales} todayRevenue={todayRevenue} lowStock={lowStock} currency={currency} canViewSales={canViewAllSales || activeMember.permissions.some((permission) => salesPermissions.includes(permission))} canViewAmounts={canViewAllSales} canViewInventoryCosts={canViewInventoryCosts} roleName={activeMember.roleName} canNavigate={(target) => canAccessOfflinePage(activeMember, target)} onNavigate={goToPage} onSale={setSaleDetail} />}
-        {page === "products" && <ProductsPage state={state} currency={currency} canEditDetails={activeMember.role === "tenant_admin"} canDelete={activeMember.role === "tenant_admin"} onSave={updateProduct} onRemove={removeProduct} />}
-        {page === "pos" && <PosPage state={posState} licenseActive={active} canSellRetail={canViewRetailSales} canSellWholesale={wholesaleEnabled && (activeMember.role === "tenant_admin" || activeMember.permissions.includes("wholesale_sales"))} cashierName={activeMember.name} onComplete={completeSale} onHold={holdSale} onRelease={releaseHeldSale} onReturns={() => goToPage("returns")} />}
-        {page === "sales" && <SalesPage state={viewState} currency={currency} showAmounts={canViewAllSales} onSelect={setSaleDetail} />}
-        {page === "returns" && <OfflineReturnsPage state={viewState} currency={currency} onReturn={recordReturn} onExchange={recordExchange} />}
-        {page === "team" && <OfflineTeamPage state={state} onSave={saveTeamMember} onRemove={removeTeamMember} />}
-        {page === "reports" && <OfflineReportsPage state={state} currency={currency} />}
-        {page === "audit" && <OfflineAuditPage state={state} />}
-        {page === "backup" && <BackupPage state={state} desktop={desktop} onChooseFolder={chooseFolder} onBackup={manualBackup} onRestore={() => fileInput.current?.click()} />}
-        {page === "settings" && <SettingsPage state={state} onSave={updateSettings} onActivate={activateLicense} />}
+        {pageToRender === "dashboard" && <Dashboard state={viewState} todaySales={todaySales} todayRevenue={todayRevenue} lowStock={lowStock} currency={currency} canViewSales={canViewAllSales || activeMember.permissions.some((permission) => salesPermissions.includes(permission))} canViewAmounts={canViewAllSales} canViewInventoryCosts={canViewInventoryCosts} roleName={activeMember.roleName} canNavigate={(target) => canAccessOfflinePage(activeMember, target)} onNavigate={goToPage} onSale={setSaleDetail} />}
+        {pageToRender === "products" && <ProductsPage state={state} currency={currency} canEditDetails={activeMember.role === "tenant_admin"} canDelete={activeMember.role === "tenant_admin"} onSave={updateProduct} onRemove={removeProduct} />}
+        {pageToRender === "pos" && <PosPage state={posState} licenseActive={active} canSellRetail={canViewRetailSales} canSellWholesale={wholesaleEnabled && (activeMember.role === "tenant_admin" || activeMember.permissions.includes("wholesale_sales"))} cashierName={activeMember.name} onComplete={completeSale} onHold={holdSale} onRelease={releaseHeldSale} onReturns={() => goToPage("returns")} />}
+        {pageToRender === "sales" && <SalesPage state={viewState} currency={currency} showAmounts={canViewAllSales} onSelect={setSaleDetail} />}
+        {pageToRender === "returns" && <OfflineReturnsPage state={viewState} currency={currency} onReturn={recordReturn} onExchange={recordExchange} />}
+        {pageToRender === "team" && <OfflineTeamPage state={state} onSave={saveTeamMember} onRemove={removeTeamMember} />}
+        {pageToRender === "reports" && <OfflineReportsPage state={state} currency={currency} />}
+        {pageToRender === "audit" && <OfflineAuditPage state={state} />}
+        {pageToRender === "backup" && <BackupPage state={state} desktop={desktop} onChooseFolder={chooseFolder} onBackup={manualBackup} onRestore={() => fileInput.current?.click()} />}
+        {pageToRender === "settings" && <SettingsPage state={state} onSave={updateSettings} onActivate={activateLicense} />}
       </main>
       <footer className="of-footer"><span><ShieldCheck size={14} /> بيانات المتجر محفوظة محليًا على هذا الجهاز</span><span> X-Store Offline <b>·</b> إصدار مستقل</span></footer>
     </div>
@@ -1122,7 +1149,7 @@ function SettingsPage({ state, onSave, onActivate }: {
       ] as const).map(({ value, title, detail, icon: Icon }) => <button key={value} type="button" className={invoiceFormat === value ? "chosen" : ""} onClick={() => setInvoiceFormat(value)}><Icon size={18} /><b>{title}</b><small>{detail}</small></button>)}</div></fieldset>
       {error && <div className="of-error"><CircleAlert size={15} />{error}</div>}<div className="of-settings-save"><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ التغييرات"}</button></div>
     </form></section>
-       <aside className="of-panel of-license-panel"><span className={`of-license-large-icon ${state.license && !active ? "expired" : ""}`}><ShieldCheck size={22} /></span><span className="of-kicker">حالة الترخيص</span><h2>{active ? "ترخيصك نشط" : state.license ? "الترخيص منتهٍ" : "بانتظار ملف التفعيل"}</h2><p>يرتبط الترخيص بمعرّف نظام هذا الجهاز؛ نقل بيانات المتجر أو النسخة الاحتياطية لجهاز آخر لا ينقل صلاحية التفعيل. تغيير الجهاز يتطلب إصدار ترخيص جديد.</p><div className="of-license-details"><div><span>اسم المتجر</span><b>{state.store?.name ?? "—"}</b></div><div><span>الخطة</span><b>{state.license ? licensePlanNames[state.license.payload.plan] : "غير مفعّل"}</b></div><div><span>تاريخ الإصدار</span><b>{state.license?.payload.issuedAt.slice(0, 10) ?? "—"}</b></div><div><span>تاريخ الانتهاء</span><b>{state.license ? state.license.payload.expiresAt ?? "دائم" : "—"}</b></div></div><div className="of-license-actions"><button type="button" className="of-button of-button-secondary" onClick={() => void exportActivationRequest()}><ArrowDownToLine size={15} /> تنزيل طلب التفعيل</button><Field label="استيراد ملف التفعيل"><input type="file" accept=".json,application/json" onChange={(event) => void importActivationFile(event)} disabled={activationBusy} /></Field></div>{activationError && <div className="of-error"><CircleAlert size={15} />{activationError}</div>}{activationNotice && <div className="of-inline-hint">{activationNotice}</div>}<div className="of-license-caption"><LockKeyhole size={14} /> بعد انتهاء الترخيص يتوقف البيع، وتبقى بيانات المتجر والنسخ الاحتياطي متاحة.</div></aside></div>
+       <aside className="of-panel of-license-panel"><span className={`of-license-large-icon ${state.license && !active ? "expired" : ""}`}><ShieldCheck size={22} /></span><span className="of-kicker">حالة الترخيص</span><h2>{active ? "ترخيصك نشط" : state.license ? "الترخيص منتهٍ" : "بانتظار ملف التفعيل"}</h2>{!active && <div className="of-error"><CircleAlert size={15} />البرنامج متوقف حتى إعادة التفعيل. بيانات المتجر والنسخ الاحتياطية محفوظة.</div>}<p>الترخيص مربوط بالبوردة والهارد الداخلي وكل شريحة RAM. تغيير أيٍّ منها أو إعادة تثبيت Windows يتطلب تفعيلًا جديدًا منك. فلاشة النسخ الاحتياطي لا تؤثر على التفعيل.</p><div className="of-license-details"><div><span>اسم المتجر</span><b>{state.store?.name ?? "—"}</b></div><div><span>الخطة</span><b>{state.license ? licensePlanNames[state.license.payload.plan] : "غير مفعّل"}</b></div><div><span>تاريخ الإصدار</span><b>{state.license?.payload.issuedAt.slice(0, 10) ?? "—"}</b></div><div><span>تاريخ الانتهاء</span><b>{state.license ? state.license.payload.expiresAt ?? "دائم" : "—"}</b></div></div><div className="of-license-actions"><button type="button" className="of-button of-button-secondary" onClick={() => void exportActivationRequest()}><ArrowDownToLine size={15} /> تنزيل طلب التفعيل</button><Field label="استيراد ملف التفعيل"><input type="file" accept=".json,application/json" onChange={(event) => void importActivationFile(event)} disabled={activationBusy} /></Field></div>{activationError && <div className="of-error"><CircleAlert size={15} />{activationError}</div>}{activationNotice && <div className="of-inline-hint">{activationNotice}</div>}<div className="of-license-caption"><LockKeyhole size={14} /> بعد انتهاء الترخيص يتوقف البيع، وتبقى بيانات المتجر والنسخ الاحتياطي متاحة.</div></aside></div>
     <div className="of-settings-device"><span><LifeBuoy size={17} /></span><div><b>البيانات لا تغادر جهازك</b><small>يعمل X-Store Offline دون حساب أو مزامنة سحابية. احفظ نسخة احتياطية بانتظام.</small></div></div>
   </section>;
 }

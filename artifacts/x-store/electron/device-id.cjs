@@ -9,7 +9,7 @@ function deviceIdFromMachineIdentity(machineIdentity) {
 
   const digest = crypto
     .createHash("sha256")
-    .update(`com.xstore.offline/device-id/v1\0${machineIdentity.trim().toLowerCase()}`)
+    .update(`com.xstore.offline/device-id/v2\0${machineIdentity.trim().toLowerCase()}`)
     .digest()
     .subarray(0, 16);
   digest[6] = (digest[6] & 0x0f) | 0x40;
@@ -17,6 +17,58 @@ function deviceIdFromMachineIdentity(machineIdentity) {
   const hex = digest.toString("hex");
 
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function isValidHardwareUuid(value) {
+  return typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) &&
+    !/^0{8}-0{4}-0{4}-0{4}-0{12}$/i.test(value) &&
+    !/^f{8}-f{4}-f{4}-f{4}-f{12}$/i.test(value);
+}
+
+function normalizeHardwareSerial(value, component) {
+  const serial = String(value ?? "").trim().replace(/[^a-z0-9]/gi, "").toUpperCase();
+  if (
+    !serial ||
+    /^(?:0+|F+|UNKNOWN|NONE|NA|NOTAVAILABLE|DEFAULTSTRING|SYSTEMSERIALNUMBER|TOBEFILLEDBYOEM|SERIALNUMBER|UNSPECIFIED|123456789)$/i.test(serial)
+  ) {
+    throw new Error(`تعذر قراءة الرقم التسلسلي لـ${component}. لن يتم تفعيل البرنامج على هذا الجهاز.`);
+  }
+  return serial;
+}
+
+function normalizeSerialList(value, component) {
+  const values = Array.isArray(value)
+    ? value
+    : value === null || value === undefined
+      ? []
+      : [value];
+  if (values.length === 0) {
+    throw new Error(`تعذر قراءة الرقم التسلسلي لـ${component}. لن يتم تفعيل البرنامج على هذا الجهاز.`);
+  }
+  return values.map((serial) => normalizeHardwareSerial(serial, component)).sort();
+}
+
+function buildWindowsMachineIdentity({
+  machineGuid,
+  hardwareUuid,
+  diskSerials,
+  memorySerials,
+}) {
+  const normalizedMachineGuid = String(machineGuid ?? "").trim().replace(/[{}]/g, "");
+  const normalizedHardwareUuid = String(hardwareUuid ?? "").trim().replace(/[{}]/g, "");
+  if (!isValidHardwareUuid(normalizedMachineGuid) || !isValidHardwareUuid(normalizedHardwareUuid)) {
+    throw new Error("تعذر قراءة معرّفات البوردة وWindows. لن يتم تفعيل البرنامج على هذا الجهاز.");
+  }
+
+  const disks = normalizeSerialList(diskSerials, "الهارد الداخلي");
+  const memory = normalizeSerialList(memorySerials, "الرامات");
+  return [
+    `windows-guid:${normalizedMachineGuid.toLowerCase()}`,
+    `firmware-uuid:${normalizedHardwareUuid.toLowerCase()}`,
+    `disk-serials:${JSON.stringify(disks)}`,
+    `memory-serials:${JSON.stringify(memory)}`,
+  ].join("|");
 }
 
 function readWindowsMachineIdentity() {
@@ -42,15 +94,21 @@ function readWindowsMachineIdentity() {
     // Report a clear error below instead of using a copyable app-data ID.
   }
 
-  let hardwareUuid;
+  let hardware;
   try {
-    hardwareUuid = execFileSync(
+    const output = execFileSync(
       "powershell.exe",
       [
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        "(Get-CimInstance -ClassName Win32_ComputerSystemProduct -ErrorAction Stop).UUID",
+        [
+          "$ErrorActionPreference = 'Stop'",
+          "$board = (Get-CimInstance -ClassName Win32_ComputerSystemProduct -ErrorAction Stop).UUID",
+          "$disks = @(Get-CimInstance -ClassName Win32_DiskDrive -ErrorAction Stop | Where-Object { $_.InterfaceType -ne 'USB' -and $_.PNPDeviceID -notmatch 'USBSTOR' } | ForEach-Object { [string]$_.SerialNumber })",
+          "$memory = @(Get-CimInstance -ClassName Win32_PhysicalMemory -ErrorAction Stop | ForEach-Object { [string]$_.SerialNumber })",
+          "[PSCustomObject]@{ hardwareUuid = $board; diskSerials = $disks; memorySerials = $memory } | ConvertTo-Json -Compress -Depth 4",
+        ].join("; "),
       ],
       {
         encoding: "utf8",
@@ -58,21 +116,18 @@ function readWindowsMachineIdentity() {
         windowsHide: true,
         stdio: ["ignore", "pipe", "ignore"],
       },
-    ).trim();
+    );
+    hardware = JSON.parse(output.trim());
   } catch {
-    // The motherboard identifier is required for resistance to disk cloning.
+    throw new Error("تعذر قراءة بيانات البوردة والهارد والرامات من Windows. لن يتم تفعيل البرنامج على هذا الجهاز.");
   }
 
-  const validUuid = (value) =>
-    typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value) &&
-    !/^0{8}-0{4}-0{4}-0{4}-0{12}$/i.test(value) &&
-    !/^f{8}-f{4}-f{4}-f{4}-f{12}$/i.test(value);
-  if (validUuid(machineGuid) && validUuid(hardwareUuid)) {
-    return `windows-guid:${machineGuid.toLowerCase()}|firmware-uuid:${hardwareUuid.toLowerCase()}`;
-  }
-
-  throw new Error("تعذر قراءة معرّفات الجهاز من Windows. تحقق من معلومات الجهاز ثم تواصل مع الدعم.");
+  return buildWindowsMachineIdentity({
+    machineGuid,
+    hardwareUuid: hardware?.hardwareUuid,
+    diskSerials: hardware?.diskSerials,
+    memorySerials: hardware?.memorySerials,
+  });
 }
 
 function readMacMachineIdentity() {
@@ -123,4 +178,8 @@ async function getDeviceId(platform = process.platform) {
   return deviceIdFromMachineIdentity(`${platform}:${machineIdentity}`);
 }
 
-module.exports = { deviceIdFromMachineIdentity, getDeviceId };
+module.exports = {
+  buildWindowsMachineIdentity,
+  deviceIdFromMachineIdentity,
+  getDeviceId,
+};
