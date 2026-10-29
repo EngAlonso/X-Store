@@ -3,7 +3,7 @@ import {
   Activity, Archive, ArrowDownToLine, ArrowLeft, ArrowUpRight, BarChart3, Check,
   ChevronDown, CircleAlert, Clock3, CreditCard, FileText, FolderOpen,
   LayoutDashboard, LifeBuoy, LockKeyhole, LogOut, Package, Plus, Printer, Receipt,
-  Search, Settings, ShieldCheck, ShoppingCart, Store, Trash2, Upload, Wallet,
+  RefreshCw, Search, Settings, ShieldCheck, ShoppingCart, Store, Trash2, Upload, Wallet,
   Users, RotateCcw, ClipboardList, ChartNoAxesCombined, Pause, Play,
   ArrowLeftRight, Smartphone, Banknote, Minus, X,
 } from "lucide-react";
@@ -11,7 +11,7 @@ import {
   createEmptyOfflineState,
   isLicenseActive, isOfflineState, migrateOfflineState,
   OFFLINE_CURRENCIES, OFFLINE_STORE_TYPES, OFFLINE_TEAM_PERMISSIONS,
-  type OfflineHardwareChange, type OfflineHeldSale, type OfflineLicense, type OfflineProduct,
+  type OfflineHardwareChange, type OfflineHardwareSnapshot, type OfflineHeldSale, type OfflineLicense, type OfflineProduct,
   type OfflineSale, type OfflineState, type OfflineTeamMember, type OfflineTeamPermission,
 } from "./model";
 import {
@@ -49,6 +49,8 @@ const salesPermissions: OfflineTeamPermission[] = ["retail_sales", "wholesale_sa
 type OfflineLicenseDeviceStatus = {
   changes: OfflineHardwareChange[];
   inspectionError: string;
+  currentDevice: OfflineHardwareSnapshot | null;
+  checkedAt: string | null;
 };
 
 function canAccessOfflinePage(member: OfflineTeamMember, page: Page) {
@@ -281,26 +283,40 @@ export default function OfflineApp() {
   const [licenseDeviceStatus, setLicenseDeviceStatus] = useState<OfflineLicenseDeviceStatus>({
     changes: [],
     inspectionError: "",
+    currentDevice: null,
+    checkedAt: null,
   });
   const [saleDetail, setSaleDetail] = useState<OfflineSale | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const desktop = isDesktopEdition();
 
   async function inspectLicenseDevice(license: OfflineLicense | null): Promise<OfflineLicenseDeviceStatus> {
-    if (!license) return { changes: [], inspectionError: "" };
-    if (license.payload.version !== 2 || !license.payload.deviceFingerprint) {
-      return { changes: ["baseline"], inspectionError: "" };
+    if (!desktop) {
+      return {
+        changes: license && (license.payload.version !== 2 || !license.payload.deviceFingerprint) ? ["baseline"] : [],
+        inspectionError: "",
+        currentDevice: null,
+        checkedAt: null,
+      };
     }
     try {
       const currentDevice = await getOfflineHardwareSnapshot();
       return {
-        changes: getOfflineLicenseDeviceChanges(license, currentDevice),
+        changes: !license
+          ? []
+          : license.payload.version !== 2 || !license.payload.deviceFingerprint
+            ? ["baseline"]
+            : getOfflineLicenseDeviceChanges(license, currentDevice),
         inspectionError: "",
+        currentDevice,
+        checkedAt: new Date().toISOString(),
       };
     } catch (error) {
       return {
         changes: [],
         inspectionError: error instanceof Error ? error.message : "تعذر فحص قطع الجهاز.",
+        currentDevice: null,
+        checkedAt: new Date().toISOString(),
       };
     }
   }
@@ -637,8 +653,13 @@ export default function OfflineApp() {
         ...currentState.auditLogs,
       ],
     });
-    setLicenseDeviceStatus({ changes: [], inspectionError: "" });
+    setLicenseDeviceStatus(await inspectLicenseDevice(license));
     setNotice(`تم تفعيل الترخيص ${planNames[license.payload.plan]}.`);
+  }
+  async function refreshHardwareReport() {
+    const report = await inspectLicenseDevice(currentState.license);
+    setLicenseDeviceStatus(report);
+    return report;
   }
   function goToPage(nextPage: Page) {
     if (!active && nextPage !== "settings" && nextPage !== "backup") {
@@ -659,7 +680,7 @@ export default function OfflineApp() {
       <div className="of-sidebar-brand"><BrandMark /><span className="of-edition">نسخة مستقلة · Windows</span></div>
       <div className="of-shop-chip"><span className="of-shop-avatar"><Store size={18} /></span><span><b>{state.store.name}</b><small>{state.store.businessType}</small></span><ChevronDown size={15} /></div>
       <nav className="of-nav">{navItems.filter(({ id }) => canAccessOfflinePage(activeMember, id) && (active || id === "settings" || id === "backup")).map(({ id, label, icon: Icon }) => <button key={id} className={`of-nav-item ${pageToRender === id ? "selected" : ""}`} onClick={() => goToPage(id)}><Icon size={18} /><span>{label}</span>{id === "products" && lowStock.length > 0 && <i>{digits(lowStock.length)}</i>}</button>)}</nav>
-       <div className="of-sidebar-bottom"><div className={`of-license-chip ${state.license && !active ? "expired" : ""}`}><span className="of-license-status"><ShieldCheck size={16} /></span><span><b>{active ? "الترخيص نشط" : state.license ? "انتهى الترخيص" : "بانتظار التفعيل"}</b><small>{state.license?.payload.expiresAt ? `ينتهي ${state.license.payload.expiresAt}` : state.license ? "ترخيص مدى الحياة" : "صدّر طلب التفعيل من الإعدادات"}</small></span></div><div className="of-device-note"><LockKeyhole size={14} /> لا توجد مزامنة أو اتصال سحابي</div></div>
+        <div className="of-sidebar-bottom"><div className={`of-license-chip ${state.license && !active ? "expired" : ""}`}><span className="of-license-status"><ShieldCheck size={16} /></span><span><b>{active ? "الترخيص نشط" : state.license ? licenseDeviceStatus.inspectionError || licenseDeviceStatus.changes.length > 0 ? "الترخيص يحتاج إعادة تفعيل" : "انتهى الترخيص" : "بانتظار التفعيل"}</b><small>{state.license?.payload.expiresAt ? `ينتهي ${state.license.payload.expiresAt}` : state.license ? "ترخيص مدى الحياة" : "صدّر طلب التفعيل من الإعدادات"}</small></span></div><div className="of-device-note"><LockKeyhole size={14} /> لا توجد مزامنة أو اتصال سحابي</div></div>
     </aside>
     <div className="of-main">
       <header className="of-topbar"><div className="of-mobile-brand"><BrandMark compact /></div><div className="of-breadcrumb"><span>المتجر</span><i>/</i><b>{title}</b></div><div className="of-top-right"><span className="of-online-state"><i /> يعمل دون إنترنت</span><span className="of-top-date">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span><span className="of-current-user" title={activeMember.roleName}>{activeMember.name}</span><button className="of-avatar" title={activeMember.name}>{activeMember.name.slice(0, 1)}</button><button className="of-logout-button" onClick={() => { setAuthenticatedMemberId(null); setSaleDetail(null); setSaveError(""); }} aria-label="تسجيل الخروج" title="تسجيل الخروج"><LogOut size={16} /><span>خروج</span></button></div></header>
@@ -675,7 +696,7 @@ export default function OfflineApp() {
         {pageToRender === "reports" && <OfflineReportsPage state={state} currency={currency} />}
         {pageToRender === "audit" && <OfflineAuditPage state={state} />}
         {pageToRender === "backup" && <BackupPage state={state} desktop={desktop} onChooseFolder={chooseFolder} onBackup={manualBackup} onRestore={() => fileInput.current?.click()} />}
-        {pageToRender === "settings" && <SettingsPage state={state} licenseActive={active} onSave={updateSettings} onActivate={activateLicense} />}
+        {pageToRender === "settings" && <SettingsPage state={state} licenseActive={active} hardwareStatus={licenseDeviceStatus} desktop={desktop} onRefreshHardware={refreshHardwareReport} onSave={updateSettings} onActivate={activateLicense} />}
       </main>
       <footer className="of-footer"><span><ShieldCheck size={14} /> بيانات المتجر محفوظة محليًا على هذا الجهاز</span><span> X-Store Offline <b>·</b> إصدار مستقل</span></footer>
     </div>
@@ -1125,9 +1146,12 @@ function BackupPage({ state, desktop, onChooseFolder, onBackup, onRestore }: { s
   </section>;
 }
 
-function SettingsPage({ state, licenseActive, onSave, onActivate }: {
+function SettingsPage({ state, licenseActive, hardwareStatus, desktop, onRefreshHardware, onSave, onActivate }: {
   state: OfflineState;
   licenseActive: boolean;
+  hardwareStatus: OfflineLicenseDeviceStatus;
+  desktop: boolean;
+  onRefreshHardware: () => Promise<OfflineLicenseDeviceStatus>;
   onSave: (store: OfflineState["store"]) => Promise<void>;
   onActivate: (license: OfflineLicense) => Promise<void>;
 }) {
@@ -1143,7 +1167,9 @@ function SettingsPage({ state, licenseActive, onSave, onActivate }: {
   const [activationError, setActivationError] = useState("");
   const [activationNotice, setActivationNotice] = useState("");
   const [activationBusy, setActivationBusy] = useState(false);
+  const [hardwareChecking, setHardwareChecking] = useState(false);
   const active = licenseActive;
+  const licenseNeedsReactivation = Boolean(hardwareStatus.inspectionError || hardwareStatus.changes.length > 0);
   const supports = OFFLINE_STORE_TYPES.find((item) => item.value === storeType)?.supportsWholesale ?? false;
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -1183,6 +1209,14 @@ function SettingsPage({ state, licenseActive, onSave, onActivate }: {
       input.value = "";
     }
   }
+  async function refreshHardware() {
+    setHardwareChecking(true);
+    try {
+      await onRefreshHardware();
+    } finally {
+      setHardwareChecking(false);
+    }
+  }
   const licensePlanNames = {
     monthly: "شهري",
     half_yearly: "نصف سنوي",
@@ -1199,7 +1233,118 @@ function SettingsPage({ state, licenseActive, onSave, onActivate }: {
       ] as const).map(({ value, title, detail, icon: Icon }) => <button key={value} type="button" className={invoiceFormat === value ? "chosen" : ""} onClick={() => setInvoiceFormat(value)}><Icon size={18} /><b>{title}</b><small>{detail}</small></button>)}</div></fieldset>
       {error && <div className="of-error"><CircleAlert size={15} />{error}</div>}<div className="of-settings-save"><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ التغييرات"}</button></div>
      </form></section>
-       <aside className="of-panel of-license-panel"><span className={`of-license-large-icon ${state.license && !active ? "expired" : ""}`}><ShieldCheck size={22} /></span><span className="of-kicker">حالة الترخيص</span><h2>{active ? "ترخيصك نشط" : state.license ? "الترخيص منتهٍ" : "بانتظار ملف التفعيل"}</h2>{!active && <div className="of-error"><CircleAlert size={15} />البرنامج متوقف حتى إعادة التفعيل. بيانات المتجر والنسخ الاحتياطية محفوظة.</div>}<p>الترخيص مربوط بالبوردة والهارد الداخلي وكل شريحة RAM. تغيير أيٍّ منها أو إعادة تثبيت Windows يتطلب تفعيلًا جديدًا منك. فلاشة النسخ الاحتياطي لا تؤثر على التفعيل.</p><div className="of-license-details"><div><span>اسم المتجر</span><b>{state.store?.name ?? "—"}</b></div><div><span>الخطة</span><b>{state.license ? licensePlanNames[state.license.payload.plan] : "غير مفعّل"}</b></div><div><span>تاريخ الإصدار</span><b>{state.license?.payload.issuedAt.slice(0, 10) ?? "—"}</b></div><div><span>تاريخ الانتهاء</span><b>{state.license ? state.license.payload.expiresAt ?? "دائم" : "—"}</b></div></div><div className="of-license-actions"><button type="button" className="of-button of-button-secondary" onClick={() => void exportActivationRequest()}><ArrowDownToLine size={15} /> تنزيل طلب التفعيل</button><Field label="استيراد ملف التفعيل"><input type="file" accept=".json,application/json" onChange={(event) => void importActivationFile(event)} disabled={activationBusy} /></Field></div>{activationError && <div className="of-error"><CircleAlert size={15} />{activationError}</div>}{activationNotice && <div className="of-inline-hint">{activationNotice}</div>}<div className="of-license-caption"><LockKeyhole size={14} /> بعد انتهاء الترخيص يتوقف البيع، وتبقى بيانات المتجر والنسخ الاحتياطي متاحة.</div></aside></div>
-    <div className="of-settings-device"><span><LifeBuoy size={17} /></span><div><b>البيانات لا تغادر جهازك</b><small>يعمل X-Store Offline دون حساب أو مزامنة سحابية. احفظ نسخة احتياطية بانتظام.</small></div></div>
+       <aside className="of-panel of-license-panel"><span className={`of-license-large-icon ${state.license && !active ? "expired" : ""}`}><ShieldCheck size={22} /></span><span className="of-kicker">حالة الترخيص</span><h2>{active ? "ترخيصك نشط" : state.license ? licenseNeedsReactivation ? "الترخيص يحتاج إعادة تفعيل" : "الترخيص منتهٍ" : "بانتظار ملف التفعيل"}</h2>{!active && <div className="of-error"><CircleAlert size={15} />البرنامج متوقف حتى إعادة التفعيل. بيانات المتجر والنسخ الاحتياطية محفوظة.</div>}<p>الترخيص مربوط بالبوردة والهارد الداخلي وكل شريحة RAM. تغيير أيٍّ منها أو إعادة تثبيت Windows يتطلب تفعيلًا جديدًا منك. فلاشة النسخ الاحتياطي لا تؤثر على التفعيل.</p><div className="of-license-details"><div><span>اسم المتجر</span><b>{state.store?.name ?? "—"}</b></div><div><span>الخطة</span><b>{state.license ? licensePlanNames[state.license.payload.plan] : "غير مفعّل"}</b></div><div><span>تاريخ الإصدار</span><b>{state.license?.payload.issuedAt.slice(0, 10) ?? "—"}</b></div><div><span>تاريخ الانتهاء</span><b>{state.license ? state.license.payload.expiresAt ?? "دائم" : "—"}</b></div></div><div className="of-license-actions"><button type="button" className="of-button of-button-secondary" onClick={() => void exportActivationRequest()}><ArrowDownToLine size={15} /> تنزيل طلب التفعيل</button><Field label="استيراد ملف التفعيل"><input type="file" accept=".json,application/json" onChange={(event) => void importActivationFile(event)} disabled={activationBusy} /></Field></div>{activationError && <div className="of-error"><CircleAlert size={15} />{activationError}</div>}{activationNotice && <div className="of-inline-hint">{activationNotice}</div>}<div className="of-license-caption"><LockKeyhole size={14} /> عند توقف الترخيص يتوقف البيع، وتبقى بيانات المتجر والنسخ الاحتياطية متاحة.</div></aside></div>
+     <HardwareReport state={state} status={hardwareStatus} desktop={desktop} checking={hardwareChecking} onRefresh={() => void refreshHardware()} />
+     <div className="of-settings-device"><span><LifeBuoy size={17} /></span><div><b>البيانات لا تغادر جهازك</b><small>يعمل X-Store Offline دون حساب أو مزامنة سحابية. احفظ نسخة احتياطية بانتظام.</small></div></div>
+  </section>;
+}
+
+function HardwareReport({ state, status, desktop, checking, onRefresh }: {
+  state: OfflineState;
+  status: OfflineLicenseDeviceStatus;
+  desktop: boolean;
+  checking: boolean;
+  onRefresh: () => void;
+}) {
+  const license = state.license;
+  const baseline = license?.payload.version === 2 ? license.payload.deviceFingerprint : undefined;
+  const current = status.currentDevice?.deviceFingerprint;
+  const canCompare = Boolean(baseline && current && !status.inspectionError);
+  const reportStatus = !desktop
+    ? "الفحص المباشر متاح بعد تثبيت نسخة Windows."
+    : status.inspectionError
+      ? "تعذر فحص مكونات الجهاز."
+      : !license
+        ? "لا يوجد ترخيص مرجعي؛ لا يمكن معرفة التغييرات السابقة."
+        : !baseline
+          ? "ملف التفعيل قديم ولا يحتوي على بصمات منفصلة للمكونات."
+          : status.changes.length > 0
+            ? `تم اكتشاف اختلاف منذ التفعيل: ${status.changes.map(hardwareChangeLabel).join("، ")}.`
+            : "لم يتم رصد تغيير في مكونات الجهاز منذ التفعيل.";
+  const rows = [
+    {
+      key: "motherboard" as const,
+      label: "اللوحة الأم",
+      baselineValue: baseline ? "1" : "—",
+      currentValue: current ? "1" : "—",
+    },
+    {
+      key: "internalDisks" as const,
+      label: "الأقراص الداخلية",
+      baselineValue: baseline ? digits(baseline.internalDisks.length) : "—",
+      currentValue: current ? digits(current.internalDisks.length) : "—",
+    },
+    {
+      key: "memoryModules" as const,
+      label: "شرائح الرام",
+      baselineValue: baseline ? digits(baseline.memoryModules.length) : "—",
+      currentValue: current ? digits(current.memoryModules.length) : "—",
+    },
+    {
+      key: "windows" as const,
+      label: "معرّف Windows",
+      baselineValue: baseline ? "مسجل" : "—",
+      currentValue: current ? "مقروء" : "—",
+    },
+  ].map((row) => ({
+    ...row,
+    changed: canCompare && status.changes.includes(row.key),
+  }));
+
+  useEffect(() => {
+    const resetPrintMode = () => document.body.classList.remove("of-print-hardware-report");
+    window.addEventListener("afterprint", resetPrintMode);
+    return () => {
+      window.removeEventListener("afterprint", resetPrintMode);
+      resetPrintMode();
+    };
+  }, []);
+
+  return <section className="of-panel of-hardware-report" aria-labelledby="hardware-report-title">
+    <div className="of-hardware-report-header">
+      <div>
+        <span className="of-kicker">فحص محلي على هذا الجهاز</span>
+        <h2 id="hardware-report-title">تقرير مكونات الجهاز</h2>
+        <p>مقارنة المكونات الحالية بالبصمة المسجلة وقت التفعيل.</p>
+      </div>
+      <div className="of-hardware-report-actions">
+        <button type="button" className="of-button of-button-secondary" onClick={onRefresh} disabled={checking || !desktop}>
+          <RefreshCw size={15} className={checking ? "of-spin" : ""} />
+          {checking ? "جارٍ الفحص..." : "إعادة الفحص"}
+        </button>
+        <button type="button" className="of-button of-button-primary" onClick={() => {
+          document.body.classList.add("of-print-hardware-report");
+          window.print();
+        }} disabled={!desktop}>
+          <Printer size={15} /> طباعة التقرير / حفظ PDF
+        </button>
+      </div>
+    </div>
+    <div className={`of-hardware-report-summary ${status.inspectionError ? "error" : canCompare && status.changes.length ? "changed" : canCompare ? "ok" : "unknown"}`} role="status">
+      <span>{status.inspectionError ? <CircleAlert size={17} /> : canCompare && status.changes.length ? <CircleAlert size={17} /> : <ShieldCheck size={17} />}</span>
+      <div><b>{reportStatus}</b><small>{status.checkedAt ? `آخر فحص: ${digits(new Date(status.checkedAt).toLocaleString("en-GB"))}` : "لم يُجرَ فحص مباشر في هذه المعاينة."}</small></div>
+    </div>
+    <div className="of-hardware-table-wrap">
+      <table className="of-hardware-table">
+        <thead><tr><th>المكوّن</th><th>وقت التفعيل</th><th>حاليًا</th><th>النتيجة</th></tr></thead>
+        <tbody>{rows.map((row) => {
+          const rowHasBaseline = Boolean(baseline && current);
+          const rowStatus = status.inspectionError
+            ? "تعذر الفحص"
+            : !rowHasBaseline
+              ? "لا توجد مقارنة"
+              : row.changed
+                ? "تم رصد تغيير"
+                : "مطابق";
+          return <tr key={row.key}>
+            <th scope="row">{row.label}</th>
+            <td>{row.baselineValue}</td>
+            <td>{row.currentValue}</td>
+            <td><span className={`of-hardware-result ${status.inspectionError ? "error" : !rowHasBaseline ? "unknown" : row.changed ? "changed" : "ok"}`}>{rowStatus}</span></td>
+          </tr>;
+        })}</tbody>
+      </table>
+    </div>
+    <p className="of-hardware-report-note">لا يعرض التقرير الأرقام التسلسلية ولا يرسل بيانات عبر الإنترنت. يوضح التقرير وجود اختلاف مقارنة بوقت التفعيل، لكنه لا يحدد تاريخ حدوث التغيير بدقة.</p>
   </section>;
 }

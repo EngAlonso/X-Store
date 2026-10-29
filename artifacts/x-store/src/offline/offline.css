@@ -301,6 +301,32 @@
 .of-license-details>div { display: flex; align-items: center; justify-content: space-between; color: #8c978e; font-size: 9px; }
 .of-license-details b { color: #4c5e50; direction: ltr; font: 600 10px "Segoe UI", Tahoma, sans-serif; }
 .of-license-caption { display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 11px; color: #849287; font-size: 9px; }
+.of-hardware-report { margin-top: 14px; padding: 19px; }
+.of-hardware-report-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.of-hardware-report-header h2 { margin: 5px 0; color: #2d4735; font-size: 16px; }
+.of-hardware-report-header p { margin: 0; color: #89948b; font-size: 10px; }
+.of-hardware-report-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.of-hardware-report-summary { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 11px 13px; border: 1px solid #e5ebe4; border-radius: 9px; color: #546459; background: #f8faf7; }
+.of-hardware-report-summary>span { display: grid; place-items: center; flex: 0 0 30px; height: 30px; border-radius: 8px; color: #64796a; background: #edf2ed; }
+.of-hardware-report-summary>div { display: flex; flex-direction: column; gap: 4px; }
+.of-hardware-report-summary b { font-size: 10px; }
+.of-hardware-report-summary small { color: #87938a; font-size: 9px; }
+.of-hardware-report-summary.ok { border-color: #dceade; background: #f4faf4; }
+.of-hardware-report-summary.ok>span { color: #36784a; background: #e5f2e7; }
+.of-hardware-report-summary.changed, .of-hardware-report-summary.error { border-color: #f0d8d5; background: #fff8f7; }
+.of-hardware-report-summary.changed>span, .of-hardware-report-summary.error>span { color: #a64c44; background: #f9e9e7; }
+.of-hardware-table-wrap { overflow-x: auto; }
+.of-hardware-table { width: 100%; border-collapse: collapse; text-align: right; font-size: 10px; }
+.of-hardware-table th, .of-hardware-table td { padding: 10px 9px; border-bottom: 1px solid #edf0ec; white-space: nowrap; }
+.of-hardware-table thead th { color: #8a968c; font-size: 9px; font-weight: 600; }
+.of-hardware-table tbody th { color: #405447; font-weight: 700; }
+.of-hardware-table td { color: #66766a; }
+.of-hardware-result { display: inline-flex; padding: 4px 8px; border-radius: 20px; color: #36784a; background: #eaf4ec; font-size: 9px; }
+.of-hardware-result.changed { color: #a64c44; background: #f9e9e7; }
+.of-hardware-result.unknown { color: #718075; background: #eef1ed; }
+.of-hardware-report-note { margin: 11px 0 0; color: #88948b; font-size: 9px; line-height: 1.7; }
+.of-spin { animation: of-spin 1s linear infinite; }
+@keyframes of-spin { to { transform: rotate(360deg); } }
 .of-settings-device { display: flex; align-items: center; gap: 11px; margin-top: 14px; padding: 13px; border: 1px solid #e1eae2; border-radius: 9px; background: #f6faf6; }
 .of-settings-device>span { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; color: #4f7957; background: #e8f1e9; }
 .of-settings-device>div { display: flex; flex-direction: column; gap: 4px; }
@@ -513,6 +539,14 @@
 }
 @media print {
   @page { margin: 8mm; }
+  body.of-print-hardware-report * { visibility: hidden !important; }
+  body.of-print-hardware-report .of-hardware-report,
+  body.of-print-hardware-report .of-hardware-report * { visibility: visible !important; }
+  body.of-print-hardware-report .of-hardware-report { position: absolute !important; inset: 0 auto auto 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; background: #fff !important; }
+  body.of-print-hardware-report .of-hardware-report-actions { display: none !important; }
+  body.of-print-hardware-report .of-hardware-table-wrap { overflow: visible !important; }
+  body.of-print-hardware-report .of-hardware-table th,
+  body.of-print-hardware-report .of-hardware-table td { border-color: #d9dfd9 !important; }
   .of-invoice-dialog.of-invoice-thermal_80mm { width: 80mm !important; max-width: 80mm !important; margin: 0 !important; }
   .of-invoice-dialog.of-invoice-thermal_58mm { width: 58mm !important; max-width: 58mm !important; margin: 0 !important; }
   .of-invoice-dialog.of-invoice-thermal_80mm .of-print-invoice { width: 80mm !important; padding: 4mm !important; }
