@@ -49,7 +49,14 @@ function normalizeSerialList(value, component) {
   return values.map((serial) => normalizeHardwareSerial(serial, component)).sort();
 }
 
-function buildWindowsMachineIdentity({
+function hardwareComponentHash(component, value) {
+  return crypto
+    .createHash("sha256")
+    .update(`com.xstore.offline/hardware-component/v1\0${component}\0${value}`)
+    .digest("hex");
+}
+
+function buildWindowsHardwareFingerprint({
   machineGuid,
   hardwareUuid,
   diskSerials,
@@ -63,15 +70,18 @@ function buildWindowsMachineIdentity({
 
   const disks = normalizeSerialList(diskSerials, "الهارد الداخلي");
   const memory = normalizeSerialList(memorySerials, "الرامات");
-  return [
-    `windows-guid:${normalizedMachineGuid.toLowerCase()}`,
-    `firmware-uuid:${normalizedHardwareUuid.toLowerCase()}`,
-    `disk-serials:${JSON.stringify(disks)}`,
-    `memory-serials:${JSON.stringify(memory)}`,
-  ].join("|");
+  const deviceFingerprint = {
+    version: 1,
+    windowsMachineGuid: hardwareComponentHash("windows", normalizedMachineGuid.toLowerCase()),
+    motherboard: hardwareComponentHash("motherboard", normalizedHardwareUuid.toLowerCase()),
+    internalDisks: disks.map((serial) => hardwareComponentHash("disk", serial)).sort(),
+    memoryModules: memory.map((serial) => hardwareComponentHash("memory", serial)).sort(),
+  };
+  const installationId = deviceIdFromMachineIdentity(JSON.stringify(deviceFingerprint));
+  return { installationId, deviceFingerprint };
 }
 
-function readWindowsMachineIdentity() {
+function readWindowsHardwareFingerprint() {
   let machineGuid;
   try {
     const output = execFileSync(
@@ -122,7 +132,7 @@ function readWindowsMachineIdentity() {
     throw new Error("تعذر قراءة بيانات البوردة والهارد والرامات من Windows. لن يتم تفعيل البرنامج على هذا الجهاز.");
   }
 
-  return buildWindowsMachineIdentity({
+  return buildWindowsHardwareFingerprint({
     machineGuid,
     hardwareUuid: hardware?.hardwareUuid,
     diskSerials: hardware?.diskSerials,
@@ -163,10 +173,17 @@ async function readLinuxMachineIdentity() {
   throw new Error("تعذر قراءة معرّف الجهاز من النظام. تواصل مع الدعم.");
 }
 
+async function getHardwareFingerprint(platform = process.platform) {
+  if (platform !== "win32") {
+    throw new Error("تقرير مكونات الجهاز متاح في نسخة Windows فقط.");
+  }
+  return readWindowsHardwareFingerprint();
+}
+
 async function getDeviceId(platform = process.platform) {
   let machineIdentity;
   if (platform === "win32") {
-    machineIdentity = readWindowsMachineIdentity();
+    return (await getHardwareFingerprint(platform)).installationId;
   } else if (platform === "darwin") {
     machineIdentity = readMacMachineIdentity();
   } else if (platform === "linux") {
@@ -179,7 +196,8 @@ async function getDeviceId(platform = process.platform) {
 }
 
 module.exports = {
-  buildWindowsMachineIdentity,
+  buildWindowsHardwareFingerprint,
   deviceIdFromMachineIdentity,
+  getHardwareFingerprint,
   getDeviceId,
 };

@@ -2,7 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { app, BrowserWindow, dialog, ipcMain, session } = require("electron");
-const { getDeviceId } = require("./device-id.cjs");
+const { getDeviceId, getHardwareFingerprint } = require("./device-id.cjs");
 
 const SCHEMA_VERSION = 3;
 const BACKUP_PREFIX = "x-store-automatic-";
@@ -64,10 +64,21 @@ function isDate(value) {
 function isValidLicense(value) {
   if (!isPlainObject(value) || !isPlainObject(value.payload)) return false;
   const payload = value.payload;
+  const validHardwareFingerprint = payload.version === 2 &&
+    isPlainObject(payload.deviceFingerprint) &&
+    payload.deviceFingerprint.version === 1 &&
+    /^[a-f0-9]{64}$/.test(payload.deviceFingerprint.windowsMachineGuid) &&
+    /^[a-f0-9]{64}$/.test(payload.deviceFingerprint.motherboard) &&
+    Array.isArray(payload.deviceFingerprint.internalDisks) &&
+    payload.deviceFingerprint.internalDisks.length > 0 &&
+    payload.deviceFingerprint.internalDisks.every((item) => /^[a-f0-9]{64}$/.test(item)) &&
+    Array.isArray(payload.deviceFingerprint.memoryModules) &&
+    payload.deviceFingerprint.memoryModules.length > 0 &&
+    payload.deviceFingerprint.memoryModules.every((item) => /^[a-f0-9]{64}$/.test(item));
   const validExpiry = payload.plan === "lifetime"
     ? payload.expiresAt === null
     : typeof payload.expiresAt === "string" && isDate(`${payload.expiresAt}T12:00:00`);
-  return payload.version === 1 &&
+  return (payload.version === 1 && payload.deviceFingerprint === undefined || validHardwareFingerprint) &&
     typeof payload.licenseId === "string" && payload.licenseId.length >= 16 &&
     typeof payload.installationId === "string" && payload.installationId.length >= 16 &&
     typeof payload.storeName === "string" && payload.storeName.length <= 160 &&
@@ -557,6 +568,7 @@ function createWindow() {
 function registerIpc() {
   ipcMain.handle("offline:get-state", () => readState());
   ipcMain.handle("offline:get-installation-id", () => getInstallationId());
+  ipcMain.handle("offline:get-hardware-fingerprint", () => getHardwareFingerprint());
   ipcMain.handle("offline:save-state", (_event, state) => saveStateSafely(state));
   ipcMain.handle("offline:choose-backup-folder", () => chooseBackupFolder());
   ipcMain.handle("offline:create-backup", () => createBackup(true));

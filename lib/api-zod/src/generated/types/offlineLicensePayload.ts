@@ -5,12 +5,14 @@
  * X-Store point-of-sale and inventory API
  * OpenAPI spec version: 0.1.0
  */
+import type { OfflineHardwareFingerprint } from './offlineHardwareFingerprint';
 import type { OfflineLicensePayloadPlan } from './offlineLicensePayloadPlan';
 
 export interface OfflineLicensePayload {
-  version: 1;
+  version: 2;
   licenseId: string;
   installationId: string;
+  deviceFingerprint: OfflineHardwareFingerprint;
   /** @maxLength 160 */
   storeName: string;
   plan: OfflineLicensePayloadPlan;

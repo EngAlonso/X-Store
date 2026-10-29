@@ -35,6 +35,7 @@ export * from './listXStoreTenantsParams';
 export * from './listXStoreTenantsStatus';
 export * from './notFoundResponse';
 export * from './offlineActivationRequest';
+export * from './offlineHardwareFingerprint';
 export * from './offlineLicense';
 export * from './offlineLicenseIssueInput';
 export * from './offlineLicenseIssueInputPlan';

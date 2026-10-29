@@ -765,6 +765,12 @@ export const CreateXStoreSubscriptionPaymentResponse = zod.object({
 /**
  * @summary Sign an offline activation request for one installation
  */
+export const issueXStoreOfflineLicenseBodyRequestDeviceFingerprintWindowsMachineGuidRegExp = new RegExp('^[a-f0-9]{64}$');
+export const issueXStoreOfflineLicenseBodyRequestDeviceFingerprintMotherboardRegExp = new RegExp('^[a-f0-9]{64}$');
+export const issueXStoreOfflineLicenseBodyRequestDeviceFingerprintInternalDisksItemRegExp = new RegExp('^[a-f0-9]{64}$');
+
+export const issueXStoreOfflineLicenseBodyRequestDeviceFingerprintMemoryModulesItemRegExp = new RegExp('^[a-f0-9]{64}$');
+
 export const issueXStoreOfflineLicenseBodyRequestStoreNameMax = 160;
 
 
@@ -772,13 +778,26 @@ export const issueXStoreOfflineLicenseBodyRequestStoreNameMax = 160;
 export const IssueXStoreOfflineLicenseBody = zod.object({
   "request": zod.object({
   "format": zod.literal("xstore-offline-activation-request"),
-  "version": zod.literal(1),
+  "version": zod.literal(2),
   "installationId": zod.string().uuid(),
+  "deviceFingerprint": zod.object({
+  "version": zod.literal(1),
+  "windowsMachineGuid": zod.string().regex(issueXStoreOfflineLicenseBodyRequestDeviceFingerprintWindowsMachineGuidRegExp),
+  "motherboard": zod.string().regex(issueXStoreOfflineLicenseBodyRequestDeviceFingerprintMotherboardRegExp),
+  "internalDisks": zod.array(zod.string().regex(issueXStoreOfflineLicenseBodyRequestDeviceFingerprintInternalDisksItemRegExp)).min(1),
+  "memoryModules": zod.array(zod.string().regex(issueXStoreOfflineLicenseBodyRequestDeviceFingerprintMemoryModulesItemRegExp)).min(1)
+}),
   "storeName": zod.string().max(issueXStoreOfflineLicenseBodyRequestStoreNameMax),
   "requestedAt": zod.coerce.date()
 }),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime'])
 })
+
+export const issueXStoreOfflineLicenseResponsePayloadDeviceFingerprintWindowsMachineGuidRegExp = new RegExp('^[a-f0-9]{64}$');
+export const issueXStoreOfflineLicenseResponsePayloadDeviceFingerprintMotherboardRegExp = new RegExp('^[a-f0-9]{64}$');
+export const issueXStoreOfflineLicenseResponsePayloadDeviceFingerprintInternalDisksItemRegExp = new RegExp('^[a-f0-9]{64}$');
+
+export const issueXStoreOfflineLicenseResponsePayloadDeviceFingerprintMemoryModulesItemRegExp = new RegExp('^[a-f0-9]{64}$');
 
 export const issueXStoreOfflineLicenseResponsePayloadStoreNameMax = 160;
 
@@ -789,9 +808,16 @@ export const issueXStoreOfflineLicenseResponseSignatureMax = 88;
 
 export const IssueXStoreOfflineLicenseResponse = zod.object({
   "payload": zod.object({
-  "version": zod.literal(1),
+  "version": zod.literal(2),
   "licenseId": zod.string().uuid(),
   "installationId": zod.string().uuid(),
+  "deviceFingerprint": zod.object({
+  "version": zod.literal(1),
+  "windowsMachineGuid": zod.string().regex(issueXStoreOfflineLicenseResponsePayloadDeviceFingerprintWindowsMachineGuidRegExp),
+  "motherboard": zod.string().regex(issueXStoreOfflineLicenseResponsePayloadDeviceFingerprintMotherboardRegExp),
+  "internalDisks": zod.array(zod.string().regex(issueXStoreOfflineLicenseResponsePayloadDeviceFingerprintInternalDisksItemRegExp)).min(1),
+  "memoryModules": zod.array(zod.string().regex(issueXStoreOfflineLicenseResponsePayloadDeviceFingerprintMemoryModulesItemRegExp)).min(1)
+}),
   "storeName": zod.string().max(issueXStoreOfflineLicenseResponsePayloadStoreNameMax),
   "plan": zod.enum(['monthly', 'half_yearly', 'annual', 'lifetime']),
   "issuedAt": zod.coerce.date(),

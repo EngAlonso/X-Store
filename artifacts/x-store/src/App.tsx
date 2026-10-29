@@ -55,7 +55,7 @@ import type { IconType } from 'react-icons';
 import PlatformBackupPage from '@/pages/platform-backup';
 import PlatformDatabasePage from '@/pages/platform-database';
 import type { OfflineActivationRequest } from './offline/licensing';
-import type { OfflineLicensePlan } from './offline/model';
+import { isOfflineHardwareFingerprint, type OfflineLicensePlan } from './offline/model';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -743,9 +743,10 @@ function isOfflineActivationRequest(value: unknown): value is OfflineActivationR
   if (!value || typeof value !== 'object') return false;
   const request = value as Record<string, unknown>;
   return request.format === 'xstore-offline-activation-request' &&
-    request.version === 1 &&
+    request.version === 2 &&
     typeof request.installationId === 'string' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(request.installationId) &&
+    isOfflineHardwareFingerprint(request.deviceFingerprint) &&
     typeof request.storeName === 'string' && request.storeName.length <= 160 &&
     typeof request.requestedAt === 'string' && Number.isFinite(Date.parse(request.requestedAt));
 }

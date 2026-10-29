@@ -2,9 +2,10 @@ import {
   createEmptyOfflineState,
   isOfflineState,
   migrateOfflineState,
+  type OfflineHardwareSnapshot,
   type OfflineState,
 } from "./model";
-import { verifyOfflineLicense } from "./licensing";
+import { verifyOfflineLicenseSignature } from "./licensing";
 
 const STATE_KEY = "x-store-offline-state-v1";
 const BACKUP_KEY = "x-store-offline-backup-v1";
@@ -18,6 +19,13 @@ export async function getOfflineInstallationId(): Promise<string> {
     localStorage.setItem(INSTALLATION_ID_KEY, installationId);
   }
   return installationId;
+}
+
+export async function getOfflineHardwareSnapshot(): Promise<OfflineHardwareSnapshot> {
+  if (!window.xStoreOffline) {
+    throw new Error("قراءة قطع الجهاز متاحة في نسخة Windows المثبتة فقط.");
+  }
+  return window.xStoreOffline.getHardwareFingerprint();
 }
 
 export function isDesktopEdition(): boolean {
@@ -133,7 +141,7 @@ async function validateStoredLicense(
 ): Promise<OfflineState | null> {
   if (!state?.license) return state;
   try {
-    await verifyOfflineLicense(state.license, await getOfflineInstallationId());
+    await verifyOfflineLicenseSignature(state.license);
     return state;
   } catch {
     return { ...state, license: null };

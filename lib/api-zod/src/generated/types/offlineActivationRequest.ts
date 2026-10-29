@@ -5,11 +5,13 @@
  * X-Store point-of-sale and inventory API
  * OpenAPI spec version: 0.1.0
  */
+import type { OfflineHardwareFingerprint } from './offlineHardwareFingerprint';
 
 export interface OfflineActivationRequest {
   format: 'xstore-offline-activation-request';
-  version: 1;
+  version: 2;
   installationId: string;
+  deviceFingerprint: OfflineHardwareFingerprint;
   /** @maxLength 160 */
   storeName: string;
   requestedAt: Date;

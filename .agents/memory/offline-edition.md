@@ -9,6 +9,12 @@ The user wants a separate Windows edition that runs on one computer per store wi
 
 **How to apply:** keep this edition independent from the hosted X-Store service, use local persistence, and make the no-network/no-sync boundary explicit. Exclude platform-wide tenant and subscription administration unless the user explicitly changes this requirement. The offline app cannot remotely revoke a license; treat device replacement as a manual reissue and explain that copied app data does not carry activation to another system.
 
+For hardware-change support, the signed license must retain separate hashed markers for Windows identity, motherboard, each internal disk, and each RAM module. The offline settings screen compares them locally and identifies changed component categories; never include raw serial numbers or transaction data in activation files. Composite-only legacy licenses cannot identify the changed part and require reissue.
+
+**Why:** the owner needs a clear answer when a customer requests reactivation, without adding online monitoring or exposing raw hardware identifiers.
+
+**How to apply:** include the per-component markers in the activation request and signed license, compare them on the customer’s device, and keep the report available while sales are locked.
+
 When the user requests parity with the hosted edition, use its current store-facing workflows as the checklist. Keep transaction data local; for actions that normally require an internet service, provide local print/export options and clearly identify the limitation.
 
 **Why:** the offline edition should match the store workflow without violating the no-internet boundary.

@@ -11,12 +11,12 @@ import {
   createEmptyOfflineState,
   isLicenseActive, isOfflineState, migrateOfflineState,
   OFFLINE_CURRENCIES, OFFLINE_STORE_TYPES, OFFLINE_TEAM_PERMISSIONS,
-  type OfflineHeldSale, type OfflineLicense, type OfflineProduct,
+  type OfflineHardwareChange, type OfflineHeldSale, type OfflineLicense, type OfflineProduct,
   type OfflineSale, type OfflineState, type OfflineTeamMember, type OfflineTeamPermission,
 } from "./model";
 import {
   createOfflineActivationRequest, downloadOfflineActivationRequest,
-  readAndVerifyOfflineLicense,
+  getOfflineLicenseDeviceChanges, hardwareChangeLabel, readAndVerifyOfflineLicense,
 } from "./licensing";
 import {
   OfflineAuditPage, OfflineReportsPage, OfflineReturnsPage, OfflineTeamPage,
@@ -27,7 +27,7 @@ import {
 } from "./transactions";
 import { createLocalPinCredential, isValidLocalPin, verifyLocalPin } from "./auth";
 import {
-  chooseOfflineBackupFolder, createManualOfflineBackup, getOfflineInstallationId, isDesktopEdition,
+  chooseOfflineBackupFolder, createManualOfflineBackup, getOfflineHardwareSnapshot, isDesktopEdition,
   loadOfflineState, restoreOfflineBackup, saveOfflineState,
 } from "./storage";
 import "./offline.css";
@@ -46,6 +46,11 @@ const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "settings", label: "الإعدادات والترخيص", icon: Settings },
 ];
 const salesPermissions: OfflineTeamPermission[] = ["retail_sales", "wholesale_sales"];
+type OfflineLicenseDeviceStatus = {
+  changes: OfflineHardwareChange[];
+  inspectionError: string;
+};
+
 function canAccessOfflinePage(member: OfflineTeamMember, page: Page) {
   if (member.role === "tenant_admin" || page === "dashboard") return true;
   if (page === "products") return member.permissions.includes("warehouse_manager");
@@ -273,11 +278,48 @@ export default function OfflineApp() {
   const [loadError, setLoadError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [notice, setNotice] = useState("");
+  const [licenseDeviceStatus, setLicenseDeviceStatus] = useState<OfflineLicenseDeviceStatus>({
+    changes: [],
+    inspectionError: "",
+  });
   const [saleDetail, setSaleDetail] = useState<OfflineSale | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const desktop = isDesktopEdition();
 
-  useEffect(() => { loadOfflineState().then(setState).catch((e) => setLoadError(e instanceof Error ? e.message : "تعذر تحميل بيانات المتجر.")).finally(() => setLoading(false)); }, []);
+  async function inspectLicenseDevice(license: OfflineLicense | null): Promise<OfflineLicenseDeviceStatus> {
+    if (!license) return { changes: [], inspectionError: "" };
+    if (license.payload.version !== 2 || !license.payload.deviceFingerprint) {
+      return { changes: ["baseline"], inspectionError: "" };
+    }
+    try {
+      const currentDevice = await getOfflineHardwareSnapshot();
+      return {
+        changes: getOfflineLicenseDeviceChanges(license, currentDevice),
+        inspectionError: "",
+      };
+    } catch (error) {
+      return {
+        changes: [],
+        inspectionError: error instanceof Error ? error.message : "تعذر فحص قطع الجهاز.",
+      };
+    }
+  }
+
+  async function reloadState() {
+    setLoadError("");
+    try {
+      const loaded = await loadOfflineState();
+      const deviceStatus = await inspectLicenseDevice(loaded.license);
+      setState(loaded);
+      setLicenseDeviceStatus(deviceStatus);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "تعذر تحميل بيانات المتجر.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { void reloadState(); }, []);
   useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(""), 3500); return () => window.clearTimeout(timer); }, [notice]);
 
   async function persist(next: OfflineState) {
@@ -311,7 +353,7 @@ export default function OfflineApp() {
   }
 
   if (loading) return <div className="of-loading" dir="rtl"><div className="of-skeleton-mark" /><div className="of-skeleton-line" /><div className="of-skeleton-block" /><span>جارٍ فتح بيانات المتجر...</span></div>;
-  if (loadError) return <main className="of-failure" dir="rtl"><BrandMark /><div className="of-failure-card"><CircleAlert size={26} /><h1>تعذر فتح بيانات المتجر</h1><p>{loadError}</p><button className="of-button of-button-primary" onClick={() => { setLoading(true); setLoadError(""); loadOfflineState().then(setState).catch((e) => setLoadError(e instanceof Error ? e.message : "تعذر تحميل البيانات.")).finally(() => setLoading(false)); }}>إعادة المحاولة</button></div></main>;
+  if (loadError) return <main className="of-failure" dir="rtl"><BrandMark /><div className="of-failure-card"><CircleAlert size={26} /><h1>تعذر فتح بيانات المتجر</h1><p>{loadError}</p><button className="of-button of-button-primary" onClick={() => { setLoading(true); void reloadState(); }}>إعادة المحاولة</button></div></main>;
   if (!state?.setupComplete || !state.store) return <OfflineSetup onComplete={completeSetup} />;
 
   const currentState = state as OfflineState;
@@ -324,7 +366,9 @@ export default function OfflineApp() {
   );
   if (!currentMember) return <OfflineLogin state={currentState} onLogin={setAuthenticatedMemberId} />;
   const activeMember = currentMember;
-  const active = isLicenseActive(currentState.license);
+  const active = isLicenseActive(currentState.license) &&
+    !licenseDeviceStatus.inspectionError &&
+    licenseDeviceStatus.changes.length === 0;
   if (!active && activeMember.role !== "tenant_admin") {
     return <main className="of-failure" dir="rtl">
       <BrandMark />
@@ -553,7 +597,10 @@ export default function OfflineApp() {
       if (!parsed || !isOfflineState(parsed)) { setSaveError("ملف غير صالح أو غير متوافق مع X-Store Offline."); return; }
       if (!window.confirm("سيتم استبدال بيانات المتجر الحالية بمحتوى الملف. هل تريد المتابعة؟")) return;
       const restored = await restoreOfflineBackup(parsed);
-      setState(restored); setAuthenticatedMemberId(null); setNotice("تم استرجاع البيانات بنجاح. سجّل الدخول من جديد.");
+      setState(restored);
+      setLicenseDeviceStatus(await inspectLicenseDevice(restored.license));
+      setAuthenticatedMemberId(null);
+      setNotice("تم استرجاع البيانات بنجاح. سجّل الدخول من جديد.");
     } catch (e) { setSaveError(e instanceof Error ? e.message : "تعذر قراءة ملف النسخة الاحتياطية."); }
   }
   async function updateSettings(store: OfflineState["store"]) {
@@ -590,6 +637,7 @@ export default function OfflineApp() {
         ...currentState.auditLogs,
       ],
     });
+    setLicenseDeviceStatus({ changes: [], inspectionError: "" });
     setNotice(`تم تفعيل الترخيص ${planNames[license.payload.plan]}.`);
   }
   function goToPage(nextPage: Page) {
@@ -616,6 +664,7 @@ export default function OfflineApp() {
     <div className="of-main">
       <header className="of-topbar"><div className="of-mobile-brand"><BrandMark compact /></div><div className="of-breadcrumb"><span>المتجر</span><i>/</i><b>{title}</b></div><div className="of-top-right"><span className="of-online-state"><i /> يعمل دون إنترنت</span><span className="of-top-date">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span><span className="of-current-user" title={activeMember.roleName}>{activeMember.name}</span><button className="of-avatar" title={activeMember.name}>{activeMember.name.slice(0, 1)}</button><button className="of-logout-button" onClick={() => { setAuthenticatedMemberId(null); setSaleDetail(null); setSaveError(""); }} aria-label="تسجيل الخروج" title="تسجيل الخروج"><LogOut size={16} /><span>خروج</span></button></div></header>
       {(saveError || state.backup.lastError) && <div className="of-alert"><CircleAlert size={17} /><span>{saveError || state.backup.lastError}</span><button aria-label="إغلاق" onClick={() => { setSaveError(""); if (state.backup.lastError) void persist({ ...state, backup: { ...state.backup, lastError: null } }); }}><X size={15} /></button></div>}
+      {pageToRender === "settings" && (licenseDeviceStatus.inspectionError || licenseDeviceStatus.changes.length > 0) && <div className="of-alert" role="status"><CircleAlert size={17} /><span><b>الجهاز يحتاج إعادة تفعيل.</b> {licenseDeviceStatus.inspectionError || `التغيير المكتشف: ${licenseDeviceStatus.changes.map(hardwareChangeLabel).join("، ")}.`}</span></div>}
       <main className="of-content">
         {pageToRender === "dashboard" && <Dashboard state={viewState} todaySales={todaySales} todayRevenue={todayRevenue} lowStock={lowStock} currency={currency} canViewSales={canViewAllSales || activeMember.permissions.some((permission) => salesPermissions.includes(permission))} canViewAmounts={canViewAllSales} canViewInventoryCosts={canViewInventoryCosts} roleName={activeMember.roleName} canNavigate={(target) => canAccessOfflinePage(activeMember, target)} onNavigate={goToPage} onSale={setSaleDetail} />}
         {pageToRender === "products" && <ProductsPage state={state} currency={currency} canEditDetails={activeMember.role === "tenant_admin"} canDelete={activeMember.role === "tenant_admin"} onSave={updateProduct} onRemove={removeProduct} />}
@@ -626,7 +675,7 @@ export default function OfflineApp() {
         {pageToRender === "reports" && <OfflineReportsPage state={state} currency={currency} />}
         {pageToRender === "audit" && <OfflineAuditPage state={state} />}
         {pageToRender === "backup" && <BackupPage state={state} desktop={desktop} onChooseFolder={chooseFolder} onBackup={manualBackup} onRestore={() => fileInput.current?.click()} />}
-        {pageToRender === "settings" && <SettingsPage state={state} onSave={updateSettings} onActivate={activateLicense} />}
+        {pageToRender === "settings" && <SettingsPage state={state} licenseActive={active} onSave={updateSettings} onActivate={activateLicense} />}
       </main>
       <footer className="of-footer"><span><ShieldCheck size={14} /> بيانات المتجر محفوظة محليًا على هذا الجهاز</span><span> X-Store Offline <b>·</b> إصدار مستقل</span></footer>
     </div>
@@ -1076,8 +1125,9 @@ function BackupPage({ state, desktop, onChooseFolder, onBackup, onRestore }: { s
   </section>;
 }
 
-function SettingsPage({ state, onSave, onActivate }: {
+function SettingsPage({ state, licenseActive, onSave, onActivate }: {
   state: OfflineState;
+  licenseActive: boolean;
   onSave: (store: OfflineState["store"]) => Promise<void>;
   onActivate: (license: OfflineLicense) => Promise<void>;
 }) {
@@ -1093,7 +1143,7 @@ function SettingsPage({ state, onSave, onActivate }: {
   const [activationError, setActivationError] = useState("");
   const [activationNotice, setActivationNotice] = useState("");
   const [activationBusy, setActivationBusy] = useState(false);
-  const active = isLicenseActive(state.license);
+  const active = licenseActive;
   const supports = OFFLINE_STORE_TYPES.find((item) => item.value === storeType)?.supportsWholesale ?? false;
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -1105,9 +1155,9 @@ function SettingsPage({ state, onSave, onActivate }: {
   async function exportActivationRequest() {
     setActivationError("");
     try {
-      const installationId = await getOfflineInstallationId();
+      const currentDevice = await getOfflineHardwareSnapshot();
       downloadOfflineActivationRequest(
-        createOfflineActivationRequest(installationId, state.store?.name ?? ""),
+        createOfflineActivationRequest(currentDevice, state.store?.name ?? ""),
       );
       setActivationNotice("تم تنزيل طلب التفعيل. أرسله لإدارة X-Store لاستلام ملف التفعيل.");
     } catch (err) {
@@ -1122,8 +1172,8 @@ function SettingsPage({ state, onSave, onActivate }: {
     setActivationError("");
     setActivationNotice("");
     try {
-      const installationId = await getOfflineInstallationId();
-      const license = await readAndVerifyOfflineLicense(file, installationId);
+      const currentDevice = await getOfflineHardwareSnapshot();
+      const license = await readAndVerifyOfflineLicense(file, currentDevice);
       await onActivate(license);
       setActivationNotice("تم التحقق من ملف التفعيل وحفظه على هذا الجهاز.");
     } catch (err) {
@@ -1148,7 +1198,7 @@ function SettingsPage({ state, onSave, onActivate }: {
         { value: "thermal_58mm", title: "حراري 58 مم", detail: "طابعة صغيرة", icon: Printer },
       ] as const).map(({ value, title, detail, icon: Icon }) => <button key={value} type="button" className={invoiceFormat === value ? "chosen" : ""} onClick={() => setInvoiceFormat(value)}><Icon size={18} /><b>{title}</b><small>{detail}</small></button>)}</div></fieldset>
       {error && <div className="of-error"><CircleAlert size={15} />{error}</div>}<div className="of-settings-save"><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ التغييرات"}</button></div>
-    </form></section>
+     </form></section>
        <aside className="of-panel of-license-panel"><span className={`of-license-large-icon ${state.license && !active ? "expired" : ""}`}><ShieldCheck size={22} /></span><span className="of-kicker">حالة الترخيص</span><h2>{active ? "ترخيصك نشط" : state.license ? "الترخيص منتهٍ" : "بانتظار ملف التفعيل"}</h2>{!active && <div className="of-error"><CircleAlert size={15} />البرنامج متوقف حتى إعادة التفعيل. بيانات المتجر والنسخ الاحتياطية محفوظة.</div>}<p>الترخيص مربوط بالبوردة والهارد الداخلي وكل شريحة RAM. تغيير أيٍّ منها أو إعادة تثبيت Windows يتطلب تفعيلًا جديدًا منك. فلاشة النسخ الاحتياطي لا تؤثر على التفعيل.</p><div className="of-license-details"><div><span>اسم المتجر</span><b>{state.store?.name ?? "—"}</b></div><div><span>الخطة</span><b>{state.license ? licensePlanNames[state.license.payload.plan] : "غير مفعّل"}</b></div><div><span>تاريخ الإصدار</span><b>{state.license?.payload.issuedAt.slice(0, 10) ?? "—"}</b></div><div><span>تاريخ الانتهاء</span><b>{state.license ? state.license.payload.expiresAt ?? "دائم" : "—"}</b></div></div><div className="of-license-actions"><button type="button" className="of-button of-button-secondary" onClick={() => void exportActivationRequest()}><ArrowDownToLine size={15} /> تنزيل طلب التفعيل</button><Field label="استيراد ملف التفعيل"><input type="file" accept=".json,application/json" onChange={(event) => void importActivationFile(event)} disabled={activationBusy} /></Field></div>{activationError && <div className="of-error"><CircleAlert size={15} />{activationError}</div>}{activationNotice && <div className="of-inline-hint">{activationNotice}</div>}<div className="of-license-caption"><LockKeyhole size={14} /> بعد انتهاء الترخيص يتوقف البيع، وتبقى بيانات المتجر والنسخ الاحتياطي متاحة.</div></aside></div>
     <div className="of-settings-device"><span><LifeBuoy size={17} /></span><div><b>البيانات لا تغادر جهازك</b><small>يعمل X-Store Offline دون حساب أو مزامنة سحابية. احفظ نسخة احتياطية بانتظام.</small></div></div>
   </section>;

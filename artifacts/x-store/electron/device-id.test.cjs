@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
-  buildWindowsMachineIdentity,
+  buildWindowsHardwareFingerprint,
   deviceIdFromMachineIdentity,
 } = require("./device-id.cjs");
 
@@ -13,7 +13,7 @@ const baseHardware = {
 };
 
 function fingerprint(hardware = baseHardware) {
-  return deviceIdFromMachineIdentity(buildWindowsMachineIdentity(hardware));
+  return buildWindowsHardwareFingerprint(hardware);
 }
 
 test("device IDs are stable and UUID-compatible for one machine identity", () => {
@@ -37,40 +37,50 @@ test("different machine identities produce different device IDs", () => {
 test("changing the board, disk, or RAM changes the device ID", () => {
   const original = fingerprint();
   assert.notEqual(
-    fingerprint({ ...baseHardware, hardwareUuid: "20234567-89ab-4def-8123-456789abcdef" }),
-    original,
+    fingerprint({ ...baseHardware, hardwareUuid: "20234567-89ab-4def-8123-456789abcdef" }).installationId,
+    original.installationId,
   );
   assert.notEqual(
-    fingerprint({ ...baseHardware, diskSerials: ["disk-serial-b"] }),
-    original,
+    fingerprint({ ...baseHardware, diskSerials: ["disk-serial-b"] }).installationId,
+    original.installationId,
   );
   assert.notEqual(
-    fingerprint({ ...baseHardware, memorySerials: ["memory-serial-a", "memory-serial-c"] }),
-    original,
+    fingerprint({ ...baseHardware, memorySerials: ["memory-serial-a", "memory-serial-c"] }).installationId,
+    original.installationId,
   );
 });
 
 test("hardware serial ordering does not change the device ID", () => {
-  assert.equal(
-    fingerprint(),
+  assert.deepEqual(
+    fingerprint().deviceFingerprint,
     fingerprint({
       ...baseHardware,
+      diskSerials: [...baseHardware.diskSerials].reverse(),
       memorySerials: [...baseHardware.memorySerials].reverse(),
-    }),
+    }).deviceFingerprint,
   );
+});
+
+test("component fingerprints are separate hashes and do not expose serials", () => {
+  const result = fingerprint();
+  assert.match(result.deviceFingerprint.windowsMachineGuid, /^[a-f0-9]{64}$/);
+  assert.match(result.deviceFingerprint.motherboard, /^[a-f0-9]{64}$/);
+  assert.match(result.deviceFingerprint.internalDisks[0], /^[a-f0-9]{64}$/);
+  assert.match(result.deviceFingerprint.memoryModules[0], /^[a-f0-9]{64}$/);
+  assert.doesNotMatch(JSON.stringify(result.deviceFingerprint), /disk-serial|memory-serial/i);
 });
 
 test("missing or placeholder hardware serials fail closed", () => {
   assert.throws(
-    () => buildWindowsMachineIdentity({ ...baseHardware, diskSerials: ["000000"] }),
+    () => buildWindowsHardwareFingerprint({ ...baseHardware, diskSerials: ["000000"] }),
     /الهارد الداخلي/,
   );
   assert.throws(
-    () => buildWindowsMachineIdentity({ ...baseHardware, memorySerials: ["To Be Filled By O.E.M."] }),
+    () => buildWindowsHardwareFingerprint({ ...baseHardware, memorySerials: ["To Be Filled By O.E.M."] }),
     /الرامات/,
   );
   assert.throws(
-    () => buildWindowsMachineIdentity({ ...baseHardware, memorySerials: [] }),
+    () => buildWindowsHardwareFingerprint({ ...baseHardware, memorySerials: [] }),
     /الرامات/,
   );
 });

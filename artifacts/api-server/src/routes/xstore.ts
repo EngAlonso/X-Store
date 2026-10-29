@@ -13,6 +13,7 @@ import {
   sql,
 } from "drizzle-orm";
 import {
+  createHash,
   createPrivateKey,
   randomUUID,
   sign as signBytes,
@@ -2094,11 +2095,24 @@ router.post("/xstore/offline-licenses/issue", async (req, res): Promise<void> =>
   }
 
   const { request, plan } = parsed.data;
+  const deviceFingerprint = {
+    version: request.deviceFingerprint.version,
+    windowsMachineGuid: request.deviceFingerprint.windowsMachineGuid,
+    motherboard: request.deviceFingerprint.motherboard,
+    internalDisks: [...request.deviceFingerprint.internalDisks].sort(),
+    memoryModules: [...request.deviceFingerprint.memoryModules].sort(),
+  };
+  if (offlineInstallationIdFromFingerprint(deviceFingerprint) !== request.installationId) {
+    res.status(400).json({ error: "معرّف الجهاز لا يطابق تقرير القطع." });
+    return;
+  }
+
   const issuedAt = new Date();
   const payload = {
-    version: 1 as const,
+    version: 2 as const,
     licenseId: randomUUID(),
     installationId: request.installationId,
+    deviceFingerprint,
     storeName: request.storeName.trim(),
     plan,
     issuedAt: issuedAt.toISOString(),
@@ -2123,6 +2137,30 @@ router.post("/xstore/offline-licenses/issue", async (req, res): Promise<void> =>
   res.setHeader("Cache-Control", "no-store");
   res.status(201).json(IssueXStoreOfflineLicenseResponse.parse(license));
 });
+
+function offlineInstallationIdFromFingerprint(deviceFingerprint: {
+  version: number;
+  windowsMachineGuid: string;
+  motherboard: string;
+  internalDisks: string[];
+  memoryModules: string[];
+}): string {
+  const canonical = {
+    version: deviceFingerprint.version,
+    windowsMachineGuid: deviceFingerprint.windowsMachineGuid,
+    motherboard: deviceFingerprint.motherboard,
+    internalDisks: [...deviceFingerprint.internalDisks].sort(),
+    memoryModules: [...deviceFingerprint.memoryModules].sort(),
+  };
+  const digest = createHash("sha256")
+    .update(`com.xstore.offline/device-id/v2\0${JSON.stringify(canonical).trim().toLowerCase()}`)
+    .digest()
+    .subarray(0, 16);
+  digest[6] = (digest[6] & 0x0f) | 0x40;
+  digest[8] = (digest[8] & 0x3f) | 0x80;
+  const hex = digest.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 router.get("/xstore/products", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);

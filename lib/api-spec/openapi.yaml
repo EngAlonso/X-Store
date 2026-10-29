@@ -1387,15 +1387,32 @@ components:
           type: string
           enum: [cash, card, transfer]
       required: [tenantId, amount, plan, paymentMethod]
+    OfflineHardwareFingerprint:
+      type: object
+      properties:
+        version: { type: integer, const: 1 }
+        windowsMachineGuid: { type: string, pattern: "^[a-f0-9]{64}$" }
+        motherboard: { type: string, pattern: "^[a-f0-9]{64}$" }
+        internalDisks:
+          type: array
+          minItems: 1
+          items: { type: string, pattern: "^[a-f0-9]{64}$" }
+        memoryModules:
+          type: array
+          minItems: 1
+          items: { type: string, pattern: "^[a-f0-9]{64}$" }
+      required: [version, windowsMachineGuid, motherboard, internalDisks, memoryModules]
     OfflineActivationRequest:
       type: object
       properties:
         format: { type: string, const: xstore-offline-activation-request }
-        version: { type: integer, const: 1 }
+        version: { type: integer, const: 2 }
         installationId: { type: string, format: uuid }
+        deviceFingerprint:
+          $ref: "#/components/schemas/OfflineHardwareFingerprint"
         storeName: { type: string, maxLength: 160 }
         requestedAt: { type: string, format: date-time }
-      required: [format, version, installationId, storeName, requestedAt]
+      required: [format, version, installationId, deviceFingerprint, storeName, requestedAt]
     OfflineLicenseIssueInput:
       type: object
       properties:
@@ -1408,16 +1425,18 @@ components:
     OfflineLicensePayload:
       type: object
       properties:
-        version: { type: integer, const: 1 }
+        version: { type: integer, const: 2 }
         licenseId: { type: string, format: uuid }
         installationId: { type: string, format: uuid }
+        deviceFingerprint:
+          $ref: "#/components/schemas/OfflineHardwareFingerprint"
         storeName: { type: string, maxLength: 160 }
         plan:
           type: string
           enum: [monthly, half_yearly, annual, lifetime]
         issuedAt: { type: string, format: date-time }
         expiresAt: { type: ["string", "null"], format: date }
-      required: [version, licenseId, installationId, storeName, plan, issuedAt, expiresAt]
+      required: [version, licenseId, installationId, deviceFingerprint, storeName, plan, issuedAt, expiresAt]
     OfflineLicense:
       type: object
       properties:

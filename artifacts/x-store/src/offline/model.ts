@@ -33,10 +33,32 @@ export type OfflineInvoiceFormat = (typeof OFFLINE_INVOICE_FORMATS)[number];
 export type OfflineTeamPermission = (typeof OFFLINE_TEAM_PERMISSIONS)[number];
 export type OfflineLicensePlan = (typeof OFFLINE_LICENSE_PLANS)[number];
 
-export interface OfflineLicensePayload {
+export interface OfflineHardwareFingerprint {
   version: 1;
+  windowsMachineGuid: string;
+  motherboard: string;
+  internalDisks: string[];
+  memoryModules: string[];
+}
+
+export interface OfflineHardwareSnapshot {
+  installationId: string;
+  deviceFingerprint: OfflineHardwareFingerprint;
+}
+
+export type OfflineHardwareChange =
+  | "windows"
+  | "motherboard"
+  | "internalDisks"
+  | "memoryModules"
+  | "installationId"
+  | "baseline";
+
+export interface OfflineLicensePayload {
+  version: 1 | 2;
   licenseId: string;
   installationId: string;
+  deviceFingerprint?: OfflineHardwareFingerprint;
   storeName: string;
   plan: OfflineLicensePlan;
   issuedAt: string;
@@ -514,11 +536,15 @@ export function isOfflineLicense(value: unknown): value is OfflineLicense {
   if (!isRecord(value) || !isRecord(value.payload)) return false;
   const payload = value.payload;
   const validPlan = OFFLINE_LICENSE_PLANS.includes(payload.plan as OfflineLicensePlan);
+  const validFingerprint = payload.version === 1
+    ? payload.deviceFingerprint === undefined
+    : isOfflineHardwareFingerprint(payload.deviceFingerprint);
   const validExpiry = payload.plan === "lifetime"
     ? payload.expiresAt === null
     : typeof payload.expiresAt === "string" && Number.isFinite(Date.parse(`${payload.expiresAt}T12:00:00`));
   return (
-    payload.version === 1 &&
+    (payload.version === 1 || payload.version === 2) &&
+    validFingerprint &&
     typeof payload.licenseId === "string" && payload.licenseId.length >= 16 &&
     typeof payload.installationId === "string" && payload.installationId.length >= 16 &&
     typeof payload.storeName === "string" && payload.storeName.length <= 160 &&
@@ -528,4 +554,18 @@ export function isOfflineLicense(value: unknown): value is OfflineLicense {
     typeof value.signature === "string" &&
     /^[A-Za-z0-9+/]{86}==$/.test(value.signature)
   );
+}
+
+export function isOfflineHardwareFingerprint(value: unknown): value is OfflineHardwareFingerprint {
+  if (!isRecord(value) || value.version !== 1) return false;
+  const validHash = (item: unknown) =>
+    typeof item === "string" && /^[a-f0-9]{64}$/.test(item);
+  return validHash(value.windowsMachineGuid) &&
+    validHash(value.motherboard) &&
+    Array.isArray(value.internalDisks) &&
+    value.internalDisks.length > 0 &&
+    value.internalDisks.every(validHash) &&
+    Array.isArray(value.memoryModules) &&
+    value.memoryModules.length > 0 &&
+    value.memoryModules.every(validHash);
 }

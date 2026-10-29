@@ -697,10 +697,29 @@ export interface SubscriptionPaymentInput {
   paymentMethod: SubscriptionPaymentInputPaymentMethod;
 }
 
+export interface OfflineHardwareFingerprint {
+  version: 1;
+  /** @pattern ^[a-f0-9]{64}$ */
+  windowsMachineGuid: string;
+  /** @pattern ^[a-f0-9]{64}$ */
+  motherboard: string;
+  /**
+     * @minItems 1
+     * @items.pattern ^[a-f0-9]{64}$
+     */
+  internalDisks: string[];
+  /**
+     * @minItems 1
+     * @items.pattern ^[a-f0-9]{64}$
+     */
+  memoryModules: string[];
+}
+
 export interface OfflineActivationRequest {
   format: 'xstore-offline-activation-request';
-  version: 1;
+  version: 2;
   installationId: string;
+  deviceFingerprint: OfflineHardwareFingerprint;
   /** @maxLength 160 */
   storeName: string;
   requestedAt: string;
@@ -732,9 +751,10 @@ export const OfflineLicensePayloadPlan = {
 } as const;
 
 export interface OfflineLicensePayload {
-  version: 1;
+  version: 2;
   licenseId: string;
   installationId: string;
+  deviceFingerprint: OfflineHardwareFingerprint;
   /** @maxLength 160 */
   storeName: string;
   plan: OfflineLicensePayloadPlan;
