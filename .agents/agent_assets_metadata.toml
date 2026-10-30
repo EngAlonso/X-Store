@@ -28,3 +28,17 @@ mtime_ms = 1793223056016
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:58fb8d9a-212e-4e71-9573-06daa78d6a68/63f652fb-ede2-495a-a0d7-0334ca79b4ef/95e6b962-19d2-4927-8e17-ec492d33e8f9"
 storage_version_token = "1793223078706637"
 content_type = "text/plain"
+
+[[outputs]]
+id = "9bkbEj8zvxCQGOZquqLfB"
+uri = "file://artifacts/x-store/release/offline-windows/X-Store%20Offline%200.0.0.exe"
+type = "unspecified"
+title = "X-Store Offline for Windows — x64"
+description = "Single-file portable Windows build. Download and run it on a 64-bit Windows PC; it extracts locally and launches X-Store Offline. This is not the standard setup wizard."
+logical_id = "09aa339d-74ed-47fc-ad08-fc2ca89ea3bc"
+content_hash = "sha256:bad744045bf54f8ba56df80d071d2e5a476d8dd3e9cc329b82a350da06f94732"
+size = 102885469
+mtime_ms = 1793319182797
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:26a00a89-9f22-4958-ad78-f2f05dc4e49e/09aa339d-74ed-47fc-ad08-fc2ca89ea3bc/89730907-2e55-4278-b487-d8cf69551a7f"
+storage_version_token = "1793319196353307"
+content_type = "application/octet-stream"

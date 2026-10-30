@@ -94,6 +94,7 @@
       "dist/offline/**/*",
       "package.json"
     ],
+    "electronLanguages": ["en-US", "ar"],
     "asar": true,
     "win": {
       "signAndEditExecutable": false,
