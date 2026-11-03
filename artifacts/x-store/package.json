@@ -11,8 +11,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "desktop:dev": "node scripts/desktop-dev.cjs",
     "desktop:build": "vite build --config vite.offline.config.ts",
-    "desktop:package:win": "pnpm run desktop:build && electron-builder --win portable --x64 -c.win.signAndEditExecutable=false",
-    "desktop:installer:win": "pnpm run desktop:build && electron-builder --win nsis --x64"
+    "desktop:package:win": "pnpm run desktop:build && node scripts/prepare-windows-icon.cjs && electron-builder --win portable --x64 -c.win.signAndEditExecutable=false",
+    "desktop:installer:win": "pnpm run desktop:build && node scripts/prepare-windows-icon.cjs && electron-builder --win nsis --x64"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
