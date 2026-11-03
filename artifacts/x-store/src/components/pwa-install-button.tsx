@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { Download, X } from "lucide-react";
 import "./pwa-install-button.css";
 
@@ -41,7 +41,7 @@ export default function PwaInstallButton() {
     };
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.classList.toggle("has-pwa-install-button", !installed);
     return () => document.documentElement.classList.remove("has-pwa-install-button");
   }, [installed]);
