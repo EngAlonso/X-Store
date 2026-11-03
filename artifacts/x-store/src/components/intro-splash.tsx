@@ -1,17 +1,8 @@
 import { useEffect, useState } from "react";
 import "./intro-splash.css";
 
-const INTRO_SESSION_KEY = "x-store-intro-seen";
-
 function shouldShowIntro(): boolean {
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
-  try {
-    if (window.sessionStorage.getItem(INTRO_SESSION_KEY) === "yes") return false;
-    window.sessionStorage.setItem(INTRO_SESSION_KEY, "yes");
-  } catch {
-    // Storage may be unavailable in private browsing; the intro still works.
-  }
-  return true;
+  return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 export default function IntroSplash() {
