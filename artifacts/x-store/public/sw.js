@@ -3,6 +3,7 @@ const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
   "/x-store-intro.mp4",
+  "/x-store-intro-desktop.mp4",
   "/pwa-icon-192.png",
   "/pwa-icon-512.png",
 ];
