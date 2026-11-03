@@ -94,22 +94,31 @@
       "dist/offline/**/*",
       "package.json"
     ],
-    "electronLanguages": ["en-US", "ar"],
+    "electronLanguages": [
+      "en-US",
+      "ar"
+    ],
     "asar": true,
     "win": {
       "signAndEditExecutable": false,
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
-      ]
+      ],
+      "icon": "build/x-store.ico"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "X-Store Offline"
     },
     "toolsets": {
       "wine": "1.0.1"
