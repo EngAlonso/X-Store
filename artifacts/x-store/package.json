@@ -11,8 +11,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "desktop:dev": "node scripts/desktop-dev.cjs",
     "desktop:build": "vite build --config vite.offline.config.ts",
-    "desktop:package:win": "pnpm run desktop:build && electron-builder --win portable --x64 -c.win.signAndEditExecutable=false",
-    "desktop:installer:win": "pnpm run desktop:build && electron-builder --win nsis --x64"
+    "desktop:package:win": "pnpm run desktop:build && node scripts/prepare-windows-icon.cjs && electron-builder --win portable --x64",
+    "desktop:installer:win": "pnpm run desktop:build && node scripts/prepare-windows-icon.cjs && electron-builder --win nsis --x64"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -85,7 +85,7 @@
   "main": "electron/main.cjs",
   "build": {
     "appId": "com.xstore.offline",
-    "productName": "X-Store Offline",
+    "productName": "X-Store",
     "directories": {
       "output": "release/offline-windows"
     },
@@ -94,22 +94,31 @@
       "dist/offline/**/*",
       "package.json"
     ],
-    "electronLanguages": ["en-US", "ar"],
+    "electronLanguages": [
+      "en-US",
+      "ar"
+    ],
     "asar": true,
     "win": {
-      "signAndEditExecutable": false,
+      "signAndEditExecutable": true,
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
-      ]
+      ],
+      "icon": "build/x-store.ico"
     },
     "nsis": {
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "deleteAppDataOnUninstall": false
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "X-Store"
     },
     "toolsets": {
       "wine": "1.0.1"

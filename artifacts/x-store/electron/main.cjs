@@ -49,7 +49,7 @@ const EMPTY_STATE = {
 let statePath;
 let writeQueue = Promise.resolve();
 
-app.setName("X-Store Offline");
+app.setName("X-Store");
 app.setPath("userData", path.join(app.getPath("appData"), "X-Store Offline"));
 app.setAppUserModelId("com.xstore.offline");
 
