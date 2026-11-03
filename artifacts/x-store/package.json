@@ -85,7 +85,7 @@
   "main": "electron/main.cjs",
   "build": {
     "appId": "com.xstore.offline",
-    "productName": "X-Store Offline",
+    "productName": "X-Store",
     "directories": {
       "output": "release/offline-windows"
     },
@@ -118,7 +118,7 @@
       "deleteAppDataOnUninstall": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "X-Store Offline"
+      "shortcutName": "X-Store"
     },
     "toolsets": {
       "wine": "1.0.1"
