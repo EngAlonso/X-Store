@@ -3651,11 +3651,26 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
       const tax = roundMoney((subtotal - discount) * vatRate);
       const replacementTotal = roundMoney(subtotal - discount + tax);
       const balanceDue = roundMoney(replacementTotal - refundAmount);
+      const amountReceived =
+        parsed.data.paymentMethod === "cash"
+          ? balanceDue > 0
+            ? roundMoney(parsed.data.amountReceived)
+            : 0
+          : Math.max(0, balanceDue);
+      if (
+        parsed.data.paymentMethod === "cash" &&
+        amountReceived < Math.max(0, balanceDue)
+      ) {
+        throw new DomainError(
+          "Enter the cash amount received and make sure it covers the balance due.",
+          400,
+        );
+      }
       const changeAmount =
         balanceDue < 0
           ? roundMoney(Math.abs(balanceDue))
           : roundMoney(
-              Math.max(0, parsed.data.amountReceived - Math.max(0, balanceDue)),
+              Math.max(0, amountReceived - Math.max(0, balanceDue)),
             );
       const exchangeInvoiceNo = invoiceNumber();
       if (replacementLines.length) {
@@ -3675,7 +3690,7 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
             taxAmount: String(tax),
             total: String(replacementTotal),
             paymentMethod: parsed.data.paymentMethod,
-            amountReceived: String(parsed.data.amountReceived),
+            amountReceived: String(amountReceived),
             changeAmount: String(changeAmount),
             status: "completed",
           })
