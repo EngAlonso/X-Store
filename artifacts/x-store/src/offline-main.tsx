@@ -6,7 +6,7 @@ import "./offline/offline.css";
 
 createRoot(document.getElementById("offline-root")!).render(
   <>
-    <IntroSplash videoSrc="./x-store-intro.mp4" />
+    <IntroSplash videoSrc="./x-store-intro.mp4" desktopVideoSrc="./x-store-intro-desktop.mp4" />
     <OfflineApp />
   </>,
 );
