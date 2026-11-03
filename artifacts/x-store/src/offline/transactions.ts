@@ -173,7 +173,12 @@ export function applyOfflineExchange(
   const taxAmount = roundMoney(subtotal * (state.store?.vatRate ?? 0) / 100);
   const total = roundMoney(subtotal + taxAmount);
   const balanceDue = roundMoney(total - refundAmount);
-  const amountReceived = roundMoney(Math.max(0, request.amountReceived));
+  const amountReceived = request.paymentMethod === "cash"
+    ? balanceDue > 0 ? roundMoney(Math.max(0, request.amountReceived)) : 0
+    : Math.max(0, balanceDue);
+  if (request.paymentMethod === "cash" && amountReceived < Math.max(0, balanceDue)) {
+    throw new Error("المبلغ المستلم يجب أن يغطي فرق السعر المستحق.");
+  }
   const changeAmount = balanceDue < 0
     ? roundMoney(Math.abs(balanceDue))
     : roundMoney(Math.max(0, amountReceived - balanceDue));
