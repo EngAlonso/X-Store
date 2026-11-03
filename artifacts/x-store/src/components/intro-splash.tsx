@@ -5,7 +5,7 @@ function shouldShowIntro(): boolean {
   return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-export default function IntroSplash() {
+export default function IntroSplash({ videoSrc = "/x-store-intro.mp4" }: { videoSrc?: string }) {
   const [visible, setVisible] = useState(shouldShowIntro);
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function IntroSplash() {
           void event.currentTarget.play().catch(dismiss);
         }}
       >
-        <source src="/x-store-intro.mp4" type="video/mp4" />
+        <source src={videoSrc} type="video/mp4" />
       </video>
       <button className="x-store-intro-skip" type="button" onClick={dismiss}>
         تخطي المقدمة
