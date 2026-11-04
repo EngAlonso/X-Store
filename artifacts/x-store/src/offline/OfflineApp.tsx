@@ -5,7 +5,7 @@ import {
   LayoutDashboard, LifeBuoy, LockKeyhole, LogOut, Package, Plus, Printer, Receipt,
   RefreshCw, Search, Settings, ShieldCheck, ShoppingCart, Store, Trash2, Upload, Wallet,
   Users, RotateCcw, ClipboardList, ChartNoAxesCombined, Pause, Play,
-  ArrowLeftRight, Smartphone, Banknote, Minus, X,
+  ArrowLeftRight, Smartphone, Banknote, Minus, X, Bell,
 } from "lucide-react";
 import {
   createEmptyOfflineState,
@@ -280,6 +280,9 @@ export default function OfflineApp() {
   const [loadError, setLoadError] = useState("");
   const [saveError, setSaveError] = useState("");
   const [notice, setNotice] = useState("");
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+  useEffect(() => { if (!authenticatedMemberId) { setReadNotificationIds([]); return; } try { setReadNotificationIds(JSON.parse(localStorage.getItem(`xstore-offline-notifications:${authenticatedMemberId}`) || "[]") as string[]); } catch { setReadNotificationIds([]); } }, [authenticatedMemberId]);
   const [licenseDeviceStatus, setLicenseDeviceStatus] = useState<OfflineLicenseDeviceStatus>({
     changes: [],
     inspectionError: "",
@@ -415,6 +418,16 @@ export default function OfflineApp() {
     returns: currentState.returns.filter((entry) => visibleSaleIds.has(entry.saleId)),
     exchanges: currentState.exchanges.filter((entry) => visibleInvoiceNumbers.has(entry.originalInvoiceNumber)),
   };
+  const canSeeInventoryNotifications = activeMember.role === "tenant_admin" || activeMember.permissions.includes("warehouse_manager");
+  const notificationRows = [
+    ...viewState.sales.filter(s => Date.now()-new Date(s.createdAt).getTime()<7*86400000).map(s=>({id:`sale:${s.id}`,title:`تمت فاتورة ${s.invoiceNumber}`,detail:`${s.cashierName} · ${digits(s.total.toFixed(2))}`,createdAt:s.createdAt,icon:Receipt,page:"sales" as Page})),
+    ...viewState.returns.map(r=>({id:`return:${r.id}`,title:`تم استرجاع من فاتورة ${r.invoiceNumber}`,detail:`${digits(r.items.reduce((sum,i)=>sum+i.quantity,0))} قطعة`,createdAt:r.createdAt,icon:RotateCcw,page:"returns" as Page})),
+    ...viewState.exchanges.map(e=>({id:`exchange:${e.id}`,title:`تم استبدال الفاتورة ${e.originalInvoiceNumber}`,detail:`فاتورة البديل ${e.replacementInvoiceNumber}`,createdAt:e.createdAt,icon:ArrowLeftRight,page:"returns" as Page})),
+    ...(canSeeInventoryNotifications?currentState.products.filter(p=>p.quantity<=5).map(p=>({id:`stock:${p.id}:${p.quantity<=0?"out":"low"}`,title:p.quantity<=0?`نفد مخزون ${p.name}`:`مخزون ${p.name} قرب يخلص`,detail:`المتبقي: ${digits(p.quantity)}`,createdAt:new Date().toISOString(),icon:Package,page:"products" as Page})):[])
+  ].sort((a,b)=>new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime()).slice(0,100);
+  const unseenNotifications=notificationRows.filter(n=>!readNotificationIds.includes(n.id)).length;
+  function markOfflineNotificationsRead(){const next=Array.from(new Set([...readNotificationIds,...notificationRows.map(n=>n.id)]));setReadNotificationIds(next);try{localStorage.setItem(`xstore-offline-notifications:${activeMember.id}`,JSON.stringify(next))}catch{}}
+
   const posState: OfflineState = {
     ...currentState,
     heldSales: currentState.heldSales.filter((sale) =>
@@ -683,7 +696,7 @@ export default function OfflineApp() {
         <div className="of-sidebar-bottom"><div className={`of-license-chip ${state.license && !active ? "expired" : ""}`}><span className="of-license-status"><ShieldCheck size={16} /></span><span><b>{active ? "الترخيص نشط" : state.license ? licenseDeviceStatus.inspectionError || licenseDeviceStatus.changes.length > 0 ? "الترخيص يحتاج إعادة تفعيل" : "انتهى الترخيص" : "بانتظار التفعيل"}</b><small>{state.license?.payload.expiresAt ? `ينتهي ${state.license.payload.expiresAt}` : state.license ? "ترخيص مدى الحياة" : "صدّر طلب التفعيل من الإعدادات"}</small></span></div><div className="of-device-note"><LockKeyhole size={14} /> لا توجد مزامنة أو اتصال سحابي</div></div>
     </aside>
     <div className="of-main">
-      <header className="of-topbar"><div className="of-mobile-brand"><BrandMark compact /></div><div className="of-breadcrumb"><span>المتجر</span><i>/</i><b>{title}</b></div><div className="of-top-right"><span className="of-online-state"><i /> يعمل دون إنترنت</span><span className="of-top-date">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span><span className="of-current-user" title={activeMember.roleName}>{activeMember.name}</span><button className="of-avatar" title={activeMember.name}>{activeMember.name.slice(0, 1)}</button><button className="of-logout-button" onClick={() => { setAuthenticatedMemberId(null); setSaleDetail(null); setSaveError(""); }} aria-label="تسجيل الخروج" title="تسجيل الخروج"><LogOut size={16} /><span>خروج</span></button></div></header>
+      <header className="of-topbar"><div className="of-mobile-brand"><BrandMark compact /></div><div className="of-breadcrumb"><span>المتجر</span><i>/</i><b>{title}</b></div><div className="of-top-right"><span className="of-online-state"><i /> يعمل دون إنترنت</span><span className="of-top-date">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span><div className="of-notification-wrap"><button type="button" className="of-notification-button" aria-label="الإشعارات" aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(v=>!v)}><Bell size={17}/>{unseenNotifications>0&&<i/>}</button>{notificationsOpen&&<section className="of-notification-panel" dir="rtl"><header><b>الإشعارات</b><button onClick={markOfflineNotificationsRead} disabled={!unseenNotifications}>تحديد الكل كمقروء</button></header><div>{notificationRows.length?notificationRows.map(item=><button type="button" key={item.id} className={`of-notification-row ${readNotificationIds.includes(item.id)?"is-read":""}`} onClick={()=>{const next=[...new Set([...readNotificationIds,item.id])];setReadNotificationIds(next);try{localStorage.setItem(`xstore-offline-notifications:${activeMember.id}`,JSON.stringify(next))}catch{}setNotificationsOpen(false);goToPage(item.page)}}><span><item.icon size={16}/></span><div><b>{item.title}</b><small>{item.detail} · {new Date(item.createdAt).toLocaleString("ar-EG")}</small></div></button>):<p className="of-notification-empty">لا توجد إشعارات حالياً</p>}</div></section>}</div><span className="of-current-user" title={activeMember.roleName}>{activeMember.name}</span><button className="of-avatar" title={activeMember.name}>{activeMember.name.slice(0, 1)}</button><button className="of-logout-button" onClick={() => { setAuthenticatedMemberId(null); setSaleDetail(null); setSaveError(""); }} aria-label="تسجيل الخروج" title="تسجيل الخروج"><LogOut size={16} /><span>خروج</span></button></div></header>
       {(saveError || state.backup.lastError) && <div className="of-alert"><CircleAlert size={17} /><span>{saveError || state.backup.lastError}</span><button aria-label="إغلاق" onClick={() => { setSaveError(""); if (state.backup.lastError) void persist({ ...state, backup: { ...state.backup, lastError: null } }); }}><X size={15} /></button></div>}
       {pageToRender === "settings" && (licenseDeviceStatus.inspectionError || licenseDeviceStatus.changes.length > 0) && <div className="of-alert" role="status"><CircleAlert size={17} /><span><b>الجهاز يحتاج إعادة تفعيل.</b> {licenseDeviceStatus.inspectionError || `التغيير المكتشف: ${licenseDeviceStatus.changes.map(hardwareChangeLabel).join("، ")}.`}</span></div>}
       <main className="of-content">
