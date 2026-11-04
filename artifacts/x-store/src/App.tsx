@@ -648,7 +648,11 @@ function AppShell({ children }: { children: ReactNode }) {
   const canSeeInventoryNotifications = hasAppRole(user,['platform_admin','tenant_admin','warehouse_manager']);
   const notificationRows = [
     ...(canSeeSalesNotifications?(notificationSales.data||[]).filter(s=>Date.now()-new Date(s.createdAt).getTime()<7*86400000).map(s=>({id:`sale:${s.id}`,title:`تمت فاتورة ${s.invoiceNo}`,detail:`${s.cashierName} · ${moneyLabel(s.total)}`,date:new Date(s.createdAt),icon:ReceiptText,href:'/sales'})):[]),
-    ...(canSeeSalesNotifications?(notificationSales.data||[]).flatMap(s=>[...(s.status!=='completed'?[{id:`return:${s.id}`,title:s.status==='returned'?`تم استرجاع الفاتورة ${s.invoiceNo}`:`تم تسجيل مرتجع للفاتورة ${s.invoiceNo}`,detail:'راجع تفاصيل المرتجع في سجل المبيعات',date:new Date(s.createdAt),icon:RotateCcw,href:'/sales'}]:[]),...s.exchangeEvents.map(e=>({id:`exchange:${s.id}:${e.createdAt}`,title:`تم استبدال من الفاتورة ${s.invoiceNo}`,detail:`فاتورة البديل ${e.replacementInvoiceNo}`,date:new Date(e.createdAt),icon:ArrowLeftRight,href:'/sales'}))])):[]),
+    ...(canSeeSalesNotifications ? (notificationSales.data || []).flatMap((sale) => {
+      const returned = sale.status !== 'completed' ? [{ id: `return:${sale.id}`, title: sale.status === 'returned' ? `تم استرجاع الفاتورة ${sale.invoiceNo}` : `تم تسجيل مرتجع للفاتورة ${sale.invoiceNo}`, detail: 'راجع تفاصيل المرتجع في سجل المبيعات', date: new Date(sale.createdAt), icon: RotateCcw, href: '/sales' }] : [];
+      const exchanges = sale.exchangeEvents.map((event) => ({ id: `exchange:${sale.id}:${event.createdAt}`, title: `تم استبدال من الفاتورة ${sale.invoiceNo}`, detail: `فاتورة البديل ${event.replacementInvoiceNo}`, date: new Date(event.createdAt), icon: ArrowLeftRight, href: '/sales' }));
+      return [...returned, ...exchanges];
+    }) : []),
     ...(canSeeInventoryNotifications?(notificationProducts.data||[]).filter(p=>p.quantity<=5).map(p=>({id:`stock:${p.id}:${p.quantity<=0?'out':'low'}`,title:p.quantity<=0?`نفد مخزون ${p.name}`:`مخزون ${p.name} قرب يخلص`,detail:`المتبقي: ${fmt(p.quantity)}`,date:new Date(),icon:Package,href:'/inventory'})):[])
   ].sort((a,b)=>b.date.getTime()-a.date.getTime()).slice(0,100);
   const unseenNotifications=notificationRows.filter(n=>!readNotificationIds.includes(n.id)).length;
