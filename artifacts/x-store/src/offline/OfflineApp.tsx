@@ -412,7 +412,6 @@ export default function OfflineApp() {
   );
   const visibleSaleIds = new Set(visibleSales.map((sale) => sale.id));
   const visibleInvoiceNumbers = new Set(visibleSales.map((sale) => sale.invoiceNumber));
-  const viewState: OfflineState = { ...currentState, sales: visibleSales, returns: currentState.returns.filter((entry) => visibleSaleIds.has(entry.saleId)), exchanges: currentState.exchanges.filter((entry) => visibleInvoiceNumbers.has(entry.originalInvoiceNumber)) };
   const canSeeInventoryNotifications = activeMember.role === "tenant_admin" || activeMember.permissions.includes("warehouse_manager");
   const notificationRows = [
     ...viewState.sales.filter(s => Date.now()-new Date(s.createdAt).getTime()<7*86400000).map(s=>({id:`sale:${s.id}`,title:`تمت فاتورة ${s.invoiceNumber}`,detail:`${s.cashierName} · ${digits(s.total.toFixed(2))}`,createdAt:s.createdAt,icon:Receipt,page:"sales" as Page})),
