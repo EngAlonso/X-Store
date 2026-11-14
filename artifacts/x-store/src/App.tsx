@@ -982,6 +982,7 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
       </div>
       <div className={`receipt-refined-meta${thermal?' receipt-thermal-meta':''}${invoiceFormat==='thermal_58mm'?' receipt-thermal-meta--58':''}`}>
         {sale.customerName&&<div className="receipt-meta-item"><span>اسم العميل</span><b>{sale.customerName}</b></div>}
+        <div className="receipt-meta-item"><span>رقم الترابيزة</span><b>{sale.tableNumber||'—'}</b></div>
         <div className="receipt-meta-item"><span>رقم هاتف العميل</span><b className="receipt-meta-ltr">{sale.customerPhone?latinizeDigits(sale.customerPhone):'—'}</b></div>
         <div className="receipt-meta-item"><span>التاريخ والوقت</span><b>{dateTimeLabel(sale.createdAt)}</b></div>
         <div className="receipt-meta-item receipt-meta-item--cashier"><span>الحساب المنفذ</span><b>{sale.cashierName}</b></div>
