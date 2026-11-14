@@ -145,6 +145,7 @@ function storeTypeName(value: string | null | undefined) {
   return storeTypeOptions.find((type) => type.value === value)?.label ?? 'غير محدد';
 }
 type SaleType = Sale['saleType'];
+type RestaurantOrderType = 'internal' | 'external';
 const wholesaleEligibleStoreTypes = new Set([
   'clothing_shoes',
   'grocery_supermarket',
@@ -846,7 +847,7 @@ function DashboardPage() {
       </div>
       <div className="dashboard-grid">
         <Card><SectionHead title={isPlatform?'أحدث المتاجر':canViewSales?'آخر المبيعات':'مخزون يحتاج متابعة'} detail={isPlatform?'المتاجر المنضمة حديثاً':canViewSales?'الحركة الأخيرة في متجرك':'المنتجات التي تحتاج إلى مراجعة'} action={<Link href={activityHref} className="text-link">{isPlatform?'عرض المتاجر':canViewSales?'عرض الفواتير':'فتح المخزون'} <ChevronLeft size={15}/></Link>}/>
-          {isPlatform?<TenantTable tenants={d.latestTenants||[]} compact/>:canViewSales?<SalesTable sales={d.latestSales||[]} compact showAmounts={!isCashier}/>:<div className="empty-inline">افتح المخزون لمراجعة المنتجات والكميات المتاحة.</div>}
+          {isPlatform?<TenantTable tenants={d.latestTenants||[]} compact/>:canViewSales?<SalesTable sales={d.latestSales||[]} compact showAmounts={!isCashier} showOrderType={session?.storeType==='cafe'||session?.storeType==='restaurant'}/>:<div className="empty-inline">افتح المخزون لمراجعة المنتجات والكميات المتاحة.</div>}
         </Card>
         <Card><SectionHead title={isCashier?'اختصارات الصندوق':isInventoryOnly?'اختصارات المخزون':'مؤشرات سريعة'} detail={isCashier?'إجراءات أساسية خلال الوردية':isInventoryOnly?'إجراءات تناسب صلاحياتك':'تحديث مباشر من بيانات العمل'}/>
           {isCashier?<div className="quick-list"><div><span className="quick-icon green"><ShoppingCart size={17}/></span><span><b>عملية بيع جديدة</b><small>امسح أو ابحث عن منتج</small></span><Link href="/pos" className="table-action">فتح</Link></div><div><span className="quick-icon yellow"><RotateCcw size={17}/></span><span><b>المرتجعات</b><small>من شاشة المبيعات</small></span><Link href="/sales" className="table-action">عرض</Link></div><div><span className="quick-icon pale"><ReceiptText size={17}/></span><span><b>سجل الفواتير</b><small>الوصول لإيصال البيع</small></span><Link href="/sales" className="table-action">عرض</Link></div></div>
@@ -888,21 +889,22 @@ function SaleItemsTable({items,money,variant='history'}:{items:NonNullable<Sale[
     </table>
   </div>;
 }
-function SalesTable({sales,compact=false,onReturn,onPrint,onToggleItems,expandedSaleId,showAmounts=true}:{sales:Sale[];compact?:boolean;onReturn?:(s:Sale)=>void;onPrint?:(s:Sale)=>void;onToggleItems?:(s:Sale)=>void;expandedSaleId?:string|null;showAmounts?:boolean}) {
+function SalesTable({sales,compact=false,onReturn,onPrint,onToggleItems,expandedSaleId,showAmounts=true,showOrderType=false}:{sales:Sale[];compact?:boolean;onReturn?:(s:Sale)=>void;onPrint?:(s:Sale)=>void;onToggleItems?:(s:Sale)=>void;expandedSaleId?:string|null;showAmounts?:boolean;showOrderType?:boolean}) {
   const money=useMoney();
   if(!sales.length)return <div className="empty-inline">لا توجد عمليات بيع لعرضها.</div>;
   const hasActions=Boolean(onReturn||onPrint||onToggleItems);
-  const columnCount=4+Number(!compact)+Number(showAmounts)+1+Number(hasActions);
+  const columnCount=4+Number(showOrderType)+Number(!compact)+Number(showAmounts)+1+Number(hasActions);
   return (
     <div className="table-wrap">
       <table>
-        <thead><tr><th>رقم الفاتورة</th><th>الترابيزة</th><th>التاريخ والوقت</th><th>الأصناف</th>{!compact&&<th>الدفع</th>}{showAmounts&&<th>الإجمالي</th>}<th>الحالة</th>{hasActions&&<th>إجراء</th>}</tr></thead>
+        <thead><tr><th>رقم الفاتورة</th><th>الترابيزة</th>{showOrderType&&<th>الطلب</th>}<th>التاريخ والوقت</th><th>الأصناف</th>{!compact&&<th>الدفع</th>}{showAmounts&&<th>الإجمالي</th>}<th>الحالة</th>{hasActions&&<th>إجراء</th>}</tr></thead>
         <tbody>
           {sales.map(sale=>(
             <Fragment key={sale.id}>
               <tr>
                 <td className="ltr-id">{latinizeDigits(sale.invoiceNo)}{sale.exchangeEvents.length>0&&<span className="sale-exchange-badge"><ArrowLeftRight size={12}/> استبدال</span>}</td>
                 <td>{sale.tableNumber||'—'}</td>
+                {showOrderType&&<td>{sale.orderType==='internal'?'داخلي':sale.orderType==='external'?'خارجي':'—'}</td>}
                 <td>{dateTimeLabel(sale.createdAt)}</td>
                 <td>{fmt(sale.itemCount)}</td>
                 {!compact&&<td>{paymentName(sale.paymentMethod)}</td>}
@@ -1963,10 +1965,11 @@ function PosPage() {
   const [exchangePayment,setExchangePayment]=useState<'cash'|'card'|'wallet'>('cash');
   const [exchangePaymentError,setExchangePaymentError]=useState('');
   const exchangeInvoiceItems=useGetXStoreSaleInvoiceItems(exchangeLoadedInvoiceNo,{query:{queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo),enabled:Boolean(exchangeLoadedInvoiceNo)}});
-  const [customerName,setCustomerName]=useState(''),[customerPhone,setCustomerPhone]=useState(''),[tableNumber,setTableNumber]=useState(''),[phoneCountryOverride,setPhoneCountryOverride]=useState<string|null>(null),[invoiceReference,setInvoiceReference]=useState(createHeldInvoiceReference),[receiptSale,setReceiptSale]=useState<Sale|null>(null);
+  const [customerName,setCustomerName]=useState(''),[customerPhone,setCustomerPhone]=useState(''),[tableNumber,setTableNumber]=useState(''),[orderType,setOrderType]=useState<RestaurantOrderType>('external'),[phoneCountryOverride,setPhoneCountryOverride]=useState<string|null>(null),[invoiceReference,setInvoiceReference]=useState(createHeldInvoiceReference),[receiptSale,setReceiptSale]=useState<Sale|null>(null);
   const phoneCountry=getPhoneCountry(phoneCountryOverride??session.data?.countryCode);
   const invoicePhone=phoneNumberForCountry(phoneCountry.countryCode,customerPhone);
   const customerWhatsappNumber=getWhatsAppDigits(invoicePhone);
+  const isRestaurantStore=session.data?.storeType==='cafe'||session.data?.storeType==='restaurant';
   useEffect(()=>{
     if(canSellRetail&&saleType==='wholesale'&&!canSellWholesale)setSaleType('retail');
     else if(!canSellRetail&&canSellWholesale&&saleType!=='wholesale')setSaleType('wholesale');
@@ -1986,7 +1989,7 @@ function PosPage() {
   }
   const visible=(products.data||[]).filter(p=>matchesProductSearch(p,term)&&salePriceForProduct(p,saleType)!==null);
   const cartLines=(products.data||[]).filter(p=>cart[p.id]).map(p=>({...p,count:cart[p.id],salePrice:salePriceForProduct(p,saleType)??0}));
-   useEffect(()=>{if(!cartLines.length){if(customerPhone)setCustomerPhone('');if(phoneCountryOverride)setPhoneCountryOverride(null);if(customerName)setCustomerName('')}},[cartLines.length,customerPhone,phoneCountryOverride,customerName]);
+   useEffect(()=>{if(!cartLines.length){if(customerPhone)setCustomerPhone('');if(phoneCountryOverride)setPhoneCountryOverride(null);if(customerName)setCustomerName('');if(!isRestaurantStore&&tableNumber)setTableNumber('')}},[cartLines.length,customerPhone,phoneCountryOverride,customerName,isRestaurantStore,tableNumber]);
   const subtotal=roundMoney(cartLines.reduce((s,p)=>s+p.salePrice*p.count,0)), disc=Math.min(subtotal,roundMoney(Math.max(0,Number(discount)||0))), tax=roundMoney((subtotal-disc)*vatRate), total=roundMoney(subtotal-disc+tax);
   const exchangeReturnedAmount=roundMoney(Object.entries(exchangeReturnItems).reduce((sum,[productId,quantity])=>{
     const item=exchangeInvoiceItems.data?.find(line=>line.productId===productId);
@@ -2079,7 +2082,7 @@ function PosPage() {
    const cashAmount=Number(received);
    const cashAmountInvalid=payment==='cash'&&(!received.trim()||!Number.isFinite(cashAmount)||cashAmount<=0||roundMoney(cashAmount)<total);
    const transferSenderInvalid=(payment==='wallet'||payment==='instapay')&&!transferSender.trim();
-   function finish(){if(!cartLines.length||customerPhoneInvalid||cashAmountInvalid||transferSenderInvalid)return;checkout.mutate({data:{invoiceNo:invoiceReference,saleType,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:payment==='cash'?roundMoney(cashAmount):total,transferSender:payment==='wallet'||payment==='instapay'?transferSender.trim():null,customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null,tableNumber:tableNumber.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setTableNumber('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreProfitLossReportQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
+   function finish(){if(!cartLines.length||customerPhoneInvalid||cashAmountInvalid||transferSenderInvalid)return;checkout.mutate({data:{invoiceNo:invoiceReference,saleType,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:payment==='cash'?roundMoney(cashAmount):total,transferSender:payment==='wallet'||payment==='instapay'?transferSender.trim():null,customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null,tableNumber:isRestaurantStore?tableNumber.trim()||null:null,orderType:isRestaurantStore?orderType:null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setTableNumber('');setOrderType('external');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreProfitLossReportQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
    function park(){if(!cartLines.length||customerPhoneInvalid)return;hold.mutate({data:{reference:invoiceReference,saleType,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null,discountAmount:disc,paymentMethod:payment,transferSender:transferSender.trim()||null,amountReceived:roundMoney(Number(received)||0)}},{onSuccess:heldSale=>{setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice(`تم تعليق الفاتورة ${heldSale.reference}`)}})}
    function clearCurrentCart(){setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference())}
   function closeExchange(){setExchangeOpen(false);setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setExchangeReplacementProductId('');setExchangeReplacementQuantity(1);setExchangeAmountReceived('');setExchangePayment('cash');setExchangePaymentError('')}
@@ -2132,7 +2135,8 @@ function PosPage() {
           <div className="payment-tabs">{(['cash','card','wallet','instapay'] as const).map((m,i)=>{const I=[Banknote,CreditCard,Wallet,Smartphone][i];return <button key={m} onClick={()=>setPayment(m)} className={payment===m?'payment-active':''}><I size={16}/>{paymentName(m)}</button>})}</div>
           {payment==='cash'&&<label className="received-field"><span>المبلغ النقدي المستلم <em>إلزامي</em></span><div><input type="number" min={Math.max(total,.01)} step="0.01" value={received} onChange={e=>setReceived(e.target.value)} placeholder={fmt(total)} aria-label="المبلغ النقدي المستلم" required/><small>{received.trim()&&cashAmount>0?cashAmount>=total?`الباقي ${money(roundMoney(cashAmount-total))}`:`المتبقي ${money(roundMoney(total-cashAmount))}`:'أدخل المبلغ المستلم'}</small></div></label>}
           {(payment==='wallet'||payment==='instapay')&&<label className="transfer-sender-field"><span>رقم أو حساب المرسل <em>إلزامي</em></span><input type="text" dir="ltr" maxLength={80} autoComplete="off" value={transferSender} onChange={e=>setTransferSender(e.target.value)} placeholder={payment==='instapay'?'رقم الهاتف أو عنوان InstaPay':'رقم المحفظة المحوِّل منها'} aria-label="رقم أو حساب المرسل" required/><small>سجّل الرقم الذي استقبلت منه التحويل.</small></label>}
-          <label className="customer-phone-field customer-name-field"><span><Utensils size={14}/> رقم الترابيزة <em>اختياري</em></span><input type="text" inputMode="numeric" maxLength={30} value={tableNumber} onChange={e=>setTableNumber(e.target.value.replace(/[^0-9٠-٩A-Za-z-]/g,''))} placeholder="مثال: 12" aria-label="رقم الترابيزة"/></label>
+          {isRestaurantStore&&<div className="restaurant-order-type" role="group" aria-label="نوع الطلب"><span><Utensils size={14}/> نوع الطلب</span><div><button type="button" className={orderType==='internal'?'is-active':''} onClick={()=>setOrderType('internal')}>داخلي</button><button type="button" className={orderType==='external'?'is-active':''} onClick={()=>setOrderType('external')}>خارجي</button></div></div>}
+          {isRestaurantStore&&<label className="customer-phone-field customer-name-field"><span><Utensils size={14}/> رقم الترابيزة <em>اختياري</em></span><input type="text" inputMode="numeric" maxLength={30} value={tableNumber} onChange={e=>setTableNumber(e.target.value.replace(/[^0-9٠-٩A-Za-z-]/g,''))} placeholder="مثال: 12" aria-label="رقم الترابيزة"/></label>
           <label className="customer-phone-field customer-name-field"><span><Users size={14}/> اسم العميل <em>اختياري</em></span><input type="text" maxLength={150} autoComplete="name" value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder="اكتب اسم العميل" aria-label="اسم العميل على الفاتورة" data-testid="input-customer-name" disabled={!cartLines.length}/></label>
           <label className="customer-phone-field"><span><Phone size={14}/> رقم هاتف العميل على الفاتورة <em>اختياري</em></span><div className="customer-phone-input" dir="ltr"><span className="customer-phone-prefix" aria-label={`مفتاح الدولة +${phoneCountry.callingCode}`}>+{phoneCountry.callingCode}</span><input type="tel" inputMode="tel" autoComplete="tel-national" dir="ltr" value={customerPhone} onChange={e=>changeCustomerPhone(e.target.value)} placeholder="10 1234 5678" aria-label="رقم هاتف العميل بدون مفتاح الدولة" data-testid="input-customer-phone" disabled={!cartLines.length}/></div><small>مفتاح الدولة ثابت حسب دولة المتجر: {phoneCountry.name} (+{phoneCountry.callingCode}).</small>{customerPhoneInvalid&&<small className="customer-phone-error" role="alert">تأكد من كتابة رقم هاتف صحيح لهذا المفتاح.</small>}</label>
           <div className="cart-actions">
@@ -2267,7 +2271,7 @@ function SalesPage() {
   return <div className="sales-page">
     <PageTitle eyebrow="حركة المتجر" title="المبيعات" desc="الفواتير الأخيرة وطرق الدفع والمرتجعات المسجلة." action={<button className="button button-quiet" onClick={()=>sales.refetch()}><RefreshCw size={15}/> تحديث القائمة</button>}/>
     {canViewAmounts&&<div className="stat-grid sales-stats"><StatCard label="عمليات ظاهرة" value={fmt(sales.data?.length||0)} detail="آخر 100 فاتورة" icon={ReceiptText}/><StatCard label="إجمالي المبيعات" value={money((sales.data||[]).reduce((a,s)=>a+s.total,0))} detail="حسب القائمة المحمّلة" icon={Banknote} tint="gold"/><StatCard label="نقداً" value={fmt((sales.data||[]).filter(s=>s.paymentMethod==='cash').length)} detail="عمليات نقدية" icon={Wallet} tint="sage"/><StatCard label="مرتجعة" value={fmt((sales.data||[]).filter(s=>s.status!=='completed').length)} detail="تتضمن استرداداً" icon={RotateCcw} tint="red"/></div>}
-    <Card className="sales-invoice-panel"><SectionHead title="سجل الفواتير" detail="عرض الفواتير حسب الأحدث أولاً"/><div className="table-toolbar"><label className="search-box sales-search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث برقم الفاتورة" data-testid="input-search-sales"/></label><span className="result-count sales-result-count">{fmt(rows.length)} فاتورة</span></div>{sales.isLoading?<StateBlock loading error={false} onRetry={()=>sales.refetch()} empty={false}/>:sales.isError?<StateBlock loading={false} error onRetry={()=>sales.refetch()} empty={false}/>:rows.length?<SalesTable sales={rows} onReturn={canReturn?openReturn:undefined} onPrint={s=>setPrintTarget(s)} onToggleItems={toggleSaleItems} expandedSaleId={detailsSaleId} showAmounts={canViewAmounts}/>:<div className="empty-inline">لا توجد فواتير تطابق البحث.</div>}</Card>
+    <Card className="sales-invoice-panel"><SectionHead title="سجل الفواتير" detail="عرض الفواتير حسب الأحدث أولاً"/><div className="table-toolbar"><label className="search-box sales-search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث برقم الفاتورة" data-testid="input-search-sales"/></label><span className="result-count sales-result-count">{fmt(rows.length)} فاتورة</span></div>{sales.isLoading?<StateBlock loading error={false} onRetry={()=>sales.refetch()} empty={false}/>:sales.isError?<StateBlock loading={false} error onRetry={()=>sales.refetch()} empty={false}/>:rows.length?<SalesTable sales={rows} onReturn={canReturn?openReturn:undefined} onPrint={s=>setPrintTarget(s)} onToggleItems={toggleSaleItems} expandedSaleId={detailsSaleId} showAmounts={canViewAmounts} showOrderType={session.data?.storeType==='cafe'||session.data?.storeType==='restaurant'}/>:<div className="empty-inline">لا توجد فواتير تطابق البحث.</div>}</Card>
     {selected&&<Modal title="تسجيل مرتجع" close={closeReturn}><form className="form-grid" onSubmit={submit}>
       <InvoiceReturnPicker invoiceNo={returnInvoiceNo} setInvoiceNo={setReturnInvoiceNo} loadedInvoiceNo={returnLoadedInvoiceNo} setLoadedInvoiceNo={setReturnLoadedInvoiceNo} selectedItems={returnSelectedItems} setSelectedItems={setReturnSelectedItems} testIdPrefix="return"/>
       <label className="field field-wide"><span>سبب الإرجاع</span><input name="reason" required placeholder="اكتب سبب الإرجاع"/></label>
