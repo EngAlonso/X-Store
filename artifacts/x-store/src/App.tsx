@@ -616,6 +616,12 @@ function apiErrorMessage(error:unknown,fallback:string):string {
   }
   return fallback;
 }
+function RestaurantOnlyPage() {
+  const session = useGetXStoreSession();
+  if (session.isLoading) return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/></div></div>;
+  if (!session.data || (session.data.storeType !== 'cafe' && session.data.storeType !== 'restaurant')) return <Redirect to="/dashboard"/>;
+  return <ProtectedLayout/>;
+}
 function HomeRedirect() {
   const session=useGetXStoreSession();
   if(session.data)return <Redirect to="/dashboard"/>;
@@ -649,7 +655,8 @@ function AppShell({ children }: { children: ReactNode }) {
   }
   if (isLoading) return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if (isError || !user) return <div className="auth-required" dir="rtl"><div className="empty-symbol"><ShieldCheck/></div><h2>يلزم تسجيل الدخول</h2><p>سجّل الدخول باستخدام حساب X-Store للوصول إلى مساحة العمل.</p><Link href="/sign-in" className="button button-primary">تسجيل الدخول</Link><button className="button button-quiet" onClick={()=>refetch()}>إعادة المحاولة</button></div>;
-  const items = nav.filter(n=>n.roles.includes('all') || hasAppRole(user, n.roles));
+  const isRestaurantOrCafe = user.storeType === 'cafe' || user.storeType === 'restaurant';
+  const items = nav.filter(n => (n.roles.includes('all') || hasAppRole(user, n.roles)) && (n.href !== '/restaurant-menu' || isRestaurantOrCafe));
   const canSeeSalesNotifications = hasAppRole(user,['platform_admin','tenant_admin','cashier','accountant']) || (user.role==='custom' && Boolean(user.permissions?.some(p=>p==='retail_sales'||p==='wholesale_sales')));
   const canSeeInventoryNotifications = hasAppRole(user,['platform_admin','tenant_admin','warehouse_manager']);
   const notificationRows = [
@@ -2263,7 +2270,7 @@ function moneyLabel(amount:number) {
 }
 
 function Routed() {
-  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/menu/:slug" component={PublicRestaurantMenu}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/offline-license-issuer" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-backup" component={ProtectedLayout}/><Route path="/restaurant-menu" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
+  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/menu/:slug" component={PublicRestaurantMenu}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/offline-license-issuer" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-backup" component={ProtectedLayout}/><Route path="/restaurant-menu" component={() => <RestaurantOnlyPage/>}/><Route path="/store-settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
 }
 function App() {
   return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><SiteLayout/></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;
