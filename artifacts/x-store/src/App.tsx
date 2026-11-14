@@ -688,8 +688,26 @@ function AppShell({ children }: { children: ReactNode }) {
 }
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
-  const restaurantMenuAccessLoading = session.isLoading;
-  const restaurantMenuEnabled = session.data?.role === 'tenant_admin' && (session.data?.storeType === 'cafe' || session.data?.storeType === 'restaurant');
+  const [restaurantFeature, setRestaurantFeature] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (session.isLoading || !session.data || location !== '/restaurant-menu') return;
+    if (session.data.role !== 'tenant_admin' || session.data.storeType === 'cafe' || session.data.storeType === 'restaurant') {
+      setRestaurantFeature(null);
+      return;
+    }
+    let cancelled = false;
+    void fetch('/api/xstore/restaurant-feature', { credentials: 'include' })
+      .then(async response => response.ok ? response.json() as Promise<{ enabled?: boolean }> : { enabled: false })
+      .then(result => { if (!cancelled) setRestaurantFeature(result.enabled === true); })
+      .catch(() => { if (!cancelled) setRestaurantFeature(false); });
+    return () => { cancelled = true; };
+  }, [session.isLoading, session.data?.id, session.data?.role, session.data?.storeType, location]);
+  const restaurantMenuAccessLoading = session.isLoading || (location === '/restaurant-menu' && session.data?.role === 'tenant_admin' && session.data?.storeType == null && restaurantFeature === null);
+  const restaurantMenuEnabled = session.data?.role === 'tenant_admin' && (
+    session.data?.storeType === 'cafe' ||
+    session.data?.storeType === 'restaurant' ||
+    (session.data?.storeType == null && restaurantFeature === true)
+  );
   const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
   if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
