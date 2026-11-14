@@ -1680,18 +1680,17 @@ function InventoryPage() {
   const session = useGetXStoreSession();
   const [restaurantFeatureEnabledForIngredients, setRestaurantFeatureEnabledForIngredients] = useState<boolean | null>(null);
   useEffect(() => {
-    if (session.data?.storeType !== null && session.data?.storeType !== undefined) {
-      setRestaurantFeatureEnabledForIngredients(null);
-      return;
-    }
     if (!session.data) return;
     let cancelled = false;
-    void fetch('/api/xstore/restaurant-feature', { credentials: 'include' })
+    // Resolve the feature from the tenant endpoint even when the session already
+    // contains a storeType; older/stale session payloads may not reflect the
+    // actual restaurant/cafe configuration.
+    void fetch('/api/xstore/restaurant-feature', { credentials: 'include', cache: 'no-store' })
       .then(async response => response.ok ? response.json() as Promise<{ enabled?: boolean }> : { enabled: false })
       .then(result => { if (!cancelled) setRestaurantFeatureEnabledForIngredients(result.enabled === true); })
       .catch(() => { if (!cancelled) setRestaurantFeatureEnabledForIngredients(false); });
     return () => { cancelled = true; };
-  }, [session.data?.storeType, session.data?.role]);
+  }, [session.data?.tenantId, session.data?.role, session.data?.storeType]);
   const money=useMoney();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('__all__');
