@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   db,
   xstoreHeldSales,
@@ -138,16 +138,8 @@ router.post("/xstore/store-backup/restore", async (req, res) => {
       const saleIds = sales.map((sale) => sale.id);
 
       if (saleIds.length) {
-        await tx.delete(xstoreReturns).where(eq(xstoreReturns.saleId, saleIds[0]));
-        for (const saleId of saleIds.slice(1)) {
-          await tx.delete(xstoreReturns).where(eq(xstoreReturns.saleId, saleId));
-        }
-
-        await tx.delete(xstoreSaleItems).where(eq(xstoreSaleItems.saleId, saleIds[0]));
-        for (const saleId of saleIds.slice(1)) {
-          await tx.delete(xstoreSaleItems).where(eq(xstoreSaleItems.saleId, saleId));
-        }
-
+        await tx.delete(xstoreReturns).where(inArray(xstoreReturns.saleId, saleIds));
+        await tx.delete(xstoreSaleItems).where(inArray(xstoreSaleItems.saleId, saleIds));
         await tx.delete(xstoreSales).where(eq(xstoreSales.tenantId, tenantId));
       }
 
