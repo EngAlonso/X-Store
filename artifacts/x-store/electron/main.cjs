@@ -7,6 +7,8 @@ const { getDeviceId, getHardwareFingerprint } = require("./device-id.cjs");
 const SCHEMA_VERSION = 3;
 const BACKUP_PREFIX = "x-store-automatic-";
 const MAX_DAILY_BACKUPS = 30;
+const BACKUP_FORMAT = "x-store-offline-backup";
+const CLOCK_ROLLBACK_TOLERANCE_MS = 5 * 60 * 1000;
 const VALID_STORE_TYPES = new Set([
   "clothing_shoes",
   "grocery_supermarket",
@@ -47,6 +49,7 @@ const EMPTY_STATE = {
 };
 
 let statePath;
+let clockGuardPath;
 let writeQueue = Promise.resolve();
 
 app.setName("X-Store");
@@ -307,6 +310,35 @@ async function atomicWrite(filePath, contents) {
   await fs.rename(temporaryPath, filePath);
 }
 
+async function getClockStatus() {
+  const now = Date.now();
+  let lastSeenAt = null;
+  try {
+    const raw = await fs.readFile(clockGuardPath, "utf8");
+    const parsed = JSON.parse(raw);
+    if (Number.isFinite(parsed.lastSeenAt)) lastSeenAt = parsed.lastSeenAt;
+  } catch (error) {
+    if (error && error.code !== "ENOENT") throw error;
+  }
+
+  const rollbackDetected = lastSeenAt !== null && now + CLOCK_ROLLBACK_TOLERANCE_MS < lastSeenAt;
+  if (!rollbackDetected) {
+    const nextLastSeenAt = Math.max(lastSeenAt ?? 0, now);
+    await atomicWrite(clockGuardPath, JSON.stringify({ version: 1, lastSeenAt: nextLastSeenAt }, null, 2) + "\n");
+    lastSeenAt = nextLastSeenAt;
+  }
+
+  return {
+    valid: !rollbackDetected,
+    now: new Date(now).toISOString(),
+    lastSeenAt: lastSeenAt ? new Date(lastSeenAt).toISOString() : null,
+    rollbackDetected,
+    message: rollbackDetected
+      ? "تم اكتشاف رجوع ساعة Windows للخلف. أعد الساعة إلى الوقت الصحيح ثم أعد تشغيل البرنامج."
+      : "",
+  };
+}
+
 async function readState() {
   try {
     const raw = await fs.readFile(statePath, "utf8");
@@ -425,17 +457,47 @@ async function saveStateSafely(nextState) {
   return enqueueWrite(() => saveState(nextState));
 }
 
-async function createBackup(manual = true) {
+function makeBackupPayload(state, backupType) {
+  if (backupType === "full") return { ...state };
+  if (backupType === "invoices") {
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      setupComplete: state.setupComplete,
+      sales: state.sales,
+      heldSales: state.heldSales,
+      returns: state.returns,
+      exchanges: state.exchanges,
+    };
+  }
+  if (backupType === "inventory") {
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      setupComplete: state.setupComplete,
+      products: state.products,
+    };
+  }
+  throw new Error("نوع النسخة الاحتياطية غير مدعوم.");
+}
+
+function makeBackupEnvelope(state, backupType, createdAt) {
+  return {
+    format: BACKUP_FORMAT,
+    version: 1,
+    backupType,
+    createdAt,
+    state: makeBackupPayload(state, backupType),
+  };
+}
+
+async function createBackup(manual = true, backupType = "full") {
   return enqueueWrite(async () => {
     const current = await readState();
     const folder = current.backup.backupFolder;
     if (!folder) throw new Error("حدد مجلد النسخ الاحتياطي أولاً.");
     await fs.mkdir(folder, { recursive: true });
     const now = new Date();
-    const timestamped = path.join(
-      folder,
-      `x-store-manual-${timeStamp(now)}.json`,
-    );
+    const suffix = backupType === "full" ? "full" : backupType;
+    const timestamped = path.join(folder, `x-store-manual-${suffix}-${timeStamp(now)}.json`);
     const backupState = {
       ...current,
       backup: {
@@ -445,15 +507,44 @@ async function createBackup(manual = true) {
         lastError: null,
       },
     };
-    const json = `${JSON.stringify(backupState, null, 2)}\n`;
-    await atomicWrite(timestamped, json);
-    await atomicWrite(path.join(folder, "x-store-latest-backup.json"), json);
+    const envelope = makeBackupEnvelope(backupState, backupType, now.toISOString());
+    await atomicWrite(timestamped, `${JSON.stringify(envelope, null, 2)}\n`);
+    if (backupType === "full") {
+      await atomicWrite(path.join(folder, "x-store-latest-backup.json"), `${JSON.stringify(envelope, null, 2)}\n`);
+    }
     await atomicWrite(statePath, `${JSON.stringify(backupState, null, 2)}\n`);
     return backupState;
   });
 }
 
+function restoreFromBackupPayload(current, imported) {
+  if (isPlainObject(imported) && imported.format === BACKUP_FORMAT && imported.version === 1) {
+    if (!["full", "invoices", "inventory"].includes(imported.backupType) || !isPlainObject(imported.state)) {
+      throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
+    }
+    if (imported.backupType === "full") return normalizeState(imported.state);
+    if (imported.backupType === "invoices") {
+      return normalizeState({
+        ...current,
+        sales: imported.state.sales,
+        heldSales: imported.state.heldSales,
+        returns: imported.state.returns,
+        exchanges: imported.state.exchanges,
+      });
+    }
+    return normalizeState({ ...current, products: imported.state.products });
+  }
+  return normalizeState(imported);
+}
+
 async function restoreState(importedState) {
+  return enqueueWrite(async () => {
+    const current = await readState();
+    const normalizedImport = restoreFromBackupPayload(current, importedState);
+    if (!normalizedImport) {
+      throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
+    }
+importedState) {
   const normalizedImport = normalizeState(importedState);
   if (!normalizedImport) {
     throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
@@ -571,13 +662,15 @@ function registerIpc() {
   ipcMain.handle("offline:get-hardware-fingerprint", () => getHardwareFingerprint());
   ipcMain.handle("offline:save-state", (_event, state) => saveStateSafely(state));
   ipcMain.handle("offline:choose-backup-folder", () => chooseBackupFolder());
-  ipcMain.handle("offline:create-backup", () => createBackup(true));
+  ipcMain.handle("offline:create-backup", (_event, backupType = "full") => createBackup(true, backupType));
+  ipcMain.handle("offline:get-clock-status", () => getClockStatus());
   ipcMain.handle("offline:restore-backup", () => restoreBackupFromFile());
   ipcMain.handle("offline:restore-state", (_event, state) => restoreState(state));
 }
 
 app.whenReady().then(async () => {
   statePath = path.join(app.getPath("userData"), "store-data.json");
+  clockGuardPath = path.join(app.getPath("userData"), "offline-clock-guard.json");
   installNetworkBlock();
   registerIpc();
   createWindow();
