@@ -77,6 +77,7 @@ export interface SessionUser {
   tenantId: string | null;
   /** @nullable */
   tenantName: string | null;
+  storeType: StoreType | null;
   /**
      * @minLength 2
      * @maxLength 2
