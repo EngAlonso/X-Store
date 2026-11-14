@@ -1082,6 +1082,7 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
       createdAt,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
+      tableNumber: tableNumber.trim() || undefined,
       paymentMethod: payment,
       saleType,
       transferSender: transferSender.trim(),
