@@ -47,12 +47,18 @@ router.get("/xstore/store-backup", async (req, res) => {
   const backupType = (req.query.type === "invoices" || req.query.type === "inventory" ? req.query.type : "full") as BackupType;
 
   try {
+    const emptyProducts: (typeof xstoreProducts.$inferSelect)[] = [];
+    const emptySales: (typeof xstoreSales.$inferSelect)[] = [];
+    const emptyHeldSales: (typeof xstoreHeldSales.$inferSelect)[] = [];
+    const emptySaleItems: (typeof xstoreSaleItems.$inferSelect)[] = [];
+    const emptyReturns: (typeof xstoreReturns.$inferSelect)[] = [];
+
     const [products, sales, heldSales, saleItems, returns] = await Promise.all([
-      backupType === "invoices" ? Promise.resolve([]) : db.select().from(xstoreProducts).where(eq(xstoreProducts.tenantId, tenantId)),
-      backupType === "inventory" ? Promise.resolve([]) : db.select().from(xstoreSales).where(eq(xstoreSales.tenantId, tenantId)),
-      backupType === "inventory" ? Promise.resolve([]) : db.select().from(xstoreHeldSales).where(eq(xstoreHeldSales.tenantId, tenantId)),
-      backupType === "inventory" ? Promise.resolve([]) : db.select().from(xstoreSaleItems),
-      backupType === "inventory" ? Promise.resolve([]) : db.select().from(xstoreReturns),
+      backupType === "invoices" ? Promise.resolve(emptyProducts) : db.select().from(xstoreProducts).where(eq(xstoreProducts.tenantId, tenantId)),
+      backupType === "inventory" ? Promise.resolve(emptySales) : db.select().from(xstoreSales).where(eq(xstoreSales.tenantId, tenantId)),
+      backupType === "inventory" ? Promise.resolve(emptyHeldSales) : db.select().from(xstoreHeldSales).where(eq(xstoreHeldSales.tenantId, tenantId)),
+      backupType === "inventory" ? Promise.resolve(emptySaleItems) : db.select().from(xstoreSaleItems),
+      backupType === "inventory" ? Promise.resolve(emptyReturns) : db.select().from(xstoreReturns),
     ]);
     const saleIds = new Set(sales.map((sale) => sale.id));
     const tables: BackupTables = {
