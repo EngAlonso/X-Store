@@ -105,6 +105,7 @@ export const CreateInitialPlatformOwnerResponse = zod.object({
   "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant'])),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable(),
+  "storeType": zod.union([zod.enum(['clothing_shoes', 'grocery_supermarket', 'electronics_accessories', 'perfume_beauty', 'cafe', 'restaurant']), zod.literal(null)]).nullable(),
   "countryCode": zod.string().min(createInitialPlatformOwnerResponseCountryCodeMin).max(createInitialPlatformOwnerResponseCountryCodeMax).regex(createInitialPlatformOwnerResponseCountryCodeRegExp).nullable(),
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
   "vatRate": zod.number().min(createInitialPlatformOwnerResponseVatRateMin).max(createInitialPlatformOwnerResponseVatRateMax).nullable(),
