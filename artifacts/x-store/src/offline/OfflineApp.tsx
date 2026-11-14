@@ -966,7 +966,7 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
   }
   useEffect(() => {
     const onScannerKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
+      const target = event.target instanceof HTMLElement ? event.target : null;
       const isSearchInput = target?.tagName === "INPUT" && target.closest(".of-pos-toolbar") !== null;
       const isEditable = Boolean(target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable));
       const now = performance.now();
