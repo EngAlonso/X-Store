@@ -626,6 +626,8 @@ function SignUpPage() { return <Redirect to="/sign-in"/>; }
 
 function AppShell({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation(); const [open,setOpen] = useState(false);
+  const [restaurantMenuEnabled, setRestaurantMenuEnabled] = useState(false);
+  const [restaurantMenuAccessLoading, setRestaurantMenuAccessLoading] = useState(true);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const notificationProducts = useListXStoreProducts(undefined, { query: { refetchInterval: 30000 } });
@@ -633,6 +635,27 @@ function AppShell({ children }: { children: ReactNode }) {
   const qc=useQueryClient();
   const [loggingOut, setLoggingOut] = useState(false);
   const { data:user, isLoading, isError, refetch } = useGetXStoreSession();
+  useEffect(() => {
+    let cancelled = false;
+    if (!user || user.role !== 'tenant_admin') {
+      setRestaurantMenuEnabled(false);
+      setRestaurantMenuAccessLoading(false);
+      return;
+    }
+    setRestaurantMenuAccessLoading(true);
+    fetch('/api/xstore/restaurant-feature', { credentials: 'include' })
+      .then(response => response.ok ? response.json() as Promise<{enabled?: boolean}> : { enabled: false })
+      .then(result => {
+        if (!cancelled) setRestaurantMenuEnabled(result.enabled === true);
+      })
+      .catch(() => {
+        if (!cancelled) setRestaurantMenuEnabled(false);
+      })
+      .finally(() => {
+        if (!cancelled) setRestaurantMenuAccessLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, user?.role]);
   useEffect(() => { if (!user) return; try { setReadNotificationIds(JSON.parse(localStorage.getItem(`xstore-notifications:${user.id}`) || '[]') as string[]); } catch { setReadNotificationIds([]); } }, [user?.id]);
   async function handleLogout() {
     if (loggingOut) return;
@@ -649,7 +672,7 @@ function AppShell({ children }: { children: ReactNode }) {
   }
   if (isLoading) return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if (isError || !user) return <div className="auth-required" dir="rtl"><div className="empty-symbol"><ShieldCheck/></div><h2>يلزم تسجيل الدخول</h2><p>سجّل الدخول باستخدام حساب X-Store للوصول إلى مساحة العمل.</p><Link href="/sign-in" className="button button-primary">تسجيل الدخول</Link><button className="button button-quiet" onClick={()=>refetch()}>إعادة المحاولة</button></div>;
-  const items = nav.filter(n=>n.roles.includes('all') || hasAppRole(user, n.roles));
+  const items = nav.filter(n => (n.href !== '/restaurant-menu' || (user.role === 'tenant_admin' && !restaurantMenuAccessLoading && restaurantMenuEnabled)) && (n.roles.includes('all') || hasAppRole(user, n.roles)));
   const canSeeSalesNotifications = hasAppRole(user,['platform_admin','tenant_admin','cashier','accountant']) || (user.role==='custom' && Boolean(user.permissions?.some(p=>p==='retail_sales'||p==='wholesale_sales')));
   const canSeeInventoryNotifications = hasAppRole(user,['platform_admin','tenant_admin','warehouse_manager']);
   const notificationRows = [
@@ -671,8 +694,31 @@ function AppShell({ children }: { children: ReactNode }) {
 }
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
+  const [restaurantMenuEnabled, setRestaurantMenuEnabled] = useState(false);
+  const [restaurantMenuAccessLoading, setRestaurantMenuAccessLoading] = useState(location === '/restaurant-menu');
   const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  useEffect(() => {
+    let cancelled = false;
+    if (location !== '/restaurant-menu') {
+      setRestaurantMenuAccessLoading(false);
+      return;
+    }
+    setRestaurantMenuAccessLoading(true);
+    fetch('/api/xstore/restaurant-feature', { credentials: 'include' })
+      .then(response => response.ok ? response.json() as Promise<{enabled?: boolean}> : { enabled: false })
+      .then(result => {
+        if (!cancelled) setRestaurantMenuEnabled(result.enabled === true);
+      })
+      .catch(() => {
+        if (!cancelled) setRestaurantMenuEnabled(false);
+      })
+      .finally(() => {
+        if (!cancelled) setRestaurantMenuAccessLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [location]);
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
+  if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
   return <AppShell><Switch>
