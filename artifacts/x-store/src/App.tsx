@@ -1971,7 +1971,17 @@ function PosPage() {
   const phoneCountry=getPhoneCountry(phoneCountryOverride??session.data?.countryCode);
   const invoicePhone=phoneNumberForCountry(phoneCountry.countryCode,customerPhone);
   const customerWhatsappNumber=getWhatsAppDigits(invoicePhone);
-  const isRestaurantStore=session.data?.storeType==='cafe'||session.data?.storeType==='restaurant';
+  const [restaurantFeature,setRestaurantFeature]=useState<boolean|null>(null);
+  const isRestaurantStore=session.data?.storeType==='cafe'||session.data?.storeType==='restaurant'||(session.data?.storeType==null&&restaurantFeature===true);
+  useEffect(()=>{
+    if(session.isLoading||!session.data||session.data.role!=='tenant_admin'||session.data.storeType!=null)return;
+    let cancelled=false;
+    void fetch('/api/xstore/restaurant-feature',{credentials:'include'})
+      .then(async response=>response.ok?response.json() as Promise<{enabled?:boolean}>:{enabled:false})
+      .then(result=>{if(!cancelled)setRestaurantFeature(result.enabled===true);})
+      .catch(()=>{if(!cancelled)setRestaurantFeature(false);});
+    return()=>{cancelled=true;};
+  },[session.isLoading,session.data?.id,session.data?.role,session.data?.storeType]);
   useEffect(()=>{
     if(canSellRetail&&saleType==='wholesale'&&!canSellWholesale)setSaleType('retail');
     else if(!canSellRetail&&canSellWholesale&&saleType!=='wholesale')setSaleType('wholesale');
