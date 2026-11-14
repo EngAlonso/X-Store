@@ -11,6 +11,13 @@ import {
 import { getXStoreUser, denyRole, requireXStoreUser } from "../middlewares/xstoreAuth";
 
 const router = Router();
+
+const { tableNumber: _xstoreTableNumber, ...xstoreSaleColumnsWithoutTableNumber } =
+  getColumns(xstoreSales);
+const xstoreSaleSelectionWithoutTableNumber = {
+  ...xstoreSaleColumnsWithoutTableNumber,
+  tableNumber: sql<string | null>`NULL`.as("table_number"),
+};
 const MEDIA_TYPE = "application/vnd.xstore.store-backup+json";
 const MAX_BYTES = 64 * 1024 * 1024;
 const TABLES = ["xstore_products","xstore_sales","xstore_sale_items","xstore_held_sales","xstore_returns"] as const;
@@ -55,7 +62,7 @@ router.get("/xstore/store-backup", async (req, res) => {
 
     const [products, sales, heldSales, saleItems, returns] = await Promise.all([
       backupType === "invoices" ? Promise.resolve(emptyProducts) : db.select().from(xstoreProducts).where(eq(xstoreProducts.tenantId, tenantId)),
-      backupType === "inventory" ? Promise.resolve(emptySales) : db.select().from(xstoreSales).where(eq(xstoreSales.tenantId, tenantId)),
+      backupType === "inventory" ? Promise.resolve(emptySales) : db.select(xstoreSaleSelectionWithoutTableNumber).from(xstoreSales).where(eq(xstoreSales.tenantId, tenantId)),
       backupType === "inventory" ? Promise.resolve(emptyHeldSales) : db.select().from(xstoreHeldSales).where(eq(xstoreHeldSales.tenantId, tenantId)),
       backupType === "inventory" ? Promise.resolve(emptySaleItems) : db.select().from(xstoreSaleItems),
       backupType === "inventory" ? Promise.resolve(emptyReturns) : db.select().from(xstoreReturns),
