@@ -54,6 +54,7 @@ import {
 import type { IconType } from 'react-icons';
 import PlatformBackupPage from '@/pages/platform-backup';
 import PlatformDatabasePage from '@/pages/platform-database';
+import StoreBackupPage from '@/pages/store-backup';
 import type { OfflineActivationRequest } from './offline/licensing';
 import { isOfflineHardwareFingerprint, type OfflineLicensePlan } from './offline/model';
 
@@ -270,6 +271,7 @@ const nav = [
   { href: '/audit-log', label: 'سجل التدقيق', icon: ScrollText, roles: ['platform_admin'] },
   { href: '/platform-database', label: 'قاعدة البيانات', icon: Database, roles: ['platform_admin'] },
   { href: '/platform-backup', label: 'النسخ الاحتياطي', icon: Database, roles: ['platform_admin'] },
+  { href: '/store-backup', label: 'النسخ الاحتياطي', icon: Database, roles: ['tenant_admin'] },
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
@@ -620,7 +622,7 @@ function SignInPage() { return <AuthPage kind="in"/>; }
 function SignUpPage() { return <Redirect to="/sign-in"/>; }
 
 function AppShell({ children }: { children: ReactNode }) {
-  const [location] = useLocation(); const [open,setOpen] = useState(false);
+  const [location, setLocation] = useLocation(); const [open,setOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const notificationProducts = useListXStoreProducts(undefined, { query: { refetchInterval: 30000 } });
@@ -635,7 +637,8 @@ function AppShell({ children }: { children: ReactNode }) {
     try {
       await logoutXStore();
       qc.clear();
-      window.location.replace(`${basePath}/sign-in`);
+      setOpen(false);
+      setLocation('/sign-in');
     } catch {
       setLoggingOut(false);
       window.alert('تعذر تسجيل الخروج. تحقق من الاتصال وحاول مرة أخرى.');
@@ -665,7 +668,7 @@ function AppShell({ children }: { children: ReactNode }) {
 }
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
-  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
@@ -678,7 +681,7 @@ function ProtectedLayout() {
     <Route path="/reports" component={ReportsPage}/><Route path="/sales" component={SalesPage}/><Route path="/audit-log" component={AuditPage}/>
     <Route path="/settings" component={PlatformSettingsPage}/>
       <Route path="/platform-database" component={PlatformDatabasePage}/>
-     <Route path="/platform-backup" component={PlatformBackupPage}/>
+     <Route path="/platform-backup" component={PlatformBackupPage}/><Route path="/store-backup" component={StoreBackupPage}/>
     <Route path="/store-settings" component={StoreSettingsPage}/>
     <Route component={NotFound}/>
   </Switch>{location === '/subscriptions' && <OfflineLicenseIssuerPanel />}</AppShell>;
