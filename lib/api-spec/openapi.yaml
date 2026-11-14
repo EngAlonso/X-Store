@@ -1541,6 +1541,8 @@ components:
         transferSender: { type: ["string", "null"], maxLength: 80 }
         customerName: { type: ["string", "null"], maxLength: 150 }
         customerPhone: { type: ["string", "null"], maxLength: 30 }
+        tableNumber: { type: ["string", "null"], maxLength: 30 }
+        orderType: { type: ["string", "null"], enum: [internal, external] }
       required: [items, discountAmount, paymentMethod, amountReceived]
     Sale:
       type: object
@@ -1553,6 +1555,8 @@ components:
         cashierName: { type: string }
         customerName: { type: ["string", "null"] }
         customerPhone: { type: ["string", "null"] }
+        tableNumber: { type: ["string", "null"], maxLength: 30 }
+        orderType: { type: ["string", "null"], enum: [internal, external] }
         itemCount: { type: integer }
         items:
           type: array
