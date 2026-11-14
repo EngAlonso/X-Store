@@ -544,13 +544,6 @@ async function restoreState(importedState) {
     if (!normalizedImport) {
       throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
     }
-importedState) {
-  const normalizedImport = normalizeState(importedState);
-  if (!normalizedImport) {
-    throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
-  }
-  return enqueueWrite(async () => {
-    const current = await readState();
     if (current.backup.backupFolder) {
       const safeguard = {
         ...current,
