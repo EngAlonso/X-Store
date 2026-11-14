@@ -938,6 +938,11 @@ router.get("/xstore/menu", async (_req, res): Promise<void> => {
   }
   const tenantId = requireTenant(res, actor);
   if (!tenantId) return;
+  const [tenant] = await db.select({ storeType: xstoreTenants.storeType }).from(xstoreTenants).where(eq(xstoreTenants.id, tenantId)).limit(1);
+  if (!tenant || (tenant.storeType !== "cafe" && tenant.storeType !== "restaurant")) {
+    res.status(403).json({ error: "Restaurant menu is available only for cafes and restaurants." });
+    return;
+  }
   let [menu] = await db.select().from(xstoreMenus).where(eq(xstoreMenus.tenantId, tenantId)).limit(1);
   if (!menu) {
     [menu] = await db.insert(xstoreMenus).values({
@@ -997,6 +1002,11 @@ router.put("/xstore/menu", async (req, res): Promise<void> => {
   }
   const tenantId = requireTenant(res, actor);
   if (!tenantId) return;
+  const [tenant] = await db.select({ storeType: xstoreTenants.storeType }).from(xstoreTenants).where(eq(xstoreTenants.id, tenantId)).limit(1);
+  if (!tenant || (tenant.storeType !== "cafe" && tenant.storeType !== "restaurant")) {
+    res.status(403).json({ error: "Restaurant menu is available only for cafes and restaurants." });
+    return;
+  }
   const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
   const title = typeof body.title === "string" && body.title.trim() ? body.title.trim().slice(0, 120) : "منيو المتجر";
   const description = typeof body.description === "string" ? body.description.trim().slice(0, 500) || null : null;
