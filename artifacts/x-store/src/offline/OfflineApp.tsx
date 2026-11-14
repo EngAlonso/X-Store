@@ -906,6 +906,9 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
   const [heldOpen, setHeldOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const scannerBufferRef = useRef("");
+  const scannerStartedAtRef = useRef(0);
+  const scannerLastKeyAtRef = useRef(0);
   const currency = state.store?.currency ?? "EGP";
   const wholesaleEnabled = state.store?.wholesaleEnabled ?? false;
   const priceFor = (product: OfflineProduct) => saleType === "wholesale" ? product.wholesalePrice : product.price;
@@ -941,6 +944,69 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
     setError("");
     setCart((current) => ({ ...current, [product.id]: Math.min(product.quantity, (current[product.id] ?? 0) + 1) }));
   }
+  function addScannedProduct(code: string) {
+    const normalized = code.trim();
+    if (!normalized) return;
+    const product = state.products.find((item) => String(item.barcode ?? "").trim() === normalized)
+      ?? state.products.find((item) => String(item.sku ?? "").trim() === normalized);
+    if (!product) {
+      setError("الباركود غير مسجل في المنتجات.");
+      return;
+    }
+    if (product.quantity <= 0) {
+      setError("هذا المنتج نفد من المخزون.");
+      return;
+    }
+    const nextQuantity = Math.min(product.quantity, (cart[product.id] ?? 0) + 1);
+    add(product);
+    setQuery("");
+    setError(nextQuantity > 1
+      ? ("تمت إضافة " + product.name + " مرة أخرى · الكمية " + nextQuantity)
+      : "");
+  }
+  useEffect(() => {
+    const onScannerKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isSearchInput = target?.tagName === "INPUT" && target.closest(".of-pos-toolbar") !== null;
+      const isEditable = Boolean(target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable));
+      const now = performance.now();
+      if (event.key === "Enter") {
+        const buffer = scannerBufferRef.current;
+        const duration = now - scannerStartedAtRef.current;
+        const gap = now - scannerLastKeyAtRef.current;
+        if (buffer.length >= 4 && duration <= 1200 && gap <= 250) {
+          event.preventDefault();
+          event.stopPropagation();
+          scannerBufferRef.current = "";
+          scannerStartedAtRef.current = 0;
+          scannerLastKeyAtRef.current = 0;
+          addScannedProduct(buffer);
+        } else {
+          scannerBufferRef.current = "";
+          scannerStartedAtRef.current = 0;
+          scannerLastKeyAtRef.current = 0;
+        }
+        return;
+      }
+      if (event.key.length !== 1 || (isEditable && !isSearchInput)) {
+        if (isEditable && !isSearchInput) {
+          scannerBufferRef.current = "";
+          scannerStartedAtRef.current = 0;
+          scannerLastKeyAtRef.current = 0;
+        }
+        return;
+      }
+      if (scannerLastKeyAtRef.current && now - scannerLastKeyAtRef.current > 120) {
+        scannerBufferRef.current = "";
+        scannerStartedAtRef.current = now;
+      }
+      if (!scannerBufferRef.current) scannerStartedAtRef.current = now;
+      scannerBufferRef.current += event.key;
+      scannerLastKeyAtRef.current = now;
+    };
+    window.addEventListener("keydown", onScannerKeyDown, true);
+    return () => window.removeEventListener("keydown", onScannerKeyDown, true);
+  }, [state.products, cart]);
   function setQuantity(id: string, quantity: number) {
     setCart((current) => {
       if (quantity <= 0) {
@@ -1071,7 +1137,7 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
   return <section className="of-page">
     <PageHeading kicker="نقطة البيع" title="صندوق البيع" description="ابحث عن المنتجات، أضف الخصم، واختر طريقة الدفع." action={<div className="of-pos-head-actions"><button className="of-button of-button-secondary" onClick={onReturns}><ArrowLeftRight size={15} /> مرتجع أو استبدال</button><button className="of-button of-button-secondary" onClick={() => setHeldOpen(true)}><Pause size={15} /> الفواتير المعلقة <b className="of-held-count">{digits(state.heldSales.length)}</b></button></div>} />
     <div className="of-pos-layout"><section className="of-panel of-pos-products">
-      <div className="of-pos-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث باسم المنتج أو الكود أو امسح الباركود..." /></label>
+      <div className="of-pos-toolbar"><label className="of-search"><Search size={17} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && query.trim()) addScannedProduct(query); }} placeholder="ابحث باسم المنتج أو الكود أو امسح الباركود..." /></label>
         {wholesaleEnabled && (canSellRetail || canSellWholesale) && <div className={`of-sale-tabs ${canSellRetail && canSellWholesale ? "" : "of-sale-tabs-single"}`} role="group" aria-label="نوع البيع">{canSellRetail && <button className={saleType === "retail" ? "chosen" : ""} aria-pressed={saleType === "retail"} onClick={() => switchSaleType("retail")}>القطاعي</button>}{canSellWholesale && <button className={saleType === "wholesale" ? "chosen" : ""} aria-pressed={saleType === "wholesale"} onClick={() => switchSaleType("wholesale")}>الجملة</button>}</div>}
       </div>
       {visibleProducts.length ? <div className="of-pos-grid">{visibleProducts.map((product) => <button key={product.id} className="of-pos-product" onClick={() => add(product)}><span className="of-pos-product-icon"><Package size={19} /></span><b>{product.name}</b><small>{product.sku || product.category || "منتج"}</small><strong>{money(priceFor(product) ?? 0, currency)}</strong><i>متاح {digits(product.quantity)}</i><span className="of-pos-add"><Plus size={15} /></span></button>)}</div> : <EmptyState icon={Package} title={query ? "لا توجد منتجات مطابقة" : "لا توجد منتجات جاهزة للبيع"} copy={query ? "جرّب البحث باسم المنتج أو رمزه." : saleType === "wholesale" ? "لا توجد منتجات متاحة بسعر الجملة. أضف أسعار الجملة من المخزون." : "أضف منتجات بسعر قطاعي إلى المخزون لتظهر هنا."} />}
