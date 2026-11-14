@@ -399,6 +399,8 @@ export interface Sale {
   customerName: string | null;
   /** @nullable */
   customerPhone: string | null;
+  /** @maxLength 30 */
+  tableNumber: string | null;
   itemCount: number;
   items?: SaleLineItem[];
   subtotal: number;
