@@ -88,6 +88,8 @@ import {
   xstoreAuditLogs,
   xstoreHeldSales,
   xstoreProducts,
+  xstoreMenus,
+  xstoreMenuItems,
   xstorePlatformSettings,
   xstoreReturns,
   xstoreSaleItems,
@@ -850,7 +852,201 @@ router.post("/xstore/auth/founder", async (req, res): Promise<void> => {
   );
 });
 
+router.get("/xstore/public/menu/:slug", async (req, res): Promise<void> => {
+  const slug = String(req.params.slug || "").trim();
+  if (!slug) {
+    res.status(404).json({ error: "Menu not found." });
+    return;
+  }
+  const [menu] = await db
+    .select()
+    .from(xstoreMenus)
+    .where(and(eq(xstoreMenus.publicSlug, slug), eq(xstoreMenus.isPublished, true)))
+    .limit(1);
+  if (!menu) {
+    res.status(404).json({ error: "Menu not found." });
+    return;
+  }
+  const [tenant] = await db
+    .select({
+      id: xstoreTenants.id,
+      name: xstoreTenants.name,
+      storeType: xstoreTenants.storeType,
+      currency: xstoreTenants.currency,
+    })
+    .from(xstoreTenants)
+    .where(eq(xstoreTenants.id, menu.tenantId))
+    .limit(1);
+  const rows = await db
+    .select({
+      id: xstoreMenuItems.id,
+      productId: xstoreProducts.id,
+      name: xstoreProducts.name,
+      category: xstoreProducts.category,
+      price: xstoreProducts.price,
+      quantity: xstoreProducts.quantity,
+      description: xstoreMenuItems.description,
+      imageUrl: xstoreMenuItems.imageUrl,
+      displayOrder: xstoreMenuItems.displayOrder,
+      isAvailable: xstoreMenuItems.isAvailable,
+    })
+    .from(xstoreMenuItems)
+    .innerJoin(xstoreProducts, eq(xstoreMenuItems.productId, xstoreProducts.id))
+    .where(eq(xstoreMenuItems.menuId, menu.id))
+    .orderBy(xstoreMenuItems.displayOrder, xstoreProducts.category, xstoreProducts.name);
+
+  const categories = new Map<string, Array<Record<string, unknown>>>();
+  for (const row of rows) {
+    const category = row.category || "أصناف";
+    if (!categories.has(category)) categories.set(category, []);
+    categories.get(category)!.push({
+      id: row.productId,
+      name: row.name,
+      price: toNumber(row.price),
+      description: row.description ?? null,
+      imageUrl: row.imageUrl ?? null,
+      available: row.isAvailable && row.quantity > 0,
+    });
+  }
+
+  res.setHeader("Cache-Control", "public, max-age=60");
+  res.json({
+    menu: {
+      title: menu.title,
+      description: menu.description ?? null,
+      slug: menu.publicSlug,
+    },
+    store: {
+      name: tenant?.name ?? "X-Store",
+      storeType: tenant?.storeType ?? null,
+      currency: tenant?.currency ?? "EGP",
+    },
+    categories: Array.from(categories, ([name, items]) => ({ name, items })),
+  });
+});
+
 router.use("/xstore", requireXStoreUser);
+
+router.get("/xstore/menu", async (_req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (actor.role !== "tenant_admin") {
+    res.status(403).json({ error: "Only the store owner can manage the menu." });
+    return;
+  }
+  const tenantId = requireTenant(res, actor);
+  if (!tenantId) return;
+  let [menu] = await db.select().from(xstoreMenus).where(eq(xstoreMenus.tenantId, tenantId)).limit(1);
+  if (!menu) {
+    [menu] = await db.insert(xstoreMenus).values({
+      tenantId,
+      publicSlug: randomUUID().replaceAll("-", ""),
+      title: "منيو المتجر",
+      isPublished: true,
+    }).returning();
+  }
+  const products = await db
+    .select({
+      id: xstoreProducts.id,
+      name: xstoreProducts.name,
+      category: xstoreProducts.category,
+      price: xstoreProducts.price,
+      quantity: xstoreProducts.quantity,
+      barcode: xstoreProducts.barcode,
+      sku: xstoreProducts.sku,
+      menuItemId: xstoreMenuItems.id,
+      description: xstoreMenuItems.description,
+      imageUrl: xstoreMenuItems.imageUrl,
+      displayOrder: xstoreMenuItems.displayOrder,
+      isAvailable: xstoreMenuItems.isAvailable,
+    })
+    .from(xstoreProducts)
+    .leftJoin(
+      xstoreMenuItems,
+      and(
+        eq(xstoreMenuItems.productId, xstoreProducts.id),
+        eq(xstoreMenuItems.menuId, menu.id),
+      ),
+    )
+    .where(eq(xstoreProducts.tenantId, tenantId))
+    .orderBy(xstoreProducts.category, xstoreProducts.name);
+
+  res.json({
+    menu: {
+      id: menu.id,
+      title: menu.title,
+      description: menu.description,
+      isPublished: menu.isPublished,
+      publicSlug: menu.publicSlug,
+    },
+    products: products.map((product) => ({
+      ...product,
+      price: product.price === null ? null : toNumber(product.price),
+      selected: Boolean(product.menuItemId),
+    })),
+  });
+});
+
+router.put("/xstore/menu", async (req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (actor.role !== "tenant_admin") {
+    res.status(403).json({ error: "Only the store owner can manage the menu." });
+    return;
+  }
+  const tenantId = requireTenant(res, actor);
+  if (!tenantId) return;
+  const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
+  const title = typeof body.title === "string" && body.title.trim() ? body.title.trim().slice(0, 120) : "منيو المتجر";
+  const description = typeof body.description === "string" ? body.description.trim().slice(0, 500) || null : null;
+  const isPublished = body.isPublished !== false;
+  const selectedProductIds = Array.isArray(body.productIds)
+    ? Array.from(new Set(body.productIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0)))
+    : [];
+
+  const products = selectedProductIds.length
+    ? await db.select({ id: xstoreProducts.id }).from(xstoreProducts).where(and(eq(xstoreProducts.tenantId, tenantId), inArray(xstoreProducts.id, selectedProductIds)))
+    : [];
+  const validProductIds = products.map((product) => product.id);
+
+  const [menu] = await db
+    .insert(xstoreMenus)
+    .values({
+      tenantId,
+      publicSlug: randomUUID().replaceAll("-", ""),
+      title,
+      description,
+      isPublished,
+    })
+    .onConflictDoUpdate({
+      target: xstoreMenus.tenantId,
+      set: { title, description, isPublished, updatedAt: new Date() },
+    })
+    .returning();
+
+  await db.transaction(async (tx) => {
+    await tx.delete(xstoreMenuItems).where(eq(xstoreMenuItems.menuId, menu.id));
+    if (validProductIds.length) {
+      await tx.insert(xstoreMenuItems).values(
+        validProductIds.map((productId, index) => ({
+          menuId: menu.id,
+          productId,
+          displayOrder: index,
+          isAvailable: true,
+        })),
+      );
+    }
+  });
+
+  res.json({
+    menu: {
+      id: menu.id,
+      title: menu.title,
+      description: menu.description,
+      isPublished: menu.isPublished,
+      publicSlug: menu.publicSlug,
+    },
+    selectedProductIds: validProductIds,
+  });
+});
 
 router.get("/xstore/session", async (_req, res): Promise<void> => {
   res.setHeader("Cache-Control", "no-store");
