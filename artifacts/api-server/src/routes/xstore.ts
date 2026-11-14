@@ -2,6 +2,7 @@ import {
   and,
   count,
   desc,
+  getColumns,
   eq,
   gte,
   ilike,
@@ -138,6 +139,13 @@ const saleHistoryRoles = [
 const loginAttempts = new Map<string, { count: number; resetsAt: number }>();
 const LOGIN_ATTEMPT_LIMIT = 8;
 const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+
+const { tableNumber: _xstoreTableNumber, ...xstoreSaleColumnsWithoutTableNumber } =
+  getColumns(xstoreSales);
+const xstoreSaleSelectionWithoutTableNumber = {
+  ...xstoreSaleColumnsWithoutTableNumber,
+  tableNumber: sql<string | null>`NULL`.as("table_number"),
+};
 
 class DomainError extends Error {
   constructor(
@@ -1291,7 +1299,7 @@ router.get("/xstore/dashboard", async (req, res): Promise<void> => {
   const latestSales = isFinancial
     ? await db
         .select({
-          sale: xstoreSales,
+          sale: xstoreSaleSelectionWithoutTableNumber,
           cashierName: xstoreUsers.name,
         })
         .from(xstoreSales)
@@ -2649,7 +2657,7 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
   const scopedTenant = tenantIdFor(user, parsed.data.tenantId);
   const rows = await db
     .select({
-      sale: xstoreSales,
+          sale: xstoreSaleSelectionWithoutTableNumber,
       cashierName: xstoreUsers.name,
       tenantName: xstoreTenants.name,
     })
@@ -3117,7 +3125,9 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
           saleType,
           customerName: parsed.data.customerName?.trim() || null,
           customerPhone,
-          tableNumber: parsed.data.tableNumber?.trim() || null,
+          ...(parsed.data.tableNumber?.trim()
+            ? { tableNumber: parsed.data.tableNumber.trim() }
+            : {}),
           itemCount: priced.reduce((sum, line) => sum + line.quantity, 0),
           subtotal: String(subtotal),
           discountAmount: String(discountAmount),
@@ -3131,8 +3141,14 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
           ),
           status: "completed",
         })
-        .returning();
+        .returning({ id: xstoreSales.id });
       if (!createdSale) throw new DomainError("Unable to complete this sale.", 500);
+      const [createdSaleRow] = await tx
+        .select(xstoreSaleSelectionWithoutTableNumber)
+        .from(xstoreSales)
+        .where(eq(xstoreSales.id, createdSale.id))
+        .limit(1);
+      if (!createdSaleRow) throw new DomainError("Unable to load the completed sale.", 500);
       for (const line of priced) {
         await tx
           .update(xstoreProducts)
@@ -3148,7 +3164,10 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
         });
       }
       return {
-        sale: createdSale,
+        sale: {
+          ...createdSaleRow,
+          tableNumber: parsed.data.tableNumber?.trim() || null,
+        },
         items: priced.map((line) => ({
           productId: line.product.id,
           name: line.product.name,
@@ -3390,7 +3409,7 @@ router.post("/xstore/returns", async (req, res): Promise<void> => {
   try {
     const result = await db.transaction(async (tx) => {
       const [sale] = await tx
-        .select()
+        .select(xstoreSaleSelectionWithoutTableNumber)
         .from(xstoreSales)
         .where(
           and(
@@ -3544,7 +3563,7 @@ router.post("/xstore/returns/batch", async (req, res): Promise<void> => {
   try {
     const result = await db.transaction(async (tx) => {
       const [sale] = await tx
-        .select()
+        .select(xstoreSaleSelectionWithoutTableNumber)
         .from(xstoreSales)
         .where(
           and(
@@ -3725,7 +3744,7 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
   try {
     const exchange = await db.transaction(async (tx) => {
       const [original] = await tx
-        .select()
+        .select(xstoreSaleSelectionWithoutTableNumber)
         .from(xstoreSales)
         .where(
           and(
@@ -3929,7 +3948,7 @@ router.post("/xstore/exchanges", async (req, res): Promise<void> => {
             changeAmount: String(changeAmount),
             status: "completed",
           })
-          .returning();
+          .returning({ id: xstoreSales.id });
         if (!replacementSale) {
           throw new DomainError("Unable to complete the replacement sale.", 500);
         }
