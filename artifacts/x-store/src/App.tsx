@@ -274,7 +274,7 @@ const nav = [
   { href: '/platform-database', label: 'قاعدة البيانات', icon: Database, roles: ['platform_admin'] },
   { href: '/platform-backup', label: 'النسخ الاحتياطي', icon: Database, roles: ['platform_admin'] },
   { href: '/store-backup', label: 'النسخ الاحتياطي', icon: Database, roles: ['tenant_admin'] },
-  { href: '/restaurant-menu', label: 'المنيو والترابيزات', icon: Utensils, roles: ['tenant_admin'] },
+  { href: '/restaurant-menu', label: 'المنيو', icon: Utensils, roles: ['tenant_admin'] },
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
@@ -646,10 +646,16 @@ function AppShell({ children }: { children: ReactNode }) {
     fetch('/api/xstore/restaurant-feature', { credentials: 'include' })
       .then(response => response.ok ? response.json() as Promise<{enabled?: boolean}> : { enabled: false })
       .then(result => {
-        if (!cancelled) setRestaurantMenuEnabled(result.enabled === true);
+        if (!cancelled) {
+          setRestaurantMenuEnabled(result.enabled === true);
+          setRestaurantMenuAccessCheckedLocation(location);
+        }
       })
       .catch(() => {
-        if (!cancelled) setRestaurantMenuEnabled(false);
+        if (!cancelled) {
+          setRestaurantMenuEnabled(false);
+          setRestaurantMenuAccessCheckedLocation(location);
+        }
       })
       .finally(() => {
         if (!cancelled) setRestaurantMenuAccessLoading(false);
@@ -696,14 +702,17 @@ function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
   const [restaurantMenuEnabled, setRestaurantMenuEnabled] = useState(false);
   const [restaurantMenuAccessLoading, setRestaurantMenuAccessLoading] = useState(location === '/restaurant-menu');
+  const [restaurantMenuAccessCheckedLocation, setRestaurantMenuAccessCheckedLocation] = useState<string | null>(null);
   const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   useEffect(() => {
     let cancelled = false;
     if (location !== '/restaurant-menu') {
       setRestaurantMenuAccessLoading(false);
+      setRestaurantMenuAccessCheckedLocation(null);
       return;
     }
     setRestaurantMenuAccessLoading(true);
+    setRestaurantMenuAccessCheckedLocation(null);
     fetch('/api/xstore/restaurant-feature', { credentials: 'include' })
       .then(response => response.ok ? response.json() as Promise<{enabled?: boolean}> : { enabled: false })
       .then(result => {
@@ -718,7 +727,7 @@ function ProtectedLayout() {
     return () => { cancelled = true; };
   }, [location]);
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
-  if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
+  if(location === '/restaurant-menu' && restaurantMenuAccessCheckedLocation === location && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
   return <AppShell><Switch>
