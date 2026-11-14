@@ -3079,6 +3079,7 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
           saleType,
           customerName: parsed.data.customerName?.trim() || null,
           customerPhone,
+          tableNumber: parsed.data.tableNumber?.trim() || null,
           itemCount: priced.reduce((sum, line) => sum + line.quantity, 0),
           subtotal: String(subtotal),
           discountAmount: String(discountAmount),
