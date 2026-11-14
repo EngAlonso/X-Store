@@ -218,6 +218,7 @@ export const xstoreProducts = pgTable(
     color: text("color"),
     size: text("size"),
     partNumber: text("part_number"),
+    ingredients: text("ingredients"),
     expiresAt: date("expires_at", { mode: "string" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
