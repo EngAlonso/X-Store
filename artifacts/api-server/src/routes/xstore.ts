@@ -192,6 +192,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
         .select({
           name: xstoreTenants.name,
           storeType: xstoreTenants.storeType,
+          businessType: xstoreTenants.businessType,
           countryCode: xstoreTenants.countryCode,
           currency: xstoreTenants.currency,
           vatRate: xstoreTenants.vatRate,
@@ -212,6 +213,8 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     permissions: user.permissions ?? [],
     tenantId: user.tenantId,
     tenantName: tenant?.name ?? null,
+    businessType: tenant?.businessType ?? null,
+    storeType: tenant?.storeType ?? null,
     countryCode: tenant?.countryCode ?? null,
     currency: tenant?.currency ?? null,
     vatRate: tenant ? toNumber(tenant.vatRate) : null,
