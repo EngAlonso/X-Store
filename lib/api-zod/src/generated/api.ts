@@ -985,6 +985,7 @@ export const ListXStoreSalesResponseItem = zod.object({
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
   "tableNumber": zod.string().max(30).nullable(),
+  "orderType": zod.enum(['internal', 'external']).nullable(),
   "itemCount": zod.number().int(),
   "items": zod.array(zod.object({
   "productId": zod.string(),
@@ -1050,7 +1051,7 @@ export const checkoutXStoreSaleBodyTransferSenderMax = 80;
 export const checkoutXStoreSaleBodyCustomerNameMax = 150;
 
 export const checkoutXStoreSaleBodyCustomerPhoneMax = 30;
-
+export const checkoutXStoreSaleBodyOrderType = ['internal', 'external'] as const;
 
 
 export const CheckoutXStoreSaleBody = zod.object({
@@ -1066,7 +1067,8 @@ export const CheckoutXStoreSaleBody = zod.object({
   "transferSender": zod.string().max(checkoutXStoreSaleBodyTransferSenderMax).nullish(),
   "customerName": zod.string().max(checkoutXStoreSaleBodyCustomerNameMax).nullish(),
   "customerPhone": zod.string().max(checkoutXStoreSaleBodyCustomerPhoneMax).nullish(),
-  "tableNumber": zod.string().max(30).nullish()
+  "tableNumber": zod.string().max(30).nullish(),
+  "orderType": zod.enum(checkoutXStoreSaleBodyOrderType).nullish()
 })
 
 export const checkoutXStoreSaleResponseTransferSenderMax = 80;
@@ -1083,6 +1085,7 @@ export const CheckoutXStoreSaleResponse = zod.object({
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
   "tableNumber": zod.string().max(30).nullable(),
+  "orderType": zod.enum(['internal', 'external']).nullable(),
   "itemCount": zod.number().int(),
   "items": zod.array(zod.object({
   "productId": zod.string(),
