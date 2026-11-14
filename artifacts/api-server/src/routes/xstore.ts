@@ -2,7 +2,6 @@ import {
   and,
   count,
   desc,
-  getColumns,
   eq,
   gte,
   ilike,
@@ -140,10 +139,25 @@ const loginAttempts = new Map<string, { count: number; resetsAt: number }>();
 const LOGIN_ATTEMPT_LIMIT = 8;
 const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 
-const { tableNumber: _xstoreTableNumber, ...xstoreSaleColumnsWithoutTableNumber } =
-  getColumns(xstoreSales);
 const xstoreSaleSelectionWithoutTableNumber = {
-  ...xstoreSaleColumnsWithoutTableNumber,
+  id: xstoreSales.id,
+  tenantId: xstoreSales.tenantId,
+  cashierUserId: xstoreSales.cashierUserId,
+  invoiceNo: xstoreSales.invoiceNo,
+  saleType: xstoreSales.saleType,
+  customerName: xstoreSales.customerName,
+  customerPhone: xstoreSales.customerPhone,
+  itemCount: xstoreSales.itemCount,
+  subtotal: xstoreSales.subtotal,
+  discountAmount: xstoreSales.discountAmount,
+  taxAmount: xstoreSales.taxAmount,
+  total: xstoreSales.total,
+  paymentMethod: xstoreSales.paymentMethod,
+  transferSender: xstoreSales.transferSender,
+  amountReceived: xstoreSales.amountReceived,
+  changeAmount: xstoreSales.changeAmount,
+  status: xstoreSales.status,
+  createdAt: xstoreSales.createdAt,
   tableNumber: sql<string | null>`NULL`.as("table_number"),
 };
 
