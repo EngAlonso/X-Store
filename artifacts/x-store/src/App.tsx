@@ -1688,6 +1688,7 @@ function InventoryPage() {
   const isWarehouseManager = hasAppRole(session.data, ['warehouse_manager']);
   const canManage = session.data?.role === 'tenant_admin' || isWarehouseManager;
   const wholesaleEnabled = session.data?.wholesaleEnabled ?? false;
+  const restaurantIngredientsEnabled = session.data?.storeType === 'cafe' || session.data?.storeType === 'restaurant';
   const canViewCost = hasAppRole(session.data, ['tenant_admin', 'warehouse_manager', 'accountant', 'platform_admin']);
   const pricingOnlyEdit = isWarehouseManager && Boolean(edit);
   const [priceFormError, setPriceFormError] = useState('');
@@ -1755,6 +1756,7 @@ function InventoryPage() {
             color: String(f.get('color') || '') || null,
             size: String(f.get('size') || '') || null,
             partNumber: String(f.get('partNumber') || '') || null,
+            ingredients: restaurantIngredientsEnabled ? (String(f.get('ingredients') || '').trim() || null) : null,
             expiresAt: edit.expiresAt?.slice(0, 10) || null,
           };
       update.mutate({ productId: edit.id, data }, { onSuccess: done });
@@ -1770,6 +1772,7 @@ function InventoryPage() {
           color: String(f.get('color') || '') || null,
           size: String(f.get('size') || '') || null,
           partNumber: String(f.get('partNumber') || '') || null,
+          ingredients: restaurantIngredientsEnabled ? (String(f.get('ingredients') || '').trim() || null) : null,
           expiresAt: null,
         },
       }, { onSuccess: done });
@@ -1898,6 +1901,7 @@ function InventoryPage() {
           <Field className="product-form-field" label="اللون (اختياري)" name="color" placeholder="مثال: أسود" defaultValue={edit?.color || ''}/>
           <Field className="product-form-field" label="المقاس (اختياري)" name="size" placeholder="مثال: M أو 42" defaultValue={edit?.size || ''}/>
           <Field className="product-form-field field-wide" label="رقم القطعة (اختياري)" name="partNumber" placeholder="رقم الموديل أو كود المورد" defaultValue={edit?.partNumber || ''}/>
+          {restaurantIngredientsEnabled && <label className="field product-form-field field-wide"><span>مكونات المنتج (اختياري)</span><textarea name="ingredients" rows={3} maxLength={1000} defaultValue={edit?.ingredients || ''} placeholder="اكتب مكونات المنتج التي ستظهر للعميل في منيو QR" /></label>}
         </>}
         {priceFormError&&<div className="form-error field-wide" role="alert">{priceFormError}</div>}
         {(create.isError || update.isError) && <div className="form-error">تعذر حفظ المنتج. يرجى مراجعة البيانات.</div>}
