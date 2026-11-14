@@ -234,6 +234,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     permissions: user.permissions ?? [],
     tenantId: user.tenantId,
     tenantName: tenant?.name ?? null,
+    storeType: tenant?.storeType ?? null,
     countryCode: tenant?.countryCode ?? null,
     currency: tenant?.currency ?? null,
     vatRate: tenant ? toNumber(tenant.vatRate) : null,
