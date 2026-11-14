@@ -854,16 +854,17 @@ function SalesTable({sales,compact=false,onReturn,onPrint,onToggleItems,expanded
   const money=useMoney();
   if(!sales.length)return <div className="empty-inline">لا توجد عمليات بيع لعرضها.</div>;
   const hasActions=Boolean(onReturn||onPrint||onToggleItems);
-  const columnCount=3+Number(!compact)+Number(showAmounts)+1+Number(hasActions);
+  const columnCount=4+Number(!compact)+Number(showAmounts)+1+Number(hasActions);
   return (
     <div className="table-wrap">
       <table>
-        <thead><tr><th>رقم الفاتورة</th><th>التاريخ والوقت</th><th>الأصناف</th>{!compact&&<th>الدفع</th>}{showAmounts&&<th>الإجمالي</th>}<th>الحالة</th>{hasActions&&<th>إجراء</th>}</tr></thead>
+        <thead><tr><th>رقم الفاتورة</th><th>الترابيزة</th><th>التاريخ والوقت</th><th>الأصناف</th>{!compact&&<th>الدفع</th>}{showAmounts&&<th>الإجمالي</th>}<th>الحالة</th>{hasActions&&<th>إجراء</th>}</tr></thead>
         <tbody>
           {sales.map(sale=>(
             <Fragment key={sale.id}>
               <tr>
                 <td className="ltr-id">{latinizeDigits(sale.invoiceNo)}{sale.exchangeEvents.length>0&&<span className="sale-exchange-badge"><ArrowLeftRight size={12}/> استبدال</span>}</td>
+                <td>{sale.tableNumber||'—'}</td>
                 <td>{dateTimeLabel(sale.createdAt)}</td>
                 <td>{fmt(sale.itemCount)}</td>
                 {!compact&&<td>{paymentName(sale.paymentMethod)}</td>}
