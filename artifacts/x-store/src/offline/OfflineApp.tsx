@@ -27,8 +27,8 @@ import {
 } from "./transactions";
 import { createLocalPinCredential, isValidLocalPin, verifyLocalPin } from "./auth";
 import {
-  chooseOfflineBackupFolder, createManualOfflineBackup, getOfflineHardwareSnapshot, isDesktopEdition,
-  loadOfflineState, restoreOfflineBackup, saveOfflineState,
+  chooseOfflineBackupFolder, createManualOfflineBackup, getOfflineClockStatus, getOfflineHardwareSnapshot, isDesktopEdition,
+  loadOfflineState, restoreOfflineBackup, saveOfflineState, type OfflineBackupType,
 } from "./storage";
 import "./offline.css";
 
@@ -283,6 +283,7 @@ export default function OfflineApp() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   useEffect(() => { if (!authenticatedMemberId) { setReadNotificationIds([]); return; } try { setReadNotificationIds(JSON.parse(localStorage.getItem(`xstore-offline-notifications:${authenticatedMemberId}`) || "[]") as string[]); } catch { setReadNotificationIds([]); } }, [authenticatedMemberId]);
+  const [clockStatus, setClockStatus] = useState<{ valid: boolean; rollbackDetected: boolean; message: string }>({ valid: true, rollbackDetected: false, message: "" });
   const [licenseDeviceStatus, setLicenseDeviceStatus] = useState<OfflineLicenseDeviceStatus>({
     changes: [],
     inspectionError: "",
@@ -329,6 +330,8 @@ export default function OfflineApp() {
     try {
       const loaded = await loadOfflineState();
       const deviceStatus = await inspectLicenseDevice(loaded.license);
+      const currentClockStatus = await getOfflineClockStatus();
+      setClockStatus(currentClockStatus);
       setState(loaded);
       setLicenseDeviceStatus(deviceStatus);
     } catch (error) {
@@ -339,6 +342,20 @@ export default function OfflineApp() {
   }
 
   useEffect(() => { void reloadState(); }, []);
+  useEffect(() => {
+    if (!desktop) return;
+    let disposed = false;
+    const check = async () => {
+      try {
+        const status = await getOfflineClockStatus();
+        if (!disposed) setClockStatus(status);
+      } catch {
+        // Keep the last known clock status if the local guard cannot be read.
+      }
+    };
+    const timer = window.setInterval(() => { void check(); }, 60_000);
+    return () => { disposed = true; window.clearInterval(timer); };
+  }, [desktop]);
   useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(""), 3500); return () => window.clearTimeout(timer); }, [notice]);
 
   async function persist(next: OfflineState) {
@@ -386,6 +403,7 @@ export default function OfflineApp() {
   if (!currentMember) return <OfflineLogin state={currentState} onLogin={setAuthenticatedMemberId} />;
   const activeMember = currentMember;
   const active = isLicenseActive(currentState.license) &&
+    clockStatus.valid &&
     !licenseDeviceStatus.inspectionError &&
     licenseDeviceStatus.changes.length === 0;
   if (!active && activeMember.role !== "tenant_admin") {
@@ -605,13 +623,14 @@ export default function OfflineApp() {
       setNotice(desktop ? "تم تحديث مجلد النسخ الاحتياطي." : "هذه معاينة؛ لا يمثل المسار مجلدًا حقيقيًا على ويندوز.");
     } catch (e) { setSaveError(e instanceof Error ? e.message : "تعذر اختيار المجلد."); }
   }
-  async function manualBackup() {
+  async function manualBackup(backupType: OfflineBackupType = "full") {
     if (activeMember.role !== "tenant_admin") { setSaveError("إنشاء النسخ الاحتياطية متاح لمالك المتجر فقط."); return; }
     try {
-      const saved = await createManualOfflineBackup();
+      const saved = await createManualOfflineBackup(backupType);
       const withAudit = { ...saved, auditLogs: [createAuditEntry("إنشاء نسخة احتياطية", "نسخة احتياطية", currentState.store?.name ?? "المتجر", "تم إنشاء نسخة محلية.", activeMember.name), ...saved.auditLogs] };
       await persist(withAudit);
-      setNotice(desktop ? "تم إنشاء النسخة الاحتياطية." : "تم حفظ نسخة معاينة داخل المتصفح؛ ليست ملفًا على الجهاز.");
+      const labels = { full: "الشاملة", invoices: "الفواتير", inventory: "المخزون" } as const;
+      setNotice(desktop ? `تم إنشاء النسخة الاحتياطية ${labels[backupType]}.` : "تم حفظ نسخة معاينة داخل المتصفح؛ ليست ملفًا على الجهاز.");
     }
     catch (e) { setSaveError(e instanceof Error ? e.message : "تعذر إنشاء النسخة الاحتياطية."); }
   }
@@ -697,7 +716,8 @@ export default function OfflineApp() {
     </aside>
     <div className="of-main">
       <header className="of-topbar"><div className="of-mobile-brand"><BrandMark compact /></div><div className="of-breadcrumb"><span>المتجر</span><i>/</i><b>{title}</b></div><div className="of-top-right"><span className="of-online-state"><i /> يعمل دون إنترنت</span><span className="of-top-date">{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span><div className="of-notification-wrap"><button type="button" className="of-notification-button" aria-label="الإشعارات" aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(v=>!v)}><Bell size={17}/>{unseenNotifications>0&&<i/>}</button>{notificationsOpen&&<section className="of-notification-panel" dir="rtl"><header><b>الإشعارات</b><button onClick={markOfflineNotificationsRead} disabled={!unseenNotifications}>تحديد الكل كمقروء</button></header><div>{notificationRows.length?notificationRows.map(item=><button type="button" key={item.id} className={`of-notification-row ${readNotificationIds.includes(item.id)?"is-read":""}`} onClick={()=>{const next=[...new Set([...readNotificationIds,item.id])];setReadNotificationIds(next);try{localStorage.setItem(`xstore-offline-notifications:${activeMember.id}`,JSON.stringify(next))}catch{}setNotificationsOpen(false);goToPage(item.page)}}><span><item.icon size={16}/></span><div><b>{item.title}</b><small>{item.detail} · {new Date(item.createdAt).toLocaleString("ar-EG")}</small></div></button>):<p className="of-notification-empty">لا توجد إشعارات حالياً</p>}</div></section>}</div><span className="of-current-user" title={activeMember.roleName}>{activeMember.name}</span><button className="of-avatar" title={activeMember.name}>{activeMember.name.slice(0, 1)}</button><button className="of-logout-button" onClick={() => { setAuthenticatedMemberId(null); setSaleDetail(null); setSaveError(""); }} aria-label="تسجيل الخروج" title="تسجيل الخروج"><LogOut size={16} /><span>خروج</span></button></div></header>
-      {(saveError || state.backup.lastError) && <div className="of-alert"><CircleAlert size={17} /><span>{saveError || state.backup.lastError}</span><button aria-label="إغلاق" onClick={() => { setSaveError(""); if (state.backup.lastError) void persist({ ...state, backup: { ...state.backup, lastError: null } }); }}><X size={15} /></button></div>}
+      {clockStatus.rollbackDetected && <div className="of-alert"><CircleAlert size={17} /><span>{clockStatus.message}</span></div>}
+       {(saveError || state.backup.lastError) && <div className="of-alert"><CircleAlert size={17} /><span>{saveError || state.backup.lastError}</span><button aria-label="إغلاق" onClick={() => { setSaveError(""); if (state.backup.lastError) void persist({ ...state, backup: { ...state.backup, lastError: null } }); }}><X size={15} /></button></div>}
       {pageToRender === "settings" && (licenseDeviceStatus.inspectionError || licenseDeviceStatus.changes.length > 0) && <div className="of-alert" role="status"><CircleAlert size={17} /><span><b>الجهاز يحتاج إعادة تفعيل.</b> {licenseDeviceStatus.inspectionError || `التغيير المكتشف: ${licenseDeviceStatus.changes.map(hardwareChangeLabel).join("، ")}.`}</span></div>}
       <main className="of-content">
         {pageToRender === "dashboard" && <Dashboard state={viewState} todaySales={todaySales} todayRevenue={todayRevenue} lowStock={lowStock} currency={currency} canViewSales={canViewAllSales || activeMember.permissions.some((permission) => salesPermissions.includes(permission))} canViewAmounts={canViewAllSales} canViewInventoryCosts={canViewInventoryCosts} roleName={activeMember.roleName} canNavigate={(target) => canAccessOfflinePage(activeMember, target)} onNavigate={goToPage} onSale={setSaleDetail} />}
@@ -886,6 +906,9 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
   const [heldOpen, setHeldOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const scannerBufferRef = useRef("");
+  const scannerStartedAtRef = useRef(0);
+  const scannerLastKeyAtRef = useRef(0);
   const currency = state.store?.currency ?? "EGP";
   const wholesaleEnabled = state.store?.wholesaleEnabled ?? false;
   const priceFor = (product: OfflineProduct) => saleType === "wholesale" ? product.wholesalePrice : product.price;
@@ -921,6 +944,69 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
     setError("");
     setCart((current) => ({ ...current, [product.id]: Math.min(product.quantity, (current[product.id] ?? 0) + 1) }));
   }
+  function addScannedProduct(code: string) {
+    const normalized = code.trim();
+    if (!normalized) return;
+    const product = state.products.find((item) => String(item.barcode ?? "").trim() === normalized)
+      ?? state.products.find((item) => String(item.sku ?? "").trim() === normalized);
+    if (!product) {
+      setError("الباركود غير مسجل في المنتجات.");
+      return;
+    }
+    if (product.quantity <= 0) {
+      setError("هذا المنتج نفد من المخزون.");
+      return;
+    }
+    const nextQuantity = Math.min(product.quantity, (cart[product.id] ?? 0) + 1);
+    add(product);
+    setQuery("");
+    setError(nextQuantity > 1
+      ? ("تمت إضافة " + product.name + " مرة أخرى · الكمية " + nextQuantity)
+      : "");
+  }
+  useEffect(() => {
+    const onScannerKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isSearchInput = target?.tagName === "INPUT" && target.closest(".of-pos-toolbar") !== null;
+      const isEditable = Boolean(target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable));
+      const now = performance.now();
+      if (event.key === "Enter") {
+        const buffer = scannerBufferRef.current;
+        const duration = now - scannerStartedAtRef.current;
+        const gap = now - scannerLastKeyAtRef.current;
+        if (buffer.length >= 4 && duration <= 1200 && gap <= 250) {
+          event.preventDefault();
+          event.stopPropagation();
+          scannerBufferRef.current = "";
+          scannerStartedAtRef.current = 0;
+          scannerLastKeyAtRef.current = 0;
+          addScannedProduct(buffer);
+        } else {
+          scannerBufferRef.current = "";
+          scannerStartedAtRef.current = 0;
+          scannerLastKeyAtRef.current = 0;
+        }
+        return;
+      }
+      if (event.key.length !== 1 || (isEditable && !isSearchInput)) {
+        if (isEditable && !isSearchInput) {
+          scannerBufferRef.current = "";
+          scannerStartedAtRef.current = 0;
+          scannerLastKeyAtRef.current = 0;
+        }
+        return;
+      }
+      if (scannerLastKeyAtRef.current && now - scannerLastKeyAtRef.current > 120) {
+        scannerBufferRef.current = "";
+        scannerStartedAtRef.current = now;
+      }
+      if (!scannerBufferRef.current) scannerStartedAtRef.current = now;
+      scannerBufferRef.current += event.key;
+      scannerLastKeyAtRef.current = now;
+    };
+    window.addEventListener("keydown", onScannerKeyDown, true);
+    return () => window.removeEventListener("keydown", onScannerKeyDown, true);
+  }, [state.products, cart]);
   function setQuantity(id: string, quantity: number) {
     setCart((current) => {
       if (quantity <= 0) {
@@ -1051,7 +1137,7 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
   return <section className="of-page">
     <PageHeading kicker="نقطة البيع" title="صندوق البيع" description="ابحث عن المنتجات، أضف الخصم، واختر طريقة الدفع." action={<div className="of-pos-head-actions"><button className="of-button of-button-secondary" onClick={onReturns}><ArrowLeftRight size={15} /> مرتجع أو استبدال</button><button className="of-button of-button-secondary" onClick={() => setHeldOpen(true)}><Pause size={15} /> الفواتير المعلقة <b className="of-held-count">{digits(state.heldSales.length)}</b></button></div>} />
     <div className="of-pos-layout"><section className="of-panel of-pos-products">
-      <div className="of-pos-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث باسم المنتج أو الكود أو امسح الباركود..." /></label>
+      <div className="of-pos-toolbar"><label className="of-search"><Search size={17} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && query.trim()) addScannedProduct(query); }} placeholder="ابحث باسم المنتج أو الكود أو امسح الباركود..." /></label>
         {wholesaleEnabled && (canSellRetail || canSellWholesale) && <div className={`of-sale-tabs ${canSellRetail && canSellWholesale ? "" : "of-sale-tabs-single"}`} role="group" aria-label="نوع البيع">{canSellRetail && <button className={saleType === "retail" ? "chosen" : ""} aria-pressed={saleType === "retail"} onClick={() => switchSaleType("retail")}>القطاعي</button>}{canSellWholesale && <button className={saleType === "wholesale" ? "chosen" : ""} aria-pressed={saleType === "wholesale"} onClick={() => switchSaleType("wholesale")}>الجملة</button>}</div>}
       </div>
       {visibleProducts.length ? <div className="of-pos-grid">{visibleProducts.map((product) => <button key={product.id} className="of-pos-product" onClick={() => add(product)}><span className="of-pos-product-icon"><Package size={19} /></span><b>{product.name}</b><small>{product.sku || product.category || "منتج"}</small><strong>{money(priceFor(product) ?? 0, currency)}</strong><i>متاح {digits(product.quantity)}</i><span className="of-pos-add"><Plus size={15} /></span></button>)}</div> : <EmptyState icon={Package} title={query ? "لا توجد منتجات مطابقة" : "لا توجد منتجات جاهزة للبيع"} copy={query ? "جرّب البحث باسم المنتج أو رمزه." : saleType === "wholesale" ? "لا توجد منتجات متاحة بسعر الجملة. أضف أسعار الجملة من المخزون." : "أضف منتجات بسعر قطاعي إلى المخزون لتظهر هنا."} />}
@@ -1150,10 +1236,19 @@ function InvoiceDialog({ sale, store, currency, onClose }: { sale: OfflineSale; 
     <div className="of-invoice-thanks">شكرًا لزيارتكم</div></article></section></div>;
 }
 
-function BackupPage({ state, desktop, onChooseFolder, onBackup, onRestore }: { state: OfflineState; desktop: boolean; onChooseFolder: () => void; onBackup: () => void; onRestore: () => void }) {
+function BackupPage({ state, desktop, onChooseFolder, onBackup, onRestore }: { state: OfflineState; desktop: boolean; onChooseFolder: () => void; onBackup: (type: OfflineBackupType) => void; onRestore: () => void }) {
+  const [busyType, setBusyType] = useState<OfflineBackupType | null>(null);
+  const runBackup = async (type: OfflineBackupType) => {
+    setBusyType(type);
+    try { await onBackup(type); } finally { setBusyType(null); }
+  };
   return <section className="of-page"><PageHeading kicker="حماية بياناتك" title="النسخ الاحتياطي والاستعادة" description="احتفظ بنسخة من بيانات المتجر لاستعادتها عند الحاجة." />
     {!desktop && <div className="of-preview-banner"><CircleAlert size={18} /><div><b>أنت في معاينة المتصفح</b><span>اختيار مجلد ويندوز والنسخ إلى ملف متاحان فقط في إصدار Windows. هنا تُحفظ نسخة معاينة داخل تخزين المتصفح المحلي.</span></div></div>}
-    <div className="of-backup-layout"><section className="of-panel of-backup-card"><span className="of-backup-symbol green"><Archive size={21} /></span><span className="of-kicker">نسخة احتياطية</span><h2>احفظ نسخة الآن</h2><p>{desktop ? "أنشئ ملفًا احتياطيًا محليًا في مجلد النسخ المحدد." : "احفظ نسخة محلية للمعاينة. هذه العملية لا تنشئ ملفًا على جهازك."}</p><button className="of-button of-button-primary" onClick={onBackup}><ArrowDownToLine size={16} /> إنشاء نسخة احتياطية الآن</button><div className="of-backup-time"><Clock3 size={14} /><span>آخر نسخة يدوية</span><b>{state.backup.lastManualBackupAt ? dateTime(state.backup.lastManualBackupAt) : "لم يتم إنشاء نسخة بعد"}</b></div></section>
+    <div className="of-backup-layout"><section className="of-panel of-backup-card"><span className="of-backup-symbol green"><Archive size={21} /></span><span className="of-kicker">نسخة احتياطية</span><h2>احفظ نسخة الآن</h2><p>{desktop ? "اختر نوع النسخة حسب احتياجك: شاملة، فواتير فقط، أو مخزون فقط." : "احفظ نسخة محلية للمعاينة. هذه العملية لا تنشئ ملفًا على جهازك."}</p><div className="of-backup-actions">
+        <button className="of-button of-button-primary" disabled={Boolean(busyType)} onClick={() => void runBackup("full")}><ArrowDownToLine size={16} /> {busyType === "full" ? "جارٍ إنشاء النسخة..." : "نسخة شاملة"}</button>
+        <button className="of-button of-button-secondary" disabled={Boolean(busyType)} onClick={() => void runBackup("invoices")}><Receipt size={16} /> {busyType === "invoices" ? "جارٍ إنشاء النسخة..." : "نسخة الفواتير فقط"}</button>
+        <button className="of-button of-button-secondary" disabled={Boolean(busyType)} onClick={() => void runBackup("inventory")}><Package size={16} /> {busyType === "inventory" ? "جارٍ إنشاء النسخة..." : "نسخة المخزون فقط"}</button>
+      </div><div className="of-backup-time"><Clock3 size={14} /><span>آخر نسخة يدوية</span><b>{state.backup.lastManualBackupAt ? dateTime(state.backup.lastManualBackupAt) : "لم يتم إنشاء نسخة بعد"}</b></div></section>
       <section className="of-panel of-backup-card"><span className="of-backup-symbol blue"><FolderOpen size={21} /></span><span className="of-kicker">مكان الحفظ</span><h2>مجلد النسخ</h2><p>{state.backup.backupFolder ?? (desktop ? "لم يتم اختيار مجلد بعد." : "نسخة معاينة داخل المتصفح — لا تمثل مجلد ويندوز.")}</p><button className="of-button of-button-secondary" onClick={onChooseFolder}><FolderOpen size={16} /> اختيار مجلد النسخ</button><div className="of-backup-time"><Clock3 size={14} /><span>آخر حفظ تلقائي</span><b>{state.backup.lastAutomaticBackupAt ? dateTime(state.backup.lastAutomaticBackupAt) : "لا يوجد سجل بعد"}</b></div></section></div>
     <section className="of-panel of-restore-panel"><div className="of-restore-icon"><Upload size={20} /></div><div className="of-restore-copy"><h2>استعادة بيانات من ملف</h2><p>استورد ملف JSON احتياطيًا. سيتم التحقق من توافقه، وستحتاج إلى تأكيد استبدال بيانات المتجر الحالية.</p><div className="of-restore-note"><ShieldCheck size={14} /> لن يتم استبدال البيانات قبل موافقتك.</div></div><button className="of-button of-button-secondary" onClick={onRestore}><Upload size={16} /> اختيار ملف JSON</button></section>
   </section>;

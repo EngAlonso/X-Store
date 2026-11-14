@@ -8,7 +8,8 @@ declare global {
       getHardwareFingerprint(): Promise<OfflineHardwareSnapshot>;
       saveState(state: OfflineState): Promise<OfflineState>;
       chooseBackupFolder(): Promise<string | null>;
-      createBackup(): Promise<OfflineState>;
+      createBackup(backupType?: "full" | "invoices" | "inventory"): Promise<OfflineState>;
+      getClockStatus(): Promise<{ valid: boolean; rollbackDetected: boolean; message: string }>;
       restoreBackup(): Promise<OfflineState>;
       restoreState(state: OfflineState): Promise<OfflineState>;
     };

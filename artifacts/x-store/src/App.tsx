@@ -1908,6 +1908,9 @@ function PosPage() {
   const initialSaleType:SaleType=canSellRetail?'retail':canSellWholesale?'wholesale':'retail';
   const [cart,setCart]=useState<Record<string,number>>({}),[term,setTerm]=useState(''),[discount,setDiscount]=useState('0'),[received,setReceived]=useState(''),[payment,setPayment]=useState<'cash'|'card'|'wallet'|'instapay'>('cash'),[transferSender,setTransferSender]=useState(''),[heldOpen,setHeldOpen]=useState(false),[exchangeOpen,setExchangeOpen]=useState(false),[notice,setNotice]=useState('');
   const [saleType,setSaleType]=useState<SaleType>(initialSaleType);
+  const scannerBufferRef=useRef('');
+  const scannerStartedAtRef=useRef(0);
+  const scannerLastKeyAtRef=useRef(0);
   const [exchangeInvoiceNo,setExchangeInvoiceNo]=useState(''),[exchangeLoadedInvoiceNo,setExchangeLoadedInvoiceNo]=useState(''),[exchangeReturnItems,setExchangeReturnItems]=useState<Record<string,number>>({});
   const [exchangeReplacementProductId,setExchangeReplacementProductId]=useState(''),[exchangeReplacementQuantity,setExchangeReplacementQuantity]=useState(1);
   const [exchangeAmountReceived,setExchangeAmountReceived]=useState('');
@@ -1965,6 +1968,67 @@ function PosPage() {
     setInvoiceReference(createHeldInvoiceReference());
   }
   const add=(p:Product)=>setCart(c=>({...c,[p.id]:Math.min(p.quantity,(c[p.id]||0)+1)}));
+  function addScannedProduct(code:string) {
+    const normalized=code.trim();
+    if (!normalized) return;
+    const product=(products.data||[]).find(p=>String(p.barcode||'').trim()===normalized)
+      || (products.data||[]).find(p=>String(p.sku||'').trim()===normalized);
+    if (!product) {
+      setNotice('الباركود غير مسجل في المنتجات.');
+      return;
+    }
+    if (!product.quantity) {
+      setNotice('هذا المنتج نفد من المخزون.');
+      return;
+    }
+    const nextQuantity=Math.min(product.quantity,(cart[product.id]||0)+1);
+    add(product);
+    setTerm('');
+    setNotice('تمت إضافة '+product.name+' · الكمية '+nextQuantity);
+  }
+  useEffect(()=>{
+    const onScannerKeyDown=(event:KeyboardEvent)=>{
+      const target=event.target as HTMLElement|null;
+      const isSearchInput=target?.getAttribute('data-testid')==='input-pos-search';
+      const isEditable=Boolean(target && (target.tagName==='INPUT'||target.tagName==='TEXTAREA'||target.isContentEditable));
+      const now=performance.now();
+      if(event.key==='Enter'){
+        const buffer=scannerBufferRef.current;
+        const duration=now-scannerStartedAtRef.current;
+        const gap=now-scannerLastKeyAtRef.current;
+        if(buffer.length>=4 && duration<=1200 && gap<=250){
+          event.preventDefault();
+          event.stopPropagation();
+          scannerBufferRef.current='';
+          scannerStartedAtRef.current=0;
+          scannerLastKeyAtRef.current=0;
+          addScannedProduct(buffer);
+        } else {
+          scannerBufferRef.current='';
+          scannerStartedAtRef.current=0;
+          scannerLastKeyAtRef.current=0;
+        }
+        return;
+      }
+      if(event.key.length!==1 || (isEditable && !isSearchInput)){
+        if(isEditable && !isSearchInput){
+          scannerBufferRef.current='';
+          scannerStartedAtRef.current=0;
+          scannerLastKeyAtRef.current=0;
+        }
+        return;
+      }
+      if(scannerLastKeyAtRef.current && now-scannerLastKeyAtRef.current>120){
+        scannerBufferRef.current='';
+        scannerStartedAtRef.current=now;
+      }
+      if(!scannerBufferRef.current) scannerStartedAtRef.current=now;
+      scannerBufferRef.current+=event.key;
+      scannerLastKeyAtRef.current=now;
+    };
+    window.addEventListener('keydown',onScannerKeyDown,true);
+    return()=>window.removeEventListener('keydown',onScannerKeyDown,true);
+  },[products.data,cart]);
   const mutateCart=(id:string,n:number)=>setCart(c=>{const value=(c[id]||0)+n;if(value<=0){const next={...c};delete next[id];return next}return {...c,[id]:value}});
    const cashAmount=Number(received);
    const cashAmountInvalid=payment==='cash'&&(!received.trim()||!Number.isFinite(cashAmount)||cashAmount<=0||roundMoney(cashAmount)<total);
@@ -1985,7 +2049,7 @@ function PosPage() {
       />
       <div className="pos-layout">
         <section className="pos-products">
-          <label className="search-box pos-search"><Search size={18}/><input autoFocus value={term} onChange={e=>setTerm(e.target.value)} aria-label="البحث عن منتج بالعربي أو English أو مسح الباركود" placeholder="ابحث باسم المنتج بأي لهجة أو English..." data-testid="input-pos-search"/><kbd>⌘ K</kbd></label>
+          <label className="search-box pos-search"><Search size={18}/><input autoFocus value={term} onChange={e=>setTerm(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&term.trim())addScannedProduct(term)}} aria-label="البحث عن منتج بالعربي أو English أو مسح الباركود" placeholder="ابحث باسم المنتج بأي لهجة أو English..." data-testid="input-pos-search"/><kbd>⌘ K</kbd></label>
           {wholesaleEnabled&&(canSellRetail||canSellWholesale)&&<div className={`sale-type-tabs ${canSellRetail&&canSellWholesale?'':'sale-type-tabs-single'}`} role="group" aria-label="قسم البيع">
             {canSellRetail&&<button type="button" className={saleType==='retail'?'is-active':''} aria-pressed={saleType==='retail'} onClick={()=>switchSaleType('retail')}><b>القطاعي</b><small>سعر القطاعي</small></button>}
             {canSellWholesale&&<button type="button" className={saleType==='wholesale'?'is-active':''} aria-pressed={saleType==='wholesale'} onClick={()=>switchSaleType('wholesale')}><b>الجملة</b><small>سعر الجملة</small></button>}

@@ -32,6 +32,13 @@ export function isDesktopEdition(): boolean {
   return Boolean(window.xStoreOffline);
 }
 
+export type OfflineBackupType = "full" | "invoices" | "inventory";
+
+export async function getOfflineClockStatus(): Promise<{ valid: boolean; rollbackDetected: boolean; message: string }> {
+  if (!window.xStoreOffline) return { valid: true, rollbackDetected: false, message: "" };
+  return window.xStoreOffline.getClockStatus();
+}
+
 export async function loadOfflineState(): Promise<OfflineState> {
   if (window.xStoreOffline) {
     const raw = await window.xStoreOffline.getState();
@@ -79,8 +86,8 @@ export async function chooseOfflineBackupFolder(): Promise<string | null> {
   return "نسخة معاينة داخل المتصفح — لا تمثل مجلد ويندوز";
 }
 
-export async function createManualOfflineBackup(): Promise<OfflineState> {
-  if (window.xStoreOffline) return window.xStoreOffline.createBackup();
+export async function createManualOfflineBackup(backupType: OfflineBackupType = "full"): Promise<OfflineState> {
+  if (window.xStoreOffline) return window.xStoreOffline.createBackup(backupType);
   const state = await loadOfflineState();
   const saved: OfflineState = {
     ...state,
