@@ -1678,6 +1678,20 @@ function InventoryPage() {
   const create = useCreateXStoreProduct();
   const update = useUpdateXStoreProduct();
   const session = useGetXStoreSession();
+  const [restaurantFeatureEnabledForIngredients, setRestaurantFeatureEnabledForIngredients] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (session.data?.storeType !== null && session.data?.storeType !== undefined) {
+      setRestaurantFeatureEnabledForIngredients(null);
+      return;
+    }
+    if (!session.data) return;
+    let cancelled = false;
+    void fetch('/api/xstore/restaurant-feature', { credentials: 'include' })
+      .then(async response => response.ok ? response.json() as Promise<{ enabled?: boolean }> : { enabled: false })
+      .then(result => { if (!cancelled) setRestaurantFeatureEnabledForIngredients(result.enabled === true); })
+      .catch(() => { if (!cancelled) setRestaurantFeatureEnabledForIngredients(false); });
+    return () => { cancelled = true; };
+  }, [session.data?.storeType, session.data?.role]);
   const money=useMoney();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('__all__');
@@ -1688,7 +1702,7 @@ function InventoryPage() {
   const isWarehouseManager = hasAppRole(session.data, ['warehouse_manager']);
   const canManage = session.data?.role === 'tenant_admin' || isWarehouseManager;
   const wholesaleEnabled = session.data?.wholesaleEnabled ?? false;
-  const restaurantIngredientsEnabled = session.data?.storeType === 'cafe' || session.data?.storeType === 'restaurant';
+  const restaurantIngredientsEnabled = session.data?.storeType === 'cafe' || session.data?.storeType === 'restaurant' || (session.data?.storeType == null && restaurantFeatureEnabledForIngredients === true);
   const canViewCost = hasAppRole(session.data, ['tenant_admin', 'warehouse_manager', 'accountant', 'platform_admin']);
   const pricingOnlyEdit = isWarehouseManager && Boolean(edit);
   const [priceFormError, setPriceFormError] = useState('');
