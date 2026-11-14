@@ -257,6 +257,7 @@ export const xstoreSales = pgTable(
       .default("retail"),
     customerName: text("customer_name"),
     customerPhone: text("customer_phone"),
+    tableNumber: text("table_number"),
     itemCount: integer("item_count").notNull(),
     subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
     discountAmount: numeric("discount_amount", {
@@ -382,6 +383,65 @@ export const xstoreReturns = pgTable(
   (table) => [index("xstore_returns_sale_idx").on(table.saleId)],
 );
 
+export const xstoreMenus = pgTable(
+  "xstore_menus",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => xstoreTenants.id, { onDelete: "cascade" }),
+    publicSlug: text("public_slug").notNull(),
+    title: text("title").notNull().default("منيو المتجر"),
+    description: text("description"),
+    isPublished: boolean("is_published").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("xstore_menus_tenant_idx").on(table.tenantId),
+    uniqueIndex("xstore_menus_slug_idx").on(table.publicSlug),
+  ],
+);
+
+export const xstoreMenuItems = pgTable(
+  "xstore_menu_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    menuId: uuid("menu_id")
+      .notNull()
+      .references(() => xstoreMenus.id, { onDelete: "cascade" }),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => xstoreProducts.id, { onDelete: "cascade" }),
+    description: text("description"),
+    imageUrl: text("image_url"),
+    displayOrder: integer("display_order").notNull().default(0),
+    isAvailable: boolean("is_available").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("xstore_menu_items_menu_product_idx").on(
+      table.menuId,
+      table.productId,
+    ),
+    index("xstore_menu_items_menu_order_idx").on(
+      table.menuId,
+      table.displayOrder,
+    ),
+  ],
+);
+
 export const xstoreAuditLogs = pgTable(
   "xstore_audit_logs",
   {
@@ -430,3 +490,5 @@ export type XStoreSaleItem = typeof xstoreSaleItems.$inferSelect;
 export type XStoreHeldSale = typeof xstoreHeldSales.$inferSelect;
 export type XStoreReturn = typeof xstoreReturns.$inferSelect;
 export type XStoreAuditLog = typeof xstoreAuditLogs.$inferSelect;
+export type XStoreMenu = typeof xstoreMenus.$inferSelect;
+export type XStoreMenuItem = typeof xstoreMenuItems.$inferSelect;

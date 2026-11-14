@@ -55,6 +55,8 @@ import type { IconType } from 'react-icons';
 import PlatformBackupPage from '@/pages/platform-backup';
 import PlatformDatabasePage from '@/pages/platform-database';
 import StoreBackupPage from '@/pages/store-backup';
+import RestaurantMenuPage from '@/pages/restaurant-menu';
+import PublicRestaurantMenu from '@/pages/public-restaurant-menu';
 import type { OfflineActivationRequest } from './offline/licensing';
 import { isOfflineHardwareFingerprint, type OfflineLicensePlan } from './offline/model';
 
@@ -272,6 +274,7 @@ const nav = [
   { href: '/platform-database', label: 'قاعدة البيانات', icon: Database, roles: ['platform_admin'] },
   { href: '/platform-backup', label: 'النسخ الاحتياطي', icon: Database, roles: ['platform_admin'] },
   { href: '/store-backup', label: 'النسخ الاحتياطي', icon: Database, roles: ['tenant_admin'] },
+  { href: '/restaurant-menu', label: 'المنيو والترابيزات', icon: Utensils, roles: ['tenant_admin'] },
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
@@ -668,7 +671,7 @@ function AppShell({ children }: { children: ReactNode }) {
 }
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
-  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
@@ -681,7 +684,7 @@ function ProtectedLayout() {
     <Route path="/reports" component={ReportsPage}/><Route path="/sales" component={SalesPage}/><Route path="/audit-log" component={AuditPage}/>
     <Route path="/settings" component={PlatformSettingsPage}/>
       <Route path="/platform-database" component={PlatformDatabasePage}/>
-     <Route path="/platform-backup" component={PlatformBackupPage}/><Route path="/store-backup" component={StoreBackupPage}/>
+     <Route path="/platform-backup" component={PlatformBackupPage}/><Route path="/store-backup" component={StoreBackupPage}/><Route path="/restaurant-menu" component={RestaurantMenuPage}/>
     <Route path="/store-settings" component={StoreSettingsPage}/>
     <Route component={NotFound}/>
   </Switch>{location === '/subscriptions' && <OfflineLicenseIssuerPanel />}</AppShell>;
@@ -851,16 +854,17 @@ function SalesTable({sales,compact=false,onReturn,onPrint,onToggleItems,expanded
   const money=useMoney();
   if(!sales.length)return <div className="empty-inline">لا توجد عمليات بيع لعرضها.</div>;
   const hasActions=Boolean(onReturn||onPrint||onToggleItems);
-  const columnCount=3+Number(!compact)+Number(showAmounts)+1+Number(hasActions);
+  const columnCount=4+Number(!compact)+Number(showAmounts)+1+Number(hasActions);
   return (
     <div className="table-wrap">
       <table>
-        <thead><tr><th>رقم الفاتورة</th><th>التاريخ والوقت</th><th>الأصناف</th>{!compact&&<th>الدفع</th>}{showAmounts&&<th>الإجمالي</th>}<th>الحالة</th>{hasActions&&<th>إجراء</th>}</tr></thead>
+        <thead><tr><th>رقم الفاتورة</th><th>الترابيزة</th><th>التاريخ والوقت</th><th>الأصناف</th>{!compact&&<th>الدفع</th>}{showAmounts&&<th>الإجمالي</th>}<th>الحالة</th>{hasActions&&<th>إجراء</th>}</tr></thead>
         <tbody>
           {sales.map(sale=>(
             <Fragment key={sale.id}>
               <tr>
                 <td className="ltr-id">{latinizeDigits(sale.invoiceNo)}{sale.exchangeEvents.length>0&&<span className="sale-exchange-badge"><ArrowLeftRight size={12}/> استبدال</span>}</td>
+                <td>{sale.tableNumber||'—'}</td>
                 <td>{dateTimeLabel(sale.createdAt)}</td>
                 <td>{fmt(sale.itemCount)}</td>
                 {!compact&&<td>{paymentName(sale.paymentMethod)}</td>}
@@ -979,6 +983,7 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
       </div>
       <div className={`receipt-refined-meta${thermal?' receipt-thermal-meta':''}${invoiceFormat==='thermal_58mm'?' receipt-thermal-meta--58':''}`}>
         {sale.customerName&&<div className="receipt-meta-item"><span>اسم العميل</span><b>{sale.customerName}</b></div>}
+        <div className="receipt-meta-item"><span>رقم الترابيزة</span><b>{sale.tableNumber||'—'}</b></div>
         <div className="receipt-meta-item"><span>رقم هاتف العميل</span><b className="receipt-meta-ltr">{sale.customerPhone?latinizeDigits(sale.customerPhone):'—'}</b></div>
         <div className="receipt-meta-item"><span>التاريخ والوقت</span><b>{dateTimeLabel(sale.createdAt)}</b></div>
         <div className="receipt-meta-item receipt-meta-item--cashier"><span>الحساب المنفذ</span><b>{sale.cashierName}</b></div>
@@ -1920,7 +1925,7 @@ function PosPage() {
   const [exchangePayment,setExchangePayment]=useState<'cash'|'card'|'wallet'>('cash');
   const [exchangePaymentError,setExchangePaymentError]=useState('');
   const exchangeInvoiceItems=useGetXStoreSaleInvoiceItems(exchangeLoadedInvoiceNo,{query:{queryKey:getGetXStoreSaleInvoiceItemsQueryKey(exchangeLoadedInvoiceNo),enabled:Boolean(exchangeLoadedInvoiceNo)}});
-  const [customerName,setCustomerName]=useState(''),[customerPhone,setCustomerPhone]=useState(''),[phoneCountryOverride,setPhoneCountryOverride]=useState<string|null>(null),[invoiceReference,setInvoiceReference]=useState(createHeldInvoiceReference),[receiptSale,setReceiptSale]=useState<Sale|null>(null);
+  const [customerName,setCustomerName]=useState(''),[customerPhone,setCustomerPhone]=useState(''),[tableNumber,setTableNumber]=useState(''),[phoneCountryOverride,setPhoneCountryOverride]=useState<string|null>(null),[invoiceReference,setInvoiceReference]=useState(createHeldInvoiceReference),[receiptSale,setReceiptSale]=useState<Sale|null>(null);
   const phoneCountry=getPhoneCountry(phoneCountryOverride??session.data?.countryCode);
   const invoicePhone=phoneNumberForCountry(phoneCountry.countryCode,customerPhone);
   const customerWhatsappNumber=getWhatsAppDigits(invoicePhone);
@@ -2036,7 +2041,7 @@ function PosPage() {
    const cashAmount=Number(received);
    const cashAmountInvalid=payment==='cash'&&(!received.trim()||!Number.isFinite(cashAmount)||cashAmount<=0||roundMoney(cashAmount)<total);
    const transferSenderInvalid=(payment==='wallet'||payment==='instapay')&&!transferSender.trim();
-   function finish(){if(!cartLines.length||customerPhoneInvalid||cashAmountInvalid||transferSenderInvalid)return;checkout.mutate({data:{invoiceNo:invoiceReference,saleType,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:payment==='cash'?roundMoney(cashAmount):total,transferSender:payment==='wallet'||payment==='instapay'?transferSender.trim():null,customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreProfitLossReportQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
+   function finish(){if(!cartLines.length||customerPhoneInvalid||cashAmountInvalid||transferSenderInvalid)return;checkout.mutate({data:{invoiceNo:invoiceReference,saleType,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),discountAmount:disc,paymentMethod:payment,amountReceived:payment==='cash'?roundMoney(cashAmount):total,transferSender:payment==='wallet'||payment==='instapay'?transferSender.trim():null,customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null,tableNumber:tableNumber.trim()||null}},{onSuccess:s=>{setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setTableNumber('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');setReceiptSale(s);qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});qc.invalidateQueries({queryKey:getListXStoreSalesQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreProfitLossReportQueryKey()});setNotice(`تمت عملية البيع · ${s.invoiceNo}`)}})}
    function park(){if(!cartLines.length||customerPhoneInvalid)return;hold.mutate({data:{reference:invoiceReference,saleType,items:cartLines.map(p=>({productId:p.id,quantity:p.count})),customerName:customerName.trim()||null,customerPhone:invoicePhone.trim()||null,discountAmount:disc,paymentMethod:payment,transferSender:transferSender.trim()||null,amountReceived:roundMoney(Number(received)||0)}},{onSuccess:heldSale=>{setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference());setPayment('cash');qc.invalidateQueries({queryKey:getListXStoreHeldSalesQueryKey()});setNotice(`تم تعليق الفاتورة ${heldSale.reference}`)}})}
    function clearCurrentCart(){setCart({});setDiscount('0');setReceived('');setTransferSender('');setCustomerName('');setCustomerPhone('');setPhoneCountryOverride(null);setInvoiceReference(createHeldInvoiceReference())}
   function closeExchange(){setExchangeOpen(false);setExchangeInvoiceNo('');setExchangeLoadedInvoiceNo('');setExchangeReturnItems({});setExchangeReplacementProductId('');setExchangeReplacementQuantity(1);setExchangeAmountReceived('');setExchangePayment('cash');setExchangePaymentError('')}
@@ -2089,6 +2094,7 @@ function PosPage() {
           <div className="payment-tabs">{(['cash','card','wallet','instapay'] as const).map((m,i)=>{const I=[Banknote,CreditCard,Wallet,Smartphone][i];return <button key={m} onClick={()=>setPayment(m)} className={payment===m?'payment-active':''}><I size={16}/>{paymentName(m)}</button>})}</div>
           {payment==='cash'&&<label className="received-field"><span>المبلغ النقدي المستلم <em>إلزامي</em></span><div><input type="number" min={Math.max(total,.01)} step="0.01" value={received} onChange={e=>setReceived(e.target.value)} placeholder={fmt(total)} aria-label="المبلغ النقدي المستلم" required/><small>{received.trim()&&cashAmount>0?cashAmount>=total?`الباقي ${money(roundMoney(cashAmount-total))}`:`المتبقي ${money(roundMoney(total-cashAmount))}`:'أدخل المبلغ المستلم'}</small></div></label>}
           {(payment==='wallet'||payment==='instapay')&&<label className="transfer-sender-field"><span>رقم أو حساب المرسل <em>إلزامي</em></span><input type="text" dir="ltr" maxLength={80} autoComplete="off" value={transferSender} onChange={e=>setTransferSender(e.target.value)} placeholder={payment==='instapay'?'رقم الهاتف أو عنوان InstaPay':'رقم المحفظة المحوِّل منها'} aria-label="رقم أو حساب المرسل" required/><small>سجّل الرقم الذي استقبلت منه التحويل.</small></label>}
+          <label className="customer-phone-field customer-name-field"><span><Utensils size={14}/> رقم الترابيزة <em>اختياري</em></span><input type="text" inputMode="numeric" maxLength={30} value={tableNumber} onChange={e=>setTableNumber(e.target.value.replace(/[^0-9٠-٩A-Za-z-]/g,''))} placeholder="مثال: 12" aria-label="رقم الترابيزة"/></label>
           <label className="customer-phone-field customer-name-field"><span><Users size={14}/> اسم العميل <em>اختياري</em></span><input type="text" maxLength={150} autoComplete="name" value={customerName} onChange={e=>setCustomerName(e.target.value)} placeholder="اكتب اسم العميل" aria-label="اسم العميل على الفاتورة" data-testid="input-customer-name" disabled={!cartLines.length}/></label>
           <label className="customer-phone-field"><span><Phone size={14}/> رقم هاتف العميل على الفاتورة <em>اختياري</em></span><div className="customer-phone-input" dir="ltr"><span className="customer-phone-prefix" aria-label={`مفتاح الدولة +${phoneCountry.callingCode}`}>+{phoneCountry.callingCode}</span><input type="tel" inputMode="tel" autoComplete="tel-national" dir="ltr" value={customerPhone} onChange={e=>changeCustomerPhone(e.target.value)} placeholder="10 1234 5678" aria-label="رقم هاتف العميل بدون مفتاح الدولة" data-testid="input-customer-phone" disabled={!cartLines.length}/></div><small>مفتاح الدولة ثابت حسب دولة المتجر: {phoneCountry.name} (+{phoneCountry.callingCode}).</small>{customerPhoneInvalid&&<small className="customer-phone-error" role="alert">تأكد من كتابة رقم هاتف صحيح لهذا المفتاح.</small>}</label>
           <div className="cart-actions">
@@ -2257,7 +2263,7 @@ function moneyLabel(amount:number) {
 }
 
 function Routed() {
-  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/offline-license-issuer" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-backup" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
+  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/menu/:slug" component={PublicRestaurantMenu}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/offline-license-issuer" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-backup" component={ProtectedLayout}/><Route path="/restaurant-menu" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
 }
 function App() {
   return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><SiteLayout/></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;

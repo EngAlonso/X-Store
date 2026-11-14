@@ -897,6 +897,7 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
   const [cart, setCart] = useState<Record<string, number>>({});
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [tableNumber, setTableNumber] = useState("");
   const [payment, setPayment] = useState<OfflineSale["paymentMethod"]>("cash");
   const [saleType, setSaleType] = useState<"retail" | "wholesale">(canSellRetail ? "retail" : "wholesale");
   const [discount, setDiscount] = useState("0");
@@ -934,6 +935,7 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
     setCart({});
     setCustomerName("");
     setCustomerPhone("");
+    setTableNumber("");
     setDiscount("0");
     setReceived("");
     setTransferSender("");
@@ -1036,6 +1038,7 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
       createdAt,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
+      tableNumber: tableNumber.trim() || undefined,
       paymentMethod: payment,
       saleType,
       transferSender: payment === "wallet" || payment === "instapay" || payment === "transfer" ? transferSender.trim() : "",
@@ -1079,6 +1082,7 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
       createdAt,
       customerName: customerName.trim(),
       customerPhone: customerPhone.trim(),
+      tableNumber: tableNumber.trim() || undefined,
       paymentMethod: payment,
       saleType,
       transferSender: transferSender.trim(),
@@ -1114,6 +1118,7 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
       setCart(Object.fromEntries(restored.items.map((item) => [item.productId, item.quantity])));
       setCustomerName(restored.customerName);
       setCustomerPhone(restored.customerPhone);
+      setTableNumber(restored.tableNumber ?? "");
       setSaleType(restored.saleType);
       setDiscount(String(restored.discountAmount));
       setReceived(restored.amountReceived ? String(restored.amountReceived) : "");
@@ -1147,6 +1152,7 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
         <div className="of-cart-lines">{cartLines.length ? cartLines.map(({ product, quantity, price }) => <div className="of-cart-line" key={product.id}><div className="of-cart-line-name"><b>{product.name}</b><small>{money(price, currency)}</small></div><div className="of-stepper"><button onClick={() => setQuantity(product.id, quantity - 1)} aria-label="تقليل الكمية">−</button><span>{digits(quantity)}</span><button onClick={() => setQuantity(product.id, quantity + 1)} aria-label="زيادة الكمية" disabled={quantity >= product.quantity}>+</button></div><b className="of-line-total">{money(quantity * price, currency)}</b></div>) : <div className="of-cart-empty"><ShoppingCart size={22} /><span>السلة فارغة</span><small>اختر منتجًا من القائمة للبدء</small></div>}</div>
         <div className="of-cart-fields">
           <Field label="اسم العميل · اختياري"><input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="عميل نقدي" maxLength={150} /></Field>
+          <Field label="رقم الترابيزة · اختياري"><input inputMode="numeric" value={tableNumber} onChange={(event) => setTableNumber(event.target.value.replace(/[^0-9٠-٩A-Za-z-]/g, ""))} placeholder="مثال: 12" maxLength={30} /></Field>
           <Field label="رقم هاتف العميل · اختياري"><input type="tel" dir="ltr" value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="+20 10 1234 5678" maxLength={40} /></Field>
         </div>
         <div className="of-discount-row"><span>الخصم</span><label><input aria-label="قيمة الخصم" type="number" min="0" max={subtotal} step="0.01" value={discount} onChange={(event) => setDiscount(event.target.value)} disabled={!cartLines.length} /><b>{currency}</b></label></div>
@@ -1204,6 +1210,7 @@ function InvoiceDialog({ sale, store, currency, onClose }: { sale: OfflineSale; 
       `التاريخ: ${dateTime(sale.createdAt)}`,
       `العميل: ${sale.customerName || "عميل نقدي"}`,
       sale.customerPhone ? `الهاتف: ${sale.customerPhone}` : "",
+      sale.tableNumber ? `رقم الترابيزة: ${sale.tableNumber}` : "",
       `نوع البيع: ${sale.saleType === "wholesale" ? "جملة" : "قطاعي"}`,
       `طريقة الدفع: ${paymentLabel}`,
       sale.transferSender ? `بيانات التحويل: ${sale.transferSender}` : "",
@@ -1230,7 +1237,7 @@ function InvoiceDialog({ sale, store, currency, onClose }: { sale: OfflineSale; 
   }
   return <div className="of-overlay of-invoice-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className={`of-dialog of-invoice-dialog of-invoice-${format}`} role="dialog" aria-modal="true" aria-labelledby="invoice-title"><header className="of-dialog-head of-invoice-actions"><div><span className="of-kicker">تفاصيل المعاملة</span><h2 id="invoice-title">{sale.invoiceNumber}</h2></div><div><button className="of-button of-button-secondary" onClick={exportText}><ArrowDownToLine size={15} /> تصدير TXT</button><button className="of-button of-button-secondary" onClick={() => window.print()}><Printer size={15} /> طباعة الفاتورة</button><button className="of-icon-button" onClick={onClose} aria-label="إغلاق"><X size={18} /></button></div></header><div className="of-inline-hint of-invoice-offline-note">إرسال الفاتورة عبر واتساب غير متاح في النسخة التي تعمل دون إنترنت؛ استخدم الطباعة أو تصدير TXT.</div><article className="of-print-invoice">
     <div className="of-invoice-brand"><BrandMark compact /><div><b>{store?.name}</b><small>{store?.businessType}</small></div></div>
-    <div className="of-invoice-meta"><div><span>رقم الفاتورة</span><b dir="ltr">{sale.invoiceNumber}</b></div><div><span>التاريخ</span><b>{dateTime(sale.createdAt)}</b></div><div><span>العميل</span><b>{sale.customerName || "عميل نقدي"}</b></div>{sale.customerPhone && <div><span>الهاتف</span><b dir="ltr">{sale.customerPhone}</b></div>}<div><span>نوع البيع</span><b>{sale.saleType === "wholesale" ? "جملة" : "قطاعي"}</b></div><div><span>طريقة الدفع</span><b>{paymentLabel}</b></div>{sale.transferSender && <div><span>بيانات التحويل</span><b dir="ltr">{sale.transferSender}</b></div>}{sale.exchangeOfInvoiceNumber && <div><span>استبدال عن</span><b dir="ltr">{sale.exchangeOfInvoiceNumber}</b></div>}</div>
+    <div className="of-invoice-meta"><div><span>رقم الفاتورة</span><b dir="ltr">{sale.invoiceNumber}</b></div><div><span>التاريخ</span><b>{dateTime(sale.createdAt)}</b></div><div><span>العميل</span><b>{sale.customerName || "عميل نقدي"}</b></div>{sale.tableNumber && <div><span>رقم الترابيزة</span><b>{sale.tableNumber}</b></div>}{sale.customerPhone && <div><span>الهاتف</span><b dir="ltr">{sale.customerPhone}</b></div>}<div><span>نوع البيع</span><b>{sale.saleType === "wholesale" ? "جملة" : "قطاعي"}</b></div><div><span>طريقة الدفع</span><b>{paymentLabel}</b></div>{sale.transferSender && <div><span>بيانات التحويل</span><b dir="ltr">{sale.transferSender}</b></div>}{sale.exchangeOfInvoiceNumber && <div><span>استبدال عن</span><b dir="ltr">{sale.exchangeOfInvoiceNumber}</b></div>}</div>
     <div className="of-table-scroll"><table className="of-table"><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={`${item.productId}-${index}`}><td><b>{item.name}</b>{item.sku && <small>{item.sku}</small>}</td><td>{digits(item.quantity)}</td><td className="of-number">{money(item.unitPrice, currency)}</td><td className="of-number">{money(item.lineTotal, currency)}</td></tr>)}</tbody></table></div>
     <div className="of-invoice-totals"><div><span>المجموع الفرعي</span><b>{money(sale.subtotal, currency)}</b></div><div><span>الخصم</span><b>− {money(sale.discountAmount, currency)}</b></div><div><span>ضريبة القيمة المضافة</span><b>{money(sale.taxAmount, currency)}</b></div><div className="of-invoice-final"><span>الإجمالي المستحق</span><b>{money(sale.total, currency)}</b></div><div><span>المبلغ المستلم</span><b>{money(sale.amountReceived, currency)}</b></div><div><span>الباقي</span><b>{money(sale.changeAmount, currency)}</b></div></div>
     <div className="of-invoice-thanks">شكرًا لزيارتكم</div></article></section></div>;
