@@ -980,6 +980,7 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
     'X-Store',
     `الحالة: ${sale.status==='completed'?'مدفوعة':statusNames[sale.status]}`,
     ...(sale.customerName?[`العميل: ${sale.customerName}`]:[]),
+    ...(sale.orderType?[`نوع الطلب: ${sale.orderType==='internal'?'داخلي':'خارجي'}`]:[]),
     `التاريخ والوقت: ${dateTimeLabel(sale.createdAt)}`,
     `الحساب: ${sale.cashierName}`,
     `عدد الأصناف: ${fmt(sale.itemCount)}`,
@@ -1023,7 +1024,8 @@ function ReceiptModal({sale,close}:{sale:Sale;close:()=>void}) {
       </div>
       <div className={`receipt-refined-meta${thermal?' receipt-thermal-meta':''}${invoiceFormat==='thermal_58mm'?' receipt-thermal-meta--58':''}`}>
         {sale.customerName&&<div className="receipt-meta-item"><span>اسم العميل</span><b>{sale.customerName}</b></div>}
-        <div className="receipt-meta-item"><span>رقم الترابيزة</span><b>{sale.tableNumber||'—'}</b></div>
+        {sale.orderType&&<div className="receipt-meta-item"><span>نوع الطلب</span><b>{sale.orderType==='internal'?'داخلي':'خارجي'}</b></div>}
+        {sale.orderType&&<div className="receipt-meta-item"><span>رقم الترابيزة</span><b>{sale.tableNumber||'—'}</b></div>
         <div className="receipt-meta-item"><span>رقم هاتف العميل</span><b className="receipt-meta-ltr">{sale.customerPhone?latinizeDigits(sale.customerPhone):'—'}</b></div>
         <div className="receipt-meta-item"><span>التاريخ والوقت</span><b>{dateTimeLabel(sale.createdAt)}</b></div>
         <div className="receipt-meta-item receipt-meta-item--cashier"><span>الحساب المنفذ</span><b>{sale.cashierName}</b></div>
