@@ -911,6 +911,7 @@ router.get("/xstore/public/menu/:slug", async (req, res): Promise<void> => {
       productId: xstoreProducts.id,
       name: xstoreProducts.name,
       category: xstoreProducts.category,
+      ingredients: xstoreProducts.ingredients,
       price: xstoreProducts.price,
       quantity: xstoreProducts.quantity,
       description: xstoreMenuItems.description,
@@ -931,6 +932,7 @@ router.get("/xstore/public/menu/:slug", async (req, res): Promise<void> => {
       id: row.productId,
       name: row.name,
       price: toNumber(row.price),
+      ingredients: row.ingredients ?? null,
       description: row.description ?? null,
       imageUrl: row.imageUrl ?? null,
       available: row.isAvailable && row.quantity > 0,
@@ -2528,6 +2530,9 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
     .values({
       ...parsed.data,
       tenantId,
+      ingredients: tenant.storeType === "cafe" || tenant.storeType === "restaurant"
+        ? parsed.data.ingredients?.trim() || null
+        : null,
       price: parsed.data.price == null ? null : String(parsed.data.price),
       wholesalePrice:
         parsed.data.wholesalePrice == null
@@ -2631,6 +2636,11 @@ router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
   }
   const update = {
     ...parsed.data,
+    ingredients: tenant?.storeType === "cafe" || tenant?.storeType === "restaurant"
+      ? parsed.data.ingredients === undefined
+        ? undefined
+        : parsed.data.ingredients?.trim() || null
+      : undefined,
     price:
       parsed.data.price === undefined
         ? undefined
