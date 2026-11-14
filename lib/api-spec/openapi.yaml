@@ -1090,6 +1090,9 @@ components:
             $ref: "#/components/schemas/TeamPermission"
         tenantId: { type: ["string", "null"] }
         tenantName: { type: ["string", "null"] }
+        storeType:
+          type: ["string", "null"]
+          enum: [clothing_shoes, grocery_supermarket, electronics_accessories, perfume_beauty, cafe, restaurant, null]
         countryCode: { type: ["string", "null"], minLength: 2, maxLength: 2, pattern: "^[A-Z]{2}$" }
         currency:
           type: ["string", "null"]
@@ -1099,7 +1102,7 @@ components:
           type: ["string", "null"]
           enum: [wide, thermal_80mm, thermal_58mm, null]
         wholesaleEnabled: { type: boolean }
-      required: [id, name, phone, email, role, roleName, permissions, tenantId, tenantName, countryCode, currency, vatRate, invoiceFormat, wholesaleEnabled]
+      required: [id, name, phone, email, role, roleName, permissions, tenantId, tenantName, storeType, countryCode, currency, vatRate, invoiceFormat, wholesaleEnabled]
     StoreSettings:
       type: object
       properties:
