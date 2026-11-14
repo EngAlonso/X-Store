@@ -29,6 +29,7 @@ export type OfflineStoreType = (typeof OFFLINE_STORE_TYPES)[number]["value"];
 export type OfflineCurrency = (typeof OFFLINE_CURRENCIES)[number]["value"];
 export type OfflinePaymentMethod = "cash" | "card" | "wallet" | "instapay" | "transfer";
 export type OfflineSaleType = "retail" | "wholesale";
+export type OfflineOrderType = "internal" | "external";
 export type OfflineInvoiceFormat = (typeof OFFLINE_INVOICE_FORMATS)[number];
 export type OfflineTeamPermission = (typeof OFFLINE_TEAM_PERMISSIONS)[number];
 export type OfflineLicensePlan = (typeof OFFLINE_LICENSE_PLANS)[number];
@@ -115,6 +116,7 @@ export interface OfflineSale {
   customerName: string;
   customerPhone: string;
   tableNumber?: string;
+  orderType?: OfflineOrderType;
   paymentMethod: OfflinePaymentMethod;
   saleType: OfflineSaleType;
   transferSender: string;
@@ -145,6 +147,7 @@ export interface OfflineHeldSale {
   customerName: string;
   customerPhone: string;
   tableNumber?: string;
+  orderType?: OfflineOrderType;
   paymentMethod: OfflinePaymentMethod;
   saleType: OfflineSaleType;
   transferSender: string;
@@ -375,6 +378,7 @@ export function isOfflineState(value: unknown): value is OfflineState {
     typeof sale.customerPhone === "string" &&
     ["cash", "card", "wallet", "instapay", "transfer"].includes(sale.paymentMethod) &&
     ["retail", "wholesale"].includes(sale.saleType) &&
+    (sale.orderType === undefined || ["internal", "external"].includes(sale.orderType)) &&
     typeof sale.transferSender === "string" &&
     typeof sale.cashierName === "string" &&
     (sale.exchangeOfInvoiceNumber === null || typeof sale.exchangeOfInvoiceNumber === "string") &&
@@ -395,6 +399,7 @@ export function isOfflineState(value: unknown): value is OfflineState {
     typeof held.customerPhone === "string" &&
     ["cash", "card", "wallet", "instapay", "transfer"].includes(held.paymentMethod) &&
     ["retail", "wholesale"].includes(held.saleType) &&
+    (held.orderType === undefined || ["internal", "external"].includes(held.orderType)) &&
     typeof held.transferSender === "string" &&
     Number.isFinite(held.subtotal) && Number.isFinite(held.discountAmount) &&
     Number.isFinite(held.taxAmount) && Number.isFinite(held.estimatedTotal) &&
