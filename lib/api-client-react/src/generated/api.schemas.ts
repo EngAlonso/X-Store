@@ -77,6 +77,8 @@ export interface SessionUser {
   tenantId: string | null;
   /** @nullable */
   tenantName: string | null;
+  businessType: string | null;
+  storeType: 'clothing_shoes' | 'grocery_supermarket' | 'electronics_accessories' | 'perfume_beauty' | 'cafe' | 'restaurant' | null;
   /**
      * @minLength 2
      * @maxLength 2
