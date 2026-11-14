@@ -562,6 +562,7 @@ function productDto(product: XStoreProduct, user: XStoreUser) {
     color: product.color ?? null,
     size: product.size ?? null,
     partNumber: product.partNumber ?? null,
+    ingredients: product.partNumber ?? null,
     expiresAt: product.expiresAt ?? null,
   };
 }
@@ -911,7 +912,7 @@ router.get("/xstore/public/menu/:slug", async (req, res): Promise<void> => {
       productId: xstoreProducts.id,
       name: xstoreProducts.name,
       category: xstoreProducts.category,
-      ingredients: xstoreProducts.ingredients,
+      ingredients: xstoreProducts.partNumber,
       price: xstoreProducts.price,
       quantity: xstoreProducts.quantity,
       description: xstoreMenuItems.description,
@@ -2530,9 +2531,9 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
     .values({
       ...parsed.data,
       tenantId,
-      ingredients: tenant.storeType === "cafe" || tenant.storeType === "restaurant"
+      partNumber: tenant.storeType === "cafe" || tenant.storeType === "restaurant"
         ? parsed.data.ingredients?.trim() || null
-        : null,
+        : parsed.data.partNumber ?? null,
       price: parsed.data.price == null ? null : String(parsed.data.price),
       wholesalePrice:
         parsed.data.wholesalePrice == null
@@ -2542,7 +2543,6 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
       barcode: parsed.data.barcode ?? null,
       color: parsed.data.color ?? null,
       size: parsed.data.size ?? null,
-      partNumber: parsed.data.partNumber ?? null,
       expiresAt: dbDate(parsed.data.expiresAt) ?? null,
     })
     .returning();
@@ -2636,11 +2636,11 @@ router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
   }
   const update = {
     ...parsed.data,
-    ingredients: tenant?.storeType === "cafe" || tenant?.storeType === "restaurant"
+    partNumber: tenant?.storeType === "cafe" || tenant?.storeType === "restaurant"
       ? parsed.data.ingredients === undefined
         ? undefined
         : parsed.data.ingredients?.trim() || null
-      : undefined,
+      : parsed.data.partNumber,
     price:
       parsed.data.price === undefined
         ? undefined
