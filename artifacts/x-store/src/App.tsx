@@ -636,32 +636,10 @@ function AppShell({ children }: { children: ReactNode }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const { data:user, isLoading, isError, refetch } = useGetXStoreSession();
   useEffect(() => {
-    let cancelled = false;
-    if (!user || user.role !== 'tenant_admin') {
-      setRestaurantMenuEnabled(false);
-      setRestaurantMenuAccessLoading(false);
-      return;
-    }
-    setRestaurantMenuAccessLoading(true);
-    fetch('/api/xstore/restaurant-feature', { credentials: 'include' })
-      .then(response => response.ok ? response.json() as Promise<{enabled?: boolean}> : { enabled: false })
-      .then(result => {
-        if (!cancelled) {
-          setRestaurantMenuEnabled(result.enabled === true);
-          setRestaurantMenuAccessCheckedLocation(location);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setRestaurantMenuEnabled(false);
-          setRestaurantMenuAccessCheckedLocation(location);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setRestaurantMenuAccessLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [user?.id, user?.role]);
+    const storeType = (user as (SessionUser & { storeType?: string | null }) | null)?.storeType;
+    setRestaurantMenuEnabled(user?.role === 'tenant_admin' && (storeType === 'cafe' || storeType === 'restaurant'));
+    setRestaurantMenuAccessLoading(false);
+  }, [user?.id, user?.role, (user as (SessionUser & { storeType?: string | null }) | null)?.storeType]);
   useEffect(() => { if (!user) return; try { setReadNotificationIds(JSON.parse(localStorage.getItem(`xstore-notifications:${user.id}`) || '[]') as string[]); } catch { setReadNotificationIds([]); } }, [user?.id]);
   async function handleLogout() {
     if (loggingOut) return;
@@ -678,7 +656,7 @@ function AppShell({ children }: { children: ReactNode }) {
   }
   if (isLoading) return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if (isError || !user) return <div className="auth-required" dir="rtl"><div className="empty-symbol"><ShieldCheck/></div><h2>يلزم تسجيل الدخول</h2><p>سجّل الدخول باستخدام حساب X-Store للوصول إلى مساحة العمل.</p><Link href="/sign-in" className="button button-primary">تسجيل الدخول</Link><button className="button button-quiet" onClick={()=>refetch()}>إعادة المحاولة</button></div>;
-  const items = nav.filter(n => (n.href !== '/restaurant-menu' || (user.role === 'tenant_admin' && !restaurantMenuAccessLoading && restaurantMenuEnabled)) && (n.roles.includes('all') || hasAppRole(user, n.roles)));
+  const items = nav.filter(n => (n.href !== '/restaurant-menu' || (user.role === 'tenant_admin' && restaurantMenuEnabled)) && (n.roles.includes('all') || hasAppRole(user, n.roles)));
   const canSeeSalesNotifications = hasAppRole(user,['platform_admin','tenant_admin','cashier','accountant']) || (user.role==='custom' && Boolean(user.permissions?.some(p=>p==='retail_sales'||p==='wholesale_sales')));
   const canSeeInventoryNotifications = hasAppRole(user,['platform_admin','tenant_admin','warehouse_manager']);
   const notificationRows = [
@@ -727,7 +705,7 @@ function ProtectedLayout() {
     return () => { cancelled = true; };
   }, [location]);
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
-  if(location === '/restaurant-menu' && restaurantMenuAccessCheckedLocation === location && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
+  if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
   return <AppShell><Switch>
