@@ -877,6 +877,10 @@ router.get("/xstore/public/menu/:slug", async (req, res): Promise<void> => {
     .from(xstoreTenants)
     .where(eq(xstoreTenants.id, menu.tenantId))
     .limit(1);
+  if (tenant?.storeType !== "cafe" && tenant?.storeType !== "restaurant") {
+    res.status(404).json({ error: "Menu not found." });
+    return;
+  }
   const rows = await db
     .select({
       id: xstoreMenuItems.id,
@@ -927,6 +931,22 @@ router.get("/xstore/public/menu/:slug", async (req, res): Promise<void> => {
 
 router.use("/xstore", requireXStoreUser);
 
+router.get("/xstore/restaurant-feature", async (_req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (!actor.tenantId) {
+    res.json({ enabled: false });
+    return;
+  }
+  const [tenant] = await db
+    .select({ storeType: xstoreTenants.storeType })
+    .from(xstoreTenants)
+    .where(eq(xstoreTenants.id, actor.tenantId))
+    .limit(1);
+  res.json({
+    enabled: tenant?.storeType === "cafe" || tenant?.storeType === "restaurant",
+  });
+});
+
 router.get("/xstore/menu", async (_req, res): Promise<void> => {
   const actor = getXStoreUser(res);
   if (actor.role !== "tenant_admin") {
@@ -935,6 +955,15 @@ router.get("/xstore/menu", async (_req, res): Promise<void> => {
   }
   const tenantId = requireTenant(res, actor);
   if (!tenantId) return;
+  const [tenant] = await db
+    .select({ storeType: xstoreTenants.storeType })
+    .from(xstoreTenants)
+    .where(eq(xstoreTenants.id, tenantId))
+    .limit(1);
+  if (tenant?.storeType !== "cafe" && tenant?.storeType !== "restaurant") {
+    res.status(403).json({ error: "Restaurant menu is available only for cafes and restaurants." });
+    return;
+  }
   let [menu] = await db.select().from(xstoreMenus).where(eq(xstoreMenus.tenantId, tenantId)).limit(1);
   if (!menu) {
     [menu] = await db.insert(xstoreMenus).values({
@@ -994,6 +1023,15 @@ router.put("/xstore/menu", async (req, res): Promise<void> => {
   }
   const tenantId = requireTenant(res, actor);
   if (!tenantId) return;
+  const [tenant] = await db
+    .select({ storeType: xstoreTenants.storeType })
+    .from(xstoreTenants)
+    .where(eq(xstoreTenants.id, tenantId))
+    .limit(1);
+  if (tenant?.storeType !== "cafe" && tenant?.storeType !== "restaurant") {
+    res.status(403).json({ error: "Restaurant menu is available only for cafes and restaurants." });
+    return;
+  }
   const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
   const title = typeof body.title === "string" && body.title.trim() ? body.title.trim().slice(0, 120) : "منيو المتجر";
   const description = typeof body.description === "string" ? body.description.trim().slice(0, 500) || null : null;
