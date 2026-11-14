@@ -807,6 +807,8 @@ export interface Product {
   /** @nullable */
   partNumber: string | null;
   /** @nullable */
+  ingredients: string | null;
+  /** @nullable */
   expiresAt: string | null;
 }
 
@@ -840,6 +842,8 @@ export interface ProductInput {
   /** @nullable */
   partNumber?: string | null;
   /** @nullable */
+  ingredients?: string | null;
+  /** @nullable */
   expiresAt?: string | null;
 }
 
@@ -872,6 +876,8 @@ export interface ProductUpdate {
   size?: string | null;
   /** @nullable */
   partNumber?: string | null;
+  /** @nullable */
+  ingredients?: string | null;
   /** @nullable */
   expiresAt?: string | null;
 }
