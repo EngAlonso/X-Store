@@ -490,3 +490,5 @@ export type XStoreSaleItem = typeof xstoreSaleItems.$inferSelect;
 export type XStoreHeldSale = typeof xstoreHeldSales.$inferSelect;
 export type XStoreReturn = typeof xstoreReturns.$inferSelect;
 export type XStoreAuditLog = typeof xstoreAuditLogs.$inferSelect;
+export type XStoreMenu = typeof xstoreMenus.$inferSelect;
+export type XStoreMenuItem = typeof xstoreMenuItems.$inferSelect;
