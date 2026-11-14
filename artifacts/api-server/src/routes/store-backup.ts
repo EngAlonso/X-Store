@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import {
   db,
   xstoreHeldSales,
@@ -12,10 +12,25 @@ import { getXStoreUser, denyRole, requireXStoreUser } from "../middlewares/xstor
 
 const router = Router();
 
-const { tableNumber: _xstoreTableNumber, ...xstoreSaleColumnsWithoutTableNumber } =
-  getColumns(xstoreSales);
 const xstoreSaleSelectionWithoutTableNumber = {
-  ...xstoreSaleColumnsWithoutTableNumber,
+  id: xstoreSales.id,
+  tenantId: xstoreSales.tenantId,
+  cashierUserId: xstoreSales.cashierUserId,
+  invoiceNo: xstoreSales.invoiceNo,
+  saleType: xstoreSales.saleType,
+  customerName: xstoreSales.customerName,
+  customerPhone: xstoreSales.customerPhone,
+  itemCount: xstoreSales.itemCount,
+  subtotal: xstoreSales.subtotal,
+  discountAmount: xstoreSales.discountAmount,
+  taxAmount: xstoreSales.taxAmount,
+  total: xstoreSales.total,
+  paymentMethod: xstoreSales.paymentMethod,
+  transferSender: xstoreSales.transferSender,
+  amountReceived: xstoreSales.amountReceived,
+  changeAmount: xstoreSales.changeAmount,
+  status: xstoreSales.status,
+  createdAt: xstoreSales.createdAt,
   tableNumber: sql<string | null>`NULL`.as("table_number"),
 };
 const MEDIA_TYPE = "application/vnd.xstore.store-backup+json";
