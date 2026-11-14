@@ -159,6 +159,7 @@ const xstoreSaleSelectionWithoutTableNumber = {
   status: xstoreSales.status,
   createdAt: xstoreSales.createdAt,
   tableNumber: sql<string | null>`NULL`.as("table_number"),
+  orderType: sql<"internal" | "external" | null>`NULL`.as("order_type"),
 };
 
 class DomainError extends Error {
@@ -979,7 +980,10 @@ router.get("/xstore/menu", async (_req, res): Promise<void> => {
   const tenantId = requireTenant(res, actor);
   if (!tenantId) return;
   const [tenant] = await db
-    .select({ storeType: xstoreTenants.storeType })
+    .select({
+      name: xstoreTenants.name,
+      storeType: xstoreTenants.storeType,
+    })
     .from(xstoreTenants)
     .where(eq(xstoreTenants.id, tenantId))
     .limit(1);
@@ -992,9 +996,14 @@ router.get("/xstore/menu", async (_req, res): Promise<void> => {
     [menu] = await db.insert(xstoreMenus).values({
       tenantId,
       publicSlug: randomUUID().replaceAll("-", ""),
-      title: "منيو المتجر",
+      title: tenant?.name?.trim() || "منيو المتجر",
       isPublished: true,
     }).returning();
+  } else if ((!menu.title?.trim() || menu.title === "منيو المتجر") && tenant?.name?.trim()) {
+    [menu] = await db.update(xstoreMenus)
+      .set({ title: tenant.name.trim(), updatedAt: new Date() })
+      .where(eq(xstoreMenus.id, menu.id))
+      .returning();
   }
   const products = await db
     .select({
@@ -1047,7 +1056,10 @@ router.put("/xstore/menu", async (req, res): Promise<void> => {
   const tenantId = requireTenant(res, actor);
   if (!tenantId) return;
   const [tenant] = await db
-    .select({ storeType: xstoreTenants.storeType })
+    .select({
+      name: xstoreTenants.name,
+      storeType: xstoreTenants.storeType,
+    })
     .from(xstoreTenants)
     .where(eq(xstoreTenants.id, tenantId))
     .limit(1);
@@ -1056,7 +1068,9 @@ router.put("/xstore/menu", async (req, res): Promise<void> => {
     return;
   }
   const body = req.body && typeof req.body === "object" ? req.body as Record<string, unknown> : {};
-  const title = typeof body.title === "string" && body.title.trim() ? body.title.trim().slice(0, 120) : "منيو المتجر";
+  const title = typeof body.title === "string" && body.title.trim()
+    ? body.title.trim().slice(0, 120)
+    : tenant?.name?.trim() || "منيو المتجر";
   const description = typeof body.description === "string" ? body.description.trim().slice(0, 500) || null : null;
   const isPublished = body.isPublished !== false;
   const selectedProductIds = Array.isArray(body.productIds)
@@ -3062,6 +3076,14 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
     });
     return;
   }
+  const isRestaurantOrder = tenant?.storeType === "cafe" || tenant?.storeType === "restaurant";
+  if (parsed.data.orderType && !isRestaurantOrder) {
+    res.status(403).json({
+      error: "Order type is available only for cafes and restaurants.",
+    });
+    return;
+  }
+  const orderType = isRestaurantOrder ? (parsed.data.orderType ?? "external") : null;
   try {
     const { sale, items } = await db.transaction(async (tx) => {
       const lines = mergedLines(parsed.data.items);
@@ -3143,6 +3165,7 @@ router.post("/xstore/sales", async (req, res): Promise<void> => {
           ...(parsed.data.tableNumber?.trim()
             ? { tableNumber: parsed.data.tableNumber.trim() }
             : {}),
+          orderType,
           itemCount: priced.reduce((sum, line) => sum + line.quantity, 0),
           subtotal: String(subtotal),
           discountAmount: String(discountAmount),
