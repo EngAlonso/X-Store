@@ -44,6 +44,9 @@ export type XStoreInvoiceFormat = (typeof xstoreInvoiceFormats)[number];
 export const xstoreSaleTypes = ["retail", "wholesale"] as const;
 export type XStoreSaleType = (typeof xstoreSaleTypes)[number];
 
+export const xstoreOrderTypes = ["internal", "external"] as const;
+export type XStoreOrderType = (typeof xstoreOrderTypes)[number];
+
 export type XStoreLine = {
   productId: string;
   quantity: number;
@@ -258,6 +261,7 @@ export const xstoreSales = pgTable(
     customerName: text("customer_name"),
     customerPhone: text("customer_phone"),
     tableNumber: text("table_number"),
+    orderType: text("order_type").$type<XStoreOrderType>(),
     itemCount: integer("item_count").notNull(),
     subtotal: numeric("subtotal", { precision: 12, scale: 2 }).notNull(),
     discountAmount: numeric("discount_amount", {
