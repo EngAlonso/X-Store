@@ -903,7 +903,7 @@ function SalesTable({sales,compact=false,onReturn,onPrint,onToggleItems,expanded
             <Fragment key={sale.id}>
               <tr>
                 <td className="ltr-id">{latinizeDigits(sale.invoiceNo)}{sale.exchangeEvents.length>0&&<span className="sale-exchange-badge"><ArrowLeftRight size={12}/> استبدال</span>}</td>
-                {showOrderType&&<><td>{sale.tableNumber||'—'}</td><td>{sale.orderType==='internal'?'داخلي':sale.orderType==='external'?'خارجي':'—'}</td></>}}
+                {showOrderType&&<><td>{sale.tableNumber||'—'}</td><td>{sale.orderType==='internal'?'داخلي':sale.orderType==='external'?'خارجي':'—'}</td></>}
                 <td>{dateTimeLabel(sale.createdAt)}</td>
                 <td>{fmt(sale.itemCount)}</td>
                 {!compact&&<td>{paymentName(sale.paymentMethod)}</td>}
