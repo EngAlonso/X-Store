@@ -7,7 +7,8 @@ contextBridge.exposeInMainWorld("xStoreOffline", {
   saveState: (state) => ipcRenderer.invoke("offline:save-state", state),
   chooseBackupFolder: () =>
     ipcRenderer.invoke("offline:choose-backup-folder"),
-  createBackup: () => ipcRenderer.invoke("offline:create-backup"),
+  createBackup: (backupType = "full") => ipcRenderer.invoke("offline:create-backup", backupType),
+  getClockStatus: () => ipcRenderer.invoke("offline:get-clock-status"),
   restoreBackup: () => ipcRenderer.invoke("offline:restore-backup"),
   restoreState: (state) => ipcRenderer.invoke("offline:restore-state", state),
 });
