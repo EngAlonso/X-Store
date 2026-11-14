@@ -9,7 +9,13 @@
     "x-store": {
       "root": "artifacts/x-store",
       "framework": "vite",
-      "outputDirectory": "dist/public"
+      "outputDirectory": "dist/public",
+      "rewrites": [
+        {
+          "source": "/((?!.*\\.).*)",
+          "destination": "/index.html"
+        }
+      ]
     }
   },
   "rewrites": [

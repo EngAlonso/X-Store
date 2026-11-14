@@ -8,7 +8,7 @@ import {
   xstoreSaleItems,
   xstoreSales,
 } from "@workspace/db";
-import { getXStoreUser, denyRole } from "../middlewares/xstoreAuth";
+import { getXStoreUser, denyRole, requireXStoreUser } from "../middlewares/xstoreAuth";
 
 const router = Router();
 const MEDIA_TYPE = "application/vnd.xstore.store-backup+json";
@@ -55,7 +55,9 @@ function validateBackup(value: any, tenantId: string): asserts value is {
   }
 }
 
-router.use("/xstore/store-backup", (req, res, next) => {
+// This router is mounted before the main X-Store router, so it must
+// authenticate the session itself before reading res.locals.xstoreUser.
+router.use("/xstore/store-backup", requireXStoreUser, (req, res, next) => {
   const user = getXStoreUser(res);
   if (denyRole(res, user, ["tenant_admin"])) return;
   next();
