@@ -337,6 +337,14 @@ export const SaleSaleType = {
   wholesale: 'wholesale',
 } as const;
 
+export type SaleOrderType = typeof SaleOrderType[keyof typeof SaleOrderType];
+
+
+export const SaleOrderType = {
+  internal: 'internal',
+  external: 'external',
+} as const;
+
 export interface SaleLineItem {
   productId: string;
   name: string;
@@ -402,6 +410,8 @@ export interface Sale {
   customerPhone: string | null;
   /** @maxLength 30 */
   tableNumber: string | null;
+  /** @nullable */
+  orderType: SaleOrderType | null;
   itemCount: number;
   items?: SaleLineItem[];
   subtotal: number;
@@ -922,6 +932,7 @@ export interface SaleInput {
   customerPhone?: string | null;
   /** @maxLength 30 */
   tableNumber?: string | null;
+  orderType?: SaleOrderType | null;
 }
 
 
