@@ -2636,8 +2636,9 @@ router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
     });
     return;
   }
+  const { ingredients, ...productData } = parsed.data;
   const update = {
-    ...parsed.data,
+    ...productData,
     partNumber: tenant?.storeType === "cafe" || tenant?.storeType === "restaurant"
       ? ingredients === undefined
         ? undefined
