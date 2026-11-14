@@ -982,6 +982,7 @@ export const ListXStoreSalesResponseItem = zod.object({
   "cashierName": zod.string(),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
+  "tableNumber": zod.string().max(30).nullable(),
   "itemCount": zod.number().int(),
   "items": zod.array(zod.object({
   "productId": zod.string(),
