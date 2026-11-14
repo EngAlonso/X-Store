@@ -637,7 +637,8 @@ function AppShell({ children }: { children: ReactNode }) {
     try {
       await logoutXStore();
       qc.clear();
-      setOpen(false);\n      setLocation('/sign-in');
+      setOpen(false);
+      setLocation('/sign-in');
     } catch {
       setLoggingOut(false);
       window.alert('تعذر تسجيل الخروج. تحقق من الاتصال وحاول مرة أخرى.');
