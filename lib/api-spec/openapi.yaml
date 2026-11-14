@@ -1463,6 +1463,7 @@ components:
         color: { type: ["string", "null"] }
         size: { type: ["string", "null"] }
         partNumber: { type: ["string", "null"] }
+        ingredients: { type: ["string", "null"] }
         expiresAt: { type: ["string", "null"], format: date }
       required:
         - id
@@ -1478,6 +1479,7 @@ components:
         - color
         - size
         - partNumber
+        - ingredients
         - expiresAt
     ProductInput:
       type: object
@@ -1493,6 +1495,7 @@ components:
         color: { type: ["string", "null"] }
         size: { type: ["string", "null"] }
         partNumber: { type: ["string", "null"] }
+        ingredients: { type: ["string", "null"], maxLength: 1000 }
         expiresAt: { type: ["string", "null"], format: date }
       required: [name, sku, category, quantity]
     ProductUpdate:
@@ -1509,6 +1512,7 @@ components:
         color: { type: ["string", "null"] }
         size: { type: ["string", "null"] }
         partNumber: { type: ["string", "null"] }
+        ingredients: { type: ["string", "null"], maxLength: 1000 }
         expiresAt: { type: ["string", "null"], format: date }
     SaleLineInput:
       type: object
