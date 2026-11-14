@@ -852,6 +852,7 @@ export const ListXStoreProductsResponseItem = zod.object({
   "color": zod.string().nullable(),
   "size": zod.string().nullable(),
   "partNumber": zod.string().nullable(),
+  "ingredients": zod.string().nullable(),
   "expiresAt": zod.coerce.date().nullable()
 })
 export const ListXStoreProductsResponse = zod.array(ListXStoreProductsResponseItem)
@@ -885,6 +886,7 @@ export const CreateXStoreProductBody = zod.object({
   "color": zod.string().nullish(),
   "size": zod.string().nullish(),
   "partNumber": zod.string().nullish(),
+  "ingredients": zod.string().max(1000).nullish(),
   "expiresAt": zod.coerce.date().nullish()
 })
 
@@ -902,6 +904,7 @@ export const CreateXStoreProductResponse = zod.object({
   "color": zod.string().nullable(),
   "size": zod.string().nullable(),
   "partNumber": zod.string().nullable(),
+  "ingredients": zod.string().nullable(),
   "expiresAt": zod.coerce.date().nullable()
 })
 
@@ -938,6 +941,7 @@ export const UpdateXStoreProductBody = zod.object({
   "color": zod.string().nullish(),
   "size": zod.string().nullish(),
   "partNumber": zod.string().nullish(),
+  "ingredients": zod.string().max(1000).nullish(),
   "expiresAt": zod.coerce.date().nullish()
 })
 
@@ -955,6 +959,7 @@ export const UpdateXStoreProductResponse = zod.object({
   "color": zod.string().nullable(),
   "size": zod.string().nullable(),
   "partNumber": zod.string().nullable(),
+  "ingredients": zod.string().nullable(),
   "expiresAt": zod.coerce.date().nullable()
 })
 
