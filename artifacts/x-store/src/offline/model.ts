@@ -94,6 +94,7 @@ export interface OfflineProduct {
   color: string;
   size: string;
   partNumber: string;
+  ingredients: string;
   expiresAt: string | null;
   createdAt: string;
 }
@@ -355,6 +356,7 @@ export function isOfflineState(value: unknown): value is OfflineState {
     typeof product.color === "string" &&
     typeof product.size === "string" &&
     typeof product.partNumber === "string" &&
+    typeof product.ingredients === "string" &&
     (product.expiresAt === null || (typeof product.expiresAt === "string" && Number.isFinite(Date.parse(`${product.expiresAt}T12:00:00`)))) &&
     isDate(product.createdAt),
   );
@@ -494,6 +496,7 @@ export function migrateOfflineState(value: unknown): OfflineState | null {
       color: product.color ?? "",
       size: product.size ?? "",
       partNumber: product.partNumber ?? "",
+      ingredients: product.ingredients ?? "",
       expiresAt: product.expiresAt ?? null,
     } : product)
     : value.products;
