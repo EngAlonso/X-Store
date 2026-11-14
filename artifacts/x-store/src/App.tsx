@@ -1912,10 +1912,13 @@ function InventoryPage() {
             <span className="product-form-section-number">03</span>
             <div><b>تفاصيل إضافية</b><small>كل هذه المعلومات اختيارية.</small></div>
           </div>
-          <Field className="product-form-field" label="اللون (اختياري)" name="color" placeholder="مثال: أسود" defaultValue={edit?.color || ''}/>
-          <Field className="product-form-field" label="المقاس (اختياري)" name="size" placeholder="مثال: M أو 42" defaultValue={edit?.size || ''}/>
-          <Field className="product-form-field field-wide" label="رقم القطعة (اختياري)" name="partNumber" placeholder="رقم الموديل أو كود المورد" defaultValue={edit?.partNumber || ''}/>
-          {restaurantIngredientsEnabled && <label className="field product-form-field field-wide"><span>مكونات المنتج (اختياري)</span><textarea name="ingredients" rows={3} maxLength={1000} defaultValue={edit?.ingredients || ''} placeholder="اكتب مكونات المنتج التي ستظهر للعميل في منيو QR" /></label>}
+          {restaurantIngredientsEnabled ? (
+            <label className="field product-form-field field-wide"><span>مكونات المنتج (اختياري)</span><textarea name="ingredients" rows={3} maxLength={1000} defaultValue={edit?.ingredients || ''} placeholder="اكتب مكونات المنتج التي ستظهر للعميل في منيو QR" /></label>
+          ) : <>
+            <Field className="product-form-field" label="اللون (اختياري)" name="color" placeholder="مثال: أسود" defaultValue={edit?.color || ''}/>
+            <Field className="product-form-field" label="المقاس (اختياري)" name="size" placeholder="مثال: M أو 42" defaultValue={edit?.size || ''}/>
+            <Field className="product-form-field field-wide" label="رقم القطعة (اختياري)" name="partNumber" placeholder="رقم الموديل أو كود المورد" defaultValue={edit?.partNumber || ''}/>
+          </>}
         </>}
         {priceFormError&&<div className="form-error field-wide" role="alert">{priceFormError}</div>}
         {(create.isError || update.isError) && <div className="form-error">تعذر حفظ المنتج. يرجى مراجعة البيانات.</div>}
