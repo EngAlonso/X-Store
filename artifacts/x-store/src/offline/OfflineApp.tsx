@@ -342,6 +342,20 @@ export default function OfflineApp() {
   }
 
   useEffect(() => { void reloadState(); }, []);
+  useEffect(() => {
+    if (!desktop) return;
+    let disposed = false;
+    const check = async () => {
+      try {
+        const status = await getOfflineClockStatus();
+        if (!disposed) setClockStatus(status);
+      } catch {
+        // Keep the last known clock status if the local guard cannot be read.
+      }
+    };
+    const timer = window.setInterval(() => { void check(); }, 60_000);
+    return () => { disposed = true; window.clearInterval(timer); };
+  }, [desktop]);
   useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(""), 3500); return () => window.clearTimeout(timer); }, [notice]);
 
   async function persist(next: OfflineState) {
