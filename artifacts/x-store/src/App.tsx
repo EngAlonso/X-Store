@@ -649,7 +649,23 @@ function AppShell({ children }: { children: ReactNode }) {
   }
   if (isLoading) return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if (isError || !user) return <div className="auth-required" dir="rtl"><div className="empty-symbol"><ShieldCheck/></div><h2>يلزم تسجيل الدخول</h2><p>سجّل الدخول باستخدام حساب X-Store للوصول إلى مساحة العمل.</p><Link href="/sign-in" className="button button-primary">تسجيل الدخول</Link><button className="button button-quiet" onClick={()=>refetch()}>إعادة المحاولة</button></div>;
-  const restaurantMenuEnabled = user.role === 'tenant_admin' && (user.storeType === 'cafe' || user.storeType === 'restaurant');
+  const [restaurantFeatureEnabled, setRestaurantFeatureEnabled] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (user.role !== 'tenant_admin' || (user.storeType !== null && user.storeType !== undefined)) {
+      setRestaurantFeatureEnabled(null);
+      return;
+    }
+    let cancelled = false;
+    void fetch('/api/xstore/restaurant-feature', { credentials: 'include' })
+      .then(async response => response.ok ? response.json() as Promise<{ enabled?: boolean }> : { enabled: false })
+      .then(result => { if (!cancelled) setRestaurantFeatureEnabled(result.enabled === true); })
+      .catch(() => { if (!cancelled) setRestaurantFeatureEnabled(false); });
+    return () => { cancelled = true; };
+  }, [user.role, user.storeType]);
+  const restaurantMenuEnabled = user.role === 'tenant_admin' && (
+    user.storeType === 'cafe' || user.storeType === 'restaurant' ||
+    (user.storeType == null && restaurantFeatureEnabled === true)
+  );
   const items = nav.filter(n => (n.href !== '/restaurant-menu' || restaurantMenuEnabled) && (n.roles.includes('all') || hasAppRole(user, n.roles)));
   const canSeeSalesNotifications = hasAppRole(user,['platform_admin','tenant_admin','cashier','accountant']) || (user.role==='custom' && Boolean(user.permissions?.some(p=>p==='retail_sales'||p==='wholesale_sales')));
   const canSeeInventoryNotifications = hasAppRole(user,['platform_admin','tenant_admin','warehouse_manager']);
