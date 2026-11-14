@@ -1572,8 +1572,9 @@ router.patch("/xstore/tenants/:tenantId", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Store name and activity cannot be blank." });
     return;
   }
+  const { ingredients, ...productData } = parsed.data;
   const update = {
-    ...parsed.data,
+    ...productData,
     ...(name !== undefined ? { name } : {}),
     ...(businessType !== undefined ? { businessType } : {}),
     subscriptionEndsAt: dbDate(parsed.data.subscriptionEndsAt),
@@ -2526,13 +2527,14 @@ router.post("/xstore/products", async (req, res): Promise<void> => {
     });
     return;
   }
+  const { ingredients, ...productData } = parsed.data;
   const [product] = await db
     .insert(xstoreProducts)
     .values({
-      ...parsed.data,
+      ...productData,
       tenantId,
       partNumber: tenant.storeType === "cafe" || tenant.storeType === "restaurant"
-        ? parsed.data.ingredients?.trim() || null
+        ? ingredients?.trim() || null
         : parsed.data.partNumber ?? null,
       price: parsed.data.price == null ? null : String(parsed.data.price),
       wholesalePrice:
@@ -2637,9 +2639,9 @@ router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
   const update = {
     ...parsed.data,
     partNumber: tenant?.storeType === "cafe" || tenant?.storeType === "restaurant"
-      ? parsed.data.ingredients === undefined
+      ? ingredients === undefined
         ? undefined
-        : parsed.data.ingredients?.trim() || null
+        : ingredients?.trim() || null
       : parsed.data.partNumber,
     price:
       parsed.data.price === undefined
