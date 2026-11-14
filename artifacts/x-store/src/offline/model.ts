@@ -114,6 +114,7 @@ export interface OfflineSale {
   createdAt: string;
   customerName: string;
   customerPhone: string;
+  tableNumber?: string;
   paymentMethod: OfflinePaymentMethod;
   saleType: OfflineSaleType;
   transferSender: string;
