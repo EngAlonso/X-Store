@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { eq } from "drizzle-orm";
 import {
   db,
   xstoreHeldSales,
@@ -67,30 +68,22 @@ router.get("/xstore/store-backup", async (req, res) => {
   }
 
   try {
-    const [
-      products,
-      sales,
-      saleItems,
-      heldSales,
-      returns,
-    ] = await Promise.all([
-      db.select().from(xstoreProducts).where(({ tenantId: column }) => column),
-      db.select().from(xstoreSales).where(({ tenantId: column }) => column),
+    const [products, sales, heldSales, saleItems, returns] = await Promise.all([
+      db.select().from(xstoreProducts).where(eq(xstoreProducts.tenantId, tenantId)),
+      db.select().from(xstoreSales).where(eq(xstoreSales.tenantId, tenantId)),
+      db.select().from(xstoreHeldSales).where(eq(xstoreHeldSales.tenantId, tenantId)),
       db.select().from(xstoreSaleItems),
-      db.select().from(xstoreHeldSales).where(({ tenantId: column }) => column),
       db.select().from(xstoreReturns),
     ]);
 
     const saleIds = new Set(sales.map((sale) => sale.id));
-    const tenantSaleItems = saleItems.filter((item) => saleIds.has(item.saleId));
-    const tenantReturns = returns.filter((item) => saleIds.has(item.saleId));
 
     const tables: BackupTables = {
-      xstore_products: products.filter((product) => product.tenantId === tenantId),
-      xstore_sales: sales.filter((sale) => sale.tenantId === tenantId),
-      xstore_sale_items: tenantSaleItems,
-      xstore_held_sales: heldSales.filter((sale) => sale.tenantId === tenantId),
-      xstore_returns: tenantReturns,
+      xstore_products: products,
+      xstore_sales: sales,
+      xstore_sale_items: saleItems.filter((item) => saleIds.has(item.saleId)),
+      xstore_held_sales: heldSales,
+      xstore_returns: returns.filter((item) => saleIds.has(item.saleId)),
     };
 
     const backup = {
@@ -140,22 +133,26 @@ router.post("/xstore/store-backup/restore", async (req, res) => {
       const sales = await tx
         .select({ id: xstoreSales.id })
         .from(xstoreSales)
-        .where(({ tenantId: column }) => column);
+        .where(eq(xstoreSales.tenantId, tenantId));
 
       const saleIds = sales.map((sale) => sale.id);
 
       if (saleIds.length) {
-        await tx.delete(xstoreReturns).where(({ saleId: column }) => column);
-        await tx.delete(xstoreSaleItems).where(({ saleId: column }) => column);
-        await tx.delete(xstoreSales).where(({ tenantId: column }) => column);
+        await tx.delete(xstoreReturns).where(eq(xstoreReturns.saleId, saleIds[0]));
+        for (const saleId of saleIds.slice(1)) {
+          await tx.delete(xstoreReturns).where(eq(xstoreReturns.saleId, saleId));
+        }
+
+        await tx.delete(xstoreSaleItems).where(eq(xstoreSaleItems.saleId, saleIds[0]));
+        for (const saleId of saleIds.slice(1)) {
+          await tx.delete(xstoreSaleItems).where(eq(xstoreSaleItems.saleId, saleId));
+        }
+
+        await tx.delete(xstoreSales).where(eq(xstoreSales.tenantId, tenantId));
       }
 
-      await tx
-        .delete(xstoreHeldSales)
-        .where(({ tenantId: column }) => column);
-      await tx
-        .delete(xstoreProducts)
-        .where(({ tenantId: column }) => column);
+      await tx.delete(xstoreHeldSales).where(eq(xstoreHeldSales.tenantId, tenantId));
+      await tx.delete(xstoreProducts).where(eq(xstoreProducts.tenantId, tenantId));
 
       if (req.body.tables.xstore_products.length) {
         await tx.insert(xstoreProducts).values(req.body.tables.xstore_products as any);
