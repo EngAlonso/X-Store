@@ -4,35 +4,6 @@ import "./restaurant-menu.css";
 
 type PublicMenu={menu:{title:string;description:string|null};store:{name:string;currency:string};categories:Array<{name:string;items:Array<{id:string;name:string;price:number;ingredients:string|null;description:string|null;imageUrl:string|null;available:boolean}>}>};
 
-function autoProductImageUrl(name:string){
-  const normalized=name.trim().toLowerCase();
-  const rules=[
-    {words:["برجر","burger"],prompt:"a single beef burger"},
-    {words:["بيتزا","pizza"],prompt:"a single pizza"},
-    {words:["فراخ","دجاج","chicken"],prompt:"chicken meal"},
-    {words:["لحمة","لحم","beef"],prompt:"beef dish"},
-    {words:["سمك","fish"],prompt:"fish dish"},
-    {words:["بطاطس","بطاطا","fries"],prompt:"french fries"},
-    {words:["شاورما","shawarma"],prompt:"shawarma sandwich"},
-    {words:["كريب","crepe"],prompt:"savory crepe"},
-    {words:["باستا","مكرونة","pasta"],prompt:"pasta dish"},
-    {words:["رز","أرز","rice"],prompt:"rice dish"},
-    {words:["سلطة","salad"],prompt:"fresh salad"},
-    {words:["قهوة","coffee"],prompt:"coffee cup"},
-    {words:["كابتشينو","cappuccino"],prompt:"cappuccino"},
-    {words:["لاتيه","latte"],prompt:"latte coffee"},
-    {words:["عصير","juice"],prompt:"fresh fruit juice"},
-    {words:["مياه","ماء","water"],prompt:"bottled water"},
-    {words:["كيك","cake"],prompt:"cake slice"},
-    {words:["دونات","donut"],prompt:"donut"},
-    {words:["آيس كريم","ايس كريم","ice cream"],prompt:"ice cream"},
-  ];
-  const match=rules.find(rule=>rule.words.some(word=>normalized.includes(word)));
-  if(!match)return "";
-  const seed=Array.from(normalized).reduce((hash,char)=>((hash*31)+char.charCodeAt(0))>>>0,7);
-  const prompt=`realistic commercial food photography of ${match.prompt}, matching the product name "${name}", one item only, clean warm neutral background, square composition, no text, no logo`;
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=600&height=600&nologo=true&seed=${seed}`;
-}
 
 export default function PublicRestaurantMenu({params}:{params:{slug:string}}){
   const [data,setData]=useState<PublicMenu|null>(null),[error,setError]=useState(""),[search,setSearch]=useState("");
@@ -65,7 +36,7 @@ export default function PublicRestaurantMenu({params}:{params:{slug:string}}){
         <div className="restaurant-public-items">
           {category.items.map(item=><article key={item.id} className={`restaurant-public-item ${item.available?"":"unavailable"}`}>
             <div className="restaurant-public-item-media">
-              <img src={item.imageUrl || autoProductImageUrl(item.name)} alt="" onError={event=>{event.currentTarget.style.display="none";const placeholder=event.currentTarget.parentElement?.querySelector(".restaurant-public-placeholder") as HTMLElement|null;if(placeholder)placeholder.style.display="flex";}}/><div className="restaurant-public-placeholder" style={{display:"none"}}><Utensils size={22}/></div>
+              {item.imageUrl?<img src={item.imageUrl} alt="" onError={event=>{event.currentTarget.style.display="none";const placeholder=event.currentTarget.parentElement?.querySelector(".restaurant-public-placeholder") as HTMLElement|null;if(placeholder)placeholder.style.display="flex";}}/>:<div className="restaurant-public-placeholder"><Utensils size={22}/></div>
               {!item.available&&<span className="restaurant-public-unavailable">غير متاح</span>}
             </div>
             <div className="restaurant-public-item-body">
