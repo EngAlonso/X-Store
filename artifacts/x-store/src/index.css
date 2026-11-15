@@ -4748,3 +4748,58 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
     min-height: 68px !important;
   }
 }
+
+
+/* Fix compact sector cards layout */
+.store-fit-grid-v2 {
+  display: grid !important;
+  width: 100% !important;
+  max-width: 1040px !important;
+  margin-inline: auto !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.store-fit-card-v2 {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 70px !important;
+  height: 70px !important;
+  aspect-ratio: auto !important;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+  padding: 10px 13px !important;
+}
+
+.store-fit-card-v2 .store-fit-icon {
+  flex: 0 0 38px !important;
+}
+
+.store-fit-card-v2 > div {
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+.store-fit-card-v2 h3,
+.store-fit-card-v2 div span {
+  text-align: right !important;
+}
+
+.store-fit-card-v2 > svg {
+  flex: 0 0 auto !important;
+  margin-inline-start: 0 !important;
+}
+
+@media (max-width: 900px) {
+  .store-fit-grid-v2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .store-fit-grid-v2 {
+    grid-template-columns: 1fr !important;
+  }
+}
