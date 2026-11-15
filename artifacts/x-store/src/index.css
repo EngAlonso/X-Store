@@ -5157,3 +5157,41 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
     height: 44px !important;
   }
 }
+
+
+/* Landing fixes: footer brand on the visual right + remove hero backing shape */
+.site-footer-brand {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  justify-self: start !important;
+  text-align: right !important;
+}
+
+.site-footer-brand .brand,
+.site-footer-social-links {
+  justify-content: flex-start !important;
+}
+
+.site-footer-nav {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+}
+
+.site-footer-account {
+  grid-column: 3 !important;
+  grid-row: 1 !important;
+}
+
+.landing-v2 .hero-visual-v2 {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.landing-v2 .hero-visual-v2::before,
+.landing-v2 .hero-visual-v2::after,
+.landing-v2 .hero-visual-v2 > .hero-glow-v2 {
+  display: none !important;
+  content: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
