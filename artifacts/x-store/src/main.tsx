@@ -22,7 +22,7 @@ createRoot(document.getElementById('root')!, {
   },
 }).render(
   <>
-    <IntroSplash />
+    {!window.location.pathname.startsWith("/menu/") && <IntroSplash />}
     <PwaInstallButton />
     <ErrorBoundary>
       <App />
