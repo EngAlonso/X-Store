@@ -36,7 +36,7 @@ export default function PublicRestaurantMenu({params}:{params:{slug:string}}){
         <div className="restaurant-public-items">
           {category.items.map(item=><article key={item.id} className={`restaurant-public-item ${item.available?"":"unavailable"}`}>
             <div className="restaurant-public-item-media">
-              {item.imageUrl?<img src={item.imageUrl} alt="" onError={event=>{event.currentTarget.style.display="none";const placeholder=event.currentTarget.parentElement?.querySelector(".restaurant-public-placeholder") as HTMLElement|null;if(placeholder)placeholder.style.display="flex";}}/>:<div className="restaurant-public-placeholder"><Utensils size={22}/></div>
+              {item.imageUrl ? <img src={item.imageUrl} alt="" onError={event=>{event.currentTarget.style.display="none";const placeholder=event.currentTarget.parentElement?.querySelector(".restaurant-public-placeholder") as HTMLElement|null;if(placeholder)placeholder.style.display="flex";}}/> : <div className="restaurant-public-placeholder"><Utensils size={22}/></div>}
               {!item.available&&<span className="restaurant-public-unavailable">غير متاح</span>}
             </div>
             <div className="restaurant-public-item-body">
