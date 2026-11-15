@@ -305,3 +305,48 @@
   .restaurant-public-footer{display:block;text-align:center}
   .restaurant-public-footer small{display:block;margin-top:5px}
 }
+
+
+/* Public QR menu — clearer price treatment */
+.restaurant-public-item-top>strong{
+  display:inline-flex!important;
+  align-items:center;
+  gap:6px;
+  min-height:34px;
+  padding:6px 11px!important;
+  border-radius:11px!important;
+  background:#f2ecdf!important;
+  border:1px solid #dfd2b8!important;
+  color:#173f2b!important;
+  font-size:14px!important;
+  line-height:1!important;
+  box-shadow:0 3px 10px rgba(23,63,43,.05);
+}
+.restaurant-public-item-top>strong svg{
+  color:#24553b;
+  flex:none;
+}
+.restaurant-public-item-top>strong span{
+  font-size:16px;
+  font-weight:950;
+  letter-spacing:-.01em;
+}
+.restaurant-public-item-top>strong small{
+  font-size:9px!important;
+  color:#746d61!important;
+  font-weight:900!important;
+  margin:0!important;
+}
+.restaurant-public-item:hover .restaurant-public-item-top>strong{
+  border-color:#cdbb96!important;
+  box-shadow:0 4px 12px rgba(23,63,43,.08);
+}
+@media(max-width:520px){
+  .restaurant-public-item-top>strong{
+    min-height:31px;
+    padding:5px 8px!important;
+    gap:4px;
+  }
+  .restaurant-public-item-top>strong svg{width:13px;height:13px}
+  .restaurant-public-item-top>strong span{font-size:14px}
+}
