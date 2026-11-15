@@ -6173,3 +6173,226 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 .feature-showcase-item:nth-child(2):hover .stock-clean-product i {
   background: #173f2b !important;
 }
+
+
+/* X-Store internal app — align all authenticated accounts with the public brand palette */
+:root {
+  --xstore-green: #173f2b !important;
+  --xstore-green-hover: #24553b !important;
+  --xstore-sand: #cdbb96 !important;
+  --xstore-sand-soft: #f2ecdf !important;
+  --xstore-offwhite: #f8f6f1 !important;
+  --xstore-light-gray: #eef0ed !important;
+  --xstore-card: #ffffff !important;
+  --xstore-border: #dfe5df !important;
+  --xstore-text: #24362d !important;
+  --xstore-muted: #69756e !important;
+}
+
+/* App canvas and navigation */
+.site-layout,
+.site-route {
+  background: var(--xstore-light-gray) !important;
+}
+
+.sidebar {
+  background: var(--xstore-green) !important;
+  border-left: 1px solid rgba(205,187,150,.18) !important;
+}
+
+.sidebar .brand {
+  color: #fff !important;
+}
+
+.store-chip {
+  border-color: rgba(205,187,150,.24) !important;
+  background: rgba(255,255,255,.07) !important;
+}
+
+.nav-link:hover {
+  background: rgba(205,187,150,.13) !important;
+  color: #fff !important;
+}
+
+.nav-active {
+  background: rgba(205,187,150,.16) !important;
+  color: #fff !important;
+}
+
+.nav-active > i {
+  background: var(--xstore-sand) !important;
+}
+
+.support-box {
+  border-color: rgba(205,187,150,.2) !important;
+  background: rgba(255,255,255,.06) !important;
+}
+
+.topbar {
+  background: var(--xstore-offwhite) !important;
+  border-bottom-color: var(--xstore-border) !important;
+}
+
+.crumbs b,
+.page-title h1 {
+  color: var(--xstore-green) !important;
+}
+
+.crumbs,
+.page-title p,
+.today {
+  color: var(--xstore-muted) !important;
+}
+
+.top-avatar {
+  background: var(--xstore-sand-soft) !important;
+  color: var(--xstore-green) !important;
+  border: 1px solid rgba(205,187,150,.55) !important;
+}
+
+.notification {
+  color: var(--xstore-green) !important;
+}
+
+.notification i {
+  background: var(--xstore-sand) !important;
+}
+
+/* Main work surfaces */
+.main-content {
+  background: var(--xstore-light-gray) !important;
+}
+
+.panel,
+.card,
+.table-wrap,
+.data-table-wrap,
+.stat-card,
+.summary-card {
+  background: var(--xstore-card) !important;
+  border-color: var(--xstore-border) !important;
+  box-shadow: 0 8px 24px rgba(23,63,43,.045) !important;
+}
+
+.section-head h2,
+.section-head h3,
+.panel h2,
+.panel h3 {
+  color: var(--xstore-green) !important;
+}
+
+.section-head p,
+.panel p {
+  color: var(--xstore-muted);
+}
+
+/* Primary actions */
+.button-primary,
+.btn-primary,
+.auth-submit,
+button[type="submit"] {
+  background: var(--xstore-green) !important;
+  border-color: var(--xstore-green) !important;
+  color: #fff !important;
+}
+
+.button-primary:hover:not(:disabled),
+.btn-primary:hover:not(:disabled),
+.auth-submit:hover:not(:disabled),
+button[type="submit"]:hover:not(:disabled) {
+  background: var(--xstore-green-hover) !important;
+  border-color: var(--xstore-green-hover) !important;
+}
+
+/* Secondary actions */
+.button-quiet,
+.btn-secondary,
+.button-secondary {
+  background: #fff !important;
+  border-color: var(--xstore-border) !important;
+  color: var(--xstore-green) !important;
+}
+
+.button-quiet:hover:not(:disabled),
+.btn-secondary:hover:not(:disabled),
+.button-secondary:hover:not(:disabled) {
+  background: var(--xstore-sand-soft) !important;
+  border-color: rgba(205,187,150,.7) !important;
+}
+
+/* Inputs/selects */
+input,
+select,
+textarea {
+  border-color: var(--xstore-border) !important;
+  background: #fff !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: rgba(23,63,43,.5) !important;
+  box-shadow: 0 0 0 3px rgba(205,187,150,.2) !important;
+  outline: none !important;
+}
+
+/* Status and accent details */
+.badge,
+.status-badge,
+.tag,
+.chip {
+  border-color: rgba(205,187,150,.55) !important;
+}
+
+.text-primary,
+.text-success,
+.success,
+.positive {
+  color: var(--xstore-green) !important;
+}
+
+.accent,
+.gold,
+.text-warning {
+  color: #9a7b3f !important;
+}
+
+/* Tables and rows */
+table thead,
+.table-head {
+  background: var(--xstore-sand-soft) !important;
+}
+
+table th {
+  color: var(--xstore-green) !important;
+}
+
+table td {
+  border-color: #e7ebe7 !important;
+}
+
+table tbody tr:hover {
+  background: #faf9f5 !important;
+}
+
+/* Interactive controls */
+a:hover {
+  color: var(--xstore-green);
+}
+
+.nav-link,
+.button,
+.btn-primary,
+.btn-secondary,
+.button-primary,
+.button-quiet,
+.panel,
+.card,
+.stat-card {
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease, color .18s ease !important;
+}
+
+/* Small premium accent used instead of neon throughout the internal UI */
+.section-head::after {
+  background: var(--xstore-sand) !important;
+}
