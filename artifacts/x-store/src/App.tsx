@@ -339,38 +339,110 @@ function SiteFooter() {
 function Home() {
   const [, go] = useLocation();
   return <>
-  <main dir="rtl" className="landing">
-    <header className="landing-nav"><Logo /><div className="landing-actions"><Link href="/contact" className="button button-quiet" data-testid="button-contact-us">اتصل بنا</Link><Link href="/sign-in" className="button button-primary">دخول الحساب <ArrowUpLeft size={16}/></Link></div></header>
-    <section className="landing-hero">
-      <div className="hero-copy"><div className="eyebrow"><span className="live-dot"/> إدارة واضحة. يوم عمل أهدأ.</div><h1>كل متجرك،<br/><em>في مكان واحد.</em></h1><p>نقطة بيع سريعة ومخزون مرتب وتقارير موثوقة — أدوات يومية تساعد أصحاب المتاجر وفرقهم على العمل بثقة.</p><div className="hero-ctas"><button onClick={() => go('/sign-in')} className="button button-primary button-large" data-testid="button-start">دخول إلى حسابك <ChevronLeft size={18}/></button><button onClick={() => go('/sign-in')} className="text-link" data-testid="button-login">تحتاج حساباً؟ تواصل مع إدارة المنصة</button></div><div className="hero-proof"><span><CircleCheck size={16}/> إعداد بسيط</span><span><ShieldCheck size={16}/> بياناتك بأمان</span><span><Clock3 size={16}/> جاهز لليوم</span></div></div>
-      <div className="hero-visual"><div className="dashboard-window"><div className="window-top"><span className="window-brand"><img src={`${basePath}/x-store-mark.png`}/> X-Store</span><span className="window-date">الأربعاء، 14 مايو</span><span className="window-avatar">م</span></div><div className="window-body" dir="rtl"><div className="window-greeting">مرحباً، متجر النخبة <span>صباح الخير</span></div><div className="mock-stats"><div><small>مبيعات اليوم</small><b>4,820 <i>ر.س</i></b><span className="positive">↑ 12٪ عن أمس</span></div><div><small>الطلبات</small><b>38</b><span>اليوم</span></div></div><div className="mock-chart"><div className="chart-title"><b>حركة المبيعات</b><span>آخر 7 أيام</span></div><div className="bars">{[34,50,42,67,56,83,62,91,68,78,56,72,46,65].map((h,i)=><span key={i} style={{height:`${h}%`}} className={i===7?'bar-hot':''}/>)}</div><div className="chart-days"><span>السبت</span><span>الإثنين</span><span>الأربعاء</span><span>الجمعة</span></div></div><div className="mock-bottom"><span><i className="mini-stock"/> مخزون منخفض</span><b>5 منتجات تحتاج متابعة</b><ChevronLeft size={14}/></div></div></div><div className="hero-float"><span className="float-check"><CircleCheck size={16}/></span><div><b>عملية بيع ناجحة</b><small>فاتورة X-2048 · منذ لحظات</small></div><strong>245 ر.س</strong></div><div className="hero-orbit orbit-one"/><div className="hero-orbit orbit-two"/></div>
-    </section>
-    <section className="landing-ribbon"><span>مصمم لروتين المتجر الحقيقي</span><b>من أول مسح للمنتج</b><i/><b>حتى إغلاق الوردية</b><i/><b>كل شيء واضح</b></section>
-    <section className="feature-section"><div className="section-heading"><div className="eyebrow">أدوات يومية، بدون تعقيد</div><h2>تركيز على ما يحتاجه<br/>متجرك فعلاً.</h2><p>واجهة عربية مريحة وسير عمل مترابط يقلل الخطوات ويترك لك مساحة للاهتمام بعملائك.</p></div><div className="feature-grid"><article className="feature feature-large"><span className="feature-icon"><ShoppingCart size={21}/></span><div><h3>بيع أسرع عند الصندوق</h3><p>ابحث أو امسح الباركود، أضف الخصم واختر طريقة الدفع. شاشة واضحة تبقى سهلة القراءة طوال الوردية.</p><span className="feature-foot">نقطة بيع سريعة <ArrowUpLeft size={15}/></span></div><div className="feature-receipt"><div className="receipt-head">X-Store <span>فاتورة</span></div><div className="receipt-line">قميص قطني <b>120 ر.س</b></div><div className="receipt-line">حزام جلدي <b>85 ر.س</b></div><div className="receipt-total">الإجمالي <b>205 ر.س</b></div><span className="receipt-mark">تم الدفع</span></div></article><article className="feature"><span className="feature-icon feature-icon-gold"><Boxes size={21}/></span><h3>مخزون يعرف تفاصيله</h3><p>تابع المقاسات والألوان والكميات وتواريخ الصلاحية من قائمة واحدة.</p><div className="stock-preview"><span><i/> حذاء رياضي · 3 ألوان</span><b>18 قطعة</b></div></article><article className="feature"><span className="feature-icon feature-icon-red"><Activity size={21}/></span><h3>صورة صادقة عن الأداء</h3><p>اطّلع على المبيعات والاشتراكات ونشاط المتجر حسب صلاحيتك.</p><div className="mini-metrics"><span>المبيعات <b>128</b></span><span>متاجر نشطة <b>24</b></span></div></article></div></section>
-    <section className="landing-quote"><div className="quote-mark">“</div><blockquote>عندما تكون الأرقام واضحة،<br/>تكون قرارات اليوم أسهل.</blockquote><span>صُمم لأصحاب المتاجر الذين يديرون التفاصيل كل يوم.</span><div className="quote-seal"><img src={`${basePath}/x-store-mark.png`} alt=""/></div></section>
-    <section className="store-fit-section" aria-labelledby="store-fit-title">
-      <div className="store-fit-inner">
-        <div className="store-fit-heading">
-          <div>
-            <span className="store-fit-eyebrow">مجالات مختلفة، إدارة واحدة</span>
-            <h2 id="store-fit-title">كل نشاط له تفاصيله،<br/><em>وإدارته تستحق الوضوح.</em></h2>
+    <main dir="rtl" className="landing landing-v2">
+      <header className="landing-nav landing-nav-v2">
+        <Logo />
+        <nav className="landing-nav-links" aria-label="التنقل الرئيسي">
+          <a href="#features">المميزات</a>
+          <a href="#sectors">القطاعات</a>
+          <Link href="/contact">تواصل معنا</Link>
+        </nav>
+        <div className="landing-actions">
+          <Link href="/sign-in" className="landing-login-link">تسجيل الدخول</Link>
+          <button onClick={() => go('/sign-in')} className="button button-primary landing-nav-cta">ابدأ الآن <ArrowUpLeft size={16}/></button>
+        </div>
+      </header>
+
+      <section className="landing-hero landing-hero-v2">
+        <div className="hero-copy hero-copy-v2">
+          <div className="hero-kicker-v2"><span className="hero-kicker-dot"/> نظام واحد لإدارة يومك التجاري</div>
+          <h1>إدارة متجرك<br/><em>بشكل أذكى وأبسط.</em></h1>
+          <p>نقطة بيع سريعة، مخزون مرتب، وتقارير واضحة — كل الأدوات التي تحتاجها لإدارة شغلك من شاشة واحدة.</p>
+          <div className="hero-ctas hero-ctas-v2">
+            <button onClick={() => go('/sign-in')} className="button button-primary button-large">دخول إلى حسابك <ChevronLeft size={18}/></button>
+            <Link href="/contact" className="hero-secondary-cta">تعرّف على X-Store <ArrowLeft size={17}/></Link>
           </div>
-          <div className="store-fit-heading-copy">
-            <p>من نقطة البيع إلى المخزون وتقارير الأداء، X-Store يجمع أدوات يومك في تجربة واحدة مرتّبة.</p>
-            <div className="store-fit-meta"><span><strong>06</strong> قطاعات متنوعة</span><i aria-hidden="true"/><span>نظام واحد متكامل</span></div>
+          <div className="hero-trust-v2">
+            <span><CircleCheck size={16}/> واجهة عربية سهلة</span>
+            <span><ShieldCheck size={16}/> صلاحيات وأمان</span>
+            <span><Clock3 size={16}/> جاهز لروتينك اليومي</span>
           </div>
         </div>
-        <div className="store-fit-grid">
-          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">👕</span><h3>الملابس والأحذية</h3></article>
-          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">🛒</span><h3>البقالة والسوبرماركت</h3></article>
-          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">📱</span><h3>الإلكترونيات والإكسسوارات</h3></article>
-          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">💄</span><h3>العطور والتجميل</h3></article>
-          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">☕</span><h3>الكافيهات</h3></article>
-          <article className="store-fit-card"><span className="store-fit-icon" aria-hidden="true">🍽️</span><h3>المطاعم</h3></article>
+
+        <div className="hero-visual hero-visual-v2" aria-label="معاينة لوحة تحكم X-Store">
+          <div className="hero-glow-v2"/>
+          <div className="dashboard-window dashboard-window-v2">
+            <div className="window-top window-top-v2">
+              <span className="window-brand"><img src={`${basePath}/x-store-mark.png`}/> X-Store</span>
+              <span className="window-top-center">لوحة التحكم</span>
+              <span className="window-avatar">م</span>
+            </div>
+            <div className="window-body window-body-v2">
+              <div className="mock-sidebar-v2">
+                <span className="mock-sidebar-active"><LayoutDashboard size={15}/> الرئيسية</span>
+                <span><ShoppingCart size={15}/> نقطة البيع</span>
+                <span><Package size={15}/> المخزون</span>
+                <span><ReceiptText size={15}/> المبيعات</span>
+              </div>
+              <div className="mock-main-v2">
+                <div className="mock-welcome-v2"><div><small>الأربعاء، 14 مايو</small><b>مرحباً، متجر النخبة</b></div><span className="mock-status-v2"><i/> المتجر مفتوح</span></div>
+                <div className="mock-stats mock-stats-v2">
+                  <div><small>مبيعات اليوم</small><b>4,820 <i>ر.س</i></b><span className="positive">↑ 12٪ عن أمس</span></div>
+                  <div><small>الطلبات</small><b>38</b><span>اليوم</span></div>
+                  <div><small>متوسط الفاتورة</small><b>127 <i>ر.س</i></b><span>↑ 8٪</span></div>
+                </div>
+                <div className="mock-chart mock-chart-v2">
+                  <div className="chart-title"><b>حركة المبيعات</b><span>آخر 7 أيام</span></div>
+                  <div className="bars">{[34,50,42,67,56,83,62,91,68,78,56,72,46,65].map((h,i)=><span key={i} style={{height:`${h}%`}} className={i===7?'bar-hot':''}/>)}</div>
+                  <div className="chart-days"><span>السبت</span><span>الإثنين</span><span>الأربعاء</span><span>الجمعة</span></div>
+                </div>
+                <div className="mock-bottom mock-bottom-v2"><span><i className="mini-stock"/> مخزون منخفض</span><b>5 منتجات تحتاج متابعة</b><ChevronLeft size={14}/></div>
+              </div>
+            </div>
+          </div>
+          <div className="hero-float hero-float-v2"><span className="float-check"><CircleCheck size={16}/></span><div><b>عملية بيع ناجحة</b><small>فاتورة X-2048 · منذ لحظات</small></div><strong>245 ر.س</strong></div>
+          <div className="hero-badge-v2"><span>+24%</span><small>نمو المبيعات</small><i>↗</i></div>
         </div>
-      </div>
-    </section>
-  </main>
+      </section>
+
+      <section className="landing-ribbon landing-ribbon-v2"><span>مصمم للمتجر الحقيقي</span><b>بيع أسرع</b><i/><b>مخزون أدق</b><i/><b>تقارير أوضح</b><i/><b>قرارات أذكى</b></section>
+
+      <section id="features" className="feature-section feature-section-v2">
+        <div className="section-heading section-heading-v2">
+          <span className="section-kicker-v2">كل ما تحتاجه في مكان واحد</span>
+          <h2>أدوات قوية،<br/><em>بدون زحمة.</em></h2>
+          <p>صممنا X-Store حول المهام التي تتكرر كل يوم، عشان تشتغل أسرع وتفهم أرقامك بسهولة.</p>
+        </div>
+        <div className="feature-grid feature-grid-v2">
+          <article className="feature feature-large feature-v2 feature-v2-main">
+            <div className="feature-v2-copy"><span className="feature-icon"><ShoppingCart size={21}/></span><h3>نقطة بيع سريعة</h3><p>ابحث عن المنتج أو امسح الباركود، أضف الخصم واختر طريقة الدفع — بخطوات قليلة وواضحة.</p><span className="feature-foot">شاشة مصممة للسرعة <ArrowUpLeft size={15}/></span></div>
+            <div className="feature-receipt feature-receipt-v2"><div className="receipt-head">X-Store <span>فاتورة #2048</span></div><div className="receipt-line">قميص قطني <b>120 ر.س</b></div><div className="receipt-line">حزام جلدي <b>85 ر.س</b></div><div className="receipt-total">الإجمالي <b>205 ر.س</b></div><span className="receipt-mark">تم الدفع ✓</span></div>
+          </article>
+          <article className="feature feature-v2"><span className="feature-icon feature-icon-gold"><Boxes size={21}/></span><h3>مخزون تحت السيطرة</h3><p>تابع الكميات والمقاسات والألوان واعرف الأصناف التي تحتاج تدخل قبل ما تنفد.</p><div className="stock-preview stock-preview-v2"><span><i/> حذاء رياضي · 3 ألوان</span><b>18 قطعة</b></div></article>
+          <article className="feature feature-v2"><span className="feature-icon feature-icon-red"><Activity size={21}/></span><h3>أرقام تفهمها بسرعة</h3><p>تقارير واضحة عن المبيعات والأداء تساعدك تاخد القرار الصح في الوقت الصح.</p><div className="mini-metrics mini-metrics-v2"><span>المبيعات <b>128</b></span><span>النمو <b>+24%</b></span></div></article>
+        </div>
+      </section>
+
+      <section id="sectors" className="store-fit-section store-fit-section-v2">
+        <div className="store-fit-inner">
+          <div className="store-fit-heading store-fit-heading-v2">
+            <div><span className="store-fit-eyebrow">مصمم لأنشطة مختلفة</span><h2>أيًّا كان نشاطك،<br/><em>إدارتك في مكان واحد.</em></h2></div>
+            <div className="store-fit-heading-copy"><p>من الملابس والمطاعم إلى الإلكترونيات والسوبرماركت، X-Store يتكيف مع طريقة شغلك.</p><div className="store-fit-meta"><span><strong>06</strong> قطاعات</span><i/><span>نظام واحد متكامل</span></div></div>
+          </div>
+          <div className="store-fit-grid store-fit-grid-v2">
+            {[
+              ['👕','الملابس والأحذية'],['🛒','البقالة والسوبرماركت'],['📱','الإلكترونيات والإكسسوارات'],
+              ['💄','العطور والتجميل'],['☕','الكافيهات'],['🍽️','المطاعم']
+            ].map(([icon,title])=><article className="store-fit-card store-fit-card-v2" key={title}><span className="store-fit-icon">{icon}</span><div><h3>{title}</h3><span>إدارة سهلة ومتخصصة</span></div><ArrowUpLeft size={16}/></article>)}
+          </div>
+        </div>
+      </section>
+
+      <section className="landing-quote landing-quote-v2">
+        <div className="quote-v2-content"><span className="quote-kicker-v2">X-STORE</span><blockquote>خلّي النظام يهتم بالتفاصيل،<br/><em>وأنت اهتم بنمو متجرك.</em></blockquote><span>أدوات يومية واضحة لأصحاب المتاجر وفرقهم.</span><button onClick={() => go('/sign-in')} className="button button-light-v2">ابدأ إدارة متجرك <ArrowLeft size={17}/></button></div>
+        <div className="quote-v2-mark"><img src={`${basePath}/x-store-mark.png`} alt=""/></div>
+      </section>
+    </main>
   </>;
 }
 function ContactPage() {
