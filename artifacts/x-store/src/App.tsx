@@ -419,18 +419,59 @@ function Home() {
       <section className="landing-ribbon landing-ribbon-v2"><span>مصمم للمتجر الحقيقي</span><b>بيع أسرع</b><i/><b>مخزون أدق</b><i/><b>تقارير أوضح</b><i/><b>قرارات أذكى</b></section>
 
       <section id="features" className="feature-section feature-section-v2">
-        <div className="section-heading section-heading-v2">
-          <span className="section-kicker-v2">كل ما تحتاجه في مكان واحد</span>
-          <h2>أدوات قوية،<br/><em>بدون زحمة.</em></h2>
-          <p>صممنا X-Store حول المهام التي تتكرر كل يوم، عشان تشتغل أسرع وتفهم أرقامك بسهولة.</p>
-        </div>
-        <div className="feature-grid feature-grid-v2">
-          <article className="feature feature-large feature-v2 feature-v2-main">
-            <div className="feature-v2-copy"><span className="feature-icon"><ShoppingCart size={21}/></span><h3>نقطة بيع سريعة</h3><p>ابحث عن المنتج أو امسح الباركود، أضف الخصم واختر طريقة الدفع — بخطوات قليلة وواضحة.</p><span className="feature-foot">شاشة مصممة للسرعة <ArrowUpLeft size={15}/></span></div>
-            <div className="feature-receipt feature-receipt-v2"><div className="receipt-head">X-Store <span>فاتورة #2048</span></div><div className="receipt-line">قميص قطني <b>120 ر.س</b></div><div className="receipt-line">حزام جلدي <b>85 ر.س</b></div><div className="receipt-total">الإجمالي <b>205 ر.س</b></div><span className="receipt-mark">تم الدفع ✓</span></div>
-          </article>
-          <article className="feature feature-v2"><span className="feature-icon feature-icon-gold"><Boxes size={21}/></span><h3>مخزون تحت السيطرة</h3><p>تابع الكميات والمقاسات والألوان واعرف الأصناف التي تحتاج تدخل قبل ما تنفد.</p><div className="stock-preview stock-preview-v2"><span><i/> حذاء رياضي · 3 ألوان</span><b>18 قطعة</b></div></article>
-          <article className="feature feature-v2"><span className="feature-icon feature-icon-red"><Activity size={21}/></span><h3>أرقام تفهمها بسرعة</h3><p>تقارير واضحة عن المبيعات والأداء تساعدك تاخد القرار الصح في الوقت الصح.</p><div className="mini-metrics mini-metrics-v2"><span>المبيعات <b>128</b></span><span>النمو <b>+24%</b></span></div></article>
+        <div className="feature-showcase">
+          <div className="feature-showcase-heading">
+            <div>
+              <span className="feature-showcase-kicker">كل ما تحتاجه في مكان واحد</span>
+              <h2>أدوات قوية، <em>بدون زحمة.</em></h2>
+            </div>
+            <p>صممنا X-Store حول المهام التي تتكرر كل يوم، عشان تشتغل أسرع وتفهم أرقامك بسهولة.</p>
+          </div>
+
+          <div className="feature-showcase-list">
+            <article className="feature-showcase-item feature-showcase-primary">
+              <div className="feature-item-number">01</div>
+              <div className="feature-item-icon"><ShoppingCart size={22}/></div>
+              <div className="feature-item-copy">
+                <h3>نقطة بيع سريعة</h3>
+                <p>ابحث عن المنتج أو امسح الباركود، أضف الخصم واختر طريقة الدفع — بخطوات قليلة وواضحة.</p>
+                <span className="feature-item-link">شاشة مصممة للسرعة <ArrowUpLeft size={15}/></span>
+              </div>
+              <div className="feature-item-preview feature-receipt-clean">
+                <div className="receipt-clean-head"><b>X-Store</b><span>فاتورة #2048</span></div>
+                <div className="receipt-clean-row"><span>قميص قطني</span><b>120 ر.س</b></div>
+                <div className="receipt-clean-row"><span>حزام جلدي</span><b>85 ر.س</b></div>
+                <div className="receipt-clean-total"><span>الإجمالي</span><b>205 ر.س</b></div>
+                <span className="receipt-clean-paid">تم الدفع ✓</span>
+              </div>
+            </article>
+
+            <article className="feature-showcase-item">
+              <div className="feature-item-number">02</div>
+              <div className="feature-item-icon"><Boxes size={22}/></div>
+              <div className="feature-item-copy">
+                <h3>مخزون تحت السيطرة</h3>
+                <p>تابع الكميات والمقاسات والألوان واعرف الأصناف التي تحتاج تدخل قبل ما تنفد.</p>
+              </div>
+              <div className="feature-item-preview stock-clean-preview">
+                <span className="stock-clean-product"><i/> حذاء رياضي · 3 ألوان</span>
+                <strong>18 قطعة</strong>
+              </div>
+            </article>
+
+            <article className="feature-showcase-item">
+              <div className="feature-item-number">03</div>
+              <div className="feature-item-icon"><Activity size={22}/></div>
+              <div className="feature-item-copy">
+                <h3>أرقام تفهمها بسرعة</h3>
+                <p>تقارير واضحة عن المبيعات والأداء تساعدك تاخد القرار الصح في الوقت الصح.</p>
+              </div>
+              <div className="feature-item-preview metrics-clean-preview">
+                <div><span>المبيعات</span><b>128</b></div>
+                <div><span>النمو</span><b>+24%</b></div>
+              </div>
+            </article>
+          </div>
         </div>
       </section>
 
