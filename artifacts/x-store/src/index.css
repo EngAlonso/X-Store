@@ -4158,3 +4158,257 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 /* Optional restaurant product ingredients field */
 .product-form textarea{width:100%;min-height:88px;resize:vertical;border:1px solid var(--border,#d8dee8);border-radius:12px;padding:11px 12px;background:var(--surface,#fff);color:inherit;font:inherit;line-height:1.6;}
 .product-form textarea:focus{outline:2px solid var(--primary,#64748b);outline-offset:1px;}
+
+
+/* X-Store 2026 palette: applied to the actual public-home selectors in index.css. */
+:root {
+  --xstore-green: #173f2b;
+  --xstore-green-hover: #205037;
+  --xstore-neon: #39ff14;
+  --xstore-gold: #d4a017;
+  --xstore-light-gray: #eef1f0;
+  --xstore-card: #ffffff;
+}
+
+.landing {
+  background:
+    radial-gradient(circle at 8% 8%, rgba(57,255,20,.10), transparent 25%),
+    radial-gradient(circle at 92% 18%, rgba(212,160,23,.12), transparent 24%),
+    #eef1f0 !important;
+}
+
+.landing-nav {
+  background: rgba(255,255,255,.92);
+  border-bottom: 1px solid rgba(23,63,43,.12);
+  box-shadow: 0 4px 18px rgba(23,63,43,.06);
+}
+
+.landing-nav .brand {
+  color: var(--xstore-green) !important;
+}
+
+.landing-nav .brand small {
+  color: #68766e !important;
+}
+
+.landing-nav .button-primary,
+.landing-hero .button-primary {
+  background: var(--xstore-green) !important;
+  border-color: var(--xstore-green) !important;
+  box-shadow: 0 8px 24px rgba(23,63,43,.20), 0 0 18px rgba(57,255,20,.12) !important;
+}
+
+.landing-nav .button-primary:hover,
+.landing-hero .button-primary:hover {
+  background: var(--xstore-green-hover) !important;
+  box-shadow: 0 10px 28px rgba(23,63,43,.24), 0 0 28px rgba(57,255,20,.24) !important;
+}
+
+.landing-nav .button-quiet {
+  background: #fff !important;
+  color: var(--xstore-green) !important;
+  border-color: rgba(23,63,43,.20) !important;
+}
+
+.landing-hero {
+  background: transparent !important;
+}
+
+.landing-hero .eyebrow {
+  color: var(--xstore-green) !important;
+}
+
+.landing-hero .live-dot {
+  background: var(--xstore-neon) !important;
+  box-shadow: 0 0 0 5px rgba(57,255,20,.14), 0 0 18px rgba(57,255,20,.55) !important;
+}
+
+.landing-hero .hero-copy h1 {
+  color: #183c2a !important;
+}
+
+.landing-hero .hero-copy h1 em {
+  color: var(--xstore-green) !important;
+  text-shadow: 0 0 26px rgba(57,255,20,.18);
+}
+
+.landing-hero .hero-copy > p {
+  color: #66736c !important;
+}
+
+.landing-hero .hero-proof svg {
+  color: var(--xstore-green) !important;
+}
+
+.landing-hero .hero-visual:before {
+  background:
+    radial-gradient(circle, rgba(57,255,20,.16) 0%, rgba(57,255,20,.06) 38%, rgba(212,160,23,.08) 62%, transparent 72%) !important;
+  filter: blur(1px);
+}
+
+.landing-hero .dashboard-window {
+  background: #fff !important;
+  border-color: rgba(23,63,43,.15) !important;
+  box-shadow: 0 30px 80px rgba(23,63,43,.14), 0 0 32px rgba(57,255,20,.07) !important;
+}
+
+.landing-hero .window-top {
+  background: linear-gradient(90deg, #f5f8f6, #fff) !important;
+  border-bottom-color: #e1e7e3 !important;
+}
+
+.landing-hero .window-brand {
+  color: var(--xstore-green) !important;
+}
+
+.landing-hero .window-avatar {
+  background: var(--xstore-green) !important;
+  color: #fff !important;
+}
+
+.landing-hero .bar-hot {
+  background: var(--xstore-neon) !important;
+  box-shadow: 0 0 12px rgba(57,255,20,.45);
+}
+
+.landing-hero .positive {
+  color: var(--xstore-green) !important;
+}
+
+.landing-hero .hero-float {
+  background: #fff !important;
+  border-color: rgba(212,160,23,.45) !important;
+  box-shadow: 0 18px 40px rgba(23,63,43,.13), 0 0 28px rgba(212,160,23,.12) !important;
+}
+
+.landing-hero .hero-float strong {
+  color: var(--xstore-gold) !important;
+}
+
+.landing-hero .float-check {
+  background: var(--xstore-green) !important;
+  box-shadow: 0 0 18px rgba(57,255,20,.25) !important;
+}
+
+.landing-hero .hero-orbit {
+  border-color: rgba(212,160,23,.34) !important;
+}
+
+.landing-hero .orbit-two {
+  border-color: rgba(57,255,20,.30) !important;
+}
+
+.landing-ribbon {
+  background: linear-gradient(90deg, #173f2b 0%, #245438 55%, #173f2b 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(57,255,20,.18), 0 12px 30px rgba(23,63,43,.12) !important;
+}
+
+.landing-ribbon i {
+  background: var(--xstore-gold) !important;
+  box-shadow: 0 0 14px rgba(212,160,23,.55) !important;
+}
+
+.feature-section {
+  background: #eef1f0 !important;
+}
+
+.feature-section .eyebrow {
+  color: var(--xstore-green) !important;
+}
+
+.feature-section .feature {
+  background: #fff !important;
+  border-color: rgba(23,63,43,.13) !important;
+  box-shadow: 0 16px 38px rgba(23,63,43,.08) !important;
+}
+
+.feature-section .feature-icon {
+  background: #e8f1e8 !important;
+  color: var(--xstore-green) !important;
+  box-shadow: 0 0 0 1px rgba(57,255,20,.12) !important;
+}
+
+.feature-section .feature-icon-gold {
+  background: #fff6dc !important;
+  color: var(--xstore-gold) !important;
+}
+
+.feature-section .feature-icon-red {
+  background: #edf4ef !important;
+  color: var(--xstore-green) !important;
+}
+
+.feature-section .feature-foot {
+  color: var(--xstore-green) !important;
+}
+
+.feature-section .receipt-mark {
+  background: #e8f1e8 !important;
+  color: var(--xstore-green) !important;
+}
+
+.feature-section .stock-preview i {
+  background: var(--xstore-gold) !important;
+  box-shadow: 0 0 8px rgba(212,160,23,.28);
+}
+
+.feature-section .mini-metrics b {
+  color: var(--xstore-gold) !important;
+}
+
+.landing-quote {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(57,255,20,.10), transparent 42%),
+    linear-gradient(135deg, #173f2b 0%, #0f2f20 100%) !important;
+}
+
+.landing-quote .quote-mark {
+  color: var(--xstore-neon) !important;
+  text-shadow: 0 0 24px rgba(57,255,20,.32);
+}
+
+.landing-quote .quote-seal {
+  border-color: rgba(212,160,23,.55) !important;
+  box-shadow: 0 0 26px rgba(212,160,23,.12) !important;
+}
+
+.store-fit-section {
+  background: #eef1f0 !important;
+}
+
+.store-fit-eyebrow {
+  color: var(--xstore-green) !important;
+}
+
+.store-fit-section h2 em {
+  color: var(--xstore-green) !important;
+}
+
+.store-fit-card {
+  background: #fff !important;
+  border-color: rgba(23,63,43,.13) !important;
+  box-shadow: 0 10px 28px rgba(23,63,43,.07) !important;
+}
+
+.store-fit-card:hover {
+  border-color: rgba(57,255,20,.45) !important;
+  box-shadow: 0 12px 32px rgba(23,63,43,.10), 0 0 24px rgba(57,255,20,.10) !important;
+}
+
+.store-fit-icon {
+  background: #e8f1e8 !important;
+  box-shadow: 0 0 0 1px rgba(57,255,20,.10) !important;
+}
+
+.site-footer {
+  background: linear-gradient(115deg, #173f2b 0%, #0f2f20 65%, #173f2b 100%) !important;
+}
+
+.site-footer-glow {
+  background: radial-gradient(circle, rgba(57,255,20,.14), transparent 68%) !important;
+}
+
+.site-footer-account {
+  border-color: rgba(212,160,23,.30) !important;
+  box-shadow: 0 0 22px rgba(212,160,23,.06);
+}
