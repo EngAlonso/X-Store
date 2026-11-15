@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, ExternalLink, QrCode, Save, Search, Utensils } from "lucide-react";
 import "./restaurant-menu.css";
 
-type MenuProduct = { id:string; name:string; category:string; price:number|null; quantity:number; sku:string; barcode:string|null; selected:boolean };
+type MenuProduct = { id:string; name:string; category:string; price:number|null; quantity:number; sku:string; barcode:string|null; selected:boolean; imageUrl:string|null };
+function autoProductImageUrl(name:string){
+  const prompt = `professional commercial food photography of ${name}, appetizing realistic presentation, clean warm neutral background, square composition, no text, no logo`;
+  const seed = Array.from(name).reduce((hash,char)=>((hash*31)+char.charCodeAt(0))>>>0,7);
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=600&height=600&nologo=true&seed=${seed}`;
+}
+
 type MenuResponse = { menu:{id:string;title:string;description:string|null;isPublished:boolean;publicSlug:string}; products:MenuProduct[] };
 
 export default function RestaurantMenuPage() {
@@ -55,7 +61,7 @@ export default function RestaurantMenuPage() {
       <div className="restaurant-menu-products">{visibleProducts.length?visibleProducts.map(product=>{
         const checked=selected.includes(product.id);
         return <button type="button" key={product.id} className={"restaurant-menu-product "+(checked?"selected":"")} onClick={()=>toggleProduct(product.id)}>
-          <span className="restaurant-menu-product-check">{checked?<Check size={16}/>:null}</span><span className="restaurant-menu-product-main"><b>{product.name}</b><small>{product.category} · {product.sku}</small></span><span className="restaurant-menu-product-price">{product.price==null?"بدون سعر":product.price}</span><span className={"restaurant-menu-stock "+(product.quantity?"":"empty")}>{product.quantity?"متاح "+product.quantity:"نفد المخزون"}</span>
+          <span className="restaurant-menu-product-check">{checked?<Check size={16}/>:null}</span><span className="restaurant-menu-product-image"><img src={product.imageUrl || autoProductImageUrl(product.name)} alt="" onError={event=>{event.currentTarget.style.display="none"}}/></span><span className="restaurant-menu-product-main"><b>{product.name}</b><small>{product.category} · {product.sku}</small></span><span className="restaurant-menu-product-price">{product.price==null?"بدون سعر":product.price}</span><span className={"restaurant-menu-stock "+(product.quantity?"":"empty")}>{product.quantity?"متاح "+product.quantity:"نفد المخزون"}</span>
         </button>;
       }):<div className="restaurant-menu-empty">لا توجد منتجات مطابقة.</div>}</div>
     </section>
