@@ -4,6 +4,12 @@ import "./restaurant-menu.css";
 
 type PublicMenu={menu:{title:string;description:string|null};store:{name:string;currency:string};categories:Array<{name:string;items:Array<{id:string;name:string;price:number;ingredients:string|null;description:string|null;imageUrl:string|null;available:boolean}>}>};
 
+function autoProductImageUrl(name:string){
+  const prompt = `professional commercial food photography of ${name}, appetizing realistic presentation, clean warm neutral background, square composition, no text, no logo`;
+  const seed = Array.from(name).reduce((hash,char)=>((hash*31)+char.charCodeAt(0))>>>0,7);
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=600&height=600&nologo=true&seed=${seed}`;
+}
+
 export default function PublicRestaurantMenu({params}:{params:{slug:string}}){
   const [data,setData]=useState<PublicMenu|null>(null),[error,setError]=useState(""),[search,setSearch]=useState("");
   useEffect(()=>{fetch("/api/xstore/public/menu/"+encodeURIComponent(params.slug)).then(async r=>{const result=await r.json().catch(()=>({}));if(!r.ok)throw new Error(typeof result.error==="string"?result.error:"تعذر تحميل المنيو.");setData(result as PublicMenu);}).catch(e=>setError(e instanceof Error?e.message:"تعذر تحميل المنيو."));},[params.slug]);
@@ -35,7 +41,7 @@ export default function PublicRestaurantMenu({params}:{params:{slug:string}}){
         <div className="restaurant-public-items">
           {category.items.map(item=><article key={item.id} className={`restaurant-public-item ${item.available?"":"unavailable"}`}>
             <div className="restaurant-public-item-media">
-              {item.imageUrl?<img src={item.imageUrl} alt=""/>:<div className="restaurant-public-placeholder"><Utensils size={22}/></div>}
+              <img src={item.imageUrl || autoProductImageUrl(item.name)} alt="" onError={event=>{event.currentTarget.style.display="none";const placeholder=event.currentTarget.parentElement?.querySelector(".restaurant-public-placeholder") as HTMLElement|null;if(placeholder)placeholder.style.display="flex";}}/><div className="restaurant-public-placeholder" style={{display:"none"}}><Utensils size={22}/></div>
               {!item.available&&<span className="restaurant-public-unavailable">غير متاح</span>}
             </div>
             <div className="restaurant-public-item-body">
