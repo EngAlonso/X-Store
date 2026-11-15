@@ -6396,3 +6396,25 @@ a:hover {
 .section-head::after {
   background: var(--xstore-sand) !important;
 }
+
+
+/* Internal sidebar hover — use the light green accent from the X-Store identity */
+.sidebar .nav-link:hover,
+.sidebar .nav-link:focus-visible {
+  background: #79c18b !important;
+  color: #173f2b !important;
+}
+
+.sidebar .nav-link:hover svg,
+.sidebar .nav-link:focus-visible svg {
+  color: #173f2b !important;
+}
+
+.sidebar .nav-active {
+  background: rgba(121,193,139,.24) !important;
+  color: #fff !important;
+}
+
+.sidebar .nav-active > i {
+  background: #79c18b !important;
+}
