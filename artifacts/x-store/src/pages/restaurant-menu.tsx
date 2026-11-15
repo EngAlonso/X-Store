@@ -3,35 +3,6 @@ import { Check, Copy, ExternalLink, QrCode, Save, Search, Utensils } from "lucid
 import "./restaurant-menu.css";
 
 type MenuProduct = { id:string; name:string; category:string; price:number|null; quantity:number; sku:string; barcode:string|null; selected:boolean; imageUrl:string|null };
-function autoProductImageUrl(name:string){
-  const normalized=name.trim().toLowerCase();
-  const rules=[
-    {words:["برجر","burger"],prompt:"a single beef burger"},
-    {words:["بيتزا","pizza"],prompt:"a single pizza"},
-    {words:["فراخ","دجاج","chicken"],prompt:"chicken meal"},
-    {words:["لحمة","لحم","beef"],prompt:"beef dish"},
-    {words:["سمك","fish"],prompt:"fish dish"},
-    {words:["بطاطس","بطاطا","fries"],prompt:"french fries"},
-    {words:["شاورما","shawarma"],prompt:"shawarma sandwich"},
-    {words:["كريب","crepe"],prompt:"savory crepe"},
-    {words:["باستا","مكرونة","pasta"],prompt:"pasta dish"},
-    {words:["رز","أرز","rice"],prompt:"rice dish"},
-    {words:["سلطة","salad"],prompt:"fresh salad"},
-    {words:["قهوة","coffee"],prompt:"coffee cup"},
-    {words:["كابتشينو","cappuccino"],prompt:"cappuccino"},
-    {words:["لاتيه","latte"],prompt:"latte coffee"},
-    {words:["عصير","juice"],prompt:"fresh fruit juice"},
-    {words:["مياه","ماء","water"],prompt:"bottled water"},
-    {words:["كيك","cake"],prompt:"cake slice"},
-    {words:["دونات","donut"],prompt:"donut"},
-    {words:["آيس كريم","ايس كريم","ice cream"],prompt:"ice cream"},
-  ];
-  const match=rules.find(rule=>rule.words.some(word=>normalized.includes(word)));
-  if(!match)return "";
-  const seed=Array.from(normalized).reduce((hash,char)=>((hash*31)+char.charCodeAt(0))>>>0,7);
-  const prompt=`realistic commercial food photography of ${match.prompt}, matching the product name "${name}", one item only, clean warm neutral background, square composition, no text, no logo`;
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=600&height=600&nologo=true&seed=${seed}`;
-}
 
 type MenuResponse = { menu:{id:string;title:string;description:string|null;isPublished:boolean;publicSlug:string}; products:MenuProduct[] };
 
@@ -85,7 +56,7 @@ export default function RestaurantMenuPage() {
       <div className="restaurant-menu-products">{visibleProducts.length?visibleProducts.map(product=>{
         const checked=selected.includes(product.id);
         return <button type="button" key={product.id} className={"restaurant-menu-product "+(checked?"selected":"")} onClick={()=>toggleProduct(product.id)}>
-          <span className="restaurant-menu-product-check">{checked?<Check size={16}/>:null}</span><span className="restaurant-menu-product-image"><img src={product.imageUrl || autoProductImageUrl(product.name)} alt="" onError={event=>{event.currentTarget.style.display="none"}}/></span><span className="restaurant-menu-product-main"><b>{product.name}</b><small>{product.category} · {product.sku}</small></span><span className="restaurant-menu-product-price">{product.price==null?"بدون سعر":product.price}</span><span className={"restaurant-menu-stock "+(product.quantity?"":"empty")}>{product.quantity?"متاح "+product.quantity:"نفد المخزون"}</span>
+          <span className="restaurant-menu-product-check">{checked?<Check size={16}/>:null}</span><span className="restaurant-menu-product-image">{product.imageUrl?<img src={product.imageUrl} alt="" onError={event=>{event.currentTarget.style.display="none"}}/>:<Utensils size={18}/>}</span><span className="restaurant-menu-product-main"><b>{product.name}</b><small>{product.category} · {product.sku}</small></span><span className="restaurant-menu-product-price">{product.price==null?"بدون سعر":product.price}</span><span className={"restaurant-menu-stock "+(product.quantity?"":"empty")}>{product.quantity?"متاح "+product.quantity:"نفد المخزون"}</span>
         </button>;
       }):<div className="restaurant-menu-empty">لا توجد منتجات مطابقة.</div>}</div>
     </section>
