@@ -36,7 +36,7 @@ import {
   Bell, LogOut, Menu, X, ArrowUpLeft, ChevronLeft, ChevronDown, CreditCard, Banknote,
   Wallet, CircleCheck, Clock3, AlertTriangle, RotateCcw,
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
-  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, Eye, EyeOff, LockKeyhole, Smartphone, Database, Coffee, Utensils, Pencil,
+  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, ArrowUp, Eye, EyeOff, LockKeyhole, Smartphone, Database, Coffee, Utensils, Pencil,
 } from 'lucide-react';
 import {
   FaFacebook,
