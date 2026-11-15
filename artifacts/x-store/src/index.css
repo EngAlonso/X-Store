@@ -6119,3 +6119,57 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
     height: 330px !important;
   }
 }
+
+
+/* Feature cards 2 & 3 — neon hover accent */
+.feature-showcase-item:nth-child(2),
+.feature-showcase-item:nth-child(3) {
+  transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease !important;
+}
+
+.feature-showcase-item:nth-child(2):hover,
+.feature-showcase-item:nth-child(3):hover {
+  background: #39ff14 !important;
+  border-color: #39ff14 !important;
+  box-shadow: 0 18px 38px rgba(57,255,20,.24) !important;
+  transform: translateY(-4px) !important;
+}
+
+.feature-showcase-item:nth-child(2):hover .feature-item-number,
+.feature-showcase-item:nth-child(3):hover .feature-item-number,
+.feature-showcase-item:nth-child(2):hover .feature-item-copy h3,
+.feature-showcase-item:nth-child(3):hover .feature-item-copy h3 {
+  color: #173f2b !important;
+}
+
+.feature-showcase-item:nth-child(2):hover .feature-item-copy p,
+.feature-showcase-item:nth-child(3):hover .feature-item-copy p {
+  color: #214d2f !important;
+}
+
+.feature-showcase-item:nth-child(2):hover .feature-item-icon,
+.feature-showcase-item:nth-child(3):hover .feature-item-icon {
+  background: rgba(255,255,255,.72) !important;
+  border-color: rgba(23,63,43,.16) !important;
+  color: #173f2b !important;
+}
+
+.feature-showcase-item:nth-child(2):hover .stock-clean-preview,
+.feature-showcase-item:nth-child(3):hover .metrics-clean-preview > div {
+  border-color: rgba(23,63,43,.16) !important;
+  background: rgba(255,255,255,.84) !important;
+}
+
+.feature-showcase-item:nth-child(2):hover .stock-clean-product,
+.feature-showcase-item:nth-child(3):hover .metrics-clean-preview span {
+  color: #214d2f !important;
+}
+
+.feature-showcase-item:nth-child(2):hover .stock-clean-preview strong,
+.feature-showcase-item:nth-child(3):hover .metrics-clean-preview b {
+  color: #173f2b !important;
+}
+
+.feature-showcase-item:nth-child(2):hover .stock-clean-product i {
+  background: #173f2b !important;
+}
