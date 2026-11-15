@@ -338,6 +338,17 @@ function SiteFooter() {
 }
 function Home() {
   const [, go] = useLocation();
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setShowScrollTop(window.scrollY > 500);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
   return <>
     <main dir="rtl" className="landing landing-v2">
       <header className="landing-nav landing-nav-v2">
@@ -442,6 +453,18 @@ function Home() {
         <div className="quote-v2-content"><span className="quote-kicker-v2">X-STORE</span><blockquote>خلّي النظام يهتم بالتفاصيل،<br/><em>وأنت اهتم بنمو متجرك.</em></blockquote><span>أدوات يومية واضحة لأصحاب المتاجر وفرقهم.</span><button onClick={() => go('/sign-in')} className="button button-light-v2">ابدأ إدارة متجرك <ArrowLeft size={17}/></button></div>
         <div className="quote-v2-mark"><img src={`${basePath}/x-store-mark.png`} alt=""/></div>
       </section>
+
+      {showScrollTop && (
+        <button
+          type="button"
+          className="landing-scroll-top"
+          onClick={scrollToTop}
+          aria-label="العودة إلى أعلى الصفحة"
+          title="العودة إلى أعلى الصفحة"
+        >
+          <ArrowUp size={19} strokeWidth={2.4}/>
+        </button>
+      )}
     </main>
   </>;
 }
