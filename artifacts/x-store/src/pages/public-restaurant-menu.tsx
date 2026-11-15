@@ -5,8 +5,32 @@ import "./restaurant-menu.css";
 type PublicMenu={menu:{title:string;description:string|null};store:{name:string;currency:string};categories:Array<{name:string;items:Array<{id:string;name:string;price:number;ingredients:string|null;description:string|null;imageUrl:string|null;available:boolean}>}>};
 
 function autoProductImageUrl(name:string){
-  const prompt = `professional commercial food photography of ${name}, appetizing realistic presentation, clean warm neutral background, square composition, no text, no logo`;
-  const seed = Array.from(name).reduce((hash,char)=>((hash*31)+char.charCodeAt(0))>>>0,7);
+  const normalized=name.trim().toLowerCase();
+  const rules=[
+    {words:["برجر","burger"],prompt:"a single beef burger"},
+    {words:["بيتزا","pizza"],prompt:"a single pizza"},
+    {words:["فراخ","دجاج","chicken"],prompt:"chicken meal"},
+    {words:["لحمة","لحم","beef"],prompt:"beef dish"},
+    {words:["سمك","fish"],prompt:"fish dish"},
+    {words:["بطاطس","بطاطا","fries"],prompt:"french fries"},
+    {words:["شاورما","shawarma"],prompt:"shawarma sandwich"},
+    {words:["كريب","crepe"],prompt:"savory crepe"},
+    {words:["باستا","مكرونة","pasta"],prompt:"pasta dish"},
+    {words:["رز","أرز","rice"],prompt:"rice dish"},
+    {words:["سلطة","salad"],prompt:"fresh salad"},
+    {words:["قهوة","coffee"],prompt:"coffee cup"},
+    {words:["كابتشينو","cappuccino"],prompt:"cappuccino"},
+    {words:["لاتيه","latte"],prompt:"latte coffee"},
+    {words:["عصير","juice"],prompt:"fresh fruit juice"},
+    {words:["مياه","ماء","water"],prompt:"bottled water"},
+    {words:["كيك","cake"],prompt:"cake slice"},
+    {words:["دونات","donut"],prompt:"donut"},
+    {words:["آيس كريم","ايس كريم","ice cream"],prompt:"ice cream"},
+  ];
+  const match=rules.find(rule=>rule.words.some(word=>normalized.includes(word)));
+  if(!match)return "";
+  const seed=Array.from(normalized).reduce((hash,char)=>((hash*31)+char.charCodeAt(0))>>>0,7);
+  const prompt=`realistic commercial food photography of ${match.prompt}, matching the product name "${name}", one item only, clean warm neutral background, square composition, no text, no logo`;
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=600&height=600&nologo=true&seed=${seed}`;
 }
 
