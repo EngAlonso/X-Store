@@ -1572,9 +1572,8 @@ router.patch("/xstore/tenants/:tenantId", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Store name and activity cannot be blank." });
     return;
   }
-  const { ingredients, ...productData } = parsed.data;
   const update = {
-    ...productData,
+    ...parsed.data,
     ...(name !== undefined ? { name } : {}),
     ...(businessType !== undefined ? { businessType } : {}),
     subscriptionEndsAt: dbDate(parsed.data.subscriptionEndsAt),
