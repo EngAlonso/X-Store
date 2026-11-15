@@ -331,7 +331,7 @@ function SiteFooter() {
     </div>
     <div className="site-footer-bottom">
       <span>© {new Date().getFullYear()} X-Store. جميع الحقوق محفوظة.</span>
-      <span>إدارة أوضح. متجر أقوى.</span>
+      <span>صُنع بـ ❤️ في مصر</span>
     </div>
     <span className="site-footer-glow" aria-hidden="true"/>
   </footer>;
