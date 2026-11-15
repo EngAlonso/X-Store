@@ -6057,3 +6057,65 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
     bottom: 20px !important;
   }
 }
+
+
+/* Feature showcase — separate cards */
+.feature-showcase-list {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  border: 0 !important;
+}
+
+.feature-showcase-item,
+.feature-showcase-primary {
+  margin: 0 !important;
+  min-height: 355px !important;
+  height: 355px !important;
+  border: 1px solid #dfe5df !important;
+  border-radius: 20px !important;
+  box-shadow: 0 10px 28px rgba(23,63,43,.055) !important;
+}
+
+.feature-showcase-item + .feature-showcase-item {
+  border-right: 1px solid #dfe5df !important;
+}
+
+.feature-showcase-item:hover {
+  background: #fff !important;
+  transform: translateY(-3px) !important;
+  border-color: rgba(205,187,150,.68) !important;
+  box-shadow: 0 17px 36px rgba(23,63,43,.085) !important;
+}
+
+.feature-showcase-primary {
+  background: #173f2b !important;
+  border-color: #173f2b !important;
+  box-shadow: 0 17px 38px rgba(23,63,43,.14) !important;
+}
+
+.feature-showcase-primary:hover {
+  background: #173f2b !important;
+  border-color: #173f2b !important;
+}
+
+@media (max-width: 900px) {
+  .feature-showcase-list {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .feature-showcase-item,
+  .feature-showcase-primary {
+    min-height: 310px !important;
+    height: 310px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .feature-showcase-item,
+  .feature-showcase-primary {
+    min-height: 330px !important;
+    height: 330px !important;
+  }
+}
