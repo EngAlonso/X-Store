@@ -429,11 +429,6 @@ export function PoultrySalePage() {
   const [lastInvoiceDetails, setLastInvoiceDetails] = useState({ productName: 'فراخ', quantityKg: 0, unitPrice: 0 });
 
   useEffect(() => {
-    if (!lastInvoice) return;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [lastInvoice]);
-
-  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError('');
@@ -553,30 +548,6 @@ export function PoultrySalePage() {
   if (!customer) return <div dir="rtl" className="poultry-sale-page"><div className="form-error poultry-form-error"><AlertTriangle size={16}/><span>{error || 'تعذر تحميل العميل.'}</span></div><button className="button button-quiet" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> العودة لاختيار العميل</button></div>;
 
   return <div dir="rtl" className="poultry-sale-page">
-    {lastInvoice && <section id="poultry-created-invoice" className="poultry-last-invoice">
-      <div className="poultry-invoice-head">
-        <div><span className="poultry-box-kicker">تم الحفظ بنجاح</span><h2>فاتورة {lastInvoice.invoiceNo}</h2><span>{new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</span><span>الساعة: {new Intl.DateTimeFormat('ar-EG', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</span><span>حررها الموظف: {lastInvoice.cashierName || 'غير محدد'}</span></div>
-        <ReceiptText size={28}/>
-      </div>
-      <div className="poultry-invoice-customer"><div><b>العميل:</b> {customer.name}</div><div><b>المحل / صاحب المحل:</b> {customer.shopName || 'غير مسجل'}</div><div><b>الهاتف:</b> <span dir="ltr">{customer.phone}</span></div><div><b>الموظف:</b> {lastInvoice.cashierName || 'غير محدد'}</div></div>
-      <div className="table-wrap">
-        <table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>إجمالي الفاتورة</th></tr></thead>
-        <tbody><tr><td data-label="الصنف">{lastInvoiceDetails.productName}</td><td data-label="الكمية">{fmt(lastInvoiceDetails.quantityKg)} كجم</td><td data-label="سعر الكيلو">{fmt(lastInvoiceDetails.unitPrice)} ج.م</td><td data-label="إجمالي الفاتورة"><b>{fmt(lastInvoice.total)} ج.م</b></td></tr></tbody></table>
-      </div>
-      <div className="poultry-invoice-totals">
-        <div><span>المدفوع على الفاتورة</span><b>{fmt(lastInvoice.amountPaid)} ج.م</b></div>
-        <div><span>تحصيل من الرصيد السابق</span><b>{fmt(lastInvoice.extraCollection || 0)} ج.م</b></div>
-        <div><span>إجمالي المدفوع اليوم</span><b>{fmt(lastInvoice.amountReceived ?? lastInvoice.amountPaid)} ج.م</b></div>
-        <div className="total"><span>المتبقي</span><strong>{fmt(lastInvoice.balance)} ج.م</strong></div>
-      </div>
-      <div className="form-actions">
-        <button className="button button-primary" onClick={printInvoice}><Printer size={16}/> طباعة / حفظ PDF</button>
-        <button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال واتساب</button>
-        <button className="button button-quiet" onClick={downloadInvoice}><Download size={16}/> حفظ كصورة</button>
-        <button className="button button-quiet" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> بيع لعميل آخر</button>
-      </div>
-    </section>}
-
     <PageTitle
       eyebrow="عملية بيع جديدة"
       title="استكمال بيع الدواجن"
@@ -631,6 +602,30 @@ export function PoultrySalePage() {
         <small className="poultry-helper">لو المبلغ المدفوع أكبر من قيمة الفاتورة، سيتم تسجيل الزيادة تلقائيًا كتحصيل من الرصيد السابق.</small>
       </div>
     </Card>
+
+    {lastInvoice && <section id="poultry-created-invoice" className="poultry-last-invoice">
+      <div className="poultry-invoice-head">
+        <div><span className="poultry-box-kicker">تم الحفظ بنجاح</span><h2>فاتورة {lastInvoice.invoiceNo}</h2><span>{new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</span><span>الساعة: {new Intl.DateTimeFormat('ar-EG', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</span><span>حررها الموظف: {lastInvoice.cashierName || 'غير محدد'}</span></div>
+        <ReceiptText size={28}/>
+      </div>
+      <div className="poultry-invoice-customer"><div><b>العميل:</b> {customer.name}</div><div><b>المحل / صاحب المحل:</b> {customer.shopName || 'غير مسجل'}</div><div><b>الهاتف:</b> <span dir="ltr">{customer.phone}</span></div><div><b>الموظف:</b> {lastInvoice.cashierName || 'غير محدد'}</div></div>
+      <div className="table-wrap">
+        <table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>إجمالي الفاتورة</th></tr></thead>
+        <tbody><tr><td data-label="الصنف">{lastInvoiceDetails.productName}</td><td data-label="الكمية">{fmt(lastInvoiceDetails.quantityKg)} كجم</td><td data-label="سعر الكيلو">{fmt(lastInvoiceDetails.unitPrice)} ج.م</td><td data-label="إجمالي الفاتورة"><b>{fmt(lastInvoice.total)} ج.م</b></td></tr></tbody></table>
+      </div>
+      <div className="poultry-invoice-totals">
+        <div><span>المدفوع على الفاتورة</span><b>{fmt(lastInvoice.amountPaid)} ج.م</b></div>
+        <div><span>تحصيل من الرصيد السابق</span><b>{fmt(lastInvoice.extraCollection || 0)} ج.م</b></div>
+        <div><span>إجمالي المدفوع اليوم</span><b>{fmt(lastInvoice.amountReceived ?? lastInvoice.amountPaid)} ج.م</b></div>
+        <div className="total"><span>المتبقي</span><strong>{fmt(lastInvoice.balance)} ج.م</strong></div>
+      </div>
+      <div className="form-actions">
+        <button className="button button-primary" onClick={printInvoice}><Printer size={16}/> طباعة / حفظ PDF</button>
+        <button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال واتساب</button>
+        <button className="button button-quiet" onClick={downloadInvoice}><Download size={16}/> حفظ كصورة</button>
+        <button className="button button-quiet" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> بيع لعميل آخر</button>
+      </div>
+    </section>}
 
 
   </div>;
