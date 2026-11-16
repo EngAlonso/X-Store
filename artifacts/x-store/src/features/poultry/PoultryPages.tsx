@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link } from 'wouter';
+import { Link, useLocation, useRoute } from 'wouter';
 import {
   AlertTriangle, ArrowLeft, Bird, Boxes, ChevronLeft, CircleCheck, CreditCard,
   MessageCircle, Plus, Printer, ReceiptText, Search, ShieldCheck, Users, Wallet,
@@ -193,7 +193,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
           <button className="button button-quiet" onClick={()=>void loadCustomers(search)} disabled={busy}><Search size={15}/> بحث</button>
         </div>
         <div className="poultry-customer-list">
-          {customers.length?customers.map(c=><button type="button" className={'poultry-customer '+(selected?.id===c.id?'selected':'')} key={c.id} onClick={()=>{setSelected(c);setStatement(null);setError('');}}>
+          {customers.length?customers.map(c=><button type="button" className={'poultry-customer '+(selected?.id===c.id?'selected':'')} key={c.id} onClick={()=>{if(pageMode==='sales'){window.location.href='/poultry-sale/'+encodeURIComponent(c.id);return;}setSelected(c);setStatement(null);setError('');}}>
             <span className="poultry-customer-icon"><Bird size={18}/></span>
             <span><b>{c.name}</b><small>{c.shopName||'بدون اسم محل'} · {c.phone}</small></span>
             <strong>{fmt(c.balance)} ج.م</strong>
@@ -365,6 +365,145 @@ function PoultryDashboardView() {
 export function PoultryCustomersPage({ mode, session }: { mode: 'customers' | 'sales' | 'collections'; session: SessionUser | null }) {
   return <PoultryCustomersView mode={mode} session={session}/>;
 }
+
+export function PoultrySalePage() {
+  const [, setLocation] = useLocation();
+  const [, params] = useRoute('/poultry-sale/:customerId');
+  const customerId = params?.customerId ? decodeURIComponent(params.customerId) : '';
+  const [customer, setCustomer] = useState<PoultryCustomer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [invoice, setInvoice] = useState({ productName: 'فراخ', quantityKg: '', unitPrice: '', amountPaid: '' });
+  const [lastInvoice, setLastInvoice] = useState<PoultryInvoiceResult | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError('');
+    void poultryApi.listCustomers().then(rows => {
+      if (cancelled) return;
+      const found = rows.find(row => row.id === customerId);
+      if (!found) {
+        setError('لم يتم العثور على العميل. ارجع لقائمة العملاء واختر العميل مرة أخرى.');
+        setCustomer(null);
+      } else {
+        setCustomer(found);
+      }
+    }).catch(e => {
+      if (!cancelled) setError(e instanceof Error ? e.message : 'تعذر تحميل بيانات العميل.');
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [customerId]);
+
+  const invoiceTotal = roundMoney((Number(invoice.quantityKg) || 0) * (Number(invoice.unitPrice) || 0));
+  const amountReceivedToday = Math.max(0, Number(invoice.amountPaid) || 0);
+  const paidOnInvoice = Math.min(invoiceTotal, amountReceivedToday);
+  const extraCollection = Math.max(0, roundMoney(amountReceivedToday - invoiceTotal));
+  const invoiceRemaining = Math.max(0, roundMoney(invoiceTotal - paidOnInvoice));
+
+  async function createInvoice() {
+    if (!customer) return;
+    const quantity = Number(invoice.quantityKg);
+    const unitPrice = Number(invoice.unitPrice);
+    const amountReceived = Number(invoice.amountPaid) || 0;
+    if (!Number.isFinite(quantity) || quantity <= 0) { setError('اكتب كمية بالكيلو أكبر من صفر.'); return; }
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) { setError('اكتب سعر الكيلو بشكل صحيح.'); return; }
+    if (!Number.isFinite(amountReceived) || amountReceived < 0) { setError('اكتب المبلغ المدفوع اليوم بشكل صحيح.'); return; }
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const result = await poultryApi.createInvoice(customer.id, {
+        items: [{ productName: invoice.productName.trim() || 'فراخ', quantityKg: quantity, unitPrice }],
+        amountPaid: amountReceived,
+      });
+      setLastInvoice(result);
+      setNotice(result.extraCollection > 0
+        ? 'تم تسجيل الفاتورة وتسجيل المبلغ الزائد كتحصيل من الرصيد السابق.'
+        : 'تم تسجيل الفاتورة بنجاح.');
+      setInvoice({ productName: 'فراخ', quantityKg: '', unitPrice: '', amountPaid: '' });
+      const refreshed = await poultryApi.listCustomers();
+      const updated = refreshed.find(row => row.id === customer.id);
+      if (updated) setCustomer(updated);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'تعذر تسجيل الفاتورة.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) return <div dir="rtl" className="poultry-sale-page"><div className="state-box"><b>جارٍ تحميل بيانات العميل…</b></div></div>;
+
+  if (!customer) return <div dir="rtl" className="poultry-sale-page"><div className="form-error poultry-form-error"><AlertTriangle size={16}/><span>{error || 'تعذر تحميل العميل.'}</span></div><button className="button button-quiet" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> العودة لاختيار العميل</button></div>;
+
+  return <div dir="rtl" className="poultry-sale-page">
+    <PageTitle
+      eyebrow="عملية بيع جديدة"
+      title="استكمال بيع الدواجن"
+      desc="العميل محدد بالفعل. راجع بيانات الحساب قبل تسجيل الفاتورة."
+      action={<button className="button button-quiet" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> تغيير العميل</button>}
+    />
+
+    <section className="poultry-sale-identity">
+      <div className="poultry-sale-identity-icon"><Users size={22}/></div>
+      <div className="poultry-sale-identity-main">
+        <span>بيانات الحساب قبل التسجيل</span>
+        <div className="poultry-sale-identity-grid">
+          <div><small>اسم العميل</small><strong>{customer.name}</strong></div>
+          <div><small>صاحب المحل / اسم المحل</small><strong>{customer.shopName || 'غير مسجل'}</strong></div>
+          <div><small>رقم الهاتف</small><strong dir="ltr">{customer.phone}</strong></div>
+          <div><small>الرصيد الحالي</small><strong className={Number(customer.balance) > 0 ? 'poultry-balance-due' : 'poultry-balance-clear'}>{fmt(customer.balance)} ج.م</strong></div>
+        </div>
+      </div>
+    </section>
+
+    {error && <div className="form-error poultry-form-error" role="alert"><AlertTriangle size={16}/><span>{error}</span></div>}
+    {notice && <div className="notice-box success poultry-form-notice" role="status"><CircleCheck size={16}/><span>{notice}</span></div>}
+
+    <div className="poultry-sale-steps">
+      <div className="poultry-step is-active"><b>1</b><span>تأكيد العميل</span></div>
+      <ArrowLeft size={15}/><div className="poultry-step is-active"><b>2</b><span>الكمية والسعر</span></div>
+      <ArrowLeft size={15}/><div className="poultry-step"><b>3</b><span>المبلغ المدفوع</span></div>
+      <ArrowLeft size={15}/><div className="poultry-step"><b>4</b><span>حفظ الفاتورة</span></div>
+    </div>
+
+    <Card className="poultry-sale-workspace">
+      <div className="poultry-action-box poultry-sale-box">
+        <div className="poultry-box-heading">
+          <div><span className="poultry-box-kicker">تفاصيل البيع</span><h3>بيع دواجن للعميل</h3><p>اكتب الوزن وسعر الكيلو، وسيحسب النظام إجمالي الفاتورة تلقائيًا.</p></div>
+          <span className="poultry-sale-badge"><Bird size={18}/> بيع بالكيلو</span>
+        </div>
+        <div className="form-grid poultry-sale-form">
+          <label className="field"><span>الصنف</span><input value={invoice.productName} onChange={e => setInvoice({...invoice, productName: e.target.value})} placeholder="مثال: فراخ بيضاء"/></label>
+          <label className="field"><span>الكمية بالكيلو <b className="required-mark">*</b></span><input type="number" min="0.001" step="0.001" value={invoice.quantityKg} onChange={e => setInvoice({...invoice, quantityKg: e.target.value})} placeholder="مثال: 12.500"/></label>
+          <label className="field"><span>سعر الكيلو <b className="required-mark">*</b></span><input type="number" min="0" step="0.01" value={invoice.unitPrice} onChange={e => setInvoice({...invoice, unitPrice: e.target.value})} placeholder="مثال: 145"/></label>
+          <label className="field"><span>المبلغ المدفوع اليوم</span><input type="number" min="0" step="0.01" value={invoice.amountPaid} onChange={e => setInvoice({...invoice, amountPaid: e.target.value})} placeholder="0 = آجل بالكامل"/></label>
+        </div>
+        <div className="poultry-sale-calculation">
+          <div><span>الوزن</span><b>{fmt(Number(invoice.quantityKg) || 0)} كجم</b></div>
+          <div><span>سعر الكيلو</span><b>{fmt(Number(invoice.unitPrice) || 0)} ج.م</b></div>
+          <div className="total"><span>إجمالي الفاتورة</span><strong>{fmt(invoiceTotal)} ج.م</strong></div>
+          <div><span>مدفوع على الفاتورة</span><b>{fmt(paidOnInvoice)} ج.م</b></div>
+          <div><span>تحصيل من الرصيد السابق</span><b>{fmt(extraCollection)} ج.م</b></div>
+          <div><span>متبقي هذه الفاتورة</span><b>{fmt(invoiceRemaining)} ج.م</b></div>
+        </div>
+        <button className="button button-primary poultry-main-action" disabled={busy || invoiceTotal <= 0} onClick={() => void createInvoice()}><ReceiptText size={17}/>{busy ? 'جارٍ تسجيل الفاتورة…' : 'تأكيد البيع وتسجيل الفاتورة'}</button>
+        <small className="poultry-helper">لو المبلغ المدفوع أكبر من قيمة الفاتورة، سيتم تسجيل الزيادة تلقائيًا كتحصيل من الرصيد السابق.</small>
+      </div>
+    </Card>
+
+    {lastInvoice && <div className="notice-box success poultry-last-invoice">
+      <b>تم حفظ الفاتورة {lastInvoice.invoiceNo}</b>
+      <span>القيمة {fmt(lastInvoice.total)} ج.م · المدفوع على الفاتورة {fmt(lastInvoice.amountPaid)} ج.م · تحصيل من الرصيد السابق {fmt(lastInvoice.extraCollection || 0)} ج.م · المتبقي {fmt(lastInvoice.balance)} ج.م</span>
+      <div className="form-actions">
+        <button className="button button-primary" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> بيع لعميل آخر</button>
+      </div>
+    </div>}
+  </div>;
+}
+
 export function PoultryDashboardPage() {
   return <PoultryDashboardView/>;
 }
