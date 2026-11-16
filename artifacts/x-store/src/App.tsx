@@ -225,6 +225,7 @@ const teamPermissionOptions: { value: TeamPermission; label: string; description
   { value: 'warehouse_manager', label: 'إدارة المخزون', description: 'عرض المنتجات وتعديل الكميات دون تغيير أسعار المنتجات.' },
   { value: 'accountant', label: 'التقارير المالية', description: 'عرض التقارير المالية والمبيعات المسجلة.' },
   { value: 'collector', label: 'التحصيل', description: 'عرض حسابات العملاء وتسجيل التحصيل فقط.' },
+  { value: 'customer_management', label: 'إدارة العملاء', description: 'إضافة العملاء وتعديل بياناتهم دون البيع أو التحصيل.' },
 ];
 const teamPermissionNames: Record<TeamPermission, string> = {
   retail_sales: 'بيع قطاعي',
@@ -233,6 +234,7 @@ const teamPermissionNames: Record<TeamPermission, string> = {
   warehouse_manager: 'إدارة المخزون',
   accountant: 'التقارير المالية',
   collector: 'التحصيل',
+  customer_management: 'إدارة العملاء',
 };
 function normalizeTeamPermissions(permissions: TeamPermission[]): TeamPermission[] {
   const normalized = new Set<TeamPermission>(
@@ -850,7 +852,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
     user.storeType === 'cafe' || user.storeType === 'restaurant' ||
     (user.storeType == null && restaurantFeatureEnabled === true)
   );
-  const poultryCustomersEnabled = user.storeType === 'poultry' && (user.role !== 'custom' || user.permissions?.includes('collector') || user.permissions?.includes('accountant') || user.permissions?.includes('retail_sales'));
+  const poultryCustomersEnabled = user.storeType === 'poultry' && (user.role !== 'custom' || user.permissions?.includes('collector') || user.permissions?.includes('accountant') || user.permissions?.includes('retail_sales') || user.permissions?.includes('customer_management'));
   const items = nav.filter(n =>
     (n.href !== '/restaurant-menu' || restaurantMenuEnabled) &&
     (n.href !== '/poultry-customers' || poultryCustomersEnabled) &&
