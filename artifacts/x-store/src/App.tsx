@@ -973,7 +973,7 @@ function ProtectedLayout() {
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
   return <AppShell user={session.data} refetch={session.refetch}><Switch>
-    <Route path="/dashboard" component={DashboardPage}/><Route path="/poultry-customers" component={PoultryCustomersPage}/><Route path="/poultry-invoices" component={PoultryInvoicesPage}/><Route path="/poultry-sales" component={PoultrySalesPage}/><Route path="/poultry-sale/:customerId" component={PoultrySalePage}/><Route path="/poultry-collections" component={PoultryCollectionsPage}/><Route path="/tenants" component={TenantsPage}/>
+    <Route path="/dashboard" component={DashboardPage}/><Route path="/poultry-customers" component={PoultryCustomersPage}/><Route path="/poultry-invoices" component={PoultryInvoicesPage}/><Route path="/poultry-invoices/" component={PoultryInvoicesPage}/><Route path="/poultry-sales" component={PoultrySalesPage}/><Route path="/poultry-sale/:customerId" component={PoultrySalePage}/><Route path="/poultry-collections" component={PoultryCollectionsPage}/><Route path="/tenants" component={TenantsPage}/>
     <Route path="/subscriptions" component={SubscriptionsPage}/>
     <Route path="/offline-license-issuer" component={OfflineLicenseIssuerPage}/>
     <Route path="/team" component={TeamPage}/>
