@@ -338,7 +338,7 @@ const POULTRY_BACKUP_MEDIA_TYPE = "application/vnd.xstore.poultry-backup+json";
 const POULTRY_BACKUP_MAX_BYTES = 64 * 1024 * 1024;
 const POULTRY_BACKUP_TABLES = ["xstoreCustomers","xstorePoultryInvoices","xstorePoultryInvoiceItems","xstorePoultryPayments","xstoreAuditLogs"] as const;
 
-router.get("/xstore/poultry/backup", async (_req, res): Promise<void> => {
+router.get("/xstore/poultry/backup", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
   if (!user.tenantId || !hasRole(user, ["tenant_admin"])) { res.status(403).json({ error: "ليس لديك صلاحية إنشاء النسخة الاحتياطية." }); return; }
   if (!(await ensurePoultryTenantAccess(user, res))) return;
