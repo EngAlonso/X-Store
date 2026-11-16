@@ -160,6 +160,7 @@ function salePriceForProduct(product: Product, saleType: SaleType) {
   return saleType === 'wholesale' ? product.wholesalePrice : product.price;
 }
 const CurrencyContext = createContext<StoreCurrency>('SAR');
+const XStoreSessionContext = createContext<SessionUser | null>(null);
 function ProductIconSymbol({ symbol, kind }: { symbol: string; kind: ProductIconKind }) {
   if (kind === 'jacket') {
     return <svg className="product-symbol product-symbol-jacket" viewBox="0 0 32 32" aria-hidden="true">
@@ -617,9 +618,11 @@ function PhoneLoginForm() {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     login.mutate({data:{phone:String(form.get('phone')),password:String(form.get('password'))}},{
-      onSuccess:user=>{
-        qc.setQueryData(getGetXStoreSessionQueryKey(),user);
-        qc.invalidateQueries({queryKey:getGetXStoreAuthStatusQueryKey()});
+      onSuccess: async user => {
+        const sessionKey = getGetXStoreSessionQueryKey();
+        await qc.cancelQueries({ queryKey: sessionKey });
+        qc.setQueryData(sessionKey, user);
+        void qc.invalidateQueries({ queryKey: getGetXStoreAuthStatusQueryKey() });
         setLocation('/dashboard');
       },
     });
@@ -861,11 +864,15 @@ function AppShell({ children }: { children: ReactNode }) {
   ].sort((a,b)=>b.date.getTime()-a.date.getTime()).slice(0,100);
   const unseenNotifications=notificationRows.filter(n=>!readNotificationIds.includes(n.id)).length;
   function markNotificationsRead(){const next=Array.from(new Set([...readNotificationIds,...notificationRows.map(n=>n.id)]));setReadNotificationIds(next);try{localStorage.setItem(`xstore-notifications:${user.id}`,JSON.stringify(next))}catch{}}
-     return <CurrencyContext.Provider value={(user.currency as StoreCurrency | null) || 'SAR'}><div dir="rtl" className="app-frame">
+     return <XStoreSessionContext.Provider value={user}>
+      <CurrencyContext.Provider value={(user.currency as StoreCurrency | null) || 'SAR'}>
+        <div dir="rtl" className="app-frame">
       <aside className={`sidebar ${open?'sidebar-open':''}`}><div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={()=>setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div><div className="store-chip"><span className="store-avatar">{(user.tenantName||user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{user.roleName || roleNames[user.role] || user.role}</small></span><ChevronDown size={15}/></div><div className="nav-caption">القائمة الرئيسية</div><nav className="side-nav">{items.map(item=><Link key={item.href} href={item.href} onClick={()=>setOpen(false)} className={`nav-link ${location===item.href?'nav-active':''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location===item.href&&<i/>}</Link>)}</nav><div className="sidebar-bottom"><div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div><div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.phone}</small></span><button type="button" className="icon-button" onClick={()=>void handleLogout()} disabled={loggingOut} title={loggingOut?'جارٍ تسجيل الخروج…':'تسجيل الخروج'} aria-label={loggingOut?'جارٍ تسجيل الخروج':'تسجيل الخروج'} data-testid="button-sign-out"><LogOut size={17}/></button></div></div></aside>
     {open&&<button aria-label="إغلاق القائمة" className="mobile-scrim" onClick={()=>setOpen(false)}/>}
      <div className="workspace"><header className="topbar"><button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={()=>setOpen(true)}><Menu size={20}/></button><div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i=>i.href===location)?.label||'لوحة التحكم'}</b></div><div className="topbar-tools"><span className="today"><CalendarDays size={15}/> {new Intl.DateTimeFormat(APP_SAUDI_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long'}).format(new Date())}</span><div className="notification-wrap"><button className="icon-button notification" aria-label="الإشعارات" aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(v=>!v)}><Bell size={18}/>{unseenNotifications>0&&<i/>}</button>{notificationsOpen&&<section className="notification-panel" dir="rtl"><header><b>الإشعارات</b><button onClick={markNotificationsRead} disabled={!unseenNotifications}>تحديد الكل كمقروء</button></header><div className="notification-list">{notificationRows.length?notificationRows.map(item=><Link key={item.id} href={item.href} className={`notification-row ${readNotificationIds.includes(item.id)?'is-read':''}`} onClick={()=>{const next=[...new Set([...readNotificationIds,item.id])];setReadNotificationIds(next);try{localStorage.setItem(`xstore-notifications:${user.id}`,JSON.stringify(next))}catch{}setNotificationsOpen(false)}}><span><item.icon size={16}/></span><div><b>{item.title}</b><small>{item.detail} · {dateLabel(item.date.toISOString())}</small></div></Link>):<p className="notification-empty">لا توجد إشعارات حالياً</p>}</div></section>}</div><span className="top-avatar">{user.name.slice(0,1)}</span></div></header><main className="main-content">{children}</main></div>
-   </div></CurrencyContext.Provider>;
+   </div>
+      </CurrencyContext.Provider>
+    </XStoreSessionContext.Provider>;
 }
 function ProtectedLayout() {
   const [location] = useLocation(); const session=useGetXStoreSession();
@@ -1162,7 +1169,7 @@ function PoultryDashboardPage() {
 }
 
 function DashboardPage() {
-  const {data:session}=useGetXStoreSession();
+  const session = useContext(XStoreSessionContext);
   const dash=useGetXStoreDashboard();
   const money=useMoney();
   if (session?.storeType === 'poultry') return <PoultryDashboardPage />;
