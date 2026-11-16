@@ -6520,3 +6520,29 @@ a:hover {
   .table-toolbar .search-box { min-width:0; width:100%; }
   .table-toolbar .result-count { flex:0 0 auto; }
 }
+
+
+/* Platform dashboard — latest stores */
+.platform-tenant-list { min-width:0; }
+.platform-tenant-mobile { display:none; }
+.platform-tenant-table table { width:100%; }
+.platform-store-cell { display:flex; align-items:center; gap:9px; min-width:0; }
+.platform-store-cell > span:last-child { min-width:0; display:flex; flex-direction:column; gap:3px; }
+.platform-store-cell b { color:#263b2d; }
+.platform-store-cell small { color:#8a958d; font-size:9px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.platform-store-avatar { width:34px; height:34px; flex:0 0 34px; display:grid; place-items:center; border-radius:10px; background:#edf5ef; color:#173f2b; font-size:12px; font-weight:800; }
+.platform-store-card { min-width:0; padding:14px; border:1px solid #e1e8e2; border-radius:14px; background:#fff; box-shadow:0 5px 16px rgba(23,63,43,.05); }
+.platform-store-card-head { display:flex; align-items:center; gap:9px; min-width:0; }
+.platform-store-card-head > div { min-width:0; flex:1; display:flex; flex-direction:column; gap:3px; }
+.platform-store-card-head b { color:#263b2d; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.platform-store-card-head small { color:#8a958d; font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.platform-store-card-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:12px; }
+.platform-store-card-grid > div { min-width:0; padding:8px; border-radius:9px; background:#f6f8f6; border:1px solid #edf0ed; }
+.platform-store-card-grid span { display:block; color:#8b968e; font-size:8px; margin-bottom:3px; }
+.platform-store-card-grid b { display:block; color:#415247; font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.platform-store-card-foot { display:flex; justify-content:space-between; gap:8px; margin-top:10px; padding-top:10px; border-top:1px solid #edf0ed; }
+.platform-store-card-foot small { min-width:0; color:#7f8b82; font-size:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+@media (max-width:767px) {
+  .platform-tenant-table { display:none !important; }
+  .platform-tenant-mobile { display:grid; gap:9px; }
+}
