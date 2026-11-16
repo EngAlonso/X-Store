@@ -406,6 +406,61 @@ export function PoultrySalePage() {
   const extraCollection = Math.max(0, roundMoney(amountReceivedToday - invoiceTotal));
   const invoiceRemaining = Math.max(0, roundMoney(invoiceTotal - paidOnInvoice));
 
+  function invoiceMessage() {
+    if (!lastInvoice || !customer) return '';
+    return 'فاتورة ' + lastInvoice.invoiceNo + '\n' +
+      'العميل: ' + customer.name + '\n' +
+      'المحل: ' + (customer.shopName || 'غير مسجل') + '\n' +
+      'الهاتف: ' + customer.phone + '\n' +
+      'القيمة: ' + fmt(lastInvoice.total) + ' ج.م\n' +
+      'المدفوع على الفاتورة: ' + fmt(lastInvoice.amountPaid) + ' ج.م\n' +
+      'تحصيل من الرصيد السابق: ' + fmt(lastInvoice.extraCollection || 0) + ' ج.م\n' +
+      'إجمالي المدفوع اليوم: ' + fmt(lastInvoice.amountReceived ?? lastInvoice.amountPaid) + ' ج.م\n' +
+      'المتبقي: ' + fmt(lastInvoice.balance) + ' ج.م\n' +
+      'التاريخ والوقت: ' + new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
+  }
+
+  function whatsappInvoice() {
+    if (!lastInvoice || !customer) return;
+    const raw = String(customer.phone || '').replace(/\D/g, '');
+    const phone = raw.startsWith('0') ? '20' + raw.slice(1) : raw;
+    window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(invoiceMessage()), '_blank');
+  }
+
+  function printInvoice() {
+    if (!lastInvoice || !customer) return;
+    const popup = window.open('', '_blank', 'width=900,height=800');
+    if (!popup) {
+      setError('المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم جرّب مرة أخرى.');
+      return;
+    }
+    const created = new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
+    popup.document.write('<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>فاتورة ' + lastInvoice.invoiceNo + '</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111;direction:rtl}h1{margin:0 0 8px}table{width:100%;border-collapse:collapse;margin:24px 0}td,th{border:1px solid #ddd;padding:10px;text-align:right}.total{font-size:20px;font-weight:700}.muted{color:#666}@media print{body{padding:12px}}</style></head><body><h1>فاتورة دواجن</h1><div class="muted">فاتورة رقم ' + lastInvoice.invoiceNo + ' · ' + created + '</div><hr><p><b>العميل:</b> ' + customer.name + '</p><p><b>المحل:</b> ' + (customer.shopName || 'غير مسجل') + '</p><p><b>الهاتف:</b> ' + customer.phone + '</p><table><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr><tr><td>' + (invoice.productName || 'فراخ') + '</td><td>' + fmt(lastInvoice.total / (Number(invoice.unitPrice) || 1)) + ' كجم</td><td>' + fmt(Number(invoice.unitPrice) || 0) + ' ج.م</td><td>' + fmt(lastInvoice.total) + ' ج.م</td></tr></table><p>المدفوع على الفاتورة: <b>' + fmt(lastInvoice.amountPaid) + ' ج.م</b></p><p>تحصيل من الرصيد السابق: <b>' + fmt(lastInvoice.extraCollection || 0) + ' ج.م</b></p><p class="total">المتبقي من الفاتورة: ' + fmt(lastInvoice.balance) + ' ج.م</p><script>window.onload=function(){window.print();}</script></body></html>');
+    popup.document.close();
+  }
+
+  function downloadInvoice() {
+    if (!lastInvoice || !customer) return;
+    const html = '<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>فاتورة ' + lastInvoice.invoiceNo + '</title></head><body style="font-family:Arial,sans-serif;direction:rtl;padding:24px">' +
+      '<h1>فاتورة دواجن</h1><p>رقم الفاتورة: <b>' + lastInvoice.invoiceNo + '</b></p>' +
+      '<p>العميل: <b>' + customer.name + '</b></p><p>المحل: <b>' + (customer.shopName || 'غير مسجل') + '</b></p>' +
+      '<p>الهاتف: <b>' + customer.phone + '</b></p><hr>' +
+      '<p>الصنف: ' + (invoice.productName || 'فراخ') + '</p><p>القيمة: <b>' + fmt(lastInvoice.total) + ' ج.م</b></p>' +
+      '<p>المدفوع على الفاتورة: ' + fmt(lastInvoice.amountPaid) + ' ج.م</p>' +
+      '<p>تحصيل من الرصيد السابق: ' + fmt(lastInvoice.extraCollection || 0) + ' ج.م</p>' +
+      '<p>المتبقي: <b>' + fmt(lastInvoice.balance) + ' ج.م</b></p>' +
+      '<p>التاريخ والوقت: ' + new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt)) + '</p></body></html>';
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'invoice-' + lastInvoice.invoiceNo + '.html';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function createInvoice() {
     if (!customer) return;
     const quantity = Number(invoice.quantityKg);
@@ -499,7 +554,10 @@ export function PoultrySalePage() {
       <b>تم حفظ الفاتورة {lastInvoice.invoiceNo}</b>
       <span>القيمة {fmt(lastInvoice.total)} ج.م · المدفوع على الفاتورة {fmt(lastInvoice.amountPaid)} ج.م · تحصيل من الرصيد السابق {fmt(lastInvoice.extraCollection || 0)} ج.م · المتبقي {fmt(lastInvoice.balance)} ج.م</span>
       <div className="form-actions">
-        <button className="button button-primary" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> بيع لعميل آخر</button>
+        <button className="button button-primary" onClick={printInvoice}><Printer size={16}/> طباعة / حفظ PDF</button>
+        <button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال واتساب</button>
+        <button className="button button-quiet" onClick={downloadInvoice}><ReceiptText size={16}/> حفظ على الجهاز</button>
+        <button className="button button-quiet" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> بيع لعميل آخر</button>
       </div>
     </div>}
   </div>;
