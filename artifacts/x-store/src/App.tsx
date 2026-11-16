@@ -57,7 +57,7 @@ import PlatformDatabasePage from '@/pages/platform-database';
 import StoreBackupPage from '@/pages/store-backup';
 import RestaurantMenuPage from '@/pages/restaurant-menu';
 import PublicRestaurantMenu from '@/pages/public-restaurant-menu';
-import { PoultryCustomersPage as PoultryFeatureCustomersPage, PoultryDashboardPage as PoultryFeatureDashboardPage } from '@/features/poultry/PoultryPages';
+import { PoultryCustomersPage as PoultryFeatureCustomersPage, PoultryDashboardPage as PoultryFeatureDashboardPage } from '@/features/poultry';
 import type { OfflineActivationRequest } from './offline/licensing';
 import { isOfflineHardwareFingerprint, type OfflineLicensePlan } from './offline/model';
 
@@ -1031,8 +1031,7 @@ function PoultryCustomersPage({ mode = 'customers' }: { mode?: 'customers' | 'sa
   return <PoultryFeatureCustomersPage mode={mode} session={session}/>;
 }
 function PoultryDashboardPage() {
-  const session = useContext(XStoreSessionContext);
-  return <PoultryFeatureDashboardPage session={session}/>;
+  return <PoultryFeatureDashboardPage/>;
 }
 
 function DashboardPage() {
