@@ -196,11 +196,3 @@
 }
 
 @media print{.poultry-invoice-filter,.poultry-header-actions,.poultry-invoice-chevron,.poultry-invoice-details .form-actions{display:none!important}.poultry-invoice-card-main{cursor:default}.poultry-invoice-card{break-inside:avoid}.poultry-invoice-card.is-open .poultry-invoice-details{display:block}}
-
-/* Mobile invoice detail: keep all four values visible without horizontal clipping. */
-@media(max-width:650px){
-  .poultry-invoice-details .table-wrap,.poultry-last-invoice .table-wrap{width:100%;max-width:100%;overflow:hidden}
-  .poultry-invoice-details .table-wrap table,.poultry-last-invoice .table-wrap table{width:100%;max-width:100%;table-layout:fixed}
-  .poultry-invoice-details .table-wrap td,.poultry-last-invoice .table-wrap td{min-width:0;overflow-wrap:anywhere;word-break:break-word}
-  .poultry-invoice-details .table-wrap td::before,.poultry-last-invoice .table-wrap td::before{max-width:42%;white-space:normal}
-}

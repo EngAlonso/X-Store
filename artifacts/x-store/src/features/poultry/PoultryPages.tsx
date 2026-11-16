@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useRoute } from 'wouter';
 import {
   AlertTriangle, ArrowLeft, Bird, Boxes, ChevronLeft, CircleCheck, CreditCard,
-  Download, MessageCircle, Plus, Printer, ReceiptText, Search, ShieldCheck, Users, Wallet,
+  MessageCircle, Plus, Printer, ReceiptText, Search, ShieldCheck, Users, Wallet,
 } from 'lucide-react';
 import type { SessionUser } from '@workspace/api-client-react';
 import './poultry.css';
@@ -486,27 +486,28 @@ export function PoultrySalePage() {
     const created = new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
     popup.document.write('<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>فاتورة ' + lastInvoice.invoiceNo + '</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111;direction:rtl}h1{margin:0 0 8px}table{width:100%;border-collapse:collapse;margin:24px 0}td,th{border:1px solid #ddd;padding:10px;text-align:right}.total{font-size:20px;font-weight:700}.muted{color:#666}@media print{body{padding:12px}}</style></head><body><h1>فاتورة دواجن</h1><div class="muted">فاتورة رقم ' + lastInvoice.invoiceNo + ' · ' + created + '</div><hr><p><b>العميل:</b> ' + customer.name + '</p><p><b>المحل:</b> ' + (customer.shopName || 'غير مسجل') + '</p><p><b>الهاتف:</b> ' + customer.phone + '</p><table><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr><tr><td>' + lastInvoiceDetails.productName + '</td><td>' + fmt(lastInvoiceDetails.quantityKg) + ' كجم</td><td>' + fmt(lastInvoiceDetails.unitPrice) + ' ج.م</td><td>' + fmt(lastInvoice.total) + ' ج.م</td></tr></table><p>المدفوع على الفاتورة: <b>' + fmt(lastInvoice.amountPaid) + ' ج.م</b></p><p>تحصيل من الرصيد السابق: <b>' + fmt(lastInvoice.extraCollection || 0) + ' ج.م</b></p><p class="total">المتبقي من الفاتورة: ' + fmt(lastInvoice.balance) + ' ج.م</p><script>window.onload=function(){window.print();}</script></body></html>');
     popup.document.close();
-    popup.focus();
-    window.setTimeout(() => { try { popup.print(); } catch {} }, 400);
   }
 
   function downloadInvoice() {
     if (!lastInvoice || !customer) return;
-    const canvas=document.createElement('canvas'); const width=1080,height=1320;
-    canvas.width=width;canvas.height=height; const ctx=canvas.getContext('2d'); if(!ctx)return;
-    ctx.direction='rtl';ctx.textAlign='right';ctx.fillStyle='#f5f8f5';ctx.fillRect(0,0,width,height);
-    ctx.fillStyle='#173f2b';ctx.fillRect(0,0,width,190);ctx.fillStyle='#fff';ctx.font='700 44px Arial';ctx.fillText('فاتورة دواجن',width-70,72);
-    ctx.font='600 26px Arial';ctx.fillText('رقم الفاتورة: '+lastInvoice.invoiceNo,width-70,120);ctx.font='22px Arial';
-    ctx.fillText(new Intl.DateTimeFormat('ar-EG',{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(lastInvoice.createdAt)),width-70,158);
-    const x=55,w=width-110;ctx.fillStyle='#fff';ctx.fillRect(x,220,w,170);ctx.fillStyle='#6b786f';ctx.font='700 20px Arial';ctx.fillText('بيانات العميل',width-85,255);
-    ctx.fillStyle='#17251b';ctx.font='700 28px Arial';ctx.fillText(customer.name,width-85,295);ctx.font='22px Arial';ctx.fillText('المحل: '+(customer.shopName||'غير مسجل'),width-85,332);ctx.fillText('الهاتف: '+customer.phone,width-85,366);
-    const y=425,col=[width-90,730,485,260];ctx.fillStyle='#edf3ed';ctx.fillRect(x,y,w,72);ctx.fillStyle='#24553b';ctx.font='700 21px Arial';
-    ['الصنف','الكمية','سعر الكيلو','القيمة'].forEach((label,i)=>ctx.fillText(label,col[i],y+45));ctx.fillStyle='#17251b';ctx.font='600 22px Arial';
-    ctx.fillText(lastInvoiceDetails.productName,col[0],y+115);ctx.fillText(fmt(lastInvoiceDetails.quantityKg)+' كجم',col[1],y+115);ctx.fillText(fmt(lastInvoiceDetails.unitPrice)+' ج.م',col[2],y+115);ctx.fillText(fmt(lastInvoice.total)+' ج.م',col[3],y+115);
-    const summary=[['المدفوع على الفاتورة',fmt(lastInvoice.amountPaid)+' ج.م'],['تحصيل من الرصيد السابق',fmt(lastInvoice.extraCollection||0)+' ج.م'],['إجمالي المدفوع اليوم',fmt(lastInvoice.amountReceived??lastInvoice.amountPaid)+' ج.م'],['المتبقي',fmt(lastInvoice.balance)+' ج.م']];
-    summary.forEach((item,i)=>{const bx=x+(i%2)*(w/2+8),by=610+Math.floor(i/2)*105,bw=w/2-8;ctx.fillStyle=i===3?'#173f2b':'#fff';ctx.fillRect(bx,by,bw,88);ctx.fillStyle=i===3?'#d8e5da':'#718078';ctx.font='700 18px Arial';ctx.fillText(item[0],bx+bw-28,by+30);ctx.fillStyle=i===3?'#fff':'#17251b';ctx.font='700 25px Arial';ctx.fillText(item[1],bx+bw-28,by+65);});
-    ctx.fillStyle='#718078';ctx.font='18px Arial';ctx.fillText('تم استخراج الفاتورة من نظام X-Store',width-70,930);
-    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='فاتورة-'+lastInvoice.invoiceNo+'.png';document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/png');
+    const html = '<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>فاتورة ' + lastInvoice.invoiceNo + '</title></head><body style="font-family:Arial,sans-serif;direction:rtl;padding:24px">' +
+      '<h1>فاتورة دواجن</h1><p>رقم الفاتورة: <b>' + lastInvoice.invoiceNo + '</b></p>' +
+      '<p>العميل: <b>' + customer.name + '</b></p><p>المحل: <b>' + (customer.shopName || 'غير مسجل') + '</b></p>' +
+      '<p>الهاتف: <b>' + customer.phone + '</b></p><hr>' +
+      '<p>الصنف: ' + lastInvoiceDetails.productName + '</p><p>الكمية: ' + fmt(lastInvoiceDetails.quantityKg) + ' كجم</p><p>سعر الكيلو: ' + fmt(lastInvoiceDetails.unitPrice) + ' ج.م</p><p>القيمة: <b>' + fmt(lastInvoice.total) + ' ج.م</b></p>' +
+      '<p>المدفوع على الفاتورة: ' + fmt(lastInvoice.amountPaid) + ' ج.م</p>' +
+      '<p>تحصيل من الرصيد السابق: ' + fmt(lastInvoice.extraCollection || 0) + ' ج.م</p>' +
+      '<p>المتبقي: <b>' + fmt(lastInvoice.balance) + ' ج.م</b></p>' +
+      '<p>التاريخ والوقت: ' + new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt)) + '</p></body></html>';
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'invoice-' + lastInvoice.invoiceNo + '.html';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   }
 
   async function createInvoice() {
@@ -650,20 +651,6 @@ export function PoultryInvoicesPage() {
   useEffect(() => { void load(); }, []);
 
   const invoices = data?.invoices || [];
-
-  function downloadInvoiceImage(invoice: Awaited<ReturnType<typeof poultryApi.listInvoices>>['invoices'][number]) {
-    const canvas=document.createElement('canvas');const width=1080,rowHeight=92,itemCount=Math.max(invoice.items.length,1),height=760+itemCount*rowHeight;
-    canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');if(!ctx)return;ctx.direction='rtl';ctx.textAlign='right';
-    ctx.fillStyle='#f5f8f5';ctx.fillRect(0,0,width,height);ctx.fillStyle='#173f2b';ctx.fillRect(0,0,width,180);ctx.fillStyle='#fff';ctx.font='700 42px Arial';ctx.fillText('فاتورة دواجن',width-65,70);
-    ctx.font='600 24px Arial';ctx.fillText('فاتورة رقم '+invoice.invoiceNo,width-65,112);ctx.font='20px Arial';ctx.fillText(dateLabel(invoice.date)+' · '+new Intl.DateTimeFormat('ar-EG',{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date)),width-65,150);
-    const x=55,w=width-110;ctx.fillStyle='#fff';ctx.fillRect(x,210,w,145);ctx.fillStyle='#718078';ctx.font='700 18px Arial';ctx.fillText('العميل',width-80,242);ctx.fillStyle='#17251b';ctx.font='700 28px Arial';ctx.fillText(invoice.customerName,width-80,282);ctx.font='20px Arial';ctx.fillText('المحل: '+(invoice.shopName||'غير مسجل'),width-80,316);ctx.fillText('الهاتف: '+invoice.phone,width-80,345);
-    let y=390;const cols=[width-80,760,510,260];ctx.fillStyle='#edf3ed';ctx.fillRect(x,y,w,60);ctx.fillStyle='#24553b';ctx.font='700 19px Arial';['الصنف','الكمية','سعر الكيلو','القيمة'].forEach((label,i)=>ctx.fillText(label,cols[i],y+38));
-    ctx.font='600 20px Arial';invoice.items.forEach((item,index)=>{const iy=y+60+index*rowHeight;ctx.fillStyle='#fff';ctx.fillRect(x,iy,w,rowHeight);ctx.fillStyle='#17251b';ctx.fillText(item.productName,cols[0],iy+36);ctx.fillText(fmt(item.quantityKg)+' كجم',cols[1],iy+36);ctx.fillText(fmt(item.unitPrice)+' ج.م',cols[2],iy+36);ctx.fillText(fmt(item.total)+' ج.م',cols[3],iy+36);ctx.strokeStyle='#dfe7e1';ctx.beginPath();ctx.moveTo(x,iy+rowHeight);ctx.lineTo(x+w,iy+rowHeight);ctx.stroke();});
-    y+=60+itemCount*rowHeight+24;const totals=[['إجمالي الفاتورة',fmt(invoice.total)+' ج.م'],['مدفوع على الفاتورة',fmt(invoice.amountPaid)+' ج.م'],['تحصيل من الرصيد السابق',fmt(invoice.extraCollection)+' ج.م'],['المتبقي',fmt(invoice.balance)+' ج.م']];
-    totals.forEach((item,index)=>{const bw=(w-12)/2,bx=x+(index%2)*(bw+12),by=y+Math.floor(index/2)*92;ctx.fillStyle=index===3?'#173f2b':'#fff';ctx.fillRect(bx,by,bw,78);ctx.fillStyle=index===3?'#d8e5da':'#718078';ctx.font='700 17px Arial';ctx.fillText(item[0],bx+bw-22,by+28);ctx.fillStyle=index===3?'#fff':'#17251b';ctx.font='700 23px Arial';ctx.fillText(item[1],bx+bw-22,by+60);});
-    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='فاتورة-'+invoice.invoiceNo+'.png';document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/png');
-  }
-
   return <div dir="rtl" className="poultry-invoices-page">
     <PageTitle
       eyebrow="إدارة الفواتير"
@@ -709,7 +696,7 @@ export function PoultryInvoicesPage() {
               <div className="poultry-invoice-detail-head"><div><span className="poultry-box-kicker">تفاصيل الفاتورة</span><h3>{invoice.customerName}</h3></div><span className="poultry-invoice-cashier">بواسطة {invoice.cashierName}</span></div>
               <div className="table-wrap"><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr></thead><tbody>{invoice.items.map((item, index) => <tr key={invoice.id+'-'+index}><td data-label="الصنف">{item.productName}</td><td data-label="الكمية">{fmt(item.quantityKg)} كجم</td><td data-label="سعر الكيلو">{fmt(item.unitPrice)} ج.م</td><td data-label="القيمة"><b>{fmt(item.total)} ج.م</b></td></tr>)}</tbody></table></div>
               <div className="poultry-invoice-detail-totals"><div><span>إجمالي الفاتورة</span><b>{fmt(invoice.total)} ج.م</b></div><div><span>مدفوع على الفاتورة</span><b>{fmt(invoice.amountPaid)} ج.م</b></div><div><span>تحصيل من الرصيد السابق</span><b>{fmt(invoice.extraCollection)} ج.م</b></div><div className="total"><span>المتبقي</span><strong>{fmt(invoice.balance)} ج.م</strong></div></div>
-              <div className="form-actions"><button className="button button-primary" onClick={() => setLocation('/poultry-sale/'+encodeURIComponent(invoice.customerId))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button><button className="button button-quiet" onClick={() => { const popup=window.open('','_blank','width=900,height=800'); if(!popup)return; popup.document.open(); popup.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>فاتورة '+invoice.invoiceNo+'</title><style>body{font-family:Arial,Tahoma,sans-serif;padding:28px;color:#17251b}table{width:100%;border-collapse:collapse;margin:18px 0}th,td{border:1px solid #d6ddd7;padding:9px;text-align:right}th{background:#edf3ed}</style></head><body><h1>فاتورة دواجن</h1><p>رقم الفاتورة: <b>'+invoice.invoiceNo+'</b></p><p>العميل: <b>'+invoice.customerName+'</b></p><p>المحل: <b>'+(invoice.shopName||'غير مسجل')+'</b></p><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr></thead><tbody>'+invoice.items.map(item=>'<tr><td>'+item.productName+'</td><td>'+fmt(item.quantityKg)+' كجم</td><td>'+fmt(item.unitPrice)+' ج.م</td><td>'+fmt(item.total)+' ج.م</td></tr>').join('')+'</tbody></table><p>إجمالي الفاتورة: <b>'+fmt(invoice.total)+' ج.م</b></p><p>مدفوع: <b>'+fmt(invoice.amountPaid)+' ج.م</b></p><p>تحصيل سابق: <b>'+fmt(invoice.extraCollection)+' ج.م</b></p><p>المتبقي: <b>'+fmt(invoice.balance)+' ج.م</b></p></body></html>'); popup.document.close(); popup.focus(); window.setTimeout(()=>{try{popup.print();}catch{}},400); }}><Printer size={16}/> طباعة</button><button className="button button-quiet" onClick={() => downloadInvoiceImage(invoice)}><Download size={16}/> حفظ كصورة</button></div>
+              <div className="form-actions"><button className="button button-primary" onClick={() => setLocation('/poultry-sale/'+encodeURIComponent(invoice.customerId))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button><button className="button button-quiet" onClick={() => window.print()}><Printer size={16}/> طباعة</button></div>
             </div>}
           </article>;
         })}
