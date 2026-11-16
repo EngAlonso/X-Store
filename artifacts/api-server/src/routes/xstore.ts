@@ -1248,7 +1248,7 @@ router.put("/xstore/settings/contact", async (req, res): Promise<void> => {
 });
 
 
-const poultryUserRoles = ["tenant_admin", "cashier", "accountant", "collector"] as const;
+const poultryUserRoles = ["tenant_admin", "cashier", "accountant", "collector", "retail_sales"] as const;
 
 router.get("/xstore/poultry/customers", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
@@ -1268,7 +1268,7 @@ router.get("/xstore/poultry/customers", async (req, res): Promise<void> => {
 
 router.post("/xstore/poultry/customers", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "collector"])) { res.status(403).json({ error: "ليس لديك صلاحية إضافة عميل." }); return; }
+  if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "collector", "retail_sales"])) { res.status(403).json({ error: "ليس لديك صلاحية إضافة عميل." }); return; }
   const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
   const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
   const shopName = typeof req.body?.shopName === "string" ? req.body.shopName.trim() : "";
@@ -1308,7 +1308,7 @@ router.get("/xstore/poultry/customers/:customerId/statement", async (req, res): 
 
 router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier"])) { res.status(403).json({ error: "ليس لديك صلاحية إنشاء فاتورة دواجن." }); return; }
+  if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "retail_sales"])) { res.status(403).json({ error: "ليس لديك صلاحية إنشاء فاتورة دواجن." }); return; }
   const [customer] = await db.select().from(xstoreCustomers).where(and(eq(xstoreCustomers.id, req.params.customerId), eq(xstoreCustomers.tenantId, user.tenantId))).limit(1);
   if (!customer) { res.status(404).json({ error: "العميل غير موجود." }); return; }
   const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
