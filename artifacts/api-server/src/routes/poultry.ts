@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Router, type IRouter, type Response } from "express";
 import {
   db, xstoreAuditLogs, xstoreCustomers, xstorePoultryInvoices,
@@ -332,5 +332,80 @@ router.get("/xstore/poultry/notifications", async (_req, res): Promise<void> => 
   res.json([...invoices.map(x=>({id:"poultry-invoice:"+x.invoice.id,type:"invoice",title:"تم تسجيل فاتورة دواجن",detail:x.customerName+" · "+toNumber(x.invoice.total)+" جنيه · بواسطة "+x.actorName,createdAt:iso(x.invoice.createdAt),href:"/poultry-sales"})),...payments.map(x=>({id:"poultry-payment:"+x.payment.id,type:"payment",title:"تم تسجيل تحصيل",detail:x.customerName+" · "+toNumber(x.payment.amount)+" جنيه · بواسطة "+x.actorName,createdAt:iso(x.payment.createdAt),href:"/poultry-collections"}))].sort((a,b)=>new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime()).slice(0,40));
 });
 
+
+
+const POULTRY_BACKUP_MEDIA_TYPE = "application/vnd.xstore.poultry-backup+json";
+const POULTRY_BACKUP_MAX_BYTES = 64 * 1024 * 1024;
+const POULTRY_BACKUP_TABLES = ["xstoreCustomers","xstorePoultryInvoices","xstorePoultryInvoiceItems","xstorePoultryPayments","xstoreAuditLogs"] as const;
+
+router.get("/xstore/poultry/backup", async (_req, res): Promise<void> => {
+  const user = getXStoreUser(res);
+  if (!user.tenantId || !hasRole(user, ["tenant_admin"])) { res.status(403).json({ error: "ليس لديك صلاحية إنشاء النسخة الاحتياطية." }); return; }
+  if (!(await ensurePoultryTenantAccess(user, res))) return;
+  try {
+    const [customers, invoices, items, payments, auditLogs] = await Promise.all([
+      db.select().from(xstoreCustomers).where(eq(xstoreCustomers.tenantId, user.tenantId)),
+      db.select().from(xstorePoultryInvoices).where(eq(xstorePoultryInvoices.tenantId, user.tenantId)),
+      db.select().from(xstorePoultryInvoiceItems).where(sql`invoice_id in (select id from xstore_poultry_invoices where tenant_id = ${user.tenantId})`),
+      db.select().from(xstorePoultryPayments).where(eq(xstorePoultryPayments.tenantId, user.tenantId)),
+      db.select().from(xstoreAuditLogs).where(eq(xstoreAuditLogs.tenantId, user.tenantId)),
+    ]);
+    const backup = {
+      format: "xstore-poultry-backup" as const, version: 1 as const, backupType: "full" as const,
+      tenantId: user.tenantId, createdAt: new Date().toISOString(),
+      tables: { xstoreCustomers: customers, xstorePoultryInvoices: invoices, xstorePoultryInvoiceItems: items, xstorePoultryPayments: payments, xstoreAuditLogs: auditLogs },
+      counts: { xstoreCustomers: customers.length, xstorePoultryInvoices: invoices.length, xstorePoultryInvoiceItems: items.length, xstorePoultryPayments: payments.length, xstoreAuditLogs: auditLogs.length },
+    };
+    if (Buffer.byteLength(JSON.stringify(backup), "utf8") > POULTRY_BACKUP_MAX_BYTES) {
+      res.status(413).json({ error: "حجم نسخة الدواجن أكبر من الحد المسموح به وهو 64 ميبيبايت." }); return;
+    }
+    res.setHeader("Content-Type", POULTRY_BACKUP_MEDIA_TYPE);
+    res.setHeader("Content-Disposition", `attachment; filename="x-store-poultry-backup-${new Date().toISOString().slice(0,10)}.json"`);
+    res.json(backup);
+  } catch (error) {
+    req.log.error({ error }, "Unable to create poultry backup");
+    res.status(500).json({ error: "تعذر إنشاء نسخة الدواجن الاحتياطية." });
+  }
+});
+
+function validatePoultryBackup(value: any, tenantId: string): asserts value is {
+  format: "xstore-poultry-backup"; version: 1; backupType: "full"; tenantId: string; createdAt: string;
+  tables: Record<(typeof POULTRY_BACKUP_TABLES)[number], unknown[]>;
+} {
+  if (!value || value.format !== "xstore-poultry-backup" || value.version !== 1 || value.backupType !== "full" ||
+      value.tenantId !== tenantId || typeof value.createdAt !== "string" || !value.tables || typeof value.tables !== "object") {
+    throw new Error("ملف نسخة الدواجن غير صالح أو يخص متجرًا آخر.");
+  }
+  for (const table of POULTRY_BACKUP_TABLES) {
+    if (!Array.isArray(value.tables[table])) throw new Error("النسخة غير مكتملة وتفتقد بعض بيانات الدواجن.");
+  }
+}
+
+router.post("/xstore/poultry/backup/restore", async (req, res): Promise<void> => {
+  const user = getXStoreUser(res);
+  if (!user.tenantId || !hasRole(user, ["tenant_admin"])) { res.status(403).json({ error: "ليس لديك صلاحية استعادة النسخة الاحتياطية." }); return; }
+  if (!(await ensurePoultryTenantAccess(user, res))) return;
+  try {
+    validatePoultryBackup(req.body, user.tenantId);
+    const { tables } = req.body;
+    await db.transaction(async tx => {
+      await tx.delete(xstorePoultryPayments).where(eq(xstorePoultryPayments.tenantId, user.tenantId!));
+      const invoiceIds = await tx.select({ id: xstorePoultryInvoices.id }).from(xstorePoultryInvoices).where(eq(xstorePoultryInvoices.tenantId, user.tenantId!));
+      if (invoiceIds.length) await tx.delete(xstorePoultryInvoiceItems).where(inArray(xstorePoultryInvoiceItems.invoiceId, invoiceIds.map(row => row.id)));
+      await tx.delete(xstorePoultryInvoices).where(eq(xstorePoultryInvoices.tenantId, user.tenantId!));
+      await tx.delete(xstoreCustomers).where(eq(xstoreCustomers.tenantId, user.tenantId!));
+      await tx.delete(xstoreAuditLogs).where(eq(xstoreAuditLogs.tenantId, user.tenantId!));
+      if (tables.xstoreCustomers.length) await tx.insert(xstoreCustomers).values(tables.xstoreCustomers as any);
+      if (tables.xstorePoultryInvoices.length) await tx.insert(xstorePoultryInvoices).values(tables.xstorePoultryInvoices as any);
+      if (tables.xstorePoultryInvoiceItems.length) await tx.insert(xstorePoultryInvoiceItems).values(tables.xstorePoultryInvoiceItems as any);
+      if (tables.xstorePoultryPayments.length) await tx.insert(xstorePoultryPayments).values(tables.xstorePoultryPayments as any);
+      if (tables.xstoreAuditLogs.length) await tx.insert(xstoreAuditLogs).values(tables.xstoreAuditLogs as any);
+    });
+    res.json({ restored: true, backupType: "full" });
+  } catch (error) {
+    req.log.error({ error }, "Unable to restore poultry backup");
+    res.status(400).json({ error: error instanceof Error ? error.message : "تعذرت استعادة نسخة الدواجن." });
+  }
+});
 
 export default router;
