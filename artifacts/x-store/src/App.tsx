@@ -282,7 +282,7 @@ const nav = [
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
-  { href: '/poultry-customers', label: 'حسابات العملاء', icon: Bird, roles: ['tenant_admin', 'cashier', 'accountant', 'custom'] },
+  { href: '/poultry-customers', label: 'العملاء والحسابات', icon: Bird, roles: ['tenant_admin', 'cashier', 'accountant', 'custom'] },
 ];
 
 function Logo({ compact = false }: { compact?: boolean }) {
@@ -839,7 +839,13 @@ function AppShell({ children }: { children: ReactNode }) {
     (user.storeType == null && restaurantFeatureEnabled === true)
   );
   const poultryCustomersEnabled = user.storeType === 'poultry' && (user.role !== 'custom' || user.permissions?.includes('collector') || user.permissions?.includes('accountant'));
-  const items = nav.filter(n => (n.href !== '/restaurant-menu' || restaurantMenuEnabled) && (n.href !== '/poultry-customers' || poultryCustomersEnabled) && (n.roles.includes('all') || hasAppRole(user, n.roles)));
+  const isPoultryStore = user.storeType === 'poultry';
+  const items = nav.filter(n =>
+    (n.href !== '/restaurant-menu' || restaurantMenuEnabled) &&
+    (n.href !== '/poultry-customers' || poultryCustomersEnabled) &&
+    (!isPoultryStore || !['/pos', '/inventory', '/sales'].includes(n.href)) &&
+    (n.roles.includes('all') || hasAppRole(user, n.roles))
+  );
   const canSeeSalesNotifications = hasAppRole(user,['platform_admin','tenant_admin','cashier','accountant']) || (user.role==='custom' && Boolean(user.permissions?.some(p=>p==='retail_sales'||p==='wholesale_sales')));
   const canSeeInventoryNotifications = hasAppRole(user,['platform_admin','tenant_admin','warehouse_manager']);
   const notificationRows = [
@@ -883,6 +889,7 @@ function ProtectedLayout() {
     (session.data?.storeType == null && restaurantFeature === true)
   );
   const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','custom'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  if (session.data?.storeType === 'poultry' && ['/pos', '/inventory', '/sales'].includes(location)) return <Redirect to="/poultry-customers" />;
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
   if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
@@ -1070,8 +1077,94 @@ function PoultryCustomersPage() {
   </div>;
 }
 
+function PoultryDashboardPage() {
+  const { data: session } = useGetXStoreSession();
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  async function loadPoultryData(query = '') {
+    setLoading(true);
+    try {
+      const [customersResponse, notificationsResponse] = await Promise.all([
+        fetch('/api/xstore/poultry/customers?search=' + encodeURIComponent(query), { credentials: 'include', cache: 'no-store' }),
+        fetch('/api/xstore/poultry/notifications', { credentials: 'include', cache: 'no-store' }),
+      ]);
+      const customerData = customersResponse.ok ? await customersResponse.json() : [];
+      const notificationData = notificationsResponse.ok ? await notificationsResponse.json() : [];
+      setCustomers(Array.isArray(customerData) ? customerData : []);
+      setNotifications(Array.isArray(notificationData) ? notificationData : []);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { void loadPoultryData(); }, []);
+
+  const totalOutstanding = customers.reduce((sum, customer) => sum + Number(customer.balance || 0), 0);
+  const invoiceCount = notifications.filter(item => item.type === 'invoice').length;
+  const paymentCount = notifications.filter(item => item.type === 'payment').length;
+  const goCustomers = () => window.history.pushState({}, '', '/poultry-customers');
+
+  return <div dir="rtl" className="poultry-dashboard">
+    <PageTitle
+      eyebrow="إدارة الدواجن والفراخ"
+      title="لوحة الدواجن"
+      desc="بيع بالكيلو، حسابات العملاء الآجلة، التحصيل وكشوف الحساب — بدون نظام الملابس أو نقطة بيع المنتجات التقليدية."
+      action={<Link href="/poultry-customers" className="button button-primary"><Bird size={16}/> حسابات العملاء</Link>}
+    />
+    <div className="stat-grid">
+      <StatCard label="العملاء" value={fmt(customers.length)} detail="حسابات العملاء المسجلة" icon={Users}/>
+      <StatCard label="إجمالي المستحق" value={fmt(totalOutstanding) + ' ج.م'} detail="رصيد العملاء الحالي" icon={CreditCard} tint="gold"/>
+      <StatCard label="فواتير حديثة" value={fmt(invoiceCount)} detail="حركة بيع بالكيلو" icon={ReceiptText}/>
+      <StatCard label="تحصيلات حديثة" value={fmt(paymentCount)} detail="عمليات تحصيل مسجلة" icon={Wallet} tint="sage"/>
+    </div>
+    <div className="dashboard-grid">
+      <Card>
+        <SectionHead title="حسابات العملاء" detail="ابحث بالاسم أو الهاتف أو اسم المحل." action={<Link href="/poultry-customers" className="text-link">فتح الحسابات <ChevronLeft size={15}/></Link>}/>
+        <div className="table-toolbar">
+          <label className="search-box sales-search"><Search size={18}/><input value={search} onChange={e => { setSearch(e.target.value); void loadPoultryData(e.target.value); }} placeholder="اسم العميل أو الهاتف أو المحل"/></label>
+        </div>
+        {loading ? <div className="skeleton-table"><span/><span/><span/></div> : customers.length ? (
+          <div className="poultry-dashboard-customers">
+            {customers.slice(0, 8).map(customer => (
+              <Link href="/poultry-customers" className="poultry-dashboard-customer" key={customer.id}>
+                <span className="poultry-customer-icon"><Bird size={17}/></span>
+                <span><b>{customer.name}</b><small>{customer.shopName || 'بدون اسم محل'} · {customer.phone}</small></span>
+                <strong>{fmt(Number(customer.balance || 0))} ج.م</strong>
+              </Link>
+            ))}
+          </div>
+        ) : <div className="empty-inline">لا توجد حسابات عملاء حتى الآن.</div>}
+      </Card>
+      <Card>
+        <SectionHead title="آخر الحركة" detail="الفواتير والتحصيلات التي تمت على حسابات العملاء."/>
+        {notifications.length ? <div className="quick-list poultry-dashboard-activity">
+          {notifications.slice(0, 6).map(item => (
+            <div key={item.id}>
+              <span className={"quick-icon " + (item.type === 'payment' ? 'green' : 'yellow')}>{item.type === 'payment' ? <Wallet size={17}/> : <ReceiptText size={17}/>}</span>
+              <span><b>{item.title}</b><small>{item.detail}</small></span>
+              <small>{dateLabel(item.createdAt)}</small>
+            </div>
+          ))}
+        </div> : <div className="empty-inline">لا توجد حركة مسجلة بعد.</div>}
+      </Card>
+    </div>
+    <Card className="poultry-dashboard-actions">
+      <SectionHead title="إجراءات سريعة" detail="العمليات الأساسية لمتجر الدواجن."/>
+      <div className="quick-list">
+        <div><span className="quick-icon green"><Plus size={17}/></span><span><b>إضافة عميل</b><small>اسم العميل، الهاتف، المحل والعنوان</small></span><Link href="/poultry-customers" className="table-action">فتح</Link></div>
+        <div><span className="quick-icon yellow"><ReceiptText size={17}/></span><span><b>تسجيل فاتورة بالكيلو</b><small>سعر الكيلو يُحفظ مع كل فاتورة</small></span><Link href="/poultry-customers" className="table-action">فتح</Link></div>
+        <div><span className="quick-icon pale"><Wallet size={17}/></span><span><b>تسجيل تحصيل</b><small>الموظف المخصص للتحصيل يقدر يسجل الدفع</small></span><Link href="/poultry-customers" className="table-action">فتح</Link></div>
+      </div>
+    </Card>
+  </div>;
+}
+
 function DashboardPage() {
   const {data:session}=useGetXStoreSession();
+  if (session?.storeType === 'poultry') return <PoultryDashboardPage />;
   const dash=useGetXStoreDashboard();
   const money=useMoney();
   const d=dash.data;
