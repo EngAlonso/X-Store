@@ -288,7 +288,9 @@ const nav = [
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
-  { href: '/poultry-customers', label: 'العملاء والحسابات', icon: Bird, roles: ['tenant_admin', 'cashier', 'accountant', 'custom'] },
+  { href: '/poultry-customers', label: 'العملاء', icon: Users, roles: ['tenant_admin', 'cashier', 'accountant', 'custom'] },
+  { href: '/poultry-sales', label: 'البيع', icon: ReceiptText, roles: ['tenant_admin', 'cashier', 'retail_sales'] },
+  { href: '/poultry-collections', label: 'التحصيل', icon: Wallet, roles: ['tenant_admin', 'cashier', 'collector'] },
 ];
 
 function Logo({ compact = false }: { compact?: boolean }) {
@@ -852,6 +854,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
   const items = nav.filter(n =>
     (n.href !== '/restaurant-menu' || restaurantMenuEnabled) &&
     (n.href !== '/poultry-customers' || poultryCustomersEnabled) &&
+    (!['/poultry-sales','/poultry-collections'].includes(n.href) || isPoultryStore) &&
     (!isPoultryStore || !['/pos', '/inventory', '/sales'].includes(n.href)) &&
     (n.roles.includes('all') || hasAppRole(user, n.roles))
   );
@@ -901,14 +904,15 @@ function ProtectedLayout() {
     session.data?.storeType === 'restaurant' ||
     (session.data?.storeType == null && restaurantFeature === true)
   );
-  const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','custom'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','custom'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   if (session.data?.storeType === 'poultry' && ['/pos', '/inventory', '/sales'].includes(location)) return <Redirect to="/poultry-customers" />;
+  if (session.data?.storeType !== 'poultry' && ['/poultry-customers','/poultry-sales','/poultry-collections'].includes(location)) return <Redirect to="/dashboard"/>;
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
   if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
   return <AppShell user={session.data} refetch={session.refetch}><Switch>
-    <Route path="/dashboard" component={DashboardPage}/><Route path="/poultry-customers" component={PoultryCustomersPage}/><Route path="/tenants" component={TenantsPage}/>
+    <Route path="/dashboard" component={DashboardPage}/><Route path="/poultry-customers" component={PoultryCustomersPage}/><Route path="/poultry-sales" component={PoultrySalesPage}/><Route path="/poultry-collections" component={PoultryCollectionsPage}/><Route path="/tenants" component={TenantsPage}/>
     <Route path="/subscriptions" component={SubscriptionsPage}/>
     <Route path="/offline-license-issuer" component={OfflineLicenseIssuerPage}/>
     <Route path="/team" component={TeamPage}/>
@@ -1019,7 +1023,8 @@ function StateBlock({loading,error,onRetry,empty,emptyTitle='لا توجد بي�
   return null;
 }
 
-function PoultryCustomersPage() {
+function PoultryCustomersPage({ mode = 'customers' }: { mode?: 'customers' | 'sales' | 'collections' }) {
+  const [location] = useLocation();
   const session = useContext(XStoreSessionContext);
   const [customers,setCustomers]=useState<any[]>([]);
   const [search,setSearch]=useState('');
@@ -1036,9 +1041,10 @@ function PoultryCustomersPage() {
   const [payment,setPayment]=useState('');
   const [lastInvoice,setLastInvoice]=useState<any|null>(null);
 
-  const canAddCustomer=hasAppRole(session,['tenant_admin','cashier','collector']);
-  const canSell=hasAppRole(session,['tenant_admin','cashier','retail_sales']);
-  const canCollect=hasAppRole(session,['tenant_admin','cashier','collector']);
+  const pageMode=mode;
+  const canAddCustomer=pageMode==='customers' && hasAppRole(session,['tenant_admin','cashier']);
+  const canSell=pageMode==='sales' && hasAppRole(session,['tenant_admin','cashier','retail_sales']);
+  const canCollect=pageMode==='collections' && hasAppRole(session,['tenant_admin','cashier','collector']);
 
   async function loadCustomers(q=search){
     const r=await fetch('/api/xstore/poultry/customers?search='+encodeURIComponent(q),{credentials:'include',cache:'no-store'});
@@ -1168,8 +1174,8 @@ function PoultryCustomersPage() {
   return <div dir="rtl" className="poultry-customers-page">
     <PageTitle
       eyebrow="الدواجن والفراخ"
-      title="العملاء والحسابات"
-      desc="من هنا فقط: أضف العميل، اختاره، ثم سجّل البيع بالكيلو وسعر الكيلو والتحصيل."
+      title={pageMode==='customers'?'العملاء':pageMode==='sales'?'بيع الدواجن بالكيلو':'تحصيل حسابات العملاء'}
+      desc={pageMode==='customers'?'إضافة العملاء والبحث عن بياناتهم.':pageMode==='sales'?'اختَر العميل وسجّل فاتورة الدواجن بالكيلو وسعر الكيلو.':'اختَر العميل وسجّل المبالغ المحصلة وراجع كشف الحساب.'}
       action={<div className="poultry-header-actions">
         {canAddCustomer&&<button className="button button-primary" onClick={()=>{setError('');setCustomerDialog(true);}}><Plus size={17}/> عميل جديد</button>}
         <button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة</button>
@@ -1178,7 +1184,7 @@ function PoultryCustomersPage() {
     {error&&<div className="form-error poultry-form-error" role="alert"><AlertTriangle size={16}/><span>{error}</span></div>}
     {notice&&<div className="notice-box success poultry-form-notice"><CircleCheck size={16}/><span>{notice}</span></div>}
 
-    <div className="poultry-step-strip" aria-label="خطوات البيع">
+    {pageMode==='sales'&&<div className="poultry-step-strip" aria-label="خطوات البيع">
       <div className="poultry-step"><b>1</b><span>اختَر العميل</span></div>
       <ArrowLeft size={16}/>
       <div className="poultry-step"><b>2</b><span>اكتب الكيلو وسعر الكيلو</span></div>
@@ -1186,7 +1192,7 @@ function PoultryCustomersPage() {
       <div className="poultry-step"><b>3</b><span>سجّل الفاتورة</span></div>
       <ArrowLeft size={16}/>
       <div className="poultry-step"><b>4</b><span>حصّل أو اتركها آجل</span></div>
-    </div>
+    </div>}
 
     <div className="dashboard-grid poultry-grid">
       <Card className="poultry-customers-card">
@@ -1241,18 +1247,18 @@ function PoultryCustomersPage() {
 
           {!canSell&&!canCollect&&<div className="role-hint poultry-permission-note"><ShieldCheck size={17}/><span>حسابك للعرض فقط. اطلب من مالك المتجر إضافة صلاحية البيع أو التحصيل من «فريق العمل».</span></div>}
 
-          <div className="poultry-statement-controls">
+          {pageMode!=='sales'&&<div className="poultry-statement-controls">
             <SectionHead title="كشف الحساب" detail="حدد الفترة ثم اعرض كل الفواتير والتحصيلات."/>
             <div className="form-grid"><label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>
             <div className="form-actions"><button className="button button-primary" onClick={()=>void loadStatement()} disabled={busy}><ReceiptText size={16}/> عرض كشف الحساب</button>{statement&&<><button className="button button-quiet" onClick={whatsappStatement}><MessageCircle size={16}/> واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></>}</div>
           </div>
 
-          {lastInvoice&&<div className="notice-box success poultry-last-invoice"><b>آخر فاتورة: {lastInvoice.invoiceNo}</b><span>القيمة {fmt(lastInvoice.total)} ج.م · المدفوع على الفاتورة {fmt(lastInvoice.amountPaid)} ج.م · تحصيل من الرصيد السابق {fmt(lastInvoice.extraCollection||0)} ج.م · المتبقي من الفاتورة {fmt(lastInvoice.balance)} ج.م</span><div className="form-actions"><button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال الفاتورة واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></div></div>}
+          {pageMode!=='sales'&&lastInvoice&&<div className="notice-box success poultry-last-invoice"><b>آخر فاتورة: {lastInvoice.invoiceNo}</b><span>القيمة {fmt(lastInvoice.total)} ج.م · المدفوع على الفاتورة {fmt(lastInvoice.amountPaid)} ج.م · تحصيل من الرصيد السابق {fmt(lastInvoice.extraCollection||0)} ج.م · المتبقي من الفاتورة {fmt(lastInvoice.balance)} ج.م</span><div className="form-actions"><button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال الفاتورة واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></div></div>}
         </>:<div className="poultry-empty-workspace"><div className="empty-symbol"><Bird size={28}/></div><h3>اختَر عميلًا للبدء</h3><p>بعد اختيار العميل هتظهر لك شاشة البيع بالكيلو والتحصيل وكشف الحساب.</p>{canAddCustomer&&<button className="button button-primary" onClick={()=>setCustomerDialog(true)}><Plus size={16}/> إضافة أول عميل</button>}</div>}
       </Card>
     </div>
 
-    {statement&&<Card className="poultry-statement">
+    {pageMode!=='sales'&&statement&&<Card className="poultry-statement">
       <SectionHead title="تفاصيل كشف الحساب" detail={'من '+from+' إلى '+to}/>
       <div className="stat-grid">
         <StatCard label="إجمالي الكمية" value={fmt(statement.summary.totalKg)+' كجم'} detail="إجمالي الوزن خلال الفترة" icon={Bird}/>
@@ -1265,7 +1271,7 @@ function PoultryCustomersPage() {
       </tbody></table></div>
     </Card>}
 
-    {customerDialog&&<Modal title="إضافة عميل دواجن" close={()=>{if(!busy)setCustomerDialog(false);}}>
+    {pageMode==='customers'&&customerDialog&&<Modal title="إضافة عميل دواجن" close={()=>{if(!busy)setCustomerDialog(false);}}>
       <form className="poultry-customer-form" onSubmit={e=>{e.preventDefault();void createCustomer();}}>
         <div className="poultry-modal-intro"><div className="poultry-modal-icon"><Bird size={22}/></div><div><b>بيانات العميل الأساسية</b><span>الاسم ورقم الهاتف مطلوبان. بيانات المحل اختيارية.</span></div></div>
         <div className="form-grid">
@@ -1280,6 +1286,9 @@ function PoultryCustomersPage() {
     </Modal>}
   </div>;
 }
+
+function PoultrySalesPage(){return <PoultryCustomersPage mode="sales"/>;}
+function PoultryCollectionsPage(){return <PoultryCustomersPage mode="collections"/>;}
 
 function PoultryDashboardPage() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -2940,7 +2949,7 @@ function moneyLabel(amount:number) {
 }
 
 function Routed() {
-  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/menu/:slug" component={PublicRestaurantMenu}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/offline-license-issuer" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-backup" component={ProtectedLayout}/><Route path="/restaurant-menu" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route path="/poultry-customers" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
+  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/menu/:slug" component={PublicRestaurantMenu}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/offline-license-issuer" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-backup" component={ProtectedLayout}/><Route path="/restaurant-menu" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route path="/poultry-customers" component={ProtectedLayout}/><Route path="/poultry-sales" component={ProtectedLayout}/><Route path="/poultry-collections" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
 }
 function App() {
   return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><SiteLayout/></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;
