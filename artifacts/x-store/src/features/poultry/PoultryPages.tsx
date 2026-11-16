@@ -156,11 +156,57 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     window.open('https://wa.me/'+String(selected.phone).replace(/\D/g,'')+'?text='+encodeURIComponent(text),'_blank');
   }
 
+  function statementRowsText(){
+    if(!selected||!statement)return '';
+    const s=statement.summary;
+    const rows=statement.rows.map((row:any)=>[
+      new Intl.DateTimeFormat('ar-EG',{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)),
+      row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):'تحصيل',
+      row.items?.length?fmt(row.items.reduce((sum:number,item:any)=>sum+Number(item.quantityKg||0),0))+' كجم':'—',
+      fmt(row.type==='invoice'?row.total:row.paid)+' ج.م',
+      row.actorName||'—'
+    ].join(' | '));
+    return 'كشف حساب '+selected.name+'\\nالمحل: '+(selected.shopName||'—')+'\\nالهاتف: '+selected.phone+'\\nالفترة: '+from+' إلى '+to+'\\nرصيد أول الفترة: '+fmt(statement.openingBalance)+' ج.م\\n'+rows.join('\\n')+'\\nإجمالي الكمية: '+fmt(s.totalKg)+' كجم\\nالمبيعات: '+fmt(s.sales)+' ج.م\\nالتحصيلات: '+fmt(s.paid)+' ج.م\\nالرصيد المتبقي: '+fmt(s.remaining)+' ج.م';
+  }
+
   function whatsappStatement(){
     if(!selected||!statement)return;
-    const s=statement.summary;
-    const text='كشف حساب '+selected.name+'\nالفترة: '+from+' إلى '+to+'\nإجمالي الكمية: '+fmt(s.totalKg)+' كجم\nالمبيعات: '+fmt(s.sales)+' ج.م\nالمدفوع: '+fmt(s.paid)+' ج.م\nالمتبقي: '+fmt(s.remaining)+' ج.م';
-    window.open('https://wa.me/'+String(selected.phone).replace(/\D/g,'')+'?text='+encodeURIComponent(text),'_blank');
+    const text=statementRowsText();
+    window.open('https://wa.me/'+String(selected.phone).replace(/\\D/g,'')+'?text='+encodeURIComponent(text),'_blank');
+  }
+
+  function downloadStatement(){
+    if(!selected||!statement)return;
+    const csvRows=[
+      ['التاريخ','الحركة','رقم الفاتورة','الكمية بالكيلو','القيمة','الموظف'],
+      ...statement.rows.map((row:any)=>[
+        new Intl.DateTimeFormat('ar-EG',{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)),
+        row.type==='invoice'?'فاتورة':'تحصيل',row.invoiceNo||'',
+        row.items?.length?row.items.reduce((sum:number,item:any)=>sum+Number(item.quantityKg||0),0):0,
+        row.type==='invoice'?row.total:row.paid,row.actorName||''
+      ]),
+      [],
+      ['رصيد أول الفترة',statement.openingBalance],
+      ['إجمالي الكمية بالكيلو',statement.summary.totalKg],
+      ['إجمالي المبيعات',statement.summary.sales],
+      ['إجمالي التحصيلات',statement.summary.paid],
+      ['الرصيد المتبقي',statement.summary.remaining]
+    ];
+    const csv='\\uFEFF'+csvRows.map(row=>row.map((cell:any)=>'"'+String(cell??'').replace(/"/g,'""')+'"').join(',')).join('\\r\\n');
+    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    const link=document.createElement('a');link.href=url;link.download='كشف-حساب-'+selected.name+'-'+from+'-'+to+'.csv';
+    document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+  }
+
+  function printStatement(){
+    if(!selected||!statement)return;
+    const popup=window.open('','_blank','noopener,noreferrer');
+    if(!popup){setError('المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم أعد المحاولة.');return;}
+    const esc=(value:any)=>String(value??'').replace(/[&<>"]/g,(char)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]||char));
+    const rows=statement.rows.map((row:any)=>'<tr><td>'+esc(new Intl.DateTimeFormat('ar-EG',{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)))+'</td><td>'+esc(row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):'تحصيل')+'</td><td>'+esc(row.items?.length?fmt(row.items.reduce((sum:number,item:any)=>sum+Number(item.quantityKg||0),0))+' كجم':'—')+'</td><td>'+esc(fmt(row.type==='invoice'?row.total:row.paid))+' ج.م</td><td>'+esc(row.actorName||'—')+'</td></tr>').join('');
+    popup.document.open();
+    popup.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>كشف حساب '+esc(selected.name)+'</title><style>body{font-family:Arial,Tahoma,sans-serif;color:#17251b;padding:28px;direction:rtl}h1{font-size:23px;margin:0 0 8px}.muted{color:#526257;font-size:13px;line-height:1.9}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:20px 0}.summary div{border:1px solid #ccd8ce;padding:12px;border-radius:8px}.summary small{display:block;color:#526257;margin-bottom:6px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #d6ddd7;padding:9px;text-align:right;font-size:12px}th{background:#edf3ed}.foot{margin-top:18px;font-size:12px;color:#526257}@media print{body{padding:0}.summary div{break-inside:avoid}}</style></head><body><h1>كشف حساب عميل</h1><div class="muted">اسم العميل: '+esc(selected.name)+'<br>المحل: '+esc(selected.shopName||'—')+'<br>الهاتف: '+esc(selected.phone)+'<br>الفترة: '+esc(from)+' إلى '+esc(to)+'<br>رصيد أول الفترة: '+esc(fmt(statement.openingBalance))+' ج.م</div><div class="summary"><div><small>إجمالي الكمية</small><b>'+esc(fmt(statement.summary.totalKg))+' كجم</b></div><div><small>المبيعات</small><b>'+esc(fmt(statement.summary.sales))+' ج.م</b></div><div><small>التحصيلات</small><b>'+esc(fmt(statement.summary.paid))+' ج.م</b></div><div><small>الرصيد المتبقي</small><b>'+esc(fmt(statement.summary.remaining))+' ج.م</b></div></div><table><thead><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكمية</th><th>القيمة</th><th>الموظف</th></tr></thead><tbody>'+rows+'</tbody></table><div class="foot">تم استخراج الكشف من نظام X-Store</div><script>window.onload=function(){window.focus();window.print();};<\\/script></body></html>');
+    popup.document.close();
   }
 
   return <div dir="rtl" className="poultry-customers-page">
@@ -239,10 +285,10 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
 
           {!canSell&&!canCollect&&<div className="role-hint poultry-permission-note"><ShieldCheck size={17}/><span>حسابك للعرض فقط. اطلب من مالك المتجر إضافة صلاحية البيع أو التحصيل من «فريق العمل».</span></div>}
 
-          {pageMode==='collections'&&<div className="poultry-statement-controls">
+          {(pageMode==='collections'||pageMode==='customers')&&<div className="poultry-statement-controls">
             <SectionHead title="كشف الحساب" detail="حدد الفترة ثم اعرض كل الفواتير والتحصيلات."/>
             <div className="form-grid"><label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>
-            <div className="form-actions"><button className="button button-primary" onClick={()=>void loadStatement()} disabled={busy}><ReceiptText size={16}/> عرض كشف الحساب</button>{statement&&<><button className="button button-quiet" onClick={whatsappStatement}><MessageCircle size={16}/> واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></>}</div>
+            <div className="form-actions"><button className="button button-primary" onClick={()=>void loadStatement()} disabled={busy}><ReceiptText size={16}/> عرض كشف الحساب</button>{statement&&<><button className="button button-quiet" onClick={whatsappStatement}><MessageCircle size={16}/> واتساب</button><button className="button button-quiet" onClick={printStatement}><Printer size={16}/> طباعة / PDF</button><button className="button button-quiet" onClick={downloadStatement}>تنزيل كشف الحساب</button></>}</div>
           </div>}
 
           {pageMode==='sales'&&lastInvoice&&<div className="notice-box success poultry-last-invoice"><b>آخر فاتورة: {lastInvoice.invoiceNo}</b><span>القيمة {fmt(lastInvoice.total)} ج.م · المدفوع على الفاتورة {fmt(lastInvoice.amountPaid)} ج.م · تحصيل من الرصيد السابق {fmt(lastInvoice.extraCollection||0)} ج.م · المتبقي من الفاتورة {fmt(lastInvoice.balance)} ج.م</span><div className="form-actions"><button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال الفاتورة واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></div></div>}
@@ -250,7 +296,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
       </Card>
     </div>
 
-    {pageMode==='collections'&&statement&&<Card className="poultry-statement">
+    {(pageMode==='collections'||pageMode==='customers')&&statement&&<Card className="poultry-statement">
       <SectionHead title="تفاصيل كشف الحساب" detail={'من '+from+' إلى '+to}/>
       <div className="stat-grid">
         <StatCard label="إجمالي الكمية" value={fmt(statement.summary.totalKg)+' كجم'} detail="إجمالي الوزن خلال الفترة" icon={Bird}/>
