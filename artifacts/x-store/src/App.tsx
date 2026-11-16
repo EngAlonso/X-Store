@@ -1026,7 +1026,6 @@ function StateBlock({loading,error,onRetry,empty,emptyTitle='لا توجد بي�
 }
 
 function PoultryCustomersPage({ mode = 'customers' }: { mode?: 'customers' | 'sales' | 'collections' }) {
-  const [location] = useLocation();
   const session = useContext(XStoreSessionContext);
   const [customers,setCustomers]=useState<any[]>([]);
   const [search,setSearch]=useState('');
