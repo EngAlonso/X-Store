@@ -1711,6 +1711,80 @@ router.patch("/xstore/tenants/:tenantId", async (req, res): Promise<void> => {
   res.json(UpdateXStoreTenantResponse.parse(tenantDto(tenant)));
 });
 
+router.delete("/xstore/tenants/:tenantId", async (req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (actor.role !== "platform_admin") {
+    res.status(403).json({ error: "Only the platform owner can permanently delete stores." });
+    return;
+  }
+
+  const tenantId = String(req.params.tenantId || "").trim();
+  if (!tenantId) {
+    res.status(400).json({ error: "Store ID is required." });
+    return;
+  }
+
+  const [tenant] = await db
+    .select({ id: xstoreTenants.id, name: xstoreTenants.name })
+    .from(xstoreTenants)
+    .where(eq(xstoreTenants.id, tenantId))
+    .limit(1);
+
+  if (!tenant) {
+    res.status(404).json({ error: "Store not found." });
+    return;
+  }
+
+  await db.transaction(async (tx) => {
+    // Keep the audit trail, but remove every tenant-owned record that can
+    // otherwise block deletion because of non-cascading foreign keys.
+    await tx.execute(sql`
+      DELETE FROM xstore_returns
+      WHERE sale_id IN (SELECT id FROM xstore_sales WHERE tenant_id = ${tenantId}::uuid)
+         OR product_id IN (SELECT id FROM xstore_products WHERE tenant_id = ${tenantId}::uuid)
+    `);
+    await tx.execute(sql`
+      DELETE FROM xstore_sale_items
+      WHERE sale_id IN (SELECT id FROM xstore_sales WHERE tenant_id = ${tenantId}::uuid)
+         OR product_id IN (SELECT id FROM xstore_products WHERE tenant_id = ${tenantId}::uuid)
+    `);
+    await tx.execute(sql`
+      DELETE FROM xstore_poultry_invoice_items
+      WHERE invoice_id IN (
+        SELECT id FROM xstore_poultry_invoices WHERE tenant_id = ${tenantId}::uuid
+      )
+    `);
+    await tx.execute(sql`
+      DELETE FROM xstore_poultry_invoices
+      WHERE tenant_id = ${tenantId}::uuid
+    `);
+    await tx.execute(sql`
+      DELETE FROM xstore_poultry_payments
+      WHERE tenant_id = ${tenantId}::uuid
+    `);
+    await tx.execute(sql`
+      DELETE FROM xstore_customers
+      WHERE tenant_id = ${tenantId}::uuid
+    `);
+    await tx.execute(sql`
+      DELETE FROM xstore_users
+      WHERE tenant_id = ${tenantId}::uuid
+    `);
+    await tx.delete(xstoreTenants).where(eq(xstoreTenants.id, tenantId));
+  });
+
+  await audit(
+    actor,
+    "tenant.deleted",
+    null,
+    "tenant",
+    tenantId,
+    "Permanently deleted store " + tenant.name + " and its tenant-owned data.",
+  );
+
+  res.status(204).end();
+});
+
 router.patch(
   "/xstore/tenants/:tenantId/credentials",
   async (req, res): Promise<void> => {
