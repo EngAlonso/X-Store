@@ -303,7 +303,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
 function PoultrySalesPage(){return <PoultryCustomersPage mode="sales"/>;}
 function PoultryCollectionsPage(){return <PoultryCustomersPage mode="collections"/>;}
 
-function PoultryDashboardView({ session }: { session: SessionUser | null }) {
+function PoultryDashboardView() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [search, setSearch] = useState('');
@@ -392,6 +392,6 @@ function PoultryDashboardView({ session }: { session: SessionUser | null }) {
 export function PoultryCustomersPage({ mode, session }: { mode: 'customers' | 'sales' | 'collections'; session: SessionUser | null }) {
   return <PoultryCustomersView mode={mode} session={session}/>;
 }
-export function PoultryDashboardPage({ session }: { session: SessionUser | null }) {
-  return <PoultryDashboardView session={session}/>;
+export function PoultryDashboardPage() {
+  return <PoultryDashboardView/>;
 }
