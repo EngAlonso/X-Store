@@ -48,6 +48,27 @@ export type PoultryPaymentResult = {
   createdAt: string;
   collectorName: string;
 };
+export type PoultryInvoiceListItem = {
+  id: string;
+  invoiceNo: string;
+  date: string;
+  customerId: string;
+  customerName: string;
+  shopName: string | null;
+  phone: string;
+  cashierName: string;
+  total: number;
+  amountPaid: number;
+  balance: number;
+  amountReceived: number;
+  extraCollection: number;
+  items: Array<{ productName: string; quantityKg: number; unitPrice: number; total: number }>;
+};
+export type PoultryInvoiceListResponse = {
+  invoices: PoultryInvoiceListItem[];
+  summary: { count: number; sales: number; paid: number; outstanding: number; totalKg: number };
+};
+
 export type PoultryNotification = {
   id: string;
   type: 'invoice' | 'payment';
@@ -91,6 +112,14 @@ export const poultryApi = {
   },
   collectPayment(customerId: string, amount: number) {
     return poultryRequest<PoultryPaymentResult>('/customers/' + encodeURIComponent(customerId) + '/payments', { method: 'POST', body: JSON.stringify({ amount }) });
+  },
+  listInvoices(from = '', to = '', search = '') {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (search) params.set('search', search);
+    const query = params.toString();
+    return poultryRequest<PoultryInvoiceListResponse>('/invoices' + (query ? '?' + query : ''));
   },
   notifications() {
     return poultryRequest<PoultryNotification[]>('/notifications');
