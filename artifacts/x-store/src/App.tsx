@@ -769,6 +769,7 @@ function SignInPage() { return <AuthPage kind="in"/>; }
 function SignUpPage() { return <Redirect to="/sign-in"/>; }
 
 function AppShell({ children, user, refetch }: { children: ReactNode; user: SessionUser; refetch: () => unknown }) {
+  const isPoultryStore = user.storeType === 'poultry';
   const [location, setLocation] = useLocation(); const [open,setOpen] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => {
