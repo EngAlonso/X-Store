@@ -706,3 +706,5 @@ export function PoultryInvoicesPage() {
 export function PoultryDashboardPage() {
   return <PoultryDashboardView/>;
 }
+
+// Production deployment trigger: keep accumulated poultry updates deployable.
