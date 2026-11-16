@@ -983,7 +983,8 @@ function PoultryCustomersPage() {
   const [error,setError]=useState("");
   const [newCustomer,setNewCustomer]=useState({name:"",phone:"",shopName:"",shopAddress:""});
   const [invoice,setInvoice]=useState({productName:"فراخ",quantityKg:"",unitPrice:"",amountPaid:""});
-  const [payment,setPayment]=useState("");\n  const [lastInvoice,setLastInvoice]=useState<any|null>(null);
+  const [payment,setPayment]=useState("");
+  const [lastInvoice,setLastInvoice]=useState<any|null>(null);
   const canSell=session?.role==="tenant_admin"||session?.role==="cashier";
   async function loadCustomers(q=search){
     const r=await fetch("/api/xstore/poultry/customers?search="+encodeURIComponent(q),{credentials:"include"});
