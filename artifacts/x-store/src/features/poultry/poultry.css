@@ -206,6 +206,7 @@
 }
 
 /* Invoice detail modal and explicit visible item values on mobile. */
+ .poultry-invoice-card.is-open{overflow:visible;position:static}
 .poultry-invoice-card.is-open::before{
   content:"";position:fixed;inset:0;background:rgba(15,28,20,.48);z-index:1090;
 }
