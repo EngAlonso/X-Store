@@ -29,7 +29,7 @@ export interface TeamMemberInput {
   roleName: string;
   /**
      * @minItems 1
-     * @maxItems 3
+     * @maxItems 4
      */
   permissions: TeamPermission[];
 }
