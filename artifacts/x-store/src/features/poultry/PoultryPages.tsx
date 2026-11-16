@@ -40,6 +40,7 @@ function Modal({ title, close, children }: { title: string; close: () => void; c
 }
 
 function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'customers' | 'sales' | 'collections'; session: SessionUser | null }) {
+  const [, setLocation] = useLocation();
   const [customers,setCustomers]=useState<PoultryCustomer[]>([]);
   const [search,setSearch]=useState('');
   const [selected,setSelected]=useState<PoultryCustomer|null>(null);
@@ -193,7 +194,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
           <button className="button button-quiet" onClick={()=>void loadCustomers(search)} disabled={busy}><Search size={15}/> بحث</button>
         </div>
         <div className="poultry-customer-list">
-          {customers.length?customers.map(c=><button type="button" className={'poultry-customer '+(selected?.id===c.id?'selected':'')} key={c.id} onClick={()=>{if(pageMode==='sales'){window.location.href='/poultry-sale/'+encodeURIComponent(c.id);return;}setSelected(c);setStatement(null);setError('');}}>
+          {customers.length?customers.map(c=><button type="button" className={'poultry-customer '+(selected?.id===c.id?'selected':'')} key={c.id} onClick={()=>{if(pageMode==='sales'){setLocation('/poultry-sale/'+encodeURIComponent(c.id));return;}setSelected(c);setStatement(null);setError('');}}>
             <span className="poultry-customer-icon"><Bird size={18}/></span>
             <span><b>{c.name}</b><small>{c.shopName||'بدون اسم محل'} · {c.phone}</small></span>
             <strong>{fmt(c.balance)} ج.م</strong>
