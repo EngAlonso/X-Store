@@ -187,6 +187,7 @@ export const GetXStoreSessionResponse = zod.object({
   "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant', 'collector'])),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable(),
+  "storeType": zod.union([zod.literal('clothing_shoes'),zod.literal('grocery_supermarket'),zod.literal('electronics_accessories'),zod.literal('perfume_beauty'),zod.literal('cafe'),zod.literal('restaurant'),zod.literal('poultry'),zod.literal(null)]).nullable(),
   "countryCode": zod.string().min(getXStoreSessionResponseCountryCodeMin).max(getXStoreSessionResponseCountryCodeMax).regex(getXStoreSessionResponseCountryCodeRegExp).nullable(),
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
   "vatRate": zod.number().min(getXStoreSessionResponseVatRateMin).max(getXStoreSessionResponseVatRateMax).nullable(),
