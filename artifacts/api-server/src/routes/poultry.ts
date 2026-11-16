@@ -333,10 +333,11 @@ router.get("/xstore/poultry/reports/financial", async (req, res): Promise<void> 
       .where(and(eq(xstorePoultryInvoices.tenantId, user.tenantId), sql`created_at >= ${from} and created_at <= ${to}`))
       .orderBy(desc(xstorePoultryInvoices.createdAt));
     const invoiceIds = invoices.map(row => row.id);
-    const [payments, items] = await Promise.all([
-      db.select().from(xstorePoultryPayments).where(and(eq(xstorePoultryPayments.tenantId, user.tenantId), sql`created_at >= ${from} and created_at <= ${to}`)),
-      invoiceIds.length ? db.select().from(xstorePoultryInvoiceItems).where(inArray(xstorePoultryInvoiceItems.invoiceId, invoiceIds)) : Promise.resolve([]),
-    ]);
+    const payments = await db.select().from(xstorePoultryPayments)
+      .where(and(eq(xstorePoultryPayments.tenantId, user.tenantId), sql`created_at >= ${from} and created_at <= ${to}`));
+    const items: Array<typeof xstorePoultryInvoiceItems.$inferSelect> = invoiceIds.length
+      ? await db.select().from(xstorePoultryInvoiceItems).where(inArray(xstorePoultryInvoiceItems.invoiceId, invoiceIds))
+      : [];
     const totalSales = roundMoney(invoices.reduce((sum, row) => sum + toNumber(row.total), 0));
     const totalCollected = roundMoney(invoices.reduce((sum, row) => sum + toNumber(row.amountPaid), 0) + payments.reduce((sum, row) => sum + toNumber(row.amount), 0));
     const totalKg = roundMoney(items.reduce((sum, row) => sum + toNumber(row.quantityKg), 0));
