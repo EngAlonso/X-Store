@@ -72,18 +72,29 @@ const PoultryFeatureDashboardPage = lazy(() => import('@/features/poultry/Poultr
 function getPoultryNavigation(user: SessionUser) {
   const permissions = user.permissions || [];
   const isAdmin = user.role === 'tenant_admin' || user.role === 'cashier';
-  const canViewCustomers = isAdmin || user.role === 'accountant' ||
-    (user.role === 'custom' && permissions.some(permission =>
-      ['customer_management', 'accountant', 'collector', 'retail_sales'].includes(permission),
-    ));
-  const canSell = isAdmin || (user.role === 'custom' && permissions.includes('retail_sales'));
-  const canCollect = isAdmin || (user.role === 'custom' && permissions.includes('collector'));
+  const isCustom = user.role === 'custom';
+  const canSell = isAdmin || (isCustom && permissions.includes('retail_sales'));
+  const canCollect = isAdmin || (isCustom && permissions.includes('collector'));
+  const canViewCustomers = isAdmin || (isCustom && permissions.some(permission =>
+    ['customer_management', 'accountant'].includes(permission),
+  ));
+  const canViewInvoices = isAdmin || (isCustom && permissions.includes('accountant'));
   return [
     ...(canSell ? [{ href: '/poultry-sales', label: 'البيع', icon: ReceiptText }] : []),
     ...(canCollect ? [{ href: '/poultry-collections', label: 'التحصيل', icon: Wallet }] : []),
     ...(canViewCustomers ? [{ href: '/poultry-customers', label: 'العملاء', icon: Users }] : []),
-    ...(canViewCustomers ? [{ href: '/poultry-invoices', label: 'الفواتير', icon: ReceiptText }] : []),
+    ...(canViewInvoices ? [{ href: '/poultry-invoices', label: 'الفواتير', icon: ReceiptText }] : []),
   ];
+}
+
+function getPoultryDefaultPath(user: SessionUser): string {
+  if (user.role === 'tenant_admin' || user.role === 'cashier') return '/poultry-customers';
+  const permissions = user.permissions || [];
+  if (permissions.includes('retail_sales')) return '/poultry-sales';
+  if (permissions.includes('collector')) return '/poultry-collections';
+  if (permissions.includes('customer_management')) return '/poultry-customers';
+  if (permissions.includes('accountant')) return '/reports';
+  return '/poultry-customers';
 }
 
 function usePoultryNotifications(enabled: boolean, userId: string) {
@@ -967,10 +978,10 @@ function ProtectedLayout() {
     session.data?.storeType === 'restaurant' ||
     (session.data?.storeType == null && restaurantFeature === true)
   );
-  const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','customer_management','custom'],'/poultry-invoices':['tenant_admin','cashier','accountant','retail_sales','collector','custom'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-sale/:customerId':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
-  if (session.data?.storeType === 'poultry' && ['/pos', '/inventory', '/sales', '/store-settings'].includes(location)) return <Redirect to="/poultry-customers" />;;
+  const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','customer_management'],'/poultry-invoices':['tenant_admin','cashier','accountant'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-sale/:customerId':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  if (session.data?.storeType === 'poultry' && ['/pos', '/inventory', '/sales', '/store-settings', '/dashboard'].includes(location)) return <Redirect to={getPoultryDefaultPath(session.data)} />;;
   if (session.data?.storeType !== 'poultry' && ['/poultry-customers','/poultry-sales','/poultry-sale/:customerId','/poultry-collections','/poultry-invoices'].includes(location)) return <Redirect to="/dashboard"/>;
-  if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
+  if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to={session.data.storeType === 'poultry' ? getPoultryDefaultPath(session.data) : '/dashboard'}/>;
   if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
