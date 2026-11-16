@@ -768,7 +768,7 @@ function HomeRedirect() {
 function SignInPage() { return <AuthPage kind="in"/>; }
 function SignUpPage() { return <Redirect to="/sign-in"/>; }
 
-function AppShell({ children }: { children: ReactNode }) {
+function AppShell({ children, user, refetch }: { children: ReactNode; user: SessionUser; refetch: () => unknown }) {
   const [location, setLocation] = useLocation(); const [open,setOpen] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => {
@@ -806,7 +806,6 @@ function AppShell({ children }: { children: ReactNode }) {
   const [poultryNotifications, setPoultryNotifications] = useState<any[]>([]);
   const qc=useQueryClient();
   const [loggingOut, setLoggingOut] = useState(false);
-  const { data:user, isLoading, isError, refetch } = useGetXStoreSession();
   useEffect(() => { if (!user || user.storeType !== 'poultry') { setPoultryNotifications([]); return; } let cancelled=false; const load=()=>fetch('/api/xstore/poultry/notifications',{credentials:'include'}).then(async r=>r.ok?r.json():[]).then(v=>{if(!cancelled)setPoultryNotifications(Array.isArray(v)?v:[])}).catch(()=>{}); void load(); const timer=window.setInterval(load,30000); return()=>{cancelled=true;window.clearInterval(timer)}; }, [user?.id,user?.storeType]);
   useEffect(() => { if (!user) return; try { setReadNotificationIds(JSON.parse(localStorage.getItem(`xstore-notifications:${user.id}`) || '[]') as string[]); } catch { setReadNotificationIds([]); } }, [user?.id]);
   async function handleLogout() {
@@ -902,7 +901,7 @@ function ProtectedLayout() {
   if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
-  return <AppShell><Switch>
+  return <AppShell user={session.data} refetch={session.refetch}><Switch>
     <Route path="/dashboard" component={DashboardPage}/><Route path="/poultry-customers" component={PoultryCustomersPage}/><Route path="/tenants" component={TenantsPage}/>
     <Route path="/subscriptions" component={SubscriptionsPage}/>
     <Route path="/offline-license-issuer" component={OfflineLicenseIssuerPage}/>
