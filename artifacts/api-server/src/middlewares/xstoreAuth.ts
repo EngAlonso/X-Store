@@ -17,11 +17,27 @@ declare global {
   }
 }
 
+function isPublicXStoreAuthRoute(req: Request): boolean {
+  const path = req.path.replace(/\/+$/, "") || "/";
+  return (
+    (req.method === "GET" && path === "/auth/status") ||
+    (req.method === "POST" &&
+      (path === "/auth/login" ||
+        path === "/auth/founder" ||
+        path === "/auth/logout"))
+  );
+}
+
 export async function requireXStoreUser(
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
+  if (isPublicXStoreAuthRoute(req)) {
+    next();
+    return;
+  }
+
   try {
     const localSession = readSessionToken(req);
     if (localSession) {
@@ -140,4 +156,3 @@ export function denyRole(
   res.status(403).json({ error: "You do not have permission for this action." });
   return true;
 }
-
