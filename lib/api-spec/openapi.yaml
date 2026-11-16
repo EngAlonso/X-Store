@@ -1361,7 +1361,7 @@ components:
           items:
             $ref: "#/components/schemas/TeamPermission"
           minItems: 1
-          maxItems: 3
+          maxItems: 4
       required: [phone, email, name, roleName, permissions]
     SubscriptionPayment:
       type: object
