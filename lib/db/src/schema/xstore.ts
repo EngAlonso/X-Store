@@ -31,6 +31,7 @@ export const xstoreStoreTypes = [
   "perfume_beauty",
   "cafe",
   "restaurant",
+  "poultry",
 ] as const;
 export type XStoreStoreType = (typeof xstoreStoreTypes)[number];
 
@@ -446,6 +447,70 @@ export const xstoreMenuItems = pgTable(
   ],
 );
 
+export const xstoreCustomers = pgTable(
+  "xstore_customers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull().references(() => xstoreTenants.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    shopName: text("shop_name"),
+    shopAddress: text("shop_address"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("xstore_customers_tenant_idx").on(table.tenantId),
+    index("xstore_customers_tenant_phone_idx").on(table.tenantId, table.phone),
+    index("xstore_customers_tenant_name_idx").on(table.tenantId, table.name),
+  ],
+);
+
+export const xstorePoultryInvoices = pgTable(
+  "xstore_poultry_invoices",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull().references(() => xstoreTenants.id, { onDelete: "cascade" }),
+    customerId: uuid("customer_id").notNull().references(() => xstoreCustomers.id, { onDelete: "cascade" }),
+    cashierUserId: uuid("cashier_user_id").notNull().references(() => xstoreUsers.id),
+    invoiceNo: text("invoice_no").notNull(),
+    total: numeric("total", { precision: 12, scale: 2 }).notNull(),
+    amountPaid: numeric("amount_paid", { precision: 12, scale: 2 }).notNull().default("0"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("xstore_poultry_invoices_tenant_invoice_idx").on(table.tenantId, table.invoiceNo),
+    index("xstore_poultry_invoices_customer_created_idx").on(table.customerId, table.createdAt),
+  ],
+);
+
+export const xstorePoultryInvoiceItems = pgTable(
+  "xstore_poultry_invoice_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    invoiceId: uuid("invoice_id").notNull().references(() => xstorePoultryInvoices.id, { onDelete: "cascade" }),
+    productName: text("product_name").notNull(),
+    quantityKg: numeric("quantity_kg", { precision: 12, scale: 3 }).notNull(),
+    unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
+    total: numeric("total", { precision: 12, scale: 2 }).notNull(),
+  },
+  (table) => [index("xstore_poultry_invoice_items_invoice_idx").on(table.invoiceId)],
+);
+
+export const xstorePoultryPayments = pgTable(
+  "xstore_poultry_payments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull().references(() => xstoreTenants.id, { onDelete: "cascade" }),
+    customerId: uuid("customer_id").notNull().references(() => xstoreCustomers.id, { onDelete: "cascade" }),
+    cashierUserId: uuid("cashier_user_id").notNull().references(() => xstoreUsers.id),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("xstore_poultry_payments_customer_created_idx").on(table.customerId, table.createdAt)],
+);
+
 export const xstoreAuditLogs = pgTable(
   "xstore_audit_logs",
   {
@@ -496,3 +561,7 @@ export type XStoreReturn = typeof xstoreReturns.$inferSelect;
 export type XStoreAuditLog = typeof xstoreAuditLogs.$inferSelect;
 export type XStoreMenu = typeof xstoreMenus.$inferSelect;
 export type XStoreMenuItem = typeof xstoreMenuItems.$inferSelect;
+export type XStoreCustomer = typeof xstoreCustomers.$inferSelect;
+export type XStorePoultryInvoice = typeof xstorePoultryInvoices.$inferSelect;
+export type XStorePoultryInvoiceItem = typeof xstorePoultryInvoiceItems.$inferSelect;
+export type XStorePoultryPayment = typeof xstorePoultryPayments.$inferSelect;
