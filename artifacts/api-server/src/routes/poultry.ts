@@ -60,7 +60,7 @@ async function ensurePoultryTenantAccess(user: XStoreUser, res: Response): Promi
 
 router.get("/xstore/poultry/customers", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!hasRole(user, poultryUserRoles)) { res.status(403).json({ error: "ليس لديك صلاحية للوصول إلى حسابات العملاء." }); return; }
+  if (!user.tenantId || !hasRole(user, poultryUserRoles)) { res.status(403).json({ error: "ليس لديك صلاحية للوصول إلى حسابات العملاء." }); return; }
   if (!(await ensurePoultryTenantAccess(user, res))) return;
   const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
   const rows = await db.select().from(xstoreCustomers).where(and(eq(xstoreCustomers.tenantId, user.tenantId), search ? or(ilike(xstoreCustomers.name, "%" + search + "%"), ilike(xstoreCustomers.phone, "%" + search + "%"), ilike(xstoreCustomers.shopName, "%" + search + "%")) : undefined)).orderBy(desc(xstoreCustomers.updatedAt)).limit(100);
@@ -75,7 +75,7 @@ router.get("/xstore/poultry/customers", async (req, res): Promise<void> => {
 
 router.post("/xstore/poultry/customers", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!hasRole(user, ["tenant_admin", "cashier", "customer_management"])) { res.status(403).json({ error: "ليس لديك صلاحية إضافة عميل." }); return; }
+  if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "customer_management"])) { res.status(403).json({ error: "ليس لديك صلاحية إضافة عميل." }); return; }
   if (!(await ensurePoultryTenantAccess(user, res))) return;
   const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
   const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
@@ -90,7 +90,7 @@ router.post("/xstore/poultry/customers", async (req, res): Promise<void> => {
 
 router.get("/xstore/poultry/customers/:customerId/statement", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!hasRole(user, poultryUserRoles)) { res.status(403).json({ error: "ليس لديك صلاحية لعرض كشف الحساب." }); return; }
+  if (!user.tenantId || !hasRole(user, poultryUserRoles)) { res.status(403).json({ error: "ليس لديك صلاحية لعرض كشف الحساب." }); return; }
   if (!(await ensurePoultryTenantAccess(user, res))) return;
   const [customer] = await db.select().from(xstoreCustomers).where(and(eq(xstoreCustomers.id, req.params.customerId), eq(xstoreCustomers.tenantId, user.tenantId))).limit(1);
   if (!customer) { res.status(404).json({ error: "العميل غير موجود." }); return; }
@@ -117,7 +117,7 @@ router.get("/xstore/poultry/customers/:customerId/statement", async (req, res): 
 
 router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!hasRole(user, ["tenant_admin", "cashier", "retail_sales"])) { res.status(403).json({ error: "ليس لديك صلاحية إنشاء فاتورة دواجن." }); return; }
+  if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "retail_sales"])) { res.status(403).json({ error: "ليس لديك صلاحية إنشاء فاتورة دواجن." }); return; }
   if (!(await ensurePoultryTenantAccess(user, res))) return;
   const [customer] = await db.select().from(xstoreCustomers).where(and(eq(xstoreCustomers.id, req.params.customerId), eq(xstoreCustomers.tenantId, user.tenantId))).limit(1);
   if (!customer) { res.status(404).json({ error: "العميل غير موجود." }); return; }
@@ -234,7 +234,7 @@ router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): 
 });
 router.post("/xstore/poultry/customers/:customerId/payments", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!hasRole(user, ["tenant_admin", "cashier", "collector"])) { res.status(403).json({ error: "ليس لديك صلاحية تسجيل تحصيل." }); return; }
+  if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "collector"])) { res.status(403).json({ error: "ليس لديك صلاحية تسجيل تحصيل." }); return; }
   if (!(await ensurePoultryTenantAccess(user, res))) return;
   const [customer] = await db.select().from(xstoreCustomers).where(and(eq(xstoreCustomers.id,req.params.customerId),eq(xstoreCustomers.tenantId,user.tenantId))).limit(1);
   if (!customer) { res.status(404).json({ error: "العميل غير موجود." }); return; }
@@ -248,7 +248,7 @@ router.post("/xstore/poultry/customers/:customerId/payments", async (req, res): 
 
 router.get("/xstore/poultry/notifications", async (_req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!hasRole(user,poultryUserRoles)) { res.status(403).json({error:"غير مصرح."}); return; }
+  if (!user.tenantId || !hasRole(user,poultryUserRoles)) { res.status(403).json({error:"غير مصرح."}); return; }
   if (!(await ensurePoultryTenantAccess(user, res))) return;
   const [invoices,payments] = await Promise.all([
     db.select({invoice:xstorePoultryInvoices,customerName:xstoreCustomers.name,actorName:xstoreUsers.name}).from(xstorePoultryInvoices).innerJoin(xstoreCustomers,eq(xstorePoultryInvoices.customerId,xstoreCustomers.id)).innerJoin(xstoreUsers,eq(xstorePoultryInvoices.cashierUserId,xstoreUsers.id)).where(eq(xstorePoultryInvoices.tenantId,user.tenantId)).orderBy(desc(xstorePoultryInvoices.createdAt)).limit(20),
