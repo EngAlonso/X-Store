@@ -1168,9 +1168,14 @@ function PoultryDashboardPage() {
 
 function DashboardPage() {
   const session = useContext(XStoreSessionContext);
+  if (session?.storeType === 'poultry') return <PoultryDashboardPage />;
+  return <StandardDashboardPage />;
+}
+
+function StandardDashboardPage() {
+  const session = useContext(XStoreSessionContext);
   const dash=useGetXStoreDashboard();
   const money=useMoney();
-  if (session?.storeType === 'poultry') return <PoultryDashboardPage />;
   const d=dash.data;
   const isPlatform=session?.role==='platform_admin';
   const isCashier=hasAppRole(session,['cashier'])&&!hasAppRole(session,['accountant']);
