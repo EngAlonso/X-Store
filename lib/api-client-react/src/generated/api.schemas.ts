@@ -484,6 +484,7 @@ export const StoreType = {
   perfume_beauty: 'perfume_beauty',
   cafe: 'cafe',
   restaurant: 'restaurant',
+  poultry: 'poultry',
 } as const;
 
 export interface TenantInput {
