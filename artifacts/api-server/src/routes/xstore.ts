@@ -1311,22 +1311,117 @@ router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): 
   if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "retail_sales"])) { res.status(403).json({ error: "ليس لديك صلاحية إنشاء فاتورة دواجن." }); return; }
   const [customer] = await db.select().from(xstoreCustomers).where(and(eq(xstoreCustomers.id, req.params.customerId), eq(xstoreCustomers.tenantId, user.tenantId))).limit(1);
   if (!customer) { res.status(404).json({ error: "العميل غير موجود." }); return; }
+
   const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
-  const items = rawItems.map((item:any)=>({productName:typeof item?.productName==="string"?item.productName.trim():"",quantityKg:Number(item?.quantityKg),unitPrice:Number(item?.unitPrice)})).filter((item:any)=>item.productName && Number.isFinite(item.quantityKg) && item.quantityKg>0 && Number.isFinite(item.unitPrice) && item.unitPrice>=0);
-  if (!items.length) { res.status(400).json({ error: "أضف صنفًا واحدًا على الأقل بالوزن وسعر الكيلو." }); return; }
+  const items = rawItems
+    .map((item:any)=>({
+      productName:typeof item?.productName==="string"?item.productName.trim():"",
+      quantityKg:Number(item?.quantityKg),
+      unitPrice:Number(item?.unitPrice),
+    }))
+    .filter((item:any)=>item.productName && Number.isFinite(item.quantityKg) && item.quantityKg>0 && Number.isFinite(item.unitPrice) && item.unitPrice>=0);
+
+  if (!items.length) {
+    res.status(400).json({ error: "أضف صنفًا واحدًا على الأقل بالوزن وسعر الكيلو." });
+    return;
+  }
+
   const total = roundMoney(items.reduce((s:number,item:any)=>s+roundMoney(item.quantityKg*item.unitPrice),0));
-  const amountPaid = Math.max(0,Math.min(total,Number(req.body?.amountPaid)||0));
+  const amountReceived = Number(req.body?.amountPaid);
+  if (!Number.isFinite(amountReceived) || amountReceived < 0) {
+    res.status(400).json({ error: "أدخل المبلغ المدفوع اليوم بشكل صحيح." });
+    return;
+  }
+
+  const existingInvoices = await db.select({ total: xstorePoultryInvoices.total, amountPaid: xstorePoultryInvoices.amountPaid })
+    .from(xstorePoultryInvoices)
+    .where(and(eq(xstorePoultryInvoices.customerId, customer.id), eq(xstorePoultryInvoices.tenantId, user.tenantId)));
+  const existingPayments = await db.select({ amount: xstorePoultryPayments.amount })
+    .from(xstorePoultryPayments)
+    .where(and(eq(xstorePoultryPayments.customerId, customer.id), eq(xstorePoultryPayments.tenantId, user.tenantId)));
+  const existingBalance = roundMoney(
+    existingInvoices.reduce((sum, row) => sum + toNumber(row.total) - toNumber(row.amountPaid), 0)
+    - existingPayments.reduce((sum, row) => sum + toNumber(row.amount), 0),
+  );
+  const maxReceivableToday = roundMoney(total + Math.max(0, existingBalance));
+  if (amountReceived > maxReceivableToday) {
+    res.status(400).json({
+      error: "المبلغ المدفوع اليوم أكبر من إجمالي الفاتورة ورصيد العميل المستحق.",
+    });
+    return;
+  }
+
+  const amountPaid = Math.min(total, amountReceived);
+  const extraCollection = roundMoney(Math.max(0, amountReceived - total));
   const invoiceNo = "PD-" + new Date().toISOString().slice(0,10).replaceAll("-","") + "-" + Math.random().toString(36).slice(2,7).toUpperCase();
+
   const invoice = await db.transaction(async tx => {
-    const [created] = await tx.insert(xstorePoultryInvoices).values({tenantId:user.tenantId!,customerId:customer.id,cashierUserId:user.id,invoiceNo,total:String(total),amountPaid:String(amountPaid)}).returning();
+    const [created] = await tx.insert(xstorePoultryInvoices).values({
+      tenantId:user.tenantId!,
+      customerId:customer.id,
+      cashierUserId:user.id,
+      invoiceNo,
+      total:String(total),
+      amountPaid:String(amountPaid),
+    }).returning();
+
     if (!created) throw new DomainError("تعذر إنشاء الفاتورة.",500);
-    await tx.insert(xstorePoultryInvoiceItems).values(items.map((item:any)=>({invoiceId:created.id,productName:item.productName,quantityKg:String(item.quantityKg),unitPrice:String(item.unitPrice),total:String(roundMoney(item.quantityKg*item.unitPrice))})));
+
+    await tx.insert(xstorePoultryInvoiceItems).values(
+      items.map((item:any)=>({
+        invoiceId:created.id,
+        productName:item.productName,
+        quantityKg:String(item.quantityKg),
+        unitPrice:String(item.unitPrice),
+        total:String(roundMoney(item.quantityKg*item.unitPrice)),
+      })),
+    );
+
+    if (extraCollection > 0) {
+      await tx.insert(xstorePoultryPayments).values({
+        tenantId:user.tenantId!,
+        customerId:customer.id,
+        cashierUserId:user.id,
+        amount:String(extraCollection),
+        note:"تحصيل من الرصيد السابق مع الفاتورة "+invoiceNo,
+      });
+    }
+
     return created;
   });
-  await audit(user,"poultry.invoice_created",invoice.id,"poultry_invoice",invoice.id,"تم تسجيل فاتورة "+invoiceNo+" للعميل "+customer.name+" بقيمة "+total);
-  res.status(201).json({id:invoice.id,invoiceNo,total,amountPaid,balance:roundMoney(total-amountPaid),createdAt:iso(invoice.createdAt),cashierName:user.name});
-});
 
+  await audit(
+    user,
+    "poultry.invoice_created",
+    invoice.id,
+    "poultry_invoice",
+    invoice.id,
+    "تم تسجيل فاتورة "+invoiceNo+" للعميل "+customer.name+" بقيمة "+total,
+  );
+
+  if (extraCollection > 0) {
+    await audit(
+      user,
+      "poultry.payment_collected",
+      invoice.id,
+      "poultry_payment",
+      invoice.id,
+      "تم تحصيل "+extraCollection+" من الرصيد السابق للعميل "+customer.name+" مع الفاتورة "+invoiceNo,
+    );
+  }
+
+  res.status(201).json({
+    id:invoice.id,
+    invoiceNo,
+    total,
+    amountPaid,
+    extraCollection,
+    amountReceived,
+    balance:roundMoney(total-amountPaid),
+    createdAt:iso(invoice.createdAt),
+    cashierName:user.name,
+  });
+});
 router.post("/xstore/poultry/customers/:customerId/payments", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
   if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "collector"])) { res.status(403).json({ error: "ليس لديك صلاحية تسجيل تحصيل." }); return; }
