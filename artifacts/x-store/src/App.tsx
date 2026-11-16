@@ -63,7 +63,7 @@ import { isOfflineHardwareFingerprint, type OfflineLicensePlan } from './offline
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const PoultryFeatureCustomersPage = lazy(() => import('@/features/poultry/PoultryPages').then(module => ({ default: module.PoultryCustomersPage })));
-const PoultryFeatureInvoicesPage = lazy(() => import('@/features/poultry/PoultryPages').then(module => ({ default: module.PoultryInvoicesPage })));
+import { PoultryInvoicesPage as PoultryFeatureInvoicesPage } from '@/features/poultry/PoultryPages';
 import { PoultrySalePage as PoultryFeatureSalePage } from '@/features/poultry/PoultryPages';
 const PoultryFeatureDashboardPage = lazy(() => import('@/features/poultry/PoultryPages').then(module => ({ default: module.PoultryDashboardPage })));
 
@@ -1098,7 +1098,7 @@ function PoultryCollectionsPage() {
   return <PoultryCustomersPage mode="collections"/>;
 }
 function PoultryInvoicesPage() {
-  return <Suspense fallback={<div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>}><PoultryFeatureInvoicesPage /></Suspense>;
+  return <PoultryFeatureInvoicesPage />;
 }
 function PoultryDashboardPage() {
   return <Suspense fallback={<div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>}><PoultryFeatureDashboardPage/></Suspense>;
