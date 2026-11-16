@@ -722,8 +722,7 @@ export function PoultryInvoicesPage() {
       hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo'
     }).format(created);
     const item = invoice.items[0];
-    const itemRows = invoice.items.map(item => '<div class="sale-cell"><span>الصنف</span><b>' + esc(item.productName || '—') + '</b><span>الوزن</span><b>' + esc(fmt(Number(item.quantityKg) || 0) + ' كجم') + '</b><span>سعر الكيلو</span><b>' + esc(fmt(Number(item.unitPrice) || 0) + ' ج.م') + '</b><span>إجمالي البيع</span><strong>' + esc(fmt(Number(item.total) || 0) + ' ج.م') + '</strong></div>').join('');
-    const totalWeight = invoice.items.reduce((sum, row) => sum + Number(row.quantityKg || 0), 0);
+    const saleCells = invoice.items.map(item => '<div class="sale-cell"><span>الصنف</span><b>' + esc(item.productName || '—') + '</b><span>الوزن</span><b>' + esc(fmt(Number(item.quantityKg) || 0) + ' كجم') + '</b><span>سعر الكيلو</span><b>' + esc(fmt(Number(item.unitPrice) || 0) + ' ج.م') + '</b><span>إجمالي البيع</span><strong>' + esc(fmt(Number(item.total) || 0) + ' ج.م') + '</strong></div>').join('');
 
     popup.document.open();
     popup.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>فاتورة ' + esc(invoice.invoiceNo) + '</title><style>' +
@@ -735,8 +734,7 @@ export function PoultryInvoicesPage() {
       '<section class="card"><div class="head"><div><span class="kicker">تم الحفظ بنجاح</span><h1 class="title">فاتورة ' + esc(invoice.invoiceNo) + '</h1></div><div class="head-icon">▤</div></div>' +
       '<div class="meta"><div><small>العميل</small><b>' + esc(invoice.customerName) + '</b></div><div><small>المحل</small><b>' + esc(invoice.shopName || 'غير مسجل') + '</b></div><div><small>الهاتف</small><b dir="ltr">' + esc(invoice.phone) + '</b></div><div><small>اليوم والتاريخ</small><b>' + esc(dateText) + '</b></div><div><small>الوقت</small><b>' + esc(timeText) + '</b></div><div><small>الموظف</small><b>' + esc(invoice.cashierName || 'غير محدد') + '</b></div></div></section>' +
       '<section class="card"><div class="sale-title">تفاصيل البيع</div><div class="sale">' +
-      (item ? '<div class="sale-cell"><span>الصنف</span><b>' + esc(item.productName || '—') + '</b><span>الوزن</span><b>' + esc(fmt(Number(item.quantityKg) || 0) + ' كجم') + '</b><span>سعر الكيلو</span><b>' + esc(fmt(Number(item.unitPrice) || 0) + ' ج.م') + '</b><span>إجمالي البيع</span><strong>' + esc(fmt(Number(invoice.total) || 0) + ' ج.م') + '</strong></div>' : '') +
-      '<div class="sale-cell"><span>إجمالي الكمية</span><b>' + esc(fmt(totalWeight) + ' كجم') + '</b><span>عدد الأصناف</span><b>' + esc(fmt(invoice.items.length)) + '</b></div>' +
+      saleCells +
       '</div></section>' +
       '<section class="card"><div class="totals"><div><span>المدفوع</span><b>' + esc(fmt(invoice.amountPaid) + ' ج.م') + '</b></div><div><span>التحصيل من الرصيد السابق</span><b>' + esc(fmt(invoice.extraCollection || 0) + ' ج.م') + '</b></div><div class="remaining"><span>المتبقي</span><strong>' + esc(fmt(invoice.balance) + ' ج.م') + '</strong></div></div></section>' +
       '<div class="actions"><span>فتح صفحة بيع العميل</span><span>طباعة</span><span>حفظ كصورة</span><span>إرسال واتساب</span></div>' +
