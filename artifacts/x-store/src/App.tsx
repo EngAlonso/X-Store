@@ -225,7 +225,7 @@ const teamPermissionOptions: { value: TeamPermission; label: string; description
   { value: 'warehouse_manager', label: 'إدارة المخزون', description: 'عرض المنتجات وتعديل الكميات دون تغيير أسعار المنتجات.' },
   { value: 'accountant', label: 'التقارير المالية', description: 'عرض التقارير المالية والمبيعات المسجلة.' },
   { value: 'collector', label: 'التحصيل', description: 'عرض حسابات العملاء وتسجيل التحصيل فقط.' },
-  { value: 'customer_management', label: 'إدارة العملاء', description: 'إضافة العملاء وتعديل بياناتهم دون البيع أو التحصيل.' },
+  { value: 'customer_management', label: 'إدارة العملاء', description: 'إضافة العملاء والبحث في بياناتهم دون البيع أو التحصيل.' },
 ];
 const teamPermissionNames: Record<TeamPermission, string> = {
   retail_sales: 'بيع قطاعي',
@@ -1815,7 +1815,7 @@ function TeamPage() {
   };
   const poultryPermissionDescription: Record<string, string> = {
     retail_sales: 'الوصول إلى قسم البيع وتسجيل فواتير الدواجن بالكيلو وحفظ سعر الكيلو.',
-    customer_management: 'إضافة العملاء وتعديل بياناتهم والبحث في حساباتهم دون البيع أو التحصيل.',
+    customer_management: 'إضافة العملاء والبحث في بياناتهم دون البيع أو التحصيل.',
     accountant: 'عرض العملاء وكشوف الحساب والتقارير بدون إنشاء فواتير أو تحصيل.',
     collector: 'عرض حسابات العملاء وتسجيل التحصيل فقط، بدون إنشاء فاتورة.',
   };
