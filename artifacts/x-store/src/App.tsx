@@ -351,7 +351,7 @@ function Logo({ compact = false }: { compact?: boolean }) {
   return <Link href="/" className="brand" data-testid="link-brand"><img src={`${basePath}/x-store-mark.png`} alt="" /><span>X-Store</span>{!compact && <small>نظام إدارة متجرك</small>}</Link>;
 }
 function SiteFooter() {
-  const status = undefined;
+  const { data: status } = useGetXStoreAuthStatus({ query: { enabled: false } });
   const whatsappDigits = getWhatsAppDigits(status?.supportWhatsapp)
     || status?.supportWhatsapp?.replace(/[٠-٩۰-۹]/g, digit => {
       const code = digit.charCodeAt(0);
