@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ReceiptText, Users, Wallet, type LucideIcon } from 'lucide-react';
 import type { SessionUser } from '@workspace/api-client-react';
-import { poultryApi } from './poultryApi';
+import { poultryApi, type PoultryNotification } from './poultryApi';
 
 export type PoultryNavigationItem = {
   href: string;
@@ -25,15 +25,6 @@ export function getPoultryNavigation(user: SessionUser): PoultryNavigationItem[]
     ...(canCollect ? [{ href: '/poultry-collections', label: 'التحصيل', icon: Wallet }] : []),
   ];
 }
-
-export type PoultryNotification = {
-  id: string;
-  title: string;
-  detail: string;
-  createdAt: string;
-  href: string;
-  type?: 'invoice' | 'payment';
-};
 
 export function usePoultryNotifications(enabled: boolean, userId?: string) {
   const [notifications, setNotifications] = useState<PoultryNotification[]>([]);
