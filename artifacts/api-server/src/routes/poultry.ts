@@ -246,7 +246,7 @@ router.post("/xstore/poultry/customers/:customerId/payments", async (req, res): 
   if (!Number.isFinite(amount) || amount<=0) { res.status(400).json({ error: "أدخل مبلغ تحصيل صحيح." }); return; }
   const [payment] = await db.insert(xstorePoultryPayments).values({tenantId:user.tenantId,customerId:customer.id,cashierUserId:user.id,amount:String(roundMoney(amount)),note:typeof req.body?.note==="string"?req.body.note.trim()||null:null}).returning();
   if (!payment) { res.status(500).json({ error: "تعذر تسجيل التحصيل." }); return; }
-  await audit(user,"poultry.payment_collected",user.tenantId,payment.id,"poultry_payment",payment.id,"تم تحصيل "+roundMoney(amount)+" من العميل "+customer.name);
+  await audit(user,"poultry.payment_collected",user.tenantId,"poultry_payment",payment.id,"تم تحصيل "+roundMoney(amount)+" من العميل "+customer.name);
   res.status(201).json({id:payment.id,amount:roundMoney(amount),createdAt:iso(payment.createdAt),collectorName:user.name});
 });
 
