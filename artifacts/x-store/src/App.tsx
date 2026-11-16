@@ -1105,8 +1105,6 @@ function PoultryDashboardPage() {
   const totalOutstanding = customers.reduce((sum, customer) => sum + Number(customer.balance || 0), 0);
   const invoiceCount = notifications.filter(item => item.type === 'invoice').length;
   const paymentCount = notifications.filter(item => item.type === 'payment').length;
-  const goCustomers = () => window.history.pushState({}, '', '/poultry-customers');
-
   return <div dir="rtl" className="poultry-dashboard">
     <PageTitle
       eyebrow="إدارة الدواجن والفراخ"
