@@ -1090,7 +1090,7 @@ function PoultrySalesPage() {
   return <PoultryCustomersPage mode="sales"/>;
 }
 function PoultrySalePage() {
-  return <Suspense fallback={<div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>}><PoultryFeatureSalePage/></Suspense>;
+  return <PoultryFeatureSalePage />;
 }
 function PoultryCollectionsPage() {
   return <PoultryCustomersPage mode="collections"/>;
