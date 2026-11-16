@@ -1,4 +1,4 @@
-import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from 'react';
+import { Fragment, createContext, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from 'react';
 import { createPortal } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -57,14 +57,66 @@ import PlatformDatabasePage from '@/pages/platform-database';
 import StoreBackupPage from '@/pages/store-backup';
 import RestaurantMenuPage from '@/pages/restaurant-menu';
 import PublicRestaurantMenu from '@/pages/public-restaurant-menu';
-import { PoultryCustomersPage as PoultryFeatureCustomersPage, PoultryDashboardPage as PoultryFeatureDashboardPage } from '@/features/poultry';
-import { getPoultryNavigation, usePoultryNotifications } from '@/features/poultry/poultryShell';
-import { poultryPermissionDescription, poultryPermissionLabel, poultryTeamPermissionKeys } from '@/features/poultry/poultryPermissions';
 import type { OfflineActivationRequest } from './offline/licensing';
 import { isOfflineHardwareFingerprint, type OfflineLicensePlan } from './offline/model';
 
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+const PoultryFeatureCustomersPage = lazy(() => import('@/features/poultry/PoultryPages').then(module => ({ default: module.PoultryCustomersPage })));
+const PoultryFeatureDashboardPage = lazy(() => import('@/features/poultry/PoultryPages').then(module => ({ default: module.PoultryDashboardPage })));
+
+function getPoultryNavigation(user: SessionUser) {
+  const permissions = user.permissions || [];
+  const isAdmin = user.role === 'tenant_admin' || user.role === 'cashier';
+  const canViewCustomers = isAdmin || user.role === 'accountant' ||
+    (user.role === 'custom' && permissions.some(permission =>
+      ['customer_management', 'accountant', 'collector', 'retail_sales'].includes(permission),
+    ));
+  const canSell = isAdmin || (user.role === 'custom' && permissions.includes('retail_sales'));
+  const canCollect = isAdmin || (user.role === 'custom' && permissions.includes('collector'));
+  return [
+    ...(canViewCustomers ? [{ href: '/poultry-customers', label: 'العملاء', icon: Users }] : []),
+    ...(canSell ? [{ href: '/poultry-sales', label: 'البيع', icon: ReceiptText }] : []),
+    ...(canCollect ? [{ href: '/poultry-collections', label: 'التحصيل', icon: Wallet }] : []),
+  ];
+}
+
+function usePoultryNotifications(enabled: boolean, userId: string) {
+  const [data, setData] = useState<Array<{ id: string; type: 'invoice' | 'payment'; title: string; detail: string; createdAt: string; href: string }>>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  useEffect(() => {
+    if (!enabled || !userId) { setData([]); return; }
+    let cancelled = false;
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/xstore/poultry/notifications', { credentials: 'include', cache: 'no-store' });
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (!cancelled && Array.isArray(payload)) setData(payload);
+      } catch {
+        // Notifications are supplemental; a failed poll must never break the shell or login.
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 30000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [enabled, userId]);
+  return { data, isLoading };
+}
+
+const poultryTeamPermissionKeys = ['retail_sales', 'accountant', 'collector', 'customer_management'] as const;
+const poultryPermissionLabel: Record<string, string> = {
+  retail_sales: 'بيع الدواجن بالكيلو', customer_management: 'إدارة العملاء', accountant: 'التقارير وكشوف الحساب', collector: 'تحصيل حسابات العملاء',
+};
+const poultryPermissionDescription: Record<string, string> = {
+  retail_sales: 'الوصول إلى قسم البيع وتسجيل فواتير الدواجن بالكيلو وحفظ سعر الكيلو.',
+  customer_management: 'إضافة العملاء والبحث في بياناتهم دون البيع أو التحصيل.',
+  accountant: 'عرض العملاء وكشوف الحساب والتقارير بدون إنشاء فواتير أو تحصيل.',
+  collector: 'عرض حسابات العملاء وتسجيل التحصيل فقط، بدون إنشاء فاتورة.',
+};
 
 type SocialLinkKey = keyof AuthStatus['socialLinks'];
 type SocialLinkInputValues = Record<SocialLinkKey, string>;
@@ -1026,7 +1078,7 @@ function StateBlock({loading,error,onRetry,empty,emptyTitle='لا توجد بي�
 
 function PoultryCustomersPage({ mode = 'customers' }: { mode?: 'customers' | 'sales' | 'collections' }) {
   const session = useContext(XStoreSessionContext);
-  return <PoultryFeatureCustomersPage mode={mode} session={session}/>;
+  return <Suspense fallback={<div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>}><PoultryFeatureCustomersPage mode={mode} session={session}/></Suspense>;
 }
 function PoultrySalesPage() {
   return <PoultryCustomersPage mode="sales"/>;
@@ -1035,7 +1087,7 @@ function PoultryCollectionsPage() {
   return <PoultryCustomersPage mode="collections"/>;
 }
 function PoultryDashboardPage() {
-  return <PoultryFeatureDashboardPage/>;
+  return <Suspense fallback={<div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>}><PoultryFeatureDashboardPage/></Suspense>;
 }
 
 function DashboardPage() {
