@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/features/poultry/**/*", "src/vite-env.d.ts"],
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"]
+}
