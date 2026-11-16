@@ -1411,6 +1411,8 @@ function TenantsPage() {
   const [editWholesaleEnabled,setEditWholesaleEnabled]=useState(false);
   const [tenantToEditId,setTenantToEditId]=useState('');
   const [notice,setNotice]=useState('');
+  const [deletingTenant,setDeletingTenant]=useState<Tenant|null>(null);
+  const [deleteError,setDeleteError]=useState('');
   const filtered=useMemo(()=> (tenants.data||[]).filter(t=>`${t.name} ${t.ownerName} ${t.phone} ${t.email||''} ${t.businessType} ${storeTypeName(t.storeType)} ${getPhoneCountry(t.countryCode).name}`.toLowerCase().includes(search.toLowerCase())),[tenants.data,search]);
   const tenantToEdit=tenants.data?.find((tenant)=>tenant.id===tenantToEditId);
   function refreshTenants(){qc.invalidateQueries({queryKey:getListXStoreTenantsQueryKey()});qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});}
@@ -1453,6 +1455,31 @@ function TenantsPage() {
     const f=new FormData(e.currentTarget);
     credentials.mutate({tenantId:accessTenant.id,data:{phone:String(f.get('phone')),password:String(f.get('password'))}},{onSuccess:()=>{refreshTenants();setAccessTenant(null);setNotice('تم تحديث بيانات دخول مالك المتجر');}});
   }
+  async function confirmDeleteTenant() {
+    if (!deletingTenant) return;
+    setDeleteError('');
+    try {
+      const response = await fetch(`/api/xstore/tenants/${deletingTenant.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        let message = 'تعذر حذف المتجر نهائيًا.';
+        try {
+          const body = await response.json() as { error?: string };
+          if (body.error) message = body.error;
+        } catch {}
+        throw new Error(message);
+      }
+      refreshTenants();
+      setDeletingTenant(null);
+      setNotice(`تم حذف متجر ${deletingTenant.name} نهائيًا.`);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : 'تعذر حذف المتجر نهائيًا.');
+    }
+  }
+
   function submitTenantEdit(e:FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if(!editTenant)return;
@@ -1486,10 +1513,21 @@ function TenantsPage() {
     </div>
     <Card><SectionHead title="قائمة المتاجر" detail="تحديث الحالة وتغيير بيانات دخول المالك مسجلان في سجل التدقيق."/>
       <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم المتجر أو المالك أو الهاتف" data-testid="input-search-tenants"/></label><span className="result-count">{fmt(filtered.length)} نتيجة</span></div>
-      {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<><div className="table-wrap tenants-table-desktop"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع المتجر والنشاط</th><th>العملة الأساسية</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td><b>{storeTypeName(t.storeType)}</b><small>{t.businessType} · {getPhoneCountry(t.countryCode).name} (+{getPhoneCountry(t.countryCode).callingCode}) · {t.wholesaleEnabled?'الجملة مفعلة':'الجملة غير مفعلة'}</small></td><td><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></td></tr>)}</tbody></table></div><div className="tenants-mobile-list">{filtered.map(t=><article className="tenant-mobile-card" key={t.id}><div className="tenant-mobile-head"><div className="tenant-mobile-avatar">{t.name.slice(0,1)}</div><div className="tenant-mobile-title"><b>{t.name}</b><small>{t.ownerName}</small></div><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></div><div className="tenant-mobile-meta"><div><span>نوع المتجر</span><b>{storeTypeName(t.storeType)}</b></div><div><span>الخطة</span><b>{statusNames[t.plan]}</b></div><div><span>العملة</span><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></div></div><div className="tenant-mobile-details"><span>{t.businessType||'نشاط تجاري'} · {getPhoneCountry(t.countryCode).name} (+{getPhoneCountry(t.countryCode).callingCode})</span><span>ينتهي: {dateLabel(t.subscriptionEndsAt)}</span><span>{fmt(t.branchCount)} فرع</span></div><div className="tenant-mobile-actions"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button></div></article>)}</div></>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
+      {tenants.isLoading?<StateBlock loading error={false} onRetry={()=>tenants.refetch()} empty={false}/>:tenants.isError?<StateBlock loading={false} error onRetry={()=>tenants.refetch()} empty={false}/>:filtered.length?<><div className="table-wrap tenants-table-desktop"><table><thead><tr><th>المتجر</th><th>المالك</th><th>نوع المتجر والنشاط</th><th>العملة الأساسية</th><th>الحالة</th><th>الخطة</th><th>انتهاء الاشتراك</th><th>الفروع</th><th>إجراء</th></tr></thead><tbody>{filtered.map(t=><tr key={t.id}><td><b>{t.name}</b><small>{t.email||t.phone}</small></td><td>{t.ownerName}<small dir="ltr">{t.phone}</small></td><td><b>{storeTypeName(t.storeType)}</b><small>{t.businessType} · {getPhoneCountry(t.countryCode).name} (+{getPhoneCountry(t.countryCode).callingCode}) · {t.wholesaleEnabled?'الجملة مفعلة':'الجملة غير مفعلة'}</small></td><td><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></td><td><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></td><td>{statusNames[t.plan]}</td><td>{dateLabel(t.subscriptionEndsAt)}</td><td>{fmt(t.branchCount)}</td><td><div className="table-actions-cell"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button><button className="table-action team-action-danger" onClick={()=>{setDeleteError('');setDeletingTenant(t)}}><Trash2 size={14}/> حذف نهائي</button></div></td></tr>)}</tbody></table></div><div className="tenants-mobile-list">{filtered.map(t=><article className="tenant-mobile-card" key={t.id}><div className="tenant-mobile-head"><div className="tenant-mobile-avatar">{t.name.slice(0,1)}</div><div className="tenant-mobile-title"><b>{t.name}</b><small>{t.ownerName}</small></div><span className={`status-pill status-${t.status}`}>{statusNames[t.status]}</span></div><div className="tenant-mobile-meta"><div><span>نوع المتجر</span><b>{storeTypeName(t.storeType)}</b></div><div><span>الخطة</span><b>{statusNames[t.plan]}</b></div><div><span>العملة</span><select aria-label={`تغيير العملة الأساسية لمتجر ${t.name}`} defaultValue={t.currency} disabled={update.isPending} onChange={e=>changeCurrency(t,e.currentTarget.value as StoreCurrency,e.currentTarget)}>{currencyOptions.map(currency=><option key={currency.value} value={currency.value}>{currency.label}</option>)}</select></div></div><div className="tenant-mobile-details"><span>{t.businessType||'نشاط تجاري'} · {getPhoneCountry(t.countryCode).name} (+{getPhoneCountry(t.countryCode).callingCode})</span><span>ينتهي: {dateLabel(t.subscriptionEndsAt)}</span><span>{fmt(t.branchCount)} فرع</span></div><div className="tenant-mobile-actions"><select aria-label={`تغيير حالة ${t.name}`} value={t.status} disabled={update.isPending} onChange={e=>update.mutate({tenantId:t.id,data:{status:e.target.value as 'active'|'trial'|'suspended'}},{onSuccess:()=>{refreshTenants();setNotice(`تم تحديث حالة ${t.name}`)}})}><option value="active">نشط</option><option value="trial">تجريبي</option><option value="suspended">إيقاف</option></select><button className="table-action" onClick={()=>setAccessTenant(t)}><KeyRound size={14}/> بيانات الدخول</button><button className="table-action team-action-danger" onClick={()=>{setDeleteError('');setDeletingTenant(t)}}><Trash2 size={14}/> حذف نهائي</button></div></article>)}</div></>:<div className="empty-inline">لا توجد متاجر تطابق البحث.</div>}
     </Card>
     {notice&&<div className="toast-note" role="status">{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}
-     {editTenant&&<Modal title={`تعديل بيانات المتجر · ${editTenant.name}`} close={()=>setEditTenant(null)}><form className="form-grid" onSubmit={submitTenantEdit}>
+     {deletingTenant&&<Modal title={`حذف المتجر نهائيًا · ${deletingTenant.name}`} close={()=>{if(!deletingTenant?.name)return;setDeletingTenant(null);setDeleteError('')}}>
+      <div className="role-hint field-wide" style={{borderColor:'rgba(180,40,40,.35)'}}>
+        <Trash2 size={18}/>
+        <span><b>تحذير: هذا الإجراء نهائي ولا يمكن التراجع عنه.</b><br/>سيتم حذف المتجر وبياناته وحساب مالكه وبيانات الفريق والمبيعات والمخزون وحسابات العملاء الخاصة به.</span>
+      </div>
+      {deleteError&&<div className="form-error" role="alert">{deleteError}</div>}
+      <div className="modal-actions">
+        <button className="button button-quiet" type="button" onClick={()=>{setDeletingTenant(null);setDeleteError('')}}>إلغاء</button>
+        <button className="button team-action-danger" type="button" disabled={Boolean(deleteError) && false} onClick={confirmDeleteTenant}>حذف المتجر نهائيًا</button>
+      </div>
+    </Modal>}
+    {editTenant&&<Modal title={`تعديل بيانات المتجر · ${editTenant.name}`} close={()=>setEditTenant(null)}><form className="form-grid" onSubmit={submitTenantEdit}>
        <Field label="اسم المتجر" name="name" required defaultValue={editTenant.name}/>
        <label className="field"><span>نوع المتجر / النشاط</span><select name="storeType" value={editStoreType} required={Boolean(editTenant.storeType)} onChange={e=>{setEditStoreType(e.target.value);if(!storeTypeSupportsWholesale(e.target.value))setEditWholesaleEnabled(false)}}><option value="">غير محدد</option>{storeTypeOptions.map(type=><option key={type.value} value={type.value}>{type.label}</option>)}</select></label>
        <Field label="وصف النشاط" name="businessType" required defaultValue={editTenant.businessType}/>
