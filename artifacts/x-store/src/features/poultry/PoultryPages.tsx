@@ -608,7 +608,7 @@ export function PoultrySalePage() {
       <div className="poultry-invoice-customer"><b>العميل:</b> {customer.name} <span>·</span> <b>المحل:</b> {customer.shopName || 'غير مسجل'} <span>·</span> <b>الهاتف:</b> {customer.phone}</div>
       <div className="table-wrap">
         <table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>إجمالي الفاتورة</th></tr></thead>
-        <tbody><tr><td>{lastInvoiceDetails.productName}</td><td>{fmt(lastInvoiceDetails.quantityKg)} كجم</td><td>{fmt(lastInvoiceDetails.unitPrice)} ج.م</td><td><b>{fmt(lastInvoice.total)} ج.م</b></td></tr></tbody></table>
+        <tbody><tr><td data-label="الصنف">{lastInvoiceDetails.productName}</td><td data-label="الكمية">{fmt(lastInvoiceDetails.quantityKg)} كجم</td><td data-label="سعر الكيلو">{fmt(lastInvoiceDetails.unitPrice)} ج.م</td><td data-label="إجمالي الفاتورة"><b>{fmt(lastInvoice.total)} ج.م</b></td></tr></tbody></table>
       </div>
       <div className="poultry-invoice-totals">
         <div><span>المدفوع على الفاتورة</span><b>{fmt(lastInvoice.amountPaid)} ج.م</b></div>
@@ -619,7 +619,7 @@ export function PoultrySalePage() {
       <div className="form-actions">
         <button className="button button-primary" onClick={printInvoice}><Printer size={16}/> طباعة / حفظ PDF</button>
         <button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال واتساب</button>
-        <button className="button button-quiet" onClick={downloadInvoice}><ReceiptText size={16}/> حفظ على الجهاز</button>
+        <button className="button button-quiet" onClick={downloadInvoice}><Download size={16}/> حفظ كصورة</button>
         <button className="button button-quiet" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> بيع لعميل آخر</button>
       </div>
     </section>}
@@ -694,7 +694,7 @@ export function PoultryInvoicesPage() {
             </button>
             {isOpen && <div className="poultry-invoice-details">
               <div className="poultry-invoice-detail-head"><div><span className="poultry-box-kicker">تفاصيل الفاتورة</span><h3>{invoice.customerName}</h3></div><span className="poultry-invoice-cashier">بواسطة {invoice.cashierName}</span></div>
-              <div className="table-wrap"><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr></thead><tbody>{invoice.items.map((item, index) => <tr key={invoice.id+'-'+index}><td>{item.productName}</td><td>{fmt(item.quantityKg)} كجم</td><td>{fmt(item.unitPrice)} ج.م</td><td><b>{fmt(item.total)} ج.م</b></td></tr>)}</tbody></table></div>
+              <div className="table-wrap"><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr></thead><tbody>{invoice.items.map((item, index) => <tr key={invoice.id+'-'+index}><td data-label="الصنف">{item.productName}</td><td data-label="الكمية">{fmt(item.quantityKg)} كجم</td><td data-label="سعر الكيلو">{fmt(item.unitPrice)} ج.م</td><td data-label="القيمة"><b>{fmt(item.total)} ج.م</b></td></tr>)}</tbody></table></div>
               <div className="poultry-invoice-detail-totals"><div><span>إجمالي الفاتورة</span><b>{fmt(invoice.total)} ج.م</b></div><div><span>مدفوع على الفاتورة</span><b>{fmt(invoice.amountPaid)} ج.م</b></div><div><span>تحصيل من الرصيد السابق</span><b>{fmt(invoice.extraCollection)} ج.م</b></div><div className="total"><span>المتبقي</span><strong>{fmt(invoice.balance)} ج.م</strong></div></div>
               <div className="form-actions"><button className="button button-primary" onClick={() => setLocation('/poultry-sale/'+encodeURIComponent(invoice.customerId))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button><button className="button button-quiet" onClick={() => window.print()}><Printer size={16}/> طباعة</button></div>
             </div>}
