@@ -1,4 +1,4 @@
-const CACHE_NAME = "x-store-pwa-v1";
+const CACHE_NAME = "x-store-pwa-v2";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -46,7 +46,14 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(async () => (await caches.match(request)) || (await caches.match("/"))),
+        .catch(async () => {
+          const cachedPage = await caches.match(request) || await caches.match("/");
+          if (cachedPage) return cachedPage;
+          return new Response(
+            "<!doctype html><html lang=\"ar\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>X-Store</title></head><body><div style=\"font-family:Arial,sans-serif;padding:40px;text-align:center\">تعذر تحميل الصفحة. تحقق من الاتصال ثم أعد المحاولة.</div></body></html>",
+            { status: 503, headers: { "Content-Type": "text/html; charset=UTF-8" } },
+          );
+        }),
     );
     return;
   }
