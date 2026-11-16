@@ -63,7 +63,7 @@ import { isOfflineHardwareFingerprint, type OfflineLicensePlan } from './offline
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const PoultryFeatureCustomersPage = lazy(() => import('@/features/poultry/PoultryPages').then(module => ({ default: module.PoultryCustomersPage })));
-const PoultryFeatureSalePage = lazy(() => import('@/features/poultry/PoultryPages').then(module => ({ default: module.PoultrySalePage })));
+import { PoultrySalePage as PoultryFeatureSalePage } from '@/features/poultry/PoultryPages';
 const PoultryFeatureDashboardPage = lazy(() => import('@/features/poultry/PoultryPages').then(module => ({ default: module.PoultryDashboardPage })));
 
 function getPoultryNavigation(user: SessionUser) {
