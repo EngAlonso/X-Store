@@ -22,6 +22,7 @@ export const xstoreTeamPermissions = [
   "warehouse_manager",
   "accountant",
   "collector",
+  "customer_management",
 ] as const;
 export type XStoreTeamPermission = (typeof xstoreTeamPermissions)[number];
 
