@@ -269,6 +269,7 @@ export const TenantStoreType = {
   perfume_beauty: 'perfume_beauty',
   cafe: 'cafe',
   restaurant: 'restaurant',
+  poultry: 'poultry',
 } as const;
 
 export type StoreCurrency = typeof StoreCurrency[keyof typeof StoreCurrency];
