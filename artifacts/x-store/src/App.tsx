@@ -786,12 +786,14 @@ function AppShell({ children }: { children: ReactNode }) {
       if (dx < 0) setOpen(true);
       else setOpen(false);
     };
+    const handleTouchCancel = () => { touchStartRef.current = null; };
     window.addEventListener('touchstart', handleTouchStart, { passive: true });
     window.addEventListener('touchend', handleTouchEnd, { passive: true });
-    window.addEventListener('touchcancel', () => { touchStartRef.current = null; }, { passive: true });
+    window.addEventListener('touchcancel', handleTouchCancel, { passive: true });
     return () => {
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchCancel);
     };
   }, []);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
