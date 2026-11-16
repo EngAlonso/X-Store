@@ -1097,6 +1097,9 @@ function PoultrySalePage() {
 function PoultryCollectionsPage() {
   return <PoultryCustomersPage mode="collections"/>;
 }
+function PoultryInvoicesPage() {
+  return <Suspense fallback={<div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>}><PoultryFeatureInvoicesPage /></Suspense>;
+}
 function PoultryDashboardPage() {
   return <Suspense fallback={<div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>}><PoultryFeatureDashboardPage/></Suspense>;
 }
