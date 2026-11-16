@@ -84,7 +84,11 @@ router.post("/xstore/poultry/customers", async (req, res): Promise<void> => {
   if (!name || !phone) { res.status(400).json({ error: "اسم العميل ورقم الهاتف مطلوبان." }); return; }
   const [customer] = await db.insert(xstoreCustomers).values({ tenantId: user.tenantId, name, phone, shopName: shopName || null, shopAddress: shopAddress || null }).returning();
   if (!customer) { res.status(500).json({ error: "تعذر إنشاء العميل." }); return; }
-  await audit(user, "poultry.customer_created", user.tenantId, "poultry_customer", customer.id, "تم إضافة العميل " + name);
+  try {
+    await audit(user, "poultry.customer_created", user.tenantId, "poultry_customer", customer.id, "تم إضافة العميل " + name);
+  } catch (error) {
+    console.error("Poultry customer audit failed after successful customer creation:", error);
+  }
   res.status(201).json({ ...customer, createdAt: iso(customer.createdAt), updatedAt: iso(customer.updatedAt) });
 });
 
