@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ReceiptText, Users, Wallet } from 'lucide-react';
+import { ReceiptText, Users, Wallet, type LucideIcon } from 'lucide-react';
 import type { SessionUser } from '@workspace/api-client-react';
 import { poultryApi } from './poultryApi';
 
 export type PoultryNavigationItem = {
   href: string;
   label: string;
-  icon: typeof Users;
+  icon: LucideIcon;
 };
 
 export function getPoultryNavigation(user: SessionUser): PoultryNavigationItem[] {
