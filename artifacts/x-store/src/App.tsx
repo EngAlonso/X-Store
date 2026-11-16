@@ -850,7 +850,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
     user.storeType === 'cafe' || user.storeType === 'restaurant' ||
     (user.storeType == null && restaurantFeatureEnabled === true)
   );
-  const poultryCustomersEnabled = user.storeType === 'poultry' && (user.role !== 'custom' || user.permissions?.includes('collector') || user.permissions?.includes('accountant'));
+  const poultryCustomersEnabled = user.storeType === 'poultry' && (user.role !== 'custom' || user.permissions?.includes('collector') || user.permissions?.includes('accountant') || user.permissions?.includes('retail_sales'));
   const items = nav.filter(n =>
     (n.href !== '/restaurant-menu' || restaurantMenuEnabled) &&
     (n.href !== '/poultry-customers' || poultryCustomersEnabled) &&
@@ -1367,9 +1367,9 @@ function PoultryDashboardPage() {
     <Card className="poultry-dashboard-actions">
       <SectionHead title="إجراءات سريعة" detail="العمليات الأساسية لمتجر الدواجن."/>
       <div className="quick-list">
-        <div><span className="quick-icon green"><Plus size={17}/></span><span><b>إضافة عميل</b><small>اسم العميل، الهاتف، المحل والعنوان</small></span><Link href="/poultry-customers" className="table-action">فتح</Link></div>
-        <div><span className="quick-icon yellow"><ReceiptText size={17}/></span><span><b>تسجيل فاتورة بالكيلو</b><small>سعر الكيلو يُحفظ مع كل فاتورة</small></span><Link href="/poultry-customers" className="table-action">فتح</Link></div>
-        <div><span className="quick-icon pale"><Wallet size={17}/></span><span><b>تسجيل تحصيل</b><small>الموظف المخصص للتحصيل يقدر يسجل الدفع</small></span><Link href="/poultry-customers" className="table-action">فتح</Link></div>
+        <div><span className="quick-icon green"><Plus size={17}/></span><span><b>إدارة العملاء</b><small>إضافة وبحث بيانات العملاء</small></span><Link href="/poultry-customers" className="table-action">فتح</Link></div>
+        <div><span className="quick-icon yellow"><ReceiptText size={17}/></span><span><b>تسجيل فاتورة بالكيلو</b><small>بيع الدواجن وحفظ سعر الكيلو</small></span><Link href="/poultry-sales" className="table-action">فتح</Link></div>
+        <div><span className="quick-icon pale"><Wallet size={17}/></span><span><b>تسجيل تحصيل</b><small>تسجيل المبالغ المحصلة من العملاء</small></span><Link href="/poultry-collections" className="table-action">فتح</Link></div>
       </div>
     </Card>
   </div>;
@@ -1812,7 +1812,7 @@ function TeamPage() {
     collector: 'تحصيل حسابات العملاء',
   };
   const poultryPermissionDescription: Record<string, string> = {
-    retail_sales: 'إضافة العميل وتسجيل فواتير الدواجن بالكيلو وحفظ سعر الكيلو.',
+    retail_sales: 'الوصول إلى قسم البيع وتسجيل فواتير الدواجن بالكيلو وحفظ سعر الكيلو.',
     accountant: 'عرض العملاء وكشوف الحساب والتقارير بدون إنشاء فواتير أو تحصيل.',
     collector: 'عرض حسابات العملاء وتسجيل التحصيل فقط، بدون إنشاء فاتورة.',
   };
