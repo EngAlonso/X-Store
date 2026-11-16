@@ -1094,30 +1094,35 @@ function PoultryCustomersPage() {
   }
 
   const invoiceTotal=roundMoney((Number(invoice.quantityKg)||0)*(Number(invoice.unitPrice)||0));
-  const paidNow=Number(invoice.amountPaid)||0;
-  const invoiceRemaining=Math.max(0,roundMoney(invoiceTotal-paidNow));
+  const amountReceivedToday=Math.max(0,Number(invoice.amountPaid)||0);
+  const paidOnInvoice=Math.min(invoiceTotal,amountReceivedToday);
+  const extraCollection=Math.max(0,roundMoney(amountReceivedToday-invoiceTotal));
+  const invoiceRemaining=Math.max(0,roundMoney(invoiceTotal-paidOnInvoice));
 
   async function createInvoice(){
     if(!selected){setError('اختَر العميل أولاً.');return;}
     const quantity=Number(invoice.quantityKg);
     const unitPrice=Number(invoice.unitPrice);
-    const amountPaid=Number(invoice.amountPaid)||0;
+    const amountReceived=Number(invoice.amountPaid)||0;
     if(!Number.isFinite(quantity)||quantity<=0){setError('اكتب كمية بالكيلو أكبر من صفر.');return;}
     if(!Number.isFinite(unitPrice)||unitPrice<0){setError('اكتب سعر الكيلو بشكل صحيح.');return;}
+    if(!Number.isFinite(amountReceived)||amountReceived<0){setError('اكتب المبلغ المدفوع اليوم بشكل صحيح.');return;}
     const total=roundMoney(quantity*unitPrice);
-    if(amountPaid<0||amountPaid>total){setError('المدفوع لا يمكن أن يكون أكبر من إجمالي الفاتورة.');return;}
+    if(amountReceived<0){setError('المبلغ المدفوع اليوم لا يمكن أن يكون سالبًا.');return;}
     setBusy(true);setError('');setNotice('');
     try{
       const r=await fetch('/api/xstore/poultry/customers/'+selected.id+'/invoices',{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         credentials:'include',
-        body:JSON.stringify({items:[{productName:invoice.productName.trim()||'فراخ',quantityKg:quantity,unitPrice}],amountPaid}),
+        body:JSON.stringify({items:[{productName:invoice.productName.trim()||'فراخ',quantityKg:quantity,unitPrice}],amountPaid:amountReceived}),
       });
       const j=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(j.error||'تعذر تسجيل الفاتورة.');
       setLastInvoice({...j,customerName:selected.name});
-      setNotice('تم تسجيل الفاتورة '+j.invoiceNo+' بقيمة '+fmt(j.total)+' ج.م.');
+      setNotice(j.extraCollection>0
+        ? 'تم تسجيل الفاتورة بقيمة '+fmt(j.total)+' ج.م، وتسجيل '+fmt(j.extraCollection)+' ج.م تحصيلًا من الرصيد السابق.'
+        : 'تم تسجيل الفاتورة '+j.invoiceNo+' بقيمة '+fmt(j.total)+' ج.م.');
       setInvoice({productName:'فراخ',quantityKg:'',unitPrice:'',amountPaid:''});
       await loadCustomers();
       await loadStatement(selected);
@@ -1214,16 +1219,18 @@ function PoultryCustomersPage() {
               <label className="field"><span>الصنف</span><input value={invoice.productName} onChange={e=>setInvoice({...invoice,productName:e.target.value})} placeholder="مثال: فراخ بيضاء"/></label>
               <label className="field"><span>الكمية بالكيلو <b className="required-mark">*</b></span><input type="number" min="0.001" step="0.001" value={invoice.quantityKg} onChange={e=>setInvoice({...invoice,quantityKg:e.target.value})} placeholder="مثال: 12.500"/></label>
               <label className="field"><span>سعر الكيلو <b className="required-mark">*</b></span><input type="number" min="0" step="0.01" value={invoice.unitPrice} onChange={e=>setInvoice({...invoice,unitPrice:e.target.value})} placeholder="مثال: 145"/></label>
-              <label className="field"><span>المدفوع الآن</span><input type="number" min="0" step="0.01" value={invoice.amountPaid} onChange={e=>setInvoice({...invoice,amountPaid:e.target.value})} placeholder="0 = آجل بالكامل"/></label>
+              <label className="field"><span>المبلغ المدفوع اليوم</span><input type="number" min="0" step="0.01" value={invoice.amountPaid} onChange={e=>setInvoice({...invoice,amountPaid:e.target.value})} placeholder="0 = آجل بالكامل"/></label>
             </div>
             <div className="poultry-sale-calculation">
               <div><span>الوزن</span><b>{fmt(Number(invoice.quantityKg)||0)} كجم</b></div>
               <div><span>سعر الكيلو</span><b>{fmt(Number(invoice.unitPrice)||0)} ج.م</b></div>
               <div className="total"><span>إجمالي الفاتورة</span><strong>{fmt(invoiceTotal)} ج.م</strong></div>
-              <div><span>المتبقي</span><b>{fmt(invoiceRemaining)} ج.م</b></div>
+              <div><span>مدفوع على الفاتورة</span><b>{fmt(paidOnInvoice)} ج.م</b></div>
+              <div><span>تحصيل من الرصيد السابق</span><b>{fmt(extraCollection)} ج.م</b></div>
+              <div><span>متبقي هذه الفاتورة</span><b>{fmt(invoiceRemaining)} ج.م</b></div>
             </div>
             <button className="button button-primary poultry-main-action" disabled={busy||invoiceTotal<=0} onClick={()=>void createInvoice()}><ReceiptText size={17}/> تسجيل الفاتورة وحفظ سعر الكيلو</button>
-            <small className="poultry-helper">سعر الكيلو بيتحفظ داخل بند الفاتورة، ويظهر بعد كده في كشف حساب العميل.</small>
+            <small className="poultry-helper">المبلغ المدفوع اليوم يمكن أن يكون أكبر من الفاتورة: النظام يثبت قيمة الفاتورة أولًا، والباقي يُسجل تلقائيًا كتحصيل من رصيد العميل السابق.</small>
           </div>}
 
           {canCollect&&<div className="poultry-action-box poultry-collection-box">
