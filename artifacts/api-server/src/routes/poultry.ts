@@ -321,6 +321,43 @@ router.post("/xstore/poultry/customers/:customerId/payments", async (req, res): 
   res.status(201).json({id:payment.id,amount:roundMoney(amount),createdAt:iso(payment.createdAt),collectorName:user.name});
 });
 
+router.get("/xstore/poultry/reports/financial", async (req, res): Promise<void> => {
+  const user = getXStoreUser(res);
+  if (!user.tenantId || !hasRole(user, poultryUserRoles)) { res.status(403).json({ error: "ليس لديك صلاحية لعرض التقرير المالي." }); return; }
+  if (!(await ensurePoultryTenantAccess(user, res))) return;
+  const from = typeof req.query.from === "string" && req.query.from ? new Date(req.query.from + "T00:00:00+02:00") : new Date(new Date().toISOString().slice(0, 7) + "-01T00:00:00+02:00");
+  const to = typeof req.query.to === "string" && req.query.to ? new Date(req.query.to + "T23:59:59.999+02:00") : new Date();
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) { res.status(400).json({ error: "الفترة الزمنية غير صحيحة." }); return; }
+  try {
+    const invoices = await db.select().from(xstorePoultryInvoices)
+      .where(and(eq(xstorePoultryInvoices.tenantId, user.tenantId), sql`created_at >= ${from} and created_at <= ${to}`))
+      .orderBy(desc(xstorePoultryInvoices.createdAt));
+    const invoiceIds = invoices.map(row => row.id);
+    const [payments, items] = await Promise.all([
+      db.select().from(xstorePoultryPayments).where(and(eq(xstorePoultryPayments.tenantId, user.tenantId), sql`created_at >= ${from} and created_at <= ${to}`)),
+      invoiceIds.length ? db.select().from(xstorePoultryInvoiceItems).where(inArray(xstorePoultryInvoiceItems.invoiceId, invoiceIds)) : Promise.resolve([]),
+    ]);
+    const totalSales = roundMoney(invoices.reduce((sum, row) => sum + toNumber(row.total), 0));
+    const totalCollected = roundMoney(invoices.reduce((sum, row) => sum + toNumber(row.amountPaid), 0) + payments.reduce((sum, row) => sum + toNumber(row.amount), 0));
+    const totalKg = roundMoney(items.reduce((sum, row) => sum + toNumber(row.quantityKg), 0));
+    const customerIds = new Set(invoices.map(row => row.customerId));
+    res.json({
+      from: typeof req.query.from === "string" ? req.query.from : from.toISOString().slice(0, 10),
+      to: typeof req.query.to === "string" ? req.query.to : to.toISOString().slice(0, 10),
+      invoiceCount: invoices.length,
+      totalSales,
+      totalCollected,
+      outstanding: roundMoney(totalSales - totalCollected),
+      totalKg,
+      customerCount: customerIds.size,
+      averageInvoice: invoices.length ? roundMoney(totalSales / invoices.length) : 0,
+    });
+  } catch (error) {
+    req.log.error({ error }, "Unable to create poultry financial report");
+    res.status(500).json({ error: "تعذر تحميل التقرير المالي للدواجن." });
+  }
+});
+
 router.get("/xstore/poultry/notifications", async (_req, res): Promise<void> => {
   const user = getXStoreUser(res);
   if (!user.tenantId || !hasRole(user,poultryUserRoles)) { res.status(403).json({error:"غير مصرح."}); return; }

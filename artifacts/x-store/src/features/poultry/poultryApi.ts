@@ -69,6 +69,10 @@ export type PoultryInvoiceListResponse = {
   summary: { count: number; sales: number; paid: number; outstanding: number; totalKg: number };
 };
 
+export type PoultryFinancialReport = {
+  from: string; to: string; invoiceCount: number; totalSales: number; totalCollected: number;
+  outstanding: number; totalKg: number; customerCount: number; averageInvoice: number;
+};
 export type PoultryNotification = {
   id: string;
   type: 'invoice' | 'payment';
@@ -120,6 +124,9 @@ export const poultryApi = {
     if (search) params.set('search', search);
     const query = params.toString();
     return poultryRequest<PoultryInvoiceListResponse>('/invoices' + (query ? '?' + query : ''));
+  },
+  financialReport(from: string, to: string) {
+    return poultryRequest<PoultryFinancialReport>('/reports/financial?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to));
   },
   notifications() {
     return poultryRequest<PoultryNotification[]>('/notifications');
