@@ -903,14 +903,19 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
     user.storeType === 'cafe' || user.storeType === 'restaurant' ||
     (user.storeType == null && restaurantFeatureEnabled === true)
   );
-  const items = [
-    ...nav.filter(n =>
-      (n.href !== '/restaurant-menu' || restaurantMenuEnabled) &&
-      (!isPoultryStore || !['/pos', '/inventory', '/sales'].includes(n.href)) &&
-      (n.roles.includes('all') || hasAppRole(user, n.roles))
-    ),
-    ...(isPoultryStore ? getPoultryNavigation(user) : []),
-  ];
+  const items = isPoultryStore
+    ? [
+        ...nav.filter(n => n.href === '/dashboard' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
+        ...getPoultryNavigation(user),
+        ...nav.filter(n => n.href === '/team' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
+        ...nav.filter(n => n.href === '/reports' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
+        ...nav.filter(n => n.href === '/store-settings' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
+        ...nav.filter(n => n.href === '/store-backup' && (n.roles.includes('all') || hasAppRole(user, n.roles))).map(n => ({ ...n, label: 'النسخه الاحتياطية' })),
+      ]
+    : nav.filter(n =>
+        (n.href !== '/restaurant-menu' || restaurantMenuEnabled) &&
+        (n.roles.includes('all') || hasAppRole(user, n.roles))
+      );
   const canSeeSalesNotifications = !isPoultryStore && (hasAppRole(user,['platform_admin','tenant_admin','cashier','accountant']) || (user.role==='custom' && Boolean(user.permissions?.some(p=>p==='retail_sales'||p==='wholesale_sales'))));
   const canSeeInventoryNotifications = !isPoultryStore && hasAppRole(user,['platform_admin','tenant_admin','warehouse_manager']);
   const notificationRows = [
