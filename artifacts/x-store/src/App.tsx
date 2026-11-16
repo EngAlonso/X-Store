@@ -1247,7 +1247,7 @@ function PoultryCustomersPage({ mode = 'customers' }: { mode?: 'customers' | 'sa
 
           {!canSell&&!canCollect&&<div className="role-hint poultry-permission-note"><ShieldCheck size={17}/><span>حسابك للعرض فقط. اطلب من مالك المتجر إضافة صلاحية البيع أو التحصيل من «فريق العمل».</span></div>}
 
-          {pageMode!=='sales'&&<div className="poultry-statement-controls">
+          {pageMode==='collections'&&<div className="poultry-statement-controls">
             <SectionHead title="كشف الحساب" detail="حدد الفترة ثم اعرض كل الفواتير والتحصيلات."/>
             <div className="form-grid"><label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>
             <div className="form-actions"><button className="button button-primary" onClick={()=>void loadStatement()} disabled={busy}><ReceiptText size={16}/> عرض كشف الحساب</button>{statement&&<><button className="button button-quiet" onClick={whatsappStatement}><MessageCircle size={16}/> واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></>}</div>
