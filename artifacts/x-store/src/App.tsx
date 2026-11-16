@@ -874,7 +874,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
     </XStoreSessionContext.Provider>;
 }
 function ProtectedLayout() {
-  const [location] = useLocation(); const session=useGetXStoreSession();
+  const [location] = useLocation(); const session=useGetXStoreSession({ query: { staleTime: 5 * 60 * 1000, refetchOnWindowFocus: false, refetchOnReconnect: false } });
   const [restaurantFeature, setRestaurantFeature] = useState<boolean | null>(null);
   useEffect(() => {
     if (session.isLoading || !session.data || location !== '/restaurant-menu') return;
