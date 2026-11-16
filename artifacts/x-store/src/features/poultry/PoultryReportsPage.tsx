@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { RefreshCw, ReceiptText, Banknote, Wallet, Scale, Users, CircleDollarSign } from 'lucide-react';
 import { poultryApi, type PoultryFinancialReport } from './poultryApi';
+import { APP_NUMBER_LOCALE } from '../../lib/formatting';
 
-const fmt = (value: number) => new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 2 }).format(Number(value) || 0);
+const fmt = (value: number) => new Intl.NumberFormat(APP_NUMBER_LOCALE, { maximumFractionDigits: 2 }).format(Number(value) || 0);
 const money = (value: number) => `${fmt(value)} ج.م`;
 
 export default function PoultryReportsPage() {
