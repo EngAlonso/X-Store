@@ -429,6 +429,13 @@ export function PoultrySalePage() {
   const [lastInvoiceDetails, setLastInvoiceDetails] = useState({ productName: 'فراخ', quantityKg: 0, unitPrice: 0 });
 
   useEffect(() => {
+    if (!lastInvoice) return;
+    requestAnimationFrame(() => {
+      document.getElementById('poultry-created-invoice')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [lastInvoice]);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError('');
@@ -599,7 +606,7 @@ export function PoultrySalePage() {
       </div>
     </Card>
 
-    {lastInvoice && <section className="poultry-last-invoice">
+    {lastInvoice && <section id="poultry-created-invoice" className="poultry-last-invoice">
       <div className="poultry-invoice-head">
         <div><span className="poultry-box-kicker">تم الحفظ بنجاح</span><h2>فاتورة {lastInvoice.invoiceNo}</h2><span>التاريخ والوقت: {new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</span></div>
         <ReceiptText size={28}/>
@@ -706,8 +713,8 @@ export function PoultryInvoicesPage() {
               <div className="poultry-invoice-chevron">{isOpen ? '−' : '+'}</div>
             </button>
             {isOpen && <div className="poultry-invoice-details">
-              <div className="poultry-invoice-detail-head"><div><span className="poultry-box-kicker">تفاصيل الفاتورة</span><h3>{invoice.customerName}</h3></div><span className="poultry-invoice-cashier">بواسطة {invoice.cashierName}</span></div>
-              <div className="table-wrap"><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr></thead><tbody>{invoice.items.map((item, index) => <tr key={invoice.id+'-'+index}><td data-label="الصنف">{item.productName}</td><td data-label="الكمية">{fmt(item.quantityKg)} كجم</td><td data-label="سعر الكيلو">{fmt(item.unitPrice)} ج.م</td><td data-label="القيمة"><b>{fmt(item.total)} ج.م</b></td></tr>)}</tbody></table></div>
+              <div className="poultry-invoice-detail-head"><div><span className="poultry-box-kicker">تفاصيل الفاتورة</span><h3>{invoice.customerName}</h3></div><span className="poultry-invoice-cashier">بواسطة {invoice.cashierName}</span><button type="button" className="button button-quiet poultry-invoice-close" onClick={() => setExpanded(null)}>إغلاق ×</button></div>
+              <div className="table-wrap"><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr></thead><tbody>{invoice.items.map((item, index) => <tr key={invoice.id+'-'+index}><td data-label="الصنف"><strong className="poultry-invoice-cell-value">{item.productName || '—'}</strong></td><td data-label="الكمية"><strong className="poultry-invoice-cell-value">{fmt(Number(item.quantityKg) || 0)} كجم</strong></td><td data-label="سعر الكيلو"><strong className="poultry-invoice-cell-value">{fmt(Number(item.unitPrice) || 0)} ج.م</strong></td><td data-label="القيمة"><strong className="poultry-invoice-cell-value">{fmt(Number(item.total) || 0)} ج.م</strong></td></tr>)}</tbody></table></div>
               <div className="poultry-invoice-detail-totals"><div><span>إجمالي الفاتورة</span><b>{fmt(invoice.total)} ج.م</b></div><div><span>مدفوع على الفاتورة</span><b>{fmt(invoice.amountPaid)} ج.م</b></div><div><span>تحصيل من الرصيد السابق</span><b>{fmt(invoice.extraCollection)} ج.م</b></div><div className="total"><span>المتبقي</span><strong>{fmt(invoice.balance)} ج.م</strong></div></div>
               <div className="form-actions"><button className="button button-primary" onClick={() => setLocation('/poultry-sale/'+encodeURIComponent(invoice.customerId))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button><button className="button button-quiet" onClick={() => { const popup=window.open('','_blank','width=900,height=800'); if(!popup)return; popup.document.open(); popup.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>فاتورة '+invoice.invoiceNo+'</title><style>body{font-family:Arial,Tahoma,sans-serif;padding:28px;color:#17251b}table{width:100%;border-collapse:collapse;margin:18px 0}th,td{border:1px solid #d6ddd7;padding:9px;text-align:right}th{background:#edf3ed}</style></head><body><h1>فاتورة دواجن</h1><p>رقم الفاتورة: <b>'+invoice.invoiceNo+'</b></p><p>العميل: <b>'+invoice.customerName+'</b></p><p>المحل: <b>'+(invoice.shopName||'غير مسجل')+'</b></p><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr></thead><tbody>'+invoice.items.map(item=>'<tr><td>'+item.productName+'</td><td>'+fmt(item.quantityKg)+' كجم</td><td>'+fmt(item.unitPrice)+' ج.م</td><td>'+fmt(item.total)+' ج.م</td></tr>').join('')+'</tbody></table><p>إجمالي الفاتورة: <b>'+fmt(invoice.total)+' ج.م</b></p><p>مدفوع: <b>'+fmt(invoice.amountPaid)+' ج.م</b></p><p>تحصيل سابق: <b>'+fmt(invoice.extraCollection)+' ج.م</b></p><p>المتبقي: <b>'+fmt(invoice.balance)+' ج.م</b></p></body></html>'); popup.document.close(); popup.focus(); window.setTimeout(()=>{try{popup.print();}catch{}},400); }}><Printer size={16}/> طباعة</button><button className="button button-quiet" onClick={() => downloadInvoiceImage(invoice)}><Download size={16}/> حفظ كصورة</button></div>
             </div>}
