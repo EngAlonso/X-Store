@@ -1092,7 +1092,7 @@ components:
         tenantName: { type: ["string", "null"] }
         storeType:
           type: ["string", "null"]
-          enum: [clothing_shoes, grocery_supermarket, electronics_accessories, perfume_beauty, cafe, restaurant, null]
+          enum: [clothing_shoes, grocery_supermarket, electronics_accessories, perfume_beauty, cafe, restaurant, poultry, null]
         countryCode: { type: ["string", "null"], minLength: 2, maxLength: 2, pattern: "^[A-Z]{2}$" }
         currency:
           type: ["string", "null"]
@@ -1230,7 +1230,7 @@ components:
         businessType: { type: string }
         storeType:
           type: ["string", "null"]
-          enum: [clothing_shoes, grocery_supermarket, electronics_accessories, perfume_beauty, cafe, restaurant, null]
+          enum: [clothing_shoes, grocery_supermarket, electronics_accessories, perfume_beauty, cafe, restaurant, poultry, null]
         wholesaleEnabled: { type: boolean }
         countryCode: { type: string, minLength: 2, maxLength: 2, pattern: "^[A-Z]{2}$" }
         currency: { $ref: "#/components/schemas/StoreCurrency" }
@@ -1300,7 +1300,7 @@ components:
         subscriptionEndsAt: { type: ["string", "null"], format: date }
     StoreType:
       type: string
-      enum: [clothing_shoes, grocery_supermarket, electronics_accessories, perfume_beauty, cafe, restaurant]
+      enum: [clothing_shoes, grocery_supermarket, electronics_accessories, perfume_beauty, cafe, restaurant, poultry]
     StoreCurrency:
       type: string
       enum: [EGP, SAR, AED, USD, EUR, GBP]
