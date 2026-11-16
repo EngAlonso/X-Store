@@ -1343,7 +1343,7 @@ components:
           items:
             $ref: "#/components/schemas/TeamPermission"
           minItems: 1
-          maxItems: 3
+          maxItems: 4
       required: [phone, password, name, roleName, permissions]
     TeamMemberUpdate:
       type: object
