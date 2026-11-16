@@ -771,9 +771,11 @@ function AppShell({ children }: { children: ReactNode }) {
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const notificationProducts = useListXStoreProducts(undefined, { query: { refetchInterval: 30000 } });
   const notificationSales = useListXStoreSales({ limit: 100 }, { query: { refetchInterval: 30000 } });
+  const [poultryNotifications, setPoultryNotifications] = useState<any[]>([]);
   const qc=useQueryClient();
   const [loggingOut, setLoggingOut] = useState(false);
   const { data:user, isLoading, isError, refetch } = useGetXStoreSession();
+  useEffect(() => { if (!user || user.storeType !== 'poultry') { setPoultryNotifications([]); return; } let cancelled=false; const load=()=>fetch('/api/xstore/poultry/notifications',{credentials:'include'}).then(async r=>r.ok?r.json():[]).then(v=>{if(!cancelled)setPoultryNotifications(Array.isArray(v)?v:[])}).catch(()=>{}); void load(); const timer=window.setInterval(load,30000); return()=>{cancelled=true;window.clearInterval(timer)}; }, [user?.id,user?.storeType]);
   useEffect(() => { if (!user) return; try { setReadNotificationIds(JSON.parse(localStorage.getItem(`xstore-notifications:${user.id}`) || '[]') as string[]); } catch { setReadNotificationIds([]); } }, [user?.id]);
   async function handleLogout() {
     if (loggingOut) return;
@@ -819,6 +821,7 @@ function AppShell({ children }: { children: ReactNode }) {
       return [...returned, ...exchanges];
     }) : []),
     ...(canSeeInventoryNotifications?(notificationProducts.data||[]).filter(p=>p.quantity<=5).map(p=>({id:`stock:${p.id}:${p.quantity<=0?'out':'low'}`,title:p.quantity<=0?`نفد مخزون ${p.name}`:`مخزون ${p.name} قرب يخلص`,detail:`المتبقي: ${fmt(p.quantity)}`,date:new Date(),icon:Package,href:'/inventory'})):[])
+    ...(user.storeType === 'poultry' ? poultryNotifications.map(n=>({id:n.id,title:n.title,detail:n.detail,date:new Date(n.createdAt),icon:n.type==='payment'?Wallet:ReceiptText,href:n.href})) : []),
   ].sort((a,b)=>b.date.getTime()-a.date.getTime()).slice(0,100);
   const unseenNotifications=notificationRows.filter(n=>!readNotificationIds.includes(n.id)).length;
   function markNotificationsRead(){const next=Array.from(new Set([...readNotificationIds,...notificationRows.map(n=>n.id)]));setReadNotificationIds(next);try{localStorage.setItem(`xstore-notifications:${user.id}`,JSON.stringify(next))}catch{}}
