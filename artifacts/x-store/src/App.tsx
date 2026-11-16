@@ -1030,6 +1030,12 @@ function PoultryCustomersPage({ mode = 'customers' }: { mode?: 'customers' | 'sa
   const session = useContext(XStoreSessionContext);
   return <PoultryFeatureCustomersPage mode={mode} session={session}/>;
 }
+function PoultrySalesPage() {
+  return <PoultryCustomersPage mode="sales"/>;
+}
+function PoultryCollectionsPage() {
+  return <PoultryCustomersPage mode="collections"/>;
+}
 function PoultryDashboardPage() {
   return <PoultryFeatureDashboardPage/>;
 }
