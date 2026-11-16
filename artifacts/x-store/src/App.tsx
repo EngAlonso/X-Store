@@ -55,6 +55,8 @@ import type { IconType } from 'react-icons';
 import PlatformBackupPage from '@/pages/platform-backup';
 import PlatformDatabasePage from '@/pages/platform-database';
 import StoreBackupPage from '@/pages/store-backup';
+import PoultryBackupPage from '@/features/poultry/PoultryBackupPage';
+import PoultryReportsPage from '@/features/poultry/PoultryReportsPage';
 import RestaurantMenuPage from '@/pages/restaurant-menu';
 import PublicRestaurantMenu from '@/pages/public-restaurant-menu';
 import type { OfflineActivationRequest } from './offline/licensing';
