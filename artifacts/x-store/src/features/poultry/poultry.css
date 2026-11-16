@@ -57,3 +57,18 @@
 @media(max-width:900px){.poultry-grid,.poultry-dashboard .dashboard-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.poultry-customer-meta{grid-template-columns:1fr}.poultry-sale-calculation{grid-template-columns:repeat(2,minmax(0,1fr))}.poultry-customer{grid-template-columns:36px minmax(0,1fr)}.poultry-customer>strong{grid-column:2}.poultry-box-heading{flex-direction:column}.poultry-step-strip{justify-content:flex-start}}
 @media print{.poultry-header-actions,.poultry-search-row,.poultry-action-box button,.poultry-step-strip,.poultry-form-actions{display:none!important}.poultry-grid{display:block}.poultry-customers-card{display:none}.poultry-statement{break-inside:avoid}}
+
+.poultry-sale-page{direction:rtl;display:flex;flex-direction:column;gap:20px;max-width:1180px;margin:0 auto}
+.poultry-sale-identity{display:flex;align-items:flex-start;gap:14px;padding:18px;border:1px solid #dbe4dc;border-radius:16px;background:linear-gradient(135deg,rgba(36,85,59,.08),rgba(255,255,255,.96));box-shadow:0 8px 24px rgba(30,55,38,.05)}
+.poultry-sale-identity-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:#173f2b;color:#fff;flex:0 0 auto}
+.poultry-sale-identity-main{flex:1;min-width:0}
+.poultry-sale-identity-main>span{display:block;font-size:11px;font-weight:800;color:#56755d;margin-bottom:10px}
+.poultry-sale-identity-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.poultry-sale-identity-grid>div{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.78);border:1px solid rgba(219,228,220,.9)}
+.poultry-sale-identity-grid small{font-size:10px;color:var(--muted-foreground,#737373)}
+.poultry-sale-identity-grid strong{font-size:14px;color:var(--foreground,#222);overflow-wrap:anywhere}
+.poultry-sale-steps{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-radius:12px;background:var(--muted,#f5f5f5);color:var(--muted-foreground,#737373);font-size:12px}
+.poultry-sale-steps .poultry-step.is-active b{background:#173f2b}
+.poultry-sale-workspace{padding:0}
+@media(max-width:800px){.poultry-sale-identity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.poultry-sale-page{gap:14px}.poultry-sale-identity{padding:14px}.poultry-sale-identity-grid{grid-template-columns:1fr}.poultry-sale-steps{justify-content:flex-start;overflow:auto;white-space:nowrap}}
