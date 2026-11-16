@@ -1306,7 +1306,7 @@ components:
       enum: [EGP, SAR, AED, USD, EUR, GBP]
     TeamPermission:
       type: string
-      enum: [retail_sales, wholesale_sales, cashier, warehouse_manager, accountant]
+      enum: [retail_sales, wholesale_sales, cashier, warehouse_manager, accountant, collector, customer_management]
     TeamMember:
       type: object
       properties:
