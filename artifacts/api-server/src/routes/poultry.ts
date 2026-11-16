@@ -84,7 +84,7 @@ router.post("/xstore/poultry/customers", async (req, res): Promise<void> => {
   if (!name || !phone) { res.status(400).json({ error: "اسم العميل ورقم الهاتف مطلوبان." }); return; }
   const [customer] = await db.insert(xstoreCustomers).values({ tenantId: user.tenantId, name, phone, shopName: shopName || null, shopAddress: shopAddress || null }).returning();
   if (!customer) { res.status(500).json({ error: "تعذر إنشاء العميل." }); return; }
-  await audit(user, "poultry.customer_created", customer.id, "poultry_customer", customer.id, "تم إضافة العميل " + name);
+  await audit(user, "poultry.customer_created", user.tenantId, "poultry_customer", customer.id, "تم إضافة العميل " + name);
   res.status(201).json({ ...customer, createdAt: iso(customer.createdAt), updatedAt: iso(customer.updatedAt) });
 });
 
@@ -203,7 +203,7 @@ router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): 
   await audit(
     user,
     "poultry.invoice_created",
-    invoice.id,
+    user.tenantId,
     "poultry_invoice",
     invoice.id,
     "تم تسجيل فاتورة "+invoiceNo+" للعميل "+customer.name+" بقيمة "+total,
@@ -213,7 +213,7 @@ router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): 
     await audit(
       user,
       "poultry.payment_collected",
-      invoice.id,
+      user.tenantId,
       "poultry_payment",
       invoice.id,
       "تم تحصيل "+extraCollection+" من الرصيد السابق للعميل "+customer.name+" مع الفاتورة "+invoiceNo,
@@ -242,7 +242,7 @@ router.post("/xstore/poultry/customers/:customerId/payments", async (req, res): 
   if (!Number.isFinite(amount) || amount<=0) { res.status(400).json({ error: "أدخل مبلغ تحصيل صحيح." }); return; }
   const [payment] = await db.insert(xstorePoultryPayments).values({tenantId:user.tenantId,customerId:customer.id,cashierUserId:user.id,amount:String(roundMoney(amount)),note:typeof req.body?.note==="string"?req.body.note.trim()||null:null}).returning();
   if (!payment) { res.status(500).json({ error: "تعذر تسجيل التحصيل." }); return; }
-  await audit(user,"poultry.payment_collected",payment.id,"poultry_payment",payment.id,"تم تحصيل "+roundMoney(amount)+" من العميل "+customer.name);
+  await audit(user,"poultry.payment_collected",user.tenantId,payment.id,"poultry_payment",payment.id,"تم تحصيل "+roundMoney(amount)+" من العميل "+customer.name);
   res.status(201).json({id:payment.id,amount:roundMoney(amount),createdAt:iso(payment.createdAt),collectorName:user.name});
 });
 
