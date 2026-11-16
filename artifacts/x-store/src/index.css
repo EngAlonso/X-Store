@@ -6491,3 +6491,32 @@ a:hover {
     overflow-wrap: anywhere;
   }
 }
+
+
+/* Platform stores — mobile card presentation */
+.tenants-mobile-list { display:none; }
+.tenant-mobile-card { min-width:0; padding:15px; border:1px solid #e1e8e2; border-radius:14px; background:#fff; box-shadow:0 6px 18px rgba(23,63,43,.055); }
+.tenant-mobile-head { display:flex; align-items:center; gap:10px; min-width:0; }
+.tenant-mobile-avatar { width:40px; height:40px; flex:0 0 40px; display:grid; place-items:center; border-radius:12px; background:#edf5ef; color:#173f2b; font-weight:800; font-size:15px; }
+.tenant-mobile-title { min-width:0; flex:1; display:flex; flex-direction:column; gap:3px; }
+.tenant-mobile-title b { color:#23382b; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tenant-mobile-title small { color:#849087; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tenant-mobile-meta { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:14px; }
+.tenant-mobile-meta > div { min-width:0; padding:9px 8px; border-radius:10px; background:#f6f8f6; border:1px solid #edf0ed; }
+.tenant-mobile-meta span { display:block; margin-bottom:4px; color:#89948c; font-size:9px; }
+.tenant-mobile-meta b { display:block; color:#3d5043; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tenant-mobile-meta select { width:100%; min-width:0; border:0; padding:0; background:transparent; color:#3d5043; font-size:10px; outline:0; }
+.tenant-mobile-details { display:flex; flex-wrap:wrap; gap:6px 12px; margin-top:12px; color:#7b877e; font-size:9px; line-height:1.7; }
+.tenant-mobile-details span { min-width:0; }
+.tenant-mobile-actions { display:grid; grid-template-columns:1fr 1.35fr; gap:8px; margin-top:13px; padding-top:12px; border-top:1px solid #edf0ed; }
+.tenant-mobile-actions select { min-width:0; min-height:36px; border:1px solid #dfe7df; border-radius:8px; background:#fff; color:#40554a; padding:0 8px; font-size:10px; }
+.tenant-mobile-actions .table-action { min-height:36px; justify-content:center; border-radius:8px; background:#f0f5f1; color:#24553b; font-size:10px; }
+@media (max-width:767px) {
+  .tenants-table-desktop { display:none !important; }
+  .tenants-mobile-list { display:grid; gap:10px; }
+  .tenant-edit-toolbar { width:100%; min-width:0; }
+  .tenant-edit-toolbar .field { min-width:0; }
+  .table-toolbar { min-width:0; }
+  .table-toolbar .search-box { min-width:0; width:100%; }
+  .table-toolbar .result-count { flex:0 0 auto; }
+}
