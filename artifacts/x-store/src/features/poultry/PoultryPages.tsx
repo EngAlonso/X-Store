@@ -64,7 +64,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     const rows = await poultryApi.listCustomers(q);
     const nextRows = Array.isArray(rows) ? rows : [];
     setCustomers(nextRows);
-    setSelected(current => current ? (nextRows.find(row => row.id === current.id) || current) : current);
+    setSelected((current: any | null) => current ? (nextRows.find(row => row.id === current.id) || current) : current);
   }
 
   useEffect(()=>{void loadCustomers().catch(e=>setError(e instanceof Error?e.message:'تعذر تحميل العملاء.'));},[]);
@@ -277,9 +277,6 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     </Modal>}
   </div>;
 }
-
-function PoultrySalesPage(){return <PoultryCustomersPage mode="sales"/>;}
-function PoultryCollectionsPage(){return <PoultryCustomersPage mode="collections"/>;}
 
 function PoultryDashboardView() {
   const [customers, setCustomers] = useState<any[]>([]);
