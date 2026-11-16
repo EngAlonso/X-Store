@@ -61,6 +61,7 @@ export const TeamPermission = {
   cashier: 'cashier',
   warehouse_manager: 'warehouse_manager',
   accountant: 'accountant',
+  collector: 'collector',
 } as const;
 
 export interface SessionUser {
