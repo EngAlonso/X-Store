@@ -58,6 +58,7 @@ import StoreBackupPage from '@/pages/store-backup';
 import RestaurantMenuPage from '@/pages/restaurant-menu';
 import PublicRestaurantMenu from '@/pages/public-restaurant-menu';
 import { PoultryCustomersPage as PoultryFeatureCustomersPage, PoultryDashboardPage as PoultryFeatureDashboardPage } from '@/features/poultry';
+import { getPoultryNavigation, usePoultryNotifications } from '@/features/poultry/poultryShell';
 import type { OfflineActivationRequest } from './offline/licensing';
 import { isOfflineHardwareFingerprint, type OfflineLicensePlan } from './offline/model';
 
@@ -291,9 +292,6 @@ const nav = [
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
-  { href: '/poultry-customers', label: 'العملاء', icon: Users, roles: ['tenant_admin', 'cashier', 'accountant', 'customer_management', 'custom'] },
-  { href: '/poultry-sales', label: 'البيع', icon: ReceiptText, roles: ['tenant_admin', 'cashier', 'retail_sales'] },
-  { href: '/poultry-collections', label: 'التحصيل', icon: Wallet, roles: ['tenant_admin', 'cashier', 'collector'] },
 ];
 
 function Logo({ compact = false }: { compact?: boolean }) {
@@ -814,10 +812,9 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const notificationProducts = useListXStoreProducts(undefined, { query: { refetchInterval: 30000, enabled: !isPoultryStore } });
   const notificationSales = useListXStoreSales({ limit: 100 }, { query: { refetchInterval: 30000, enabled: !isPoultryStore } });
-  const [poultryNotifications, setPoultryNotifications] = useState<any[]>([]);
+  const poultryNotifications = usePoultryNotifications(isPoultryStore, user.id);
   const qc=useQueryClient();
   const [loggingOut, setLoggingOut] = useState(false);
-  useEffect(() => { if (!user || user.storeType !== 'poultry') { setPoultryNotifications([]); return; } let cancelled=false; const load=()=>fetch('/api/xstore/poultry/notifications',{credentials:'include'}).then(async r=>r.ok?r.json():[]).then(v=>{if(!cancelled)setPoultryNotifications(Array.isArray(v)?v:[])}).catch(()=>{}); void load(); const timer=window.setInterval(load,30000); return()=>{cancelled=true;window.clearInterval(timer)}; }, [user?.id,user?.storeType]);
   useEffect(() => { if (!user) return; try { setReadNotificationIds(JSON.parse(localStorage.getItem(`xstore-notifications:${user.id}`) || '[]') as string[]); } catch { setReadNotificationIds([]); } }, [user?.id]);
   async function handleLogout() {
     if (loggingOut) return;
@@ -853,14 +850,14 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
     user.storeType === 'cafe' || user.storeType === 'restaurant' ||
     (user.storeType == null && restaurantFeatureEnabled === true)
   );
-  const poultryCustomersEnabled = user.storeType === 'poultry' && (user.role !== 'custom' || user.permissions?.includes('collector') || user.permissions?.includes('accountant') || user.permissions?.includes('retail_sales') || user.permissions?.includes('customer_management'));
-  const items = nav.filter(n =>
-    (n.href !== '/restaurant-menu' || restaurantMenuEnabled) &&
-    (n.href !== '/poultry-customers' || poultryCustomersEnabled) &&
-    (!['/poultry-sales','/poultry-collections'].includes(n.href) || isPoultryStore) &&
-    (!isPoultryStore || !['/pos', '/inventory', '/sales'].includes(n.href)) &&
-    (n.roles.includes('all') || hasAppRole(user, n.roles))
-  );
+  const items = [
+    ...nav.filter(n =>
+      (n.href !== '/restaurant-menu' || restaurantMenuEnabled) &&
+      (!isPoultryStore || !['/pos', '/inventory', '/sales'].includes(n.href)) &&
+      (n.roles.includes('all') || hasAppRole(user, n.roles))
+    ),
+    ...(isPoultryStore ? getPoultryNavigation(user) : []),
+  ];
   const canSeeSalesNotifications = !isPoultryStore && (hasAppRole(user,['platform_admin','tenant_admin','cashier','accountant']) || (user.role==='custom' && Boolean(user.permissions?.some(p=>p==='retail_sales'||p==='wholesale_sales'))));
   const canSeeInventoryNotifications = !isPoultryStore && hasAppRole(user,['platform_admin','tenant_admin','warehouse_manager']);
   const notificationRows = [
