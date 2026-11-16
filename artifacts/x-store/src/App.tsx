@@ -912,7 +912,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
         ...getPoultryNavigation(user),
         ...nav.filter(n => n.href === '/team' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
         ...nav.filter(n => n.href === '/reports' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
-        ...nav.filter(n => n.href === '/store-settings' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
+        ...(user.storeType !== 'poultry' ? nav.filter(n => n.href === '/store-settings' && (n.roles.includes('all') || hasAppRole(user, n.roles))) : []),
         ...nav.filter(n => n.href === '/store-backup' && (n.roles.includes('all') || hasAppRole(user, n.roles))).map(n => ({ ...n, label: 'النسخه الاحتياطية' })),
       ]
     : nav.filter(n =>
@@ -966,7 +966,7 @@ function ProtectedLayout() {
     (session.data?.storeType == null && restaurantFeature === true)
   );
   const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','customer_management','custom'],'/poultry-invoices':['tenant_admin','cashier','accountant','retail_sales','collector','custom'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-sale/:customerId':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
-  if (session.data?.storeType === 'poultry' && ['/pos', '/inventory', '/sales'].includes(location)) return <Redirect to="/poultry-customers" />;
+  if (session.data?.storeType === 'poultry' && ['/pos', '/inventory', '/sales', '/store-settings'].includes(location)) return <Redirect to="/poultry-customers" />;;
   if (session.data?.storeType !== 'poultry' && ['/poultry-customers','/poultry-sales','/poultry-sale/:customerId','/poultry-collections','/poultry-invoices'].includes(location)) return <Redirect to="/dashboard"/>;
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
   if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
