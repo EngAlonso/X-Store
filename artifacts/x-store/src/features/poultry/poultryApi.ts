@@ -1,14 +1,16 @@
-export type PoultryCustomer = {
+export type PoultryCustomerRecord = {
   id: string;
   name: string;
   phone: string;
   shopName: string | null;
   shopAddress: string | null;
-  balance?: number;
-  totalSales?: number;
-  totalPaid?: number;
   createdAt?: string;
   updatedAt?: string;
+};
+export type PoultryCustomer = PoultryCustomerRecord & {
+  balance: number;
+  totalSales: number;
+  totalPaid: number;
 };
 export type PoultryStatementRow = {
   id: string;
@@ -22,7 +24,7 @@ export type PoultryStatementRow = {
   items: Array<{ productName: string; quantityKg: number; unitPrice: number; total: number }>;
 };
 export type PoultryStatement = {
-  customer: PoultryCustomer;
+  customer: PoultryCustomerRecord;
   from: string | null;
   to: string | null;
   openingBalance: number;
@@ -79,7 +81,7 @@ export const poultryApi = {
     return poultryRequest<PoultryCustomer[]>('/customers?search=' + encodeURIComponent(search));
   },
   createCustomer(input: PoultryCustomerInput) {
-    return poultryRequest<PoultryCustomer>('/customers', { method: 'POST', body: JSON.stringify(input) });
+    return poultryRequest<PoultryCustomerRecord>('/customers', { method: 'POST', body: JSON.stringify(input) });
   },
   getStatement(customerId: string, from: string, to: string) {
     return poultryRequest<PoultryStatement>('/customers/' + encodeURIComponent(customerId) + '/statement?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to));
