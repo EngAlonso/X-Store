@@ -62,7 +62,9 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
 
   async function loadCustomers(q=search){
     const rows = await poultryApi.listCustomers(q);
-    setCustomers(Array.isArray(rows) ? rows : []);
+    const nextRows = Array.isArray(rows) ? rows : [];
+    setCustomers(nextRows);
+    setSelected(current => current ? (nextRows.find(row => row.id === current.id) || current) : current);
   }
 
   useEffect(()=>{void loadCustomers().catch(e=>setError(e instanceof Error?e.message:'تعذر تحميل العملاء.'));},[]);
@@ -85,7 +87,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
       setCustomerDialog(false);
       setNotice('تم إضافة العميل بنجاح. اختاره الآن وسجّل أول فاتورة.');
       await loadCustomers();
-      setSelected(j);
+      setSelected({ ...j, balance: 0, totalSales: 0, totalPaid: 0 });
       setStatement(null);
     }catch(e){
       setError(e instanceof Error?e.message:'تعذر إضافة العميل.');
