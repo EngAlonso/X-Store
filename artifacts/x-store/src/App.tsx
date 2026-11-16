@@ -211,7 +211,12 @@ function checkoutErrorMessage(error: unknown): string {
   if (serverMessage) return `تعذر إتمام البيع: ${latinizeDigits(serverMessage)}`;
   return 'تعذر إتمام البيع. تحقق من الاتصال والبيانات ثم حاول مرة أخرى.';
 }
-const dateLabel = (d?: string | null) => d ? new Intl.DateTimeFormat(APP_SAUDI_DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(d)) : '—';
+const dateLabel = (d?: string | null) => {
+  if (!d) return '—';
+  const date = new Date(d);
+  if (!Number.isFinite(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(APP_SAUDI_DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
+};
 const dateTimeLabel = (d?: string | null) => d ? new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(new Date(d)) : '—';
 const roleNames: Record<string, string> = { platform_admin: 'مالك المنصة', tenant_admin: 'مالك المتجر', cashier: 'أمين الصندوق', warehouse_manager: 'مدير المخزون', accountant: 'محاسب', custom: 'دور مخصص' };
 const teamPermissionOptions: { value: TeamPermission; label: string; description: string }[] = [
@@ -1097,10 +1102,13 @@ function PoultryDashboardPage() {
         fetch('/api/xstore/poultry/customers?search=' + encodeURIComponent(query), { credentials: 'include', cache: 'no-store' }),
         fetch('/api/xstore/poultry/notifications', { credentials: 'include', cache: 'no-store' }),
       ]);
-      const customerData = customersResponse.ok ? await customersResponse.json() : [];
-      const notificationData = notificationsResponse.ok ? await notificationsResponse.json() : [];
-      setCustomers(Array.isArray(customerData) ? customerData : []);
-      setNotifications(Array.isArray(notificationData) ? notificationData : []);
+      const customerData = customersResponse.ok ? await customersResponse.json().catch(() => []) : [];
+      const notificationData = notificationsResponse.ok ? await notificationsResponse.json().catch(() => []) : [];
+      setCustomers(Array.isArray(customerData) ? customerData.filter(item => item && typeof item === 'object') : []);
+      setNotifications(Array.isArray(notificationData) ? notificationData.filter(item => item && typeof item === 'object') : []);
+    } catch {
+      setCustomers([]);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
