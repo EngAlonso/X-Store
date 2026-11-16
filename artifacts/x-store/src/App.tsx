@@ -1086,7 +1086,6 @@ function PoultryCustomersPage() {
 }
 
 function PoultryDashboardPage() {
-  const { data: session } = useGetXStoreSession();
   const [customers, setCustomers] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [search, setSearch] = useState('');
