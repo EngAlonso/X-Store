@@ -351,7 +351,7 @@ function Logo({ compact = false }: { compact?: boolean }) {
   return <Link href="/" className="brand" data-testid="link-brand"><img src={`${basePath}/x-store-mark.png`} alt="" /><span>X-Store</span>{!compact && <small>نظام إدارة متجرك</small>}</Link>;
 }
 function SiteFooter() {
-  const { data: status } = useGetXStoreAuthStatus();
+  const status = undefined;
   const whatsappDigits = getWhatsAppDigits(status?.supportWhatsapp)
     || status?.supportWhatsapp?.replace(/[٠-٩۰-۹]/g, digit => {
       const code = digit.charCodeAt(0);
@@ -659,7 +659,7 @@ function AuthPage({ kind }: { kind: 'in' | 'up' }) {
           {status.isLoading
             ? <div className="auth-status-state" role="status">جارٍ التحقق من إعداد المنصة…</div>
             : status.isError
-              ? <div className="auth-status-state" role="alert"><span>{apiErrorMessage(status.error, 'تعذر التحقق من إعداد حساب المالك.')}</span><button className="button button-quiet button-small" type="button" onClick={() => void status.refetch()} data-testid="button-retry-auth-status">إعادة المحاولة</button></div>
+              ? <PhoneLoginForm/>
               : setupRequired
                 ? <FounderSetupForm recoveringExistingOwner={bootstrapRequired}/>
                 : <PhoneLoginForm/>}
