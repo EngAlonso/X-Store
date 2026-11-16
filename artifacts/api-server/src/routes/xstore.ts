@@ -1248,7 +1248,7 @@ router.put("/xstore/settings/contact", async (req, res): Promise<void> => {
 });
 
 
-const poultryUserRoles = ["tenant_admin", "cashier", "accountant", "collector", "retail_sales"] as const;
+const poultryUserRoles = ["tenant_admin", "cashier", "accountant", "collector", "retail_sales", "customer_management"] as const;
 
 router.get("/xstore/poultry/customers", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
@@ -1268,7 +1268,7 @@ router.get("/xstore/poultry/customers", async (req, res): Promise<void> => {
 
 router.post("/xstore/poultry/customers", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "collector", "retail_sales"])) { res.status(403).json({ error: "ليس لديك صلاحية إضافة عميل." }); return; }
+  if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "customer_management"])) { res.status(403).json({ error: "ليس لديك صلاحية إضافة عميل." }); return; }
   const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
   const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
   const shopName = typeof req.body?.shopName === "string" ? req.body.shopName.trim() : "";
