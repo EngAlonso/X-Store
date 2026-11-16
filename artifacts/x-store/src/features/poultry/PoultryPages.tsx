@@ -578,6 +578,85 @@ export function PoultrySalePage() {
   </div>;
 }
 
+export function PoultryInvoicesPage() {
+  const [, setLocation] = useLocation();
+  const [data, setData] = useState<Awaited<ReturnType<typeof poultryApi.listInvoices>> | null>(null);
+  const [search, setSearch] = useState('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError('');
+    try {
+      setData(await poultryApi.listInvoices(from, to, search));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'تعذر تحميل الفواتير.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  const invoices = data?.invoices || [];
+  return <div dir="rtl" className="poultry-invoices-page">
+    <PageTitle
+      eyebrow="إدارة الفواتير"
+      title="فواتير الدواجن"
+      desc="كل الفواتير المسجلة في متجر الدواجن، مع بيانات العميل والوزن والسعر والمدفوع والمتبقي."
+      action={<div className="poultry-header-actions"><button className="button button-quiet" onClick={() => window.print()}><Printer size={16}/> طباعة</button></div>}
+    />
+
+    <div className="poultry-invoice-stats">
+      <StatCard label="عدد الفواتير" value={fmt(data?.summary.count || 0)} detail="الفواتير الظاهرة" icon={ReceiptText}/>
+      <StatCard label="إجمالي المبيعات" value={fmt(data?.summary.sales || 0) + ' ج.م'} detail="قيمة الفواتير" icon={CreditCard} tint="gold"/>
+      <StatCard label="إجمالي المدفوع" value={fmt(data?.summary.paid || 0) + ' ج.م'} detail="يشمل التحصيل المرتبط" icon={Wallet}/>
+      <StatCard label="إجمالي الكمية" value={fmt(data?.summary.totalKg || 0) + ' كجم'} detail="وزن الأصناف المباعة" icon={Bird} tint="green"/>
+    </div>
+
+    <Card className="poultry-invoices-filter">
+      <SectionHead title="البحث والتصفية" detail="ابحث برقم الفاتورة أو اسم العميل أو المحل أو الهاتف."/>
+      <div className="poultry-invoice-filter-grid">
+        <label className="search-box poultry-search"><Search size={18}/><input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') void load(); }} placeholder="رقم الفاتورة أو اسم العميل أو الهاتف"/></label>
+        <label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e => setFrom(e.target.value)}/></label>
+        <label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e => setTo(e.target.value)}/></label>
+        <button className="button button-primary poultry-invoice-filter-button" onClick={() => void load()} disabled={loading}><Search size={16}/> تطبيق البحث</button>
+      </div>
+    </Card>
+
+    {error && <div className="form-error poultry-form-error"><AlertTriangle size={16}/><span>{error}</span><button className="button button-quiet" onClick={() => void load()}>إعادة المحاولة</button></div>}
+
+    <Card className="poultry-invoices-card">
+      <SectionHead title="سجل الفواتير" detail={loading ? 'جارٍ تحميل الفواتير…' : invoices.length ? `عدد الفواتير: ${fmt(invoices.length)}` : 'لا توجد فواتير في الفترة المحددة'}/>
+      {loading ? <div className="skeleton-table"><span/><span/><span/></div> : invoices.length ? <div className="poultry-invoice-list">
+        {invoices.map(invoice => {
+          const isOpen = expanded === invoice.id;
+          return <article className={'poultry-invoice-card ' + (isOpen ? 'is-open' : '')} key={invoice.id}>
+            <button type="button" className="poultry-invoice-card-main" onClick={() => setExpanded(isOpen ? null : invoice.id)}>
+              <div className="poultry-invoice-number"><span>فاتورة</span><strong>{invoice.invoiceNo}</strong></div>
+              <div className="poultry-invoice-customer"><b>{invoice.customerName}</b><small>{invoice.shopName || 'بدون اسم محل'} · {invoice.phone}</small></div>
+              <div className="poultry-invoice-date"><small>التاريخ</small><b>{dateLabel(invoice.date)}</b><span>{new Intl.DateTimeFormat('ar-EG',{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))}</span></div>
+              <div className="poultry-invoice-money"><small>الإجمالي</small><strong>{fmt(invoice.total)} ج.م</strong></div>
+              <div className="poultry-invoice-status"><span className={invoice.balance > 0 ? 'due' : 'paid'}>{invoice.balance > 0 ? 'آجل' : 'مدفوعة'}</span><small>{invoice.balance > 0 ? 'متبقي '+fmt(invoice.balance)+' ج.م' : 'تم السداد'}</small></div>
+              <div className="poultry-invoice-chevron">{isOpen ? '−' : '+'}</div>
+            </button>
+            {isOpen && <div className="poultry-invoice-details">
+              <div className="poultry-invoice-detail-head"><div><span className="poultry-box-kicker">تفاصيل الفاتورة</span><h3>{invoice.customerName}</h3></div><span className="poultry-invoice-cashier">بواسطة {invoice.cashierName}</span></div>
+              <div className="table-wrap"><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr></thead><tbody>{invoice.items.map((item, index) => <tr key={invoice.id+'-'+index}><td>{item.productName}</td><td>{fmt(item.quantityKg)} كجم</td><td>{fmt(item.unitPrice)} ج.م</td><td><b>{fmt(item.total)} ج.م</b></td></tr>)}</tbody></table></div>
+              <div className="poultry-invoice-detail-totals"><div><span>إجمالي الفاتورة</span><b>{fmt(invoice.total)} ج.م</b></div><div><span>مدفوع على الفاتورة</span><b>{fmt(invoice.amountPaid)} ج.م</b></div><div><span>تحصيل من الرصيد السابق</span><b>{fmt(invoice.extraCollection)} ج.م</b></div><div className="total"><span>المتبقي</span><strong>{fmt(invoice.balance)} ج.م</strong></div></div>
+              <div className="form-actions"><button className="button button-primary" onClick={() => setLocation('/poultry-sale/'+encodeURIComponent(invoice.customerId))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button><button className="button button-quiet" onClick={() => window.print()}><Printer size={16}/> طباعة</button></div>
+            </div>}
+          </article>;
+        })}
+      </div> : <div className="poultry-empty-workspace"><ReceiptText size={36}/><h3>لا توجد فواتير</h3><p>عند تسجيل أول فاتورة دواجن ستظهر هنا تلقائيًا بشكل مرتب وقابل للبحث والطباعة.</p></div>}
+    </Card>
+  </div>;
+}
+
 export function PoultryDashboardPage() {
   return <PoultryDashboardView/>;
 }
