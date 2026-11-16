@@ -75,9 +75,9 @@ function getPoultryNavigation(user: SessionUser) {
   const canSell = isAdmin || (user.role === 'custom' && permissions.includes('retail_sales'));
   const canCollect = isAdmin || (user.role === 'custom' && permissions.includes('collector'));
   return [
-    ...(canViewCustomers ? [{ href: '/poultry-customers', label: 'العملاء', icon: Users }] : []),
     ...(canSell ? [{ href: '/poultry-sales', label: 'البيع', icon: ReceiptText }] : []),
     ...(canCollect ? [{ href: '/poultry-collections', label: 'التحصيل', icon: Wallet }] : []),
+    ...(canViewCustomers ? [{ href: '/poultry-customers', label: 'العملاء', icon: Users }] : []),
   ];
 }
 
