@@ -59,6 +59,7 @@ import RestaurantMenuPage from '@/pages/restaurant-menu';
 import PublicRestaurantMenu from '@/pages/public-restaurant-menu';
 import { PoultryCustomersPage as PoultryFeatureCustomersPage, PoultryDashboardPage as PoultryFeatureDashboardPage } from '@/features/poultry';
 import { getPoultryNavigation, usePoultryNotifications } from '@/features/poultry/poultryShell';
+import { poultryPermissionDescription, poultryPermissionLabel, poultryTeamPermissionKeys } from '@/features/poultry/poultryPermissions';
 import type { OfflineActivationRequest } from './offline/licensing';
 import { isOfflineHardwareFingerprint, type OfflineLicensePlan } from './offline/model';
 
@@ -1466,20 +1467,8 @@ function TeamPage() {
   };
   const isPoultryStore = session?.storeType === 'poultry';
   const visibleTeamPermissionOptions = isPoultryStore
-    ? teamPermissionOptions.filter((option) => ['retail_sales', 'accountant', 'collector', 'customer_management'].includes(option.value))
+    ? teamPermissionOptions.filter((option) => (poultryTeamPermissionKeys as readonly string[]).includes(option.value))
     : teamPermissionOptions;
-  const poultryPermissionLabel: Record<string, string> = {
-    retail_sales: 'بيع الدواجن بالكيلو',
-    customer_management: 'إدارة العملاء',
-    accountant: 'التقارير وكشوف الحساب',
-    collector: 'تحصيل حسابات العملاء',
-  };
-  const poultryPermissionDescription: Record<string, string> = {
-    retail_sales: 'الوصول إلى قسم البيع وتسجيل فواتير الدواجن بالكيلو وحفظ سعر الكيلو.',
-    customer_management: 'إضافة العملاء والبحث في بياناتهم دون البيع أو التحصيل.',
-    accountant: 'عرض العملاء وكشوف الحساب والتقارير بدون إنشاء فواتير أو تحصيل.',
-    collector: 'عرض حسابات العملاء وتسجيل التحصيل فقط، بدون إنشاء فاتورة.',
-  };
   const members = (team.data || []).filter((member) =>
     `${member.name} ${member.phone || ''} ${member.email || ''} ${member.roleName || ''} ${(member.permissions || []).join(' ')}`
       .toLowerCase()
