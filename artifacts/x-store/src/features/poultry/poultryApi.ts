@@ -2,11 +2,13 @@ export type PoultryCustomerInput = { name: string; phone: string; shopName?: str
 export type PoultryInvoiceInput = { items: Array<{ productName: string; quantityKg: number; unitPrice: number }>; amountPaid: number };
 
 async function poultryRequest<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (init?.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   const response = await fetch('/api/xstore/poultry' + path, {
     ...init,
     credentials: 'include',
     cache: 'no-store',
-    headers: { ...(init?.headers || {}), ...(init?.body ? { 'Content-Type': 'application/json' } : {}) },
+    headers,
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
