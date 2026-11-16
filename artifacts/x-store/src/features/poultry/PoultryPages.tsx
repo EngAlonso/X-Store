@@ -254,7 +254,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
           <div className="poultry-customer-meta">
             <span><b>المحل</b>{selected.shopName||'—'}</span>
             <span><b>العنوان</b>{selected.shopAddress||'—'}</span>
-            <span><b>الرصيد الحالي</b><strong className={Number(selected.balance)>0?'poultry-balance-due':'poultry-balance-clear'}>{fmt(selected.balance)} ج.م</strong></span>
+            <span><b>{Number(selected.balance)>0?'المبلغ المستحق للسداد':Number(selected.balance)<0?'رصيد لصالح العميل':'الحساب متسدد'}</b><strong className={Number(selected.balance)>0?'poultry-balance-due':'poultry-balance-clear'}>{fmt(Math.abs(Number(selected.balance)||0))} ج.م</strong></span>
           </div>
 
           {canSell&&<div className="poultry-action-box poultry-sale-box">
