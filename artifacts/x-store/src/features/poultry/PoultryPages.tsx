@@ -429,6 +429,11 @@ export function PoultrySalePage() {
   const [lastInvoiceDetails, setLastInvoiceDetails] = useState({ productName: 'فراخ', quantityKg: 0, unitPrice: 0 });
 
   useEffect(() => {
+    if (!lastInvoice) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [lastInvoice]);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError('');
