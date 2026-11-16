@@ -288,7 +288,7 @@ const nav = [
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
-  { href: '/poultry-customers', label: 'العملاء', icon: Users, roles: ['tenant_admin', 'cashier', 'accountant', 'custom'] },
+  { href: '/poultry-customers', label: 'العملاء', icon: Users, roles: ['tenant_admin', 'cashier', 'accountant', 'customer_management', 'custom'] },
   { href: '/poultry-sales', label: 'البيع', icon: ReceiptText, roles: ['tenant_admin', 'cashier', 'retail_sales'] },
   { href: '/poultry-collections', label: 'التحصيل', icon: Wallet, roles: ['tenant_admin', 'cashier', 'collector'] },
 ];
@@ -904,7 +904,7 @@ function ProtectedLayout() {
     session.data?.storeType === 'restaurant' ||
     (session.data?.storeType == null && restaurantFeature === true)
   );
-  const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','custom'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','customer_management','custom'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   if (session.data?.storeType === 'poultry' && ['/pos', '/inventory', '/sales'].includes(location)) return <Redirect to="/poultry-customers" />;
   if (session.data?.storeType !== 'poultry' && ['/poultry-customers','/poultry-sales','/poultry-collections'].includes(location)) return <Redirect to="/dashboard"/>;
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
@@ -1042,7 +1042,7 @@ function PoultryCustomersPage({ mode = 'customers' }: { mode?: 'customers' | 'sa
   const [lastInvoice,setLastInvoice]=useState<any|null>(null);
 
   const pageMode=mode;
-  const canAddCustomer=pageMode==='customers' && hasAppRole(session,['tenant_admin','cashier']);
+  const canAddCustomer=pageMode==='customers' && hasAppRole(session,['tenant_admin','cashier','customer_management']);
   const canSell=pageMode==='sales' && hasAppRole(session,['tenant_admin','cashier','retail_sales']);
   const canCollect=pageMode==='collections' && hasAppRole(session,['tenant_admin','cashier','collector']);
 
@@ -1804,15 +1804,17 @@ function TeamPage() {
   };
   const isPoultryStore = session?.storeType === 'poultry';
   const visibleTeamPermissionOptions = isPoultryStore
-    ? teamPermissionOptions.filter((option) => ['retail_sales', 'accountant', 'collector'].includes(option.value))
+    ? teamPermissionOptions.filter((option) => ['retail_sales', 'accountant', 'collector', 'customer_management'].includes(option.value))
     : teamPermissionOptions;
   const poultryPermissionLabel: Record<string, string> = {
     retail_sales: 'بيع الدواجن بالكيلو',
+    customer_management: 'إدارة العملاء',
     accountant: 'التقارير وكشوف الحساب',
     collector: 'تحصيل حسابات العملاء',
   };
   const poultryPermissionDescription: Record<string, string> = {
     retail_sales: 'الوصول إلى قسم البيع وتسجيل فواتير الدواجن بالكيلو وحفظ سعر الكيلو.',
+    customer_management: 'إضافة العملاء وتعديل بياناتهم والبحث في حساباتهم دون البيع أو التحصيل.',
     accountant: 'عرض العملاء وكشوف الحساب والتقارير بدون إنشاء فواتير أو تحصيل.',
     collector: 'عرض حسابات العملاء وتسجيل التحصيل فقط، بدون إنشاء فاتورة.',
   };
