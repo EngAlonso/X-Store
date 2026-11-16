@@ -1768,6 +1768,7 @@ function TenantsPage() {
 }
 function TeamPage() {
   const qc = useQueryClient();
+  const session = useContext(XStoreSessionContext);
   const team = useListXStoreTeam();
   const add = useAddXStoreTeamMember();
   const update = useUpdateXStoreTeamMember();
@@ -1784,6 +1785,20 @@ function TeamPage() {
     warehouse_manager: 'مدير المخزون',
     accountant: 'محاسب',
     custom: 'دور مخصص',
+  };
+  const isPoultryStore = session?.storeType === 'poultry';
+  const visibleTeamPermissionOptions = isPoultryStore
+    ? teamPermissionOptions.filter((option) => ['retail_sales', 'accountant', 'collector'].includes(option.value))
+    : teamPermissionOptions;
+  const poultryPermissionLabel: Record<string, string> = {
+    retail_sales: 'بيع الدواجن بالكيلو',
+    accountant: 'التقارير وكشوف الحساب',
+    collector: 'تحصيل حسابات العملاء',
+  };
+  const poultryPermissionDescription: Record<string, string> = {
+    retail_sales: 'إضافة العميل وتسجيل فواتير الدواجن بالكيلو وحفظ سعر الكيلو.',
+    accountant: 'عرض العملاء وكشوف الحساب والتقارير بدون إنشاء فواتير أو تحصيل.',
+    collector: 'عرض حسابات العملاء وتسجيل التحصيل فقط، بدون إنشاء فاتورة.',
   };
   const members = (team.data || []).filter((member) =>
     `${member.name} ${member.phone || ''} ${member.email || ''} ${member.roleName || ''} ${(member.permissions || []).join(' ')}`
@@ -1906,7 +1921,7 @@ function TeamPage() {
       <PageTitle
         eyebrow="إدارة الصلاحيات"
         title="فريق العمل"
-        desc="أضف أعضاء الفريق، وعدّل بيانات دخولهم وصلاحياتهم."
+        desc={isPoultryStore ? "أضف موظفي الدواجن وحدد لكل واحد صلاحية البيع بالكيلو أو التحصيل أو التقارير." : "أضف أعضاء الفريق، وعدّل بيانات دخولهم وصلاحياتهم."}
         action={
           <button
             className="button button-primary"
@@ -1917,6 +1932,7 @@ function TeamPage() {
           </button>
         }
       />
+      {isPoultryStore && <div className="role-hint field-wide" style={{marginBottom: 16}}><Bird size={17} /><span><b>نظام الدواجن:</b> صلاحيات الموظف هنا منفصلة عن المخزون ونقطة البيع العامة. بيع الدواجن بالكيلو = «بيع الدواجن بالكيلو»، والتحصيل = «تحصيل حسابات العملاء».</span></div>}
       <div className="team-summary">
         <div>
           <span className="team-summary-icon"><Users size={18} /></span>
@@ -2036,12 +2052,14 @@ function TeamPage() {
             <Field className="field-wide" label="اسم الدور" name="roleName" required maxLength={50} placeholder="مثال: مشرف الوردية" />
             <fieldset className="team-permission-list field-wide">
               <legend>الصلاحيات — اختر واحدة أو أكثر</legend>
-              {teamPermissionOptions.map(({ value, label, description }) => (
-                <label key={value} className={`team-permission-option ${selectedPermissions.includes(value) ? 'is-selected' : ''}`}>
+              {visibleTeamPermissionOptions.map(({ value, label, description }) => {
+                const displayLabel = isPoultryStore ? (poultryPermissionLabel[value] || label) : label;
+                const displayDescription = isPoultryStore ? (poultryPermissionDescription[value] || description) : description;
+                return <label key={value} className={'team-permission-option ' + (selectedPermissions.includes(value) ? 'is-selected' : '')}>
                   <input type="checkbox" checked={selectedPermissions.includes(value)} onChange={() => togglePermission(value)} />
-                  <span className="team-permission-copy"><b>{label}</b><small>{description}</small></span>
-                </label>
-              ))}
+                  <span className="team-permission-copy"><b>{displayLabel}</b><small>{displayDescription}</small></span>
+                </label>;
+              })}
             </fieldset>
             {!selectedPermissions.length && (
               <small className="team-permission-note field-wide">اختر صلاحية واحدة على الأقل قبل حفظ الحساب.</small>
