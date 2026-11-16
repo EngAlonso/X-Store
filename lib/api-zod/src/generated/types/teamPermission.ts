@@ -15,4 +15,6 @@ export const TeamPermission = {
   cashier: 'cashier',
   warehouse_manager: 'warehouse_manager',
   accountant: 'accountant',
+  collector: 'collector',
+  customer_management: 'customer_management',
 } as const;
