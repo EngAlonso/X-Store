@@ -1270,3 +1270,21 @@
   color: var(--xstore-green) !important;
   background: #f2f6f2 !important;
 }
+
+.poultry-grid{align-items:start}
+.poultry-customer-list{display:grid;gap:8px;margin:14px 0 18px}
+.poultry-customer{width:100%;display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:10px;text-align:right;border:1px solid #e1e6e1;background:#fff;border-radius:14px;padding:10px 12px;cursor:pointer;color:#173f2b}
+.poultry-customer:hover,.poultry-customer.selected{border-color:#79c18b;background:#f3f8f3}
+.poultry-customer-icon{width:34px;height:34px;border-radius:10px;background:#edf5ee;display:grid;place-items:center}
+.poultry-customer span:nth-child(2){display:grid;gap:3px}
+.poultry-customer small{color:#718078;font-size:11px}
+.poultry-customer strong{font-size:13px}
+.poultry-add{border-top:1px solid #e5e9e5;padding-top:16px;margin-top:8px}
+.poultry-customer-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.poultry-customer-meta span{background:#f8f6f1;border:1px solid #e8e4db;border-radius:13px;padding:11px;display:grid;gap:4px}
+.poultry-customer-meta b{font-size:10px;color:#78827b}
+.poultry-action-box{margin-top:16px;padding:16px;border:1px solid #e1e6e1;border-radius:16px;background:#fbfcfa}
+.poultry-action-box h3{margin:0 0 12px;color:#173f2b;font-size:15px}
+.poultry-statement{margin-top:18px}
+@media(max-width:900px){.poultry-customer-meta{grid-template-columns:1fr}.poultry-grid{grid-template-columns:1fr}}
+@media print{.sidebar,.topbar,.page-action,.poultry-action-box,.poultry-add,.poultry-customer-list{display:none!important}.main-content{padding:0!important}.poultry-statement{box-shadow:none!important;border:0!important}}
