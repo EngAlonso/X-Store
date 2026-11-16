@@ -86,10 +86,6 @@ import {
 import {
   db,
   xstoreAuditLogs,
-  xstoreCustomers,
-  xstorePoultryInvoices,
-  xstorePoultryInvoiceItems,
-  xstorePoultryPayments,
   xstoreHeldSales,
   xstoreProducts,
   xstoreMenus,
