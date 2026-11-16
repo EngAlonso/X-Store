@@ -29,5 +29,33 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Typecheck workspace
-        run: pnpm run typecheck
+      - name: Typecheck workspace libraries
+        run: pnpm run typecheck:libs
+      - name: Typecheck isolated poultry frontend
+        run: pnpm --filter @workspace/x-store exec tsc -p tsconfig.poultry.json --noEmit
+      - name: Typecheck API server
+        run: pnpm --filter @workspace/api-server typecheck
+      - name: Check App integration syntax
+        run: |
+          node --input-type=module <<'NODE'
+          import ts from 'typescript';
+          import { readFileSync } from 'node:fs';
+          const files = [
+            'artifacts/x-store/src/App.tsx',
+            'artifacts/x-store/src/features/poultry/PoultryPages.tsx',
+          ];
+          let failed = false;
+          for (const file of files) {
+            const result = ts.transpileModule(readFileSync(file, 'utf8'), {
+              fileName: file,
+              reportDiagnostics: true,
+              compilerOptions: { jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext },
+            });
+            for (const diagnostic of result.diagnostics || []) {
+              failed = true;
+              console.error(file + ': ' + ts.flattenDiagnosticMessageText(diagnostic.messageText, '\\n'));
+            }
+          }
+          if (failed) process.exit(1);
+          console.log('App and poultry JSX syntax passed.');
+          NODE
