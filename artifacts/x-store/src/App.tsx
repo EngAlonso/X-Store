@@ -1022,71 +1022,255 @@ function StateBlock({loading,error,onRetry,empty,emptyTitle='لا توجد بي�
 function PoultryCustomersPage() {
   const session = useContext(XStoreSessionContext);
   const [customers,setCustomers]=useState<any[]>([]);
-  const [search,setSearch]=useState("");
+  const [search,setSearch]=useState('');
   const [selected,setSelected]=useState<any|null>(null);
   const [statement,setStatement]=useState<any|null>(null);
-  const [from,setFrom]=useState(new Date().toISOString().slice(0,8)+"01");
+  const [from,setFrom]=useState(new Date().toISOString().slice(0,8)+'01');
   const [to,setTo]=useState(new Date().toISOString().slice(0,10));
   const [busy,setBusy]=useState(false);
-  const [notice,setNotice]=useState("");
-  const [error,setError]=useState("");
-  const [newCustomer,setNewCustomer]=useState({name:"",phone:"",shopName:"",shopAddress:""});
-  const [invoice,setInvoice]=useState({productName:"فراخ",quantityKg:"",unitPrice:"",amountPaid:""});
-  const [payment,setPayment]=useState("");
+  const [notice,setNotice]=useState('');
+  const [error,setError]=useState('');
+  const [customerDialog,setCustomerDialog]=useState(false);
+  const [newCustomer,setNewCustomer]=useState({name:'',phone:'',shopName:'',shopAddress:''});
+  const [invoice,setInvoice]=useState({productName:'فراخ',quantityKg:'',unitPrice:'',amountPaid:''});
+  const [payment,setPayment]=useState('');
   const [lastInvoice,setLastInvoice]=useState<any|null>(null);
-  const canSell=session?.role==="tenant_admin"||session?.role==="cashier";
+
+  const canAddCustomer=hasAppRole(session,['tenant_admin','cashier','collector']);
+  const canSell=hasAppRole(session,['tenant_admin','cashier','retail_sales']);
+  const canCollect=hasAppRole(session,['tenant_admin','cashier','collector']);
+
   async function loadCustomers(q=search){
-    const r=await fetch("/api/xstore/poultry/customers?search="+encodeURIComponent(q),{credentials:"include"});
+    const r=await fetch('/api/xstore/poultry/customers?search='+encodeURIComponent(q),{credentials:'include',cache:'no-store'});
     const j=await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(j.error||"تعذر تحميل العملاء.");
-    setCustomers(j);
+    if(!r.ok) throw new Error(j.error||'تعذر تحميل العملاء.');
+    setCustomers(Array.isArray(j)?j:[]);
   }
-  useEffect(()=>{void loadCustomers().catch(e=>setError(e.message));},[]);
+
+  useEffect(()=>{void loadCustomers().catch(e=>setError(e instanceof Error?e.message:'تعذر تحميل العملاء.'));},[]);
+
   async function createCustomer(){
-    setBusy(true);setError("");setNotice("");
-    try{const r=await fetch("/api/xstore/poultry/customers",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify(newCustomer)});const j=await r.json();if(!r.ok)throw new Error(j.error||"تعذر إضافة العميل.");setNewCustomer({name:"",phone:"",shopName:"",shopAddress:""});setNotice("تم إضافة العميل.");await loadCustomers();setSelected(j);}catch(e){setError(e instanceof Error?e.message:"تعذر إضافة العميل.");}finally{setBusy(false);}
+    const payload={
+      name:newCustomer.name.trim(),
+      phone:newCustomer.phone.trim(),
+      shopName:newCustomer.shopName.trim(),
+      shopAddress:newCustomer.shopAddress.trim(),
+    };
+    if(!payload.name||!payload.phone){
+      setError('اكتب اسم العميل ورقم الهاتف قبل الحفظ.');
+      return;
+    }
+    setBusy(true);setError('');setNotice('');
+    try{
+      const r=await fetch('/api/xstore/poultry/customers',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body:JSON.stringify(payload),
+      });
+      const j=await r.json().catch(()=>({error:'تعذر قراءة رد الخادم.'}));
+      if(!r.ok) throw new Error(j.error||'تعذر إضافة العميل.');
+      setNewCustomer({name:'',phone:'',shopName:'',shopAddress:''});
+      setCustomerDialog(false);
+      setNotice('تم إضافة العميل بنجاح. اختاره الآن وسجّل أول فاتورة.');
+      await loadCustomers();
+      setSelected(j);
+      setStatement(null);
+    }catch(e){
+      setError(e instanceof Error?e.message:'تعذر إضافة العميل.');
+    }finally{setBusy(false);}
   }
+
   async function loadStatement(customer=selected){
     if(!customer)return;
-    setBusy(true);setError("");
-    try{const r=await fetch("/api/xstore/poultry/customers/"+customer.id+"/statement?from="+encodeURIComponent(from)+"&to="+encodeURIComponent(to),{credentials:"include"});const j=await r.json();if(!r.ok)throw new Error(j.error||"تعذر تحميل كشف الحساب.");setStatement(j);}catch(e){setError(e instanceof Error?e.message:"تعذر تحميل كشف الحساب.");}finally{setBusy(false);}
+    setBusy(true);setError('');
+    try{
+      const r=await fetch('/api/xstore/poultry/customers/'+customer.id+'/statement?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to),{credentials:'include',cache:'no-store'});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||'تعذر تحميل كشف الحساب.');
+      setStatement(j);
+    }catch(e){setError(e instanceof Error?e.message:'تعذر تحميل كشف الحساب.');}
+    finally{setBusy(false);}
   }
+
+  const invoiceTotal=roundMoney((Number(invoice.quantityKg)||0)*(Number(invoice.unitPrice)||0));
+  const paidNow=Number(invoice.amountPaid)||0;
+  const invoiceRemaining=Math.max(0,roundMoney(invoiceTotal-paidNow));
+
   async function createInvoice(){
-    if(!selected)return;
-    setBusy(true);setError("");setNotice("");
-    try{const r=await fetch("/api/xstore/poultry/customers/"+selected.id+"/invoices",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({items:[{productName:invoice.productName,quantityKg:Number(invoice.quantityKg),unitPrice:Number(invoice.unitPrice)}],amountPaid:Number(invoice.amountPaid)||0})});const j=await r.json();if(!r.ok)throw new Error(j.error||"تعذر تسجيل الفاتورة.");setLastInvoice({...j,customerName:selected.name});setNotice("تم تسجيل الفاتورة "+j.invoiceNo+" بقيمة "+fmt(j.total)+" جنيه.");setInvoice({productName:"فراخ",quantityKg:"",unitPrice:"",amountPaid:""});await loadCustomers();await loadStatement(selected);}catch(e){setError(e instanceof Error?e.message:"تعذر تسجيل الفاتورة.");}finally{setBusy(false);}
+    if(!selected){setError('اختَر العميل أولاً.');return;}
+    const quantity=Number(invoice.quantityKg);
+    const unitPrice=Number(invoice.unitPrice);
+    const amountPaid=Number(invoice.amountPaid)||0;
+    if(!Number.isFinite(quantity)||quantity<=0){setError('اكتب كمية بالكيلو أكبر من صفر.');return;}
+    if(!Number.isFinite(unitPrice)||unitPrice<0){setError('اكتب سعر الكيلو بشكل صحيح.');return;}
+    const total=roundMoney(quantity*unitPrice);
+    if(amountPaid<0||amountPaid>total){setError('المدفوع لا يمكن أن يكون أكبر من إجمالي الفاتورة.');return;}
+    setBusy(true);setError('');setNotice('');
+    try{
+      const r=await fetch('/api/xstore/poultry/customers/'+selected.id+'/invoices',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body:JSON.stringify({items:[{productName:invoice.productName.trim()||'فراخ',quantityKg:quantity,unitPrice}],amountPaid}),
+      });
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||'تعذر تسجيل الفاتورة.');
+      setLastInvoice({...j,customerName:selected.name});
+      setNotice('تم تسجيل الفاتورة '+j.invoiceNo+' بقيمة '+fmt(j.total)+' ج.م.');
+      setInvoice({productName:'فراخ',quantityKg:'',unitPrice:'',amountPaid:''});
+      await loadCustomers();
+      await loadStatement(selected);
+    }catch(e){setError(e instanceof Error?e.message:'تعذر تسجيل الفاتورة.');}
+    finally{setBusy(false);}
   }
+
   async function collectPayment(){
-    if(!selected)return;
-    setBusy(true);setError("");setNotice("");
-    try{const r=await fetch("/api/xstore/poultry/customers/"+selected.id+"/payments",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({amount:Number(payment)})});const j=await r.json();if(!r.ok)throw new Error(j.error||"تعذر تسجيل التحصيل.");setNotice("تم تسجيل تحصيل "+fmt(j.amount)+" جنيه.");setPayment("");await loadCustomers();await loadStatement(selected);}catch(e){setError(e instanceof Error?e.message:"تعذر تسجيل التحصيل.");}finally{setBusy(false);}
+    if(!selected){setError('اختَر العميل أولاً.');return;}
+    const amount=Number(payment);
+    if(!Number.isFinite(amount)||amount<=0){setError('اكتب مبلغ تحصيل أكبر من صفر.');return;}
+    setBusy(true);setError('');setNotice('');
+    try{
+      const r=await fetch('/api/xstore/poultry/customers/'+selected.id+'/payments',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body:JSON.stringify({amount}),
+      });
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||'تعذر تسجيل التحصيل.');
+      setNotice('تم تسجيل تحصيل '+fmt(j.amount)+' ج.م.');
+      setPayment('');
+      await loadCustomers();
+      await loadStatement(selected);
+    }catch(e){setError(e instanceof Error?e.message:'تعذر تسجيل التحصيل.');}
+    finally{setBusy(false);}
   }
-  function whatsappInvoice(){ if(!lastInvoice||!selected)return; const text="فاتورة "+lastInvoice.invoiceNo+"\nالعميل: "+selected.name+"\nالقيمة: "+fmt(lastInvoice.total)+" جنيه\nالمدفوع: "+fmt(lastInvoice.amountPaid)+" جنيه\nالمتبقي: "+fmt(lastInvoice.balance)+" جنيه\nالتاريخ والوقت: "+new Intl.DateTimeFormat("ar-EG",{weekday:"long",day:"numeric",month:"long",year:"numeric",hour:"numeric",minute:"2-digit",timeZone:"Africa/Cairo"}).format(new Date(lastInvoice.createdAt)); window.open("https://wa.me/"+String(selected.phone).replace(/\D/g,"")+"?text="+encodeURIComponent(text),"_blank"); }
+
+  function whatsappInvoice(){
+    if(!lastInvoice||!selected)return;
+    const text='فاتورة '+lastInvoice.invoiceNo+'\nالعميل: '+selected.name+'\nالقيمة: '+fmt(lastInvoice.total)+' ج.م\nالمدفوع: '+fmt(lastInvoice.amountPaid)+' ج.م\nالمتبقي: '+fmt(lastInvoice.balance)+' ج.م\nالتاريخ والوقت: '+new Intl.DateTimeFormat('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(lastInvoice.createdAt));
+    window.open('https://wa.me/'+String(selected.phone).replace(/\D/g,'')+'?text='+encodeURIComponent(text),'_blank');
+  }
+
   function whatsappStatement(){
     if(!selected||!statement)return;
     const s=statement.summary;
-    const text="كشف حساب "+selected.name+"\nالفترة: "+from+" إلى "+to+"\nإجمالي الكمية: "+fmt(s.totalKg)+" كجم\nالمبيعات: "+fmt(s.sales)+" جنيه\nالمدفوع: "+fmt(s.paid)+" جنيه\nالمتبقي: "+fmt(s.remaining)+" جنيه";
-    window.open("https://wa.me/"+String(selected.phone).replace(/\D/g,"")+"?text="+encodeURIComponent(text),"_blank");
+    const text='كشف حساب '+selected.name+'\nالفترة: '+from+' إلى '+to+'\nإجمالي الكمية: '+fmt(s.totalKg)+' كجم\nالمبيعات: '+fmt(s.sales)+' ج.م\nالمدفوع: '+fmt(s.paid)+' ج.م\nالمتبقي: '+fmt(s.remaining)+' ج.م';
+    window.open('https://wa.me/'+String(selected.phone).replace(/\D/g,'')+'?text='+encodeURIComponent(text),'_blank');
   }
-  return <div dir="rtl">
-    <PageTitle eyebrow="الدواجن والفراخ" title="حسابات العملاء" desc="بيع آجل، تحصيل، وكشف حساب دقيق لكل عميل مع حفظ سعر الكيلو وقت الفاتورة." action={<button className="button button-primary" onClick={()=>window.print()}><Printer size={16}/> طباعة</button>}/>
-    {error&&<div className="form-error">{error}</div>}{notice&&<div className="notice-box success">{notice}</div>}
-    <div className="dashboard-grid poultry-grid">
-      <Card><SectionHead title="العملاء" detail="ابحث بالاسم أو رقم الهاتف أو اسم المحل."/>
-        <div className="form-grid"><label className="field field-wide"><span>بحث</span><input value={search} onChange={e=>{setSearch(e.target.value);void loadCustomers(e.target.value)}} placeholder="اسم العميل أو الهاتف أو المحل"/></label></div>
-        <div className="poultry-customer-list">{customers.map(c=><button type="button" className={"poultry-customer "+(selected?.id===c.id?"selected":"")} key={c.id} onClick={()=>{setSelected(c);setStatement(null);}}><span className="poultry-customer-icon"><Bird size={18}/></span><span><b>{c.name}</b><small>{c.shopName||"بدون اسم محل"} · {c.phone}</small></span><strong>{fmt(c.balance)} ج.م</strong></button>)}</div>
-        <div className="form-grid poultry-add"><label className="field"><span>اسم العميل</span><input value={newCustomer.name} onChange={e=>setNewCustomer({...newCustomer,name:e.target.value})}/></label><label className="field"><span>رقم الهاتف</span><input value={newCustomer.phone} onChange={e=>setNewCustomer({...newCustomer,phone:e.target.value})}/></label><label className="field"><span>اسم المحل</span><input value={newCustomer.shopName} onChange={e=>setNewCustomer({...newCustomer,shopName:e.target.value})}/></label><label className="field"><span>عنوان المحل</span><input value={newCustomer.shopAddress} onChange={e=>setNewCustomer({...newCustomer,shopAddress:e.target.value})}/></label></div>
-        <button className="button button-primary" disabled={busy||!newCustomer.name||!newCustomer.phone} onClick={()=>void createCustomer()}><Plus size={16}/> إضافة عميل</button>
-      </Card>
-      <Card>{selected?<><SectionHead title={selected.name} detail={(selected.shopName||"بدون اسم محل")+" · "+selected.phone}/>
-        <div className="poultry-customer-meta"><span><b>المحل</b>{selected.shopName||"—"}</span><span><b>العنوان</b>{selected.shopAddress||"—"}</span><span><b>الرصيد الحالي</b>{fmt(selected.balance)} ج.م</span></div>
-        <div className="form-grid"><label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>
-        <div className="form-actions"><button className="button button-primary" onClick={()=>void loadStatement()} disabled={busy}>عرض الجرد</button>{statement&&<><button className="button button-quiet" onClick={whatsappStatement}><MessageCircle size={16}/> واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></>}</div>
-        {lastInvoice&&<div className="notice-box success poultry-last-invoice"><b>آخر فاتورة: {lastInvoice.invoiceNo}</b><span>القيمة {fmt(lastInvoice.total)} ج.م · المدفوع {fmt(lastInvoice.amountPaid)} ج.م · المتبقي {fmt(lastInvoice.balance)} ج.م</span><div className="form-actions"><button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال الفاتورة واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></div></div>}{canSell&&<div className="poultry-action-box"><h3>فاتورة جديدة</h3><div className="form-grid"><label className="field"><span>الصنف</span><input value={invoice.productName} onChange={e=>setInvoice({...invoice,productName:e.target.value})}/></label><label className="field"><span>الكمية بالكيلو</span><input type="number" step="0.001" value={invoice.quantityKg} onChange={e=>setInvoice({...invoice,quantityKg:e.target.value})}/></label><label className="field"><span>سعر الكيلو</span><input type="number" step="0.01" value={invoice.unitPrice} onChange={e=>setInvoice({...invoice,unitPrice:e.target.value})}/></label><label className="field"><span>المدفوع</span><input type="number" step="0.01" value={invoice.amountPaid} onChange={e=>setInvoice({...invoice,amountPaid:e.target.value})}/></label></div><button className="button button-primary" disabled={busy} onClick={()=>void createInvoice()}><ReceiptText size={16}/> تسجيل الفاتورة</button></div>}
-        <div className="poultry-action-box"><h3>تحصيل</h3><div className="form-grid"><label className="field"><span>المبلغ</span><input type="number" step="0.01" value={payment} onChange={e=>setPayment(e.target.value)} placeholder="0.00"/></label></div><button className="button button-primary" disabled={busy||!payment} onClick={()=>void collectPayment()}><Wallet size={16}/> تسجيل التحصيل</button></div>
-      </>:<div className="state-box"><div className="empty-symbol"><Bird size={22}/></div><b>اختر عميلًا</b><span>اعرض حسابه أو سجل فاتورة أو تحصيل.</span></div>}</Card>
+
+  return <div dir="rtl" className="poultry-customers-page">
+    <PageTitle
+      eyebrow="الدواجن والفراخ"
+      title="العملاء والحسابات"
+      desc="من هنا فقط: أضف العميل، اختاره، ثم سجّل البيع بالكيلو وسعر الكيلو والتحصيل."
+      action={<div className="poultry-header-actions">
+        {canAddCustomer&&<button className="button button-primary" onClick={()=>{setError('');setCustomerDialog(true);}}><Plus size={17}/> عميل جديد</button>}
+        <button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة</button>
+      </div>}
+    />
+    {error&&<div className="form-error poultry-form-error" role="alert"><AlertTriangle size={16}/><span>{error}</span></div>}
+    {notice&&<div className="notice-box success poultry-form-notice"><CircleCheck size={16}/><span>{notice}</span></div>}
+
+    <div className="poultry-step-strip" aria-label="خطوات البيع">
+      <div className="poultry-step"><b>1</b><span>اختَر العميل</span></div>
+      <ArrowLeft size={16}/>
+      <div className="poultry-step"><b>2</b><span>اكتب الكيلو وسعر الكيلو</span></div>
+      <ArrowLeft size={16}/>
+      <div className="poultry-step"><b>3</b><span>سجّل الفاتورة</span></div>
+      <ArrowLeft size={16}/>
+      <div className="poultry-step"><b>4</b><span>حصّل أو اتركها آجل</span></div>
     </div>
-    {statement&&<Card className="poultry-statement"><SectionHead title="كشف الحساب" detail={"من "+from+" إلى "+to}/><div className="stat-grid"><StatCard label="إجمالي الكمية" value={fmt(statement.summary.totalKg)+" كجم"} detail="إجمالي الوزن خلال الفترة" icon={Bird}/><StatCard label="المبيعات" value={fmt(statement.summary.sales)+" ج.م"} detail="قيمة الفواتير" icon={ReceiptText} tint="gold"/><StatCard label="المدفوع" value={fmt(statement.summary.paid)+" ج.م"} detail="إجمالي التحصيل" icon={Wallet} tint="sage"/><StatCard label="المتبقي" value={fmt(statement.summary.remaining)+" ج.م"} detail="الرصيد بعد الفترة" icon={CreditCard}/></div><div className="table-wrap"><table><thead><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكيلو</th><th>سعر الكيلو</th><th>القيمة</th><th>الموظف</th></tr></thead><tbody>{statement.rows.map((row:any)=><tr key={row.id}><td>{new Intl.DateTimeFormat("ar-EG",{weekday:"long",day:"numeric",month:"long",year:"numeric",hour:"numeric",minute:"2-digit",timeZone:"Africa/Cairo"}).format(new Date(row.date))}</td><td><b>{row.type==="invoice"?"فاتورة "+row.invoiceNo:"تحصيل"}</b></td><td>{row.items.length?fmt(row.items.reduce((s:number,x:any)=>s+x.quantityKg,0)):"—"}</td><td>{row.items.length?fmt(row.items[0].unitPrice)+" ج.م":"—"}</td><td>{fmt(row.type==="invoice"?row.total:row.paid)} ج.م</td><td>{row.actorName}</td></tr>)}</tbody></table></div></Card>}
+
+    <div className="dashboard-grid poultry-grid">
+      <Card className="poultry-customers-card">
+        <SectionHead title="العملاء" detail="ابحث بالاسم أو الهاتف أو اسم المحل." action={canAddCustomer?<button className="text-link" onClick={()=>setCustomerDialog(true)}><Plus size={15}/> إضافة عميل</button>:null}/>
+        <div className="poultry-search-row">
+          <label className="search-box poultry-search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="اسم العميل أو الهاتف أو المحل" /></label>
+          <button className="button button-quiet" onClick={()=>void loadCustomers(search)} disabled={busy}><Search size={15}/> بحث</button>
+        </div>
+        <div className="poultry-customer-list">
+          {customers.length?customers.map(c=><button type="button" className={'poultry-customer '+(selected?.id===c.id?'selected':'')} key={c.id} onClick={()=>{setSelected(c);setStatement(null);setError('');}}>
+            <span className="poultry-customer-icon"><Bird size={18}/></span>
+            <span><b>{c.name}</b><small>{c.shopName||'بدون اسم محل'} · {c.phone}</small></span>
+            <strong>{fmt(c.balance)} ج.م</strong>
+          </button>):<div className="state-box"><div className="empty-symbol"><Bird size={22}/></div><b>لا يوجد عملاء</b><span>ابدأ بزر «عميل جديد» وأضف أول حساب.</span></div>}
+        </div>
+      </Card>
+
+      <Card className="poultry-workspace-card">
+        {selected?<>
+          <SectionHead title={'حساب '+selected.name} detail={(selected.shopName||'بدون اسم محل')+' · '+selected.phone}/>
+          <div className="poultry-customer-meta">
+            <span><b>المحل</b>{selected.shopName||'—'}</span>
+            <span><b>العنوان</b>{selected.shopAddress||'—'}</span>
+            <span><b>الرصيد الحالي</b><strong className={Number(selected.balance)>0?'poultry-balance-due':'poultry-balance-clear'}>{fmt(selected.balance)} ج.م</strong></span>
+          </div>
+
+          {canSell&&<div className="poultry-action-box poultry-sale-box">
+            <div className="poultry-box-heading"><div><span className="poultry-box-kicker">الخطوة 2 و 3</span><h3>بيع دواجن للعميل</h3><p>اكتب الوزن وسعر الكيلو فقط، والإجمالي يتحسب تلقائياً.</p></div><span className="poultry-sale-badge"><Bird size={18}/> بيع بالكيلو</span></div>
+            <div className="form-grid poultry-sale-form">
+              <label className="field"><span>الصنف</span><input value={invoice.productName} onChange={e=>setInvoice({...invoice,productName:e.target.value})} placeholder="مثال: فراخ بيضاء"/></label>
+              <label className="field"><span>الكمية بالكيلو <b className="required-mark">*</b></span><input type="number" min="0.001" step="0.001" value={invoice.quantityKg} onChange={e=>setInvoice({...invoice,quantityKg:e.target.value})} placeholder="مثال: 12.500"/></label>
+              <label className="field"><span>سعر الكيلو <b className="required-mark">*</b></span><input type="number" min="0" step="0.01" value={invoice.unitPrice} onChange={e=>setInvoice({...invoice,unitPrice:e.target.value})} placeholder="مثال: 145"/></label>
+              <label className="field"><span>المدفوع الآن</span><input type="number" min="0" step="0.01" value={invoice.amountPaid} onChange={e=>setInvoice({...invoice,amountPaid:e.target.value})} placeholder="0 = آجل بالكامل"/></label>
+            </div>
+            <div className="poultry-sale-calculation">
+              <div><span>الوزن</span><b>{fmt(Number(invoice.quantityKg)||0)} كجم</b></div>
+              <div><span>سعر الكيلو</span><b>{fmt(Number(invoice.unitPrice)||0)} ج.م</b></div>
+              <div className="total"><span>إجمالي الفاتورة</span><strong>{fmt(invoiceTotal)} ج.م</strong></div>
+              <div><span>المتبقي</span><b>{fmt(invoiceRemaining)} ج.م</b></div>
+            </div>
+            <button className="button button-primary poultry-main-action" disabled={busy||invoiceTotal<=0} onClick={()=>void createInvoice()}><ReceiptText size={17}/> تسجيل الفاتورة وحفظ سعر الكيلو</button>
+            <small className="poultry-helper">سعر الكيلو بيتحفظ داخل بند الفاتورة، ويظهر بعد كده في كشف حساب العميل.</small>
+          </div>}
+
+          {canCollect&&<div className="poultry-action-box poultry-collection-box">
+            <div className="poultry-box-heading"><div><span className="poultry-box-kicker">الخطوة 4</span><h3>تحصيل من العميل</h3><p>لو العميل دفع جزء أو كل الحساب، سجّل المبلغ هنا.</p></div><span className="poultry-collection-badge"><Wallet size={18}/> تحصيل</span></div>
+            <div className="form-grid"><label className="field"><span>مبلغ التحصيل</span><input type="number" min="0.01" step="0.01" value={payment} onChange={e=>setPayment(e.target.value)} placeholder="مثال: 1000"/></label></div>
+            <button className="button button-primary" disabled={busy||!payment} onClick={()=>void collectPayment()}><Wallet size={16}/> تسجيل التحصيل</button>
+          </div>}
+
+          {!canSell&&!canCollect&&<div className="role-hint poultry-permission-note"><ShieldCheck size={17}/><span>حسابك للعرض فقط. اطلب من مالك المتجر إضافة صلاحية البيع أو التحصيل من «فريق العمل».</span></div>}
+
+          <div className="poultry-statement-controls">
+            <SectionHead title="كشف الحساب" detail="حدد الفترة ثم اعرض كل الفواتير والتحصيلات."/>
+            <div className="form-grid"><label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>
+            <div className="form-actions"><button className="button button-primary" onClick={()=>void loadStatement()} disabled={busy}><ReceiptText size={16}/> عرض كشف الحساب</button>{statement&&<><button className="button button-quiet" onClick={whatsappStatement}><MessageCircle size={16}/> واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></>}</div>
+          </div>
+
+          {lastInvoice&&<div className="notice-box success poultry-last-invoice"><b>آخر فاتورة: {lastInvoice.invoiceNo}</b><span>القيمة {fmt(lastInvoice.total)} ج.م · المدفوع {fmt(lastInvoice.amountPaid)} ج.م · المتبقي {fmt(lastInvoice.balance)} ج.م</span><div className="form-actions"><button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال الفاتورة واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></div></div>}
+        </>:<div className="poultry-empty-workspace"><div className="empty-symbol"><Bird size={28}/></div><h3>اختَر عميلًا للبدء</h3><p>بعد اختيار العميل هتظهر لك شاشة البيع بالكيلو والتحصيل وكشف الحساب.</p>{canAddCustomer&&<button className="button button-primary" onClick={()=>setCustomerDialog(true)}><Plus size={16}/> إضافة أول عميل</button>}</div>}
+      </Card>
+    </div>
+
+    {statement&&<Card className="poultry-statement">
+      <SectionHead title="تفاصيل كشف الحساب" detail={'من '+from+' إلى '+to}/>
+      <div className="stat-grid">
+        <StatCard label="إجمالي الكمية" value={fmt(statement.summary.totalKg)+' كجم'} detail="إجمالي الوزن خلال الفترة" icon={Bird}/>
+        <StatCard label="المبيعات" value={fmt(statement.summary.sales)+' ج.م'} detail="قيمة الفواتير" icon={ReceiptText} tint="gold"/>
+        <StatCard label="المدفوع" value={fmt(statement.summary.paid)+' ج.م'} detail="إجمالي التحصيل" icon={Wallet} tint="sage"/>
+        <StatCard label="المتبقي" value={fmt(statement.summary.remaining)+' ج.م'} detail="الرصيد بعد الفترة" icon={CreditCard}/>
+      </div>
+      <div className="table-wrap"><table><thead><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكيلو</th><th>سعر الكيلو</th><th>القيمة</th><th>الموظف</th></tr></thead><tbody>
+        {statement.rows.map((row:any)=><tr key={row.id}><td>{new Intl.DateTimeFormat('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date))}</td><td><b>{row.type==='invoice'?'فاتورة '+row.invoiceNo:'تحصيل'}</b></td><td>{row.items.length?fmt(row.items.reduce((s:number,x:any)=>s+x.quantityKg,0):'—'}</td><td>{row.items.length?fmt(row.items[0].unitPrice)+' ج.م':'—'}</td><td>{fmt(row.type==='invoice'?row.total:row.paid)} ج.م</td><td>{row.actorName}</td></tr>)}
+      </tbody></table></div>
+    </Card>}
+
+    {customerDialog&&<Modal title="إضافة عميل دواجن" close={()=>{if(!busy)setCustomerDialog(false);}}>
+      <form className="poultry-customer-form" onSubmit={e=>{e.preventDefault();void createCustomer();}}>
+        <div className="poultry-modal-intro"><div className="poultry-modal-icon"><Bird size={22}/></div><div><b>بيانات العميل الأساسية</b><span>الاسم ورقم الهاتف مطلوبان. بيانات المحل اختيارية.</span></div></div>
+        <div className="form-grid">
+          <label className="field field-wide"><span>اسم العميل <b className="required-mark">*</b></span><input autoFocus value={newCustomer.name} onChange={e=>setNewCustomer({...newCustomer,name:e.target.value})} placeholder="مثال: أحمد محمد"/></label>
+          <label className="field"><span>رقم الهاتف <b className="required-mark">*</b></span><input type="tel" inputMode="tel" value={newCustomer.phone} onChange={e=>setNewCustomer({...newCustomer,phone:e.target.value})} placeholder="01xxxxxxxxx"/></label>
+          <label className="field"><span>اسم المحل</span><input value={newCustomer.shopName} onChange={e=>setNewCustomer({...newCustomer,shopName:e.target.value})} placeholder="مثال: محل البركة"/></label>
+          <label className="field field-wide"><span>عنوان المحل</span><input value={newCustomer.shopAddress} onChange={e=>setNewCustomer({...newCustomer,shopAddress:e.target.value})} placeholder="المنطقة / الشارع"/></label>
+        </div>
+        <div className="poultry-form-explain"><ShieldCheck size={16}/><span>بعد الحفظ هتقدر تختار العميل فورًا وتسجل له البيع بالكيلو أو التحصيل.</span></div>
+        <div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setCustomerDialog(false)} disabled={busy}>إلغاء</button><button className="button button-primary" type="submit" disabled={busy||!newCustomer.name.trim()||!newCustomer.phone.trim()}><Plus size={16}/>{busy?'جارٍ إضافة العميل…':'حفظ العميل'}</button></div>
+      </form>
+    </Modal>}
   </div>;
 }
 
