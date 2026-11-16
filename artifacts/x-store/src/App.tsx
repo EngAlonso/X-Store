@@ -820,7 +820,7 @@ function AppShell({ children }: { children: ReactNode }) {
       const exchanges = sale.exchangeEvents.map((event) => ({ id: `exchange:${sale.id}:${event.createdAt}`, title: `تم استبدال من الفاتورة ${sale.invoiceNo}`, detail: `فاتورة البديل ${event.replacementInvoiceNo}`, date: new Date(event.createdAt), icon: ArrowLeftRight, href: '/sales' }));
       return [...returned, ...exchanges];
     }) : []),
-    ...(canSeeInventoryNotifications?(notificationProducts.data||[]).filter(p=>p.quantity<=5).map(p=>({id:`stock:${p.id}:${p.quantity<=0?'out':'low'}`,title:p.quantity<=0?`نفد مخزون ${p.name}`:`مخزون ${p.name} قرب يخلص`,detail:`المتبقي: ${fmt(p.quantity)}`,date:new Date(),icon:Package,href:'/inventory'})):[])
+    ...(canSeeInventoryNotifications?(notificationProducts.data||[]).filter(p=>p.quantity<=5).map(p=>({id:`stock:${p.id}:${p.quantity<=0?'out':'low'}`,title:p.quantity<=0?`نفد مخزون ${p.name}`:`مخزون ${p.name} قرب يخلص`,detail:`المتبقي: ${fmt(p.quantity)}`,date:new Date(),icon:Package,href:'/inventory'})):[]),
     ...(user.storeType === 'poultry' ? poultryNotifications.map(n=>({id:n.id,title:n.title,detail:n.detail,date:new Date(n.createdAt),icon:n.type==='payment'?Wallet:ReceiptText,href:n.href})) : []),
   ].sort((a,b)=>b.date.getTime()-a.date.getTime()).slice(0,100);
   const unseenNotifications=notificationRows.filter(n=>!readNotificationIds.includes(n.id)).length;
