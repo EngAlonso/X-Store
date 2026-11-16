@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { SessionUser } from '@workspace/api-client-react';
 import './poultry.css';
+import { poultryApi } from './poultryApi';
 
 const fmt = (value: number) => new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 2 }).format(Number(value) || 0);
 const roundMoney = (amount: number) => Math.round((amount + Number.EPSILON) * 100) / 100;
@@ -60,10 +61,8 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
   const canCollect=pageMode==='collections' && hasAppRole(session,['tenant_admin','cashier','collector']);
 
   async function loadCustomers(q=search){
-    const r=await fetch('/api/xstore/poultry/customers?search='+encodeURIComponent(q),{credentials:'include',cache:'no-store'});
-    const j=await r.json().catch(()=>({}));
-    if(!r.ok) throw new Error(j.error||'تعذر تحميل العملاء.');
-    setCustomers(Array.isArray(j)?j:[]);
+    const rows = await poultryApi.listCustomers(q);
+    setCustomers(Array.isArray(rows) ? rows : []);
   }
 
   useEffect(()=>{void loadCustomers().catch(e=>setError(e instanceof Error?e.message:'تعذر تحميل العملاء.'));},[]);
@@ -81,14 +80,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     }
     setBusy(true);setError('');setNotice('');
     try{
-      const r=await fetch('/api/xstore/poultry/customers',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        credentials:'include',
-        body:JSON.stringify(payload),
-      });
-      const j=await r.json().catch(()=>({error:'تعذر قراءة رد الخادم.'}));
-      if(!r.ok) throw new Error(j.error||'تعذر إضافة العميل.');
+      const j = await poultryApi.createCustomer(payload);
       setNewCustomer({name:'',phone:'',shopName:'',shopAddress:''});
       setCustomerDialog(false);
       setNotice('تم إضافة العميل بنجاح. اختاره الآن وسجّل أول فاتورة.');
@@ -104,10 +96,8 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     if(!customer)return;
     setBusy(true);setError('');
     try{
-      const r=await fetch('/api/xstore/poultry/customers/'+customer.id+'/statement?from='+encodeURIComponent(from)+'&to='+encodeURIComponent(to),{credentials:'include',cache:'no-store'});
-      const j=await r.json().catch(()=>({}));
-      if(!r.ok)throw new Error(j.error||'تعذر تحميل كشف الحساب.');
-      setStatement(j);
+      const result = await poultryApi.getStatement(customer.id, from, to);
+      setStatement(result);
     }catch(e){setError(e instanceof Error?e.message:'تعذر تحميل كشف الحساب.');}
     finally{setBusy(false);}
   }
@@ -130,14 +120,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     if(amountReceived<0){setError('المبلغ المدفوع اليوم لا يمكن أن يكون سالبًا.');return;}
     setBusy(true);setError('');setNotice('');
     try{
-      const r=await fetch('/api/xstore/poultry/customers/'+selected.id+'/invoices',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        credentials:'include',
-        body:JSON.stringify({items:[{productName:invoice.productName.trim()||'فراخ',quantityKg:quantity,unitPrice}],amountPaid:amountReceived}),
-      });
-      const j=await r.json().catch(()=>({}));
-      if(!r.ok)throw new Error(j.error||'تعذر تسجيل الفاتورة.');
+      const j = await poultryApi.createInvoice(selected.id, { items: [{ productName: invoice.productName.trim() || 'فراخ', quantityKg: quantity, unitPrice }], amountPaid: amountReceived });
       setLastInvoice({...j,customerName:selected.name});
       setNotice(j.extraCollection>0
         ? 'تم تسجيل الفاتورة بقيمة '+fmt(j.total)+' ج.م، وتسجيل '+fmt(j.extraCollection)+' ج.م تحصيلًا من الرصيد السابق.'
@@ -155,14 +138,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     if(!Number.isFinite(amount)||amount<=0){setError('اكتب مبلغ تحصيل أكبر من صفر.');return;}
     setBusy(true);setError('');setNotice('');
     try{
-      const r=await fetch('/api/xstore/poultry/customers/'+selected.id+'/payments',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        credentials:'include',
-        body:JSON.stringify({amount}),
-      });
-      const j=await r.json().catch(()=>({}));
-      if(!r.ok)throw new Error(j.error||'تعذر تسجيل التحصيل.');
+      const j = await poultryApi.collectPayment(selected.id, amount);
       setNotice('تم تسجيل تحصيل '+fmt(j.amount)+' ج.م.');
       setPayment('');
       await loadCustomers();
@@ -312,12 +288,10 @@ function PoultryDashboardView() {
   async function loadPoultryData(query = '') {
     setLoading(true);
     try {
-      const [customersResponse, notificationsResponse] = await Promise.all([
-        fetch('/api/xstore/poultry/customers?search=' + encodeURIComponent(query), { credentials: 'include', cache: 'no-store' }),
-        fetch('/api/xstore/poultry/notifications', { credentials: 'include', cache: 'no-store' }),
+      const [customerData, notificationData] = await Promise.all([
+        poultryApi.listCustomers(query),
+        poultryApi.notifications(),
       ]);
-      const customerData = customersResponse.ok ? await customersResponse.json().catch(() => []) : [];
-      const notificationData = notificationsResponse.ok ? await notificationsResponse.json().catch(() => []) : [];
       setCustomers(Array.isArray(customerData) ? customerData.filter(item => item && typeof item === 'object') : []);
       setNotifications(Array.isArray(notificationData) ? notificationData.filter(item => item && typeof item === 'object') : []);
     } catch {
