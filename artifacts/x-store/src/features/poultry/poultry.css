@@ -320,3 +320,11 @@
   .poultry-invoice-details .table-wrap td::before{max-width:none;flex:none;text-align:right}
   .poultry-invoice-details .table-wrap td>*{min-width:0;max-width:100%;text-align:right!important;overflow-wrap:anywhere}
 }
+
+
+.poultry-invoice-audit{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;color:#63746a;font-size:11px;line-height:1.7}
+.poultry-invoice-audit span{overflow-wrap:anywhere}
+.poultry-invoice-detail-totals{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:900px){.poultry-invoice-detail-totals{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:650px){.poultry-invoice-detail-totals{grid-template-columns:repeat(2,minmax(0,1fr))}.poultry-invoice-audit{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}}
+@media(max-width:420px){.poultry-invoice-detail-totals{grid-template-columns:1fr}}
