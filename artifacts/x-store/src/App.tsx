@@ -1251,14 +1251,14 @@ function PoultryCustomersPage({ mode = 'customers' }: { mode?: 'customers' | 'sa
             <SectionHead title="كشف الحساب" detail="حدد الفترة ثم اعرض كل الفواتير والتحصيلات."/>
             <div className="form-grid"><label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>
             <div className="form-actions"><button className="button button-primary" onClick={()=>void loadStatement()} disabled={busy}><ReceiptText size={16}/> عرض كشف الحساب</button>{statement&&<><button className="button button-quiet" onClick={whatsappStatement}><MessageCircle size={16}/> واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></>}</div>
-          </div>
+          </div>}
 
-          {pageMode!=='sales'&&lastInvoice&&<div className="notice-box success poultry-last-invoice"><b>آخر فاتورة: {lastInvoice.invoiceNo}</b><span>القيمة {fmt(lastInvoice.total)} ج.م · المدفوع على الفاتورة {fmt(lastInvoice.amountPaid)} ج.م · تحصيل من الرصيد السابق {fmt(lastInvoice.extraCollection||0)} ج.م · المتبقي من الفاتورة {fmt(lastInvoice.balance)} ج.م</span><div className="form-actions"><button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال الفاتورة واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></div></div>}
+          {pageMode==='sales'&&lastInvoice&&<div className="notice-box success poultry-last-invoice"><b>آخر فاتورة: {lastInvoice.invoiceNo}</b><span>القيمة {fmt(lastInvoice.total)} ج.م · المدفوع على الفاتورة {fmt(lastInvoice.amountPaid)} ج.م · تحصيل من الرصيد السابق {fmt(lastInvoice.extraCollection||0)} ج.م · المتبقي من الفاتورة {fmt(lastInvoice.balance)} ج.م</span><div className="form-actions"><button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال الفاتورة واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></div></div>}
         </>:<div className="poultry-empty-workspace"><div className="empty-symbol"><Bird size={28}/></div><h3>اختَر عميلًا للبدء</h3><p>بعد اختيار العميل هتظهر لك شاشة البيع بالكيلو والتحصيل وكشف الحساب.</p>{canAddCustomer&&<button className="button button-primary" onClick={()=>setCustomerDialog(true)}><Plus size={16}/> إضافة أول عميل</button>}</div>}
       </Card>
     </div>
 
-    {pageMode!=='sales'&&statement&&<Card className="poultry-statement">
+    {pageMode==='collections'&&statement&&<Card className="poultry-statement">
       <SectionHead title="تفاصيل كشف الحساب" detail={'من '+from+' إلى '+to}/>
       <div className="stat-grid">
         <StatCard label="إجمالي الكمية" value={fmt(statement.summary.totalKg)+' كجم'} detail="إجمالي الوزن خلال الفترة" icon={Bird}/>
