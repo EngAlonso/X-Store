@@ -102,7 +102,7 @@ export const CreateInitialPlatformOwnerResponse = zod.object({
   "email": zod.string().email().nullable(),
   "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant', 'custom']),
   "roleName": zod.string().nullable(),
-  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant'])),
+  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant', 'collector'])),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable(),
   "storeType": zod.union([zod.enum(['clothing_shoes', 'grocery_supermarket', 'electronics_accessories', 'perfume_beauty', 'cafe', 'restaurant']), zod.literal(null)]).nullable(),
@@ -146,7 +146,7 @@ export const LoginXStoreWithPhoneResponse = zod.object({
   "email": zod.string().email().nullable(),
   "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant', 'custom']),
   "roleName": zod.string().nullable(),
-  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant'])),
+  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant', 'collector'])),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable(),
   "storeType": zod.union([zod.literal('clothing_shoes'),zod.literal('grocery_supermarket'),zod.literal('electronics_accessories'),zod.literal('perfume_beauty'),zod.literal('cafe'),zod.literal('restaurant'),zod.literal('poultry'),zod.literal(null)]).nullable(),
@@ -184,7 +184,7 @@ export const GetXStoreSessionResponse = zod.object({
   "email": zod.string().email().nullable(),
   "role": zod.enum(['platform_admin', 'tenant_admin', 'cashier', 'warehouse_manager', 'accountant', 'custom']),
   "roleName": zod.string().nullable(),
-  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant'])),
+  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant', 'collector'])),
   "tenantId": zod.string().nullable(),
   "tenantName": zod.string().nullable(),
   "countryCode": zod.string().min(getXStoreSessionResponseCountryCodeMin).max(getXStoreSessionResponseCountryCodeMax).regex(getXStoreSessionResponseCountryCodeRegExp).nullable(),
@@ -628,7 +628,7 @@ export const ListXStoreTeamResponseItem = zod.object({
   "name": zod.string(),
   "role": zod.enum(['tenant_admin', 'cashier', 'warehouse_manager', 'accountant', 'custom']),
   "roleName": zod.string().nullable(),
-  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant'])),
+  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant', 'collector'])),
   "status": zod.enum(['active', 'invited']),
   "createdAt": zod.coerce.date()
 })
@@ -656,7 +656,7 @@ export const AddXStoreTeamMemberBody = zod.object({
   "email": zod.string().email().nullish(),
   "name": zod.string().min(1),
   "roleName": zod.string().min(1).max(addXStoreTeamMemberBodyRoleNameMax),
-  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant'])).min(1).max(addXStoreTeamMemberBodyPermissionsMax)
+  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant', 'collector'])).min(1).max(addXStoreTeamMemberBodyPermissionsMax)
 })
 
 export const AddXStoreTeamMemberResponse = zod.object({
@@ -666,7 +666,7 @@ export const AddXStoreTeamMemberResponse = zod.object({
   "name": zod.string(),
   "role": zod.enum(['tenant_admin', 'cashier', 'warehouse_manager', 'accountant', 'custom']),
   "roleName": zod.string().nullable(),
-  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant'])),
+  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant', 'collector'])),
   "status": zod.enum(['active', 'invited']),
   "createdAt": zod.coerce.date()
 })
@@ -698,7 +698,7 @@ export const UpdateXStoreTeamMemberBody = zod.object({
   "email": zod.string().email().nullable(),
   "name": zod.string().min(1).max(updateXStoreTeamMemberBodyNameMax),
   "roleName": zod.string().min(1).max(updateXStoreTeamMemberBodyRoleNameMax),
-  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant'])).min(1).max(updateXStoreTeamMemberBodyPermissionsMax)
+  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant', 'collector'])).min(1).max(updateXStoreTeamMemberBodyPermissionsMax)
 })
 
 export const UpdateXStoreTeamMemberResponse = zod.object({
@@ -708,7 +708,7 @@ export const UpdateXStoreTeamMemberResponse = zod.object({
   "name": zod.string(),
   "role": zod.enum(['tenant_admin', 'cashier', 'warehouse_manager', 'accountant', 'custom']),
   "roleName": zod.string().nullable(),
-  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant'])),
+  "permissions": zod.array(zod.enum(['retail_sales', 'wholesale_sales', 'cashier', 'warehouse_manager', 'accountant', 'collector'])),
   "status": zod.enum(['active', 'invited']),
   "createdAt": zod.coerce.date()
 })
