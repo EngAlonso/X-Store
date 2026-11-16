@@ -4736,7 +4736,27 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 
 @media (max-width: 600px) {
   .landing-nav-v2 {
-    padding-inline: 18px !important;
+    padding-inline: 16px !important;
+  }
+
+  .landing-nav-v2 .brand {
+    gap: 6px !important;
+    min-width: 0 !important;
+    flex: 0 1 auto !important;
+    white-space: nowrap !important;
+  }
+
+  .landing-nav-v2 .brand img {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 9px !important;
+    flex: 0 0 32px !important;
+  }
+
+  .landing-nav-v2 .brand span {
+    font-size: 17px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
   }
 
   .store-fit-grid-v2 {
