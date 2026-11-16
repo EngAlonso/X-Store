@@ -361,7 +361,7 @@ router.get("/xstore/poultry/reports/financial", async (req, res): Promise<void> 
 
 router.get("/xstore/poultry/notifications", async (_req, res): Promise<void> => {
   const user = getXStoreUser(res);
-  if (!user.tenantId || !hasRole(user,poultryUserRoles)) { res.status(403).json({error:"غير مصرح."}); return; }
+  if (!user.tenantId || !hasRole(user, ["tenant_admin"])) { res.status(403).json({error:"غير مصرح."}); return; }
   if (!(await ensurePoultryTenantAccess(user, res))) return;
   const [invoices,payments] = await Promise.all([
     db.select({invoice:xstorePoultryInvoices,customerName:xstoreCustomers.name,actorName:xstoreUsers.name}).from(xstorePoultryInvoices).innerJoin(xstoreCustomers,eq(xstorePoultryInvoices.customerId,xstoreCustomers.id)).innerJoin(xstoreUsers,eq(xstorePoultryInvoices.cashierUserId,xstoreUsers.id)).where(eq(xstorePoultryInvoices.tenantId,user.tenantId)).orderBy(desc(xstorePoultryInvoices.createdAt)).limit(20),
