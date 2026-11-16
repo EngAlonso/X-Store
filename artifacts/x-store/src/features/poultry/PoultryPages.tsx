@@ -378,6 +378,7 @@ export function PoultrySalePage() {
   const [notice, setNotice] = useState('');
   const [invoice, setInvoice] = useState({ productName: 'فراخ', quantityKg: '', unitPrice: '', amountPaid: '' });
   const [lastInvoice, setLastInvoice] = useState<PoultryInvoiceResult | null>(null);
+  const [lastInvoiceDetails, setLastInvoiceDetails] = useState({ productName: 'فراخ', quantityKg: 0, unitPrice: 0 });
 
   useEffect(() => {
     let cancelled = false;
@@ -435,7 +436,7 @@ export function PoultrySalePage() {
       return;
     }
     const created = new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
-    popup.document.write('<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>فاتورة ' + lastInvoice.invoiceNo + '</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111;direction:rtl}h1{margin:0 0 8px}table{width:100%;border-collapse:collapse;margin:24px 0}td,th{border:1px solid #ddd;padding:10px;text-align:right}.total{font-size:20px;font-weight:700}.muted{color:#666}@media print{body{padding:12px}}</style></head><body><h1>فاتورة دواجن</h1><div class="muted">فاتورة رقم ' + lastInvoice.invoiceNo + ' · ' + created + '</div><hr><p><b>العميل:</b> ' + customer.name + '</p><p><b>المحل:</b> ' + (customer.shopName || 'غير مسجل') + '</p><p><b>الهاتف:</b> ' + customer.phone + '</p><table><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr><tr><td>' + (invoice.productName || 'فراخ') + '</td><td>' + fmt(lastInvoice.total / (Number(invoice.unitPrice) || 1)) + ' كجم</td><td>' + fmt(Number(invoice.unitPrice) || 0) + ' ج.م</td><td>' + fmt(lastInvoice.total) + ' ج.م</td></tr></table><p>المدفوع على الفاتورة: <b>' + fmt(lastInvoice.amountPaid) + ' ج.م</b></p><p>تحصيل من الرصيد السابق: <b>' + fmt(lastInvoice.extraCollection || 0) + ' ج.م</b></p><p class="total">المتبقي من الفاتورة: ' + fmt(lastInvoice.balance) + ' ج.م</p><script>window.onload=function(){window.print();}</script></body></html>');
+    popup.document.write('<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>فاتورة ' + lastInvoice.invoiceNo + '</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111;direction:rtl}h1{margin:0 0 8px}table{width:100%;border-collapse:collapse;margin:24px 0}td,th{border:1px solid #ddd;padding:10px;text-align:right}.total{font-size:20px;font-weight:700}.muted{color:#666}@media print{body{padding:12px}}</style></head><body><h1>فاتورة دواجن</h1><div class="muted">فاتورة رقم ' + lastInvoice.invoiceNo + ' · ' + created + '</div><hr><p><b>العميل:</b> ' + customer.name + '</p><p><b>المحل:</b> ' + (customer.shopName || 'غير مسجل') + '</p><p><b>الهاتف:</b> ' + customer.phone + '</p><table><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr><tr><td>' + lastInvoiceDetails.productName + '</td><td>' + fmt(lastInvoiceDetails.quantityKg) + ' كجم</td><td>' + fmt(lastInvoiceDetails.unitPrice) + ' ج.م</td><td>' + fmt(lastInvoice.total) + ' ج.م</td></tr></table><p>المدفوع على الفاتورة: <b>' + fmt(lastInvoice.amountPaid) + ' ج.م</b></p><p>تحصيل من الرصيد السابق: <b>' + fmt(lastInvoice.extraCollection || 0) + ' ج.م</b></p><p class="total">المتبقي من الفاتورة: ' + fmt(lastInvoice.balance) + ' ج.م</p><script>window.onload=function(){window.print();}</script></body></html>');
     popup.document.close();
   }
 
@@ -445,7 +446,7 @@ export function PoultrySalePage() {
       '<h1>فاتورة دواجن</h1><p>رقم الفاتورة: <b>' + lastInvoice.invoiceNo + '</b></p>' +
       '<p>العميل: <b>' + customer.name + '</b></p><p>المحل: <b>' + (customer.shopName || 'غير مسجل') + '</b></p>' +
       '<p>الهاتف: <b>' + customer.phone + '</b></p><hr>' +
-      '<p>الصنف: ' + (invoice.productName || 'فراخ') + '</p><p>القيمة: <b>' + fmt(lastInvoice.total) + ' ج.م</b></p>' +
+      '<p>الصنف: ' + lastInvoiceDetails.productName + '</p><p>الكمية: ' + fmt(lastInvoiceDetails.quantityKg) + ' كجم</p><p>سعر الكيلو: ' + fmt(lastInvoiceDetails.unitPrice) + ' ج.م</p><p>القيمة: <b>' + fmt(lastInvoice.total) + ' ج.م</b></p>' +
       '<p>المدفوع على الفاتورة: ' + fmt(lastInvoice.amountPaid) + ' ج.م</p>' +
       '<p>تحصيل من الرصيد السابق: ' + fmt(lastInvoice.extraCollection || 0) + ' ج.م</p>' +
       '<p>المتبقي: <b>' + fmt(lastInvoice.balance) + ' ج.م</b></p>' +
@@ -476,6 +477,7 @@ export function PoultrySalePage() {
         amountPaid: amountReceived,
       });
       setLastInvoice(result);
+      setLastInvoiceDetails({ productName: invoice.productName.trim() || 'فراخ', quantityKg: quantity, unitPrice });
       setNotice(result.extraCollection > 0
         ? 'تم تسجيل الفاتورة وتسجيل المبلغ الزائد كتحصيل من الرصيد السابق.'
         : 'تم تسجيل الفاتورة بنجاح.');
@@ -550,16 +552,29 @@ export function PoultrySalePage() {
       </div>
     </Card>
 
-    {lastInvoice && <div className="notice-box success poultry-last-invoice">
-      <b>تم حفظ الفاتورة {lastInvoice.invoiceNo}</b>
-      <span>القيمة {fmt(lastInvoice.total)} ج.م · المدفوع على الفاتورة {fmt(lastInvoice.amountPaid)} ج.م · تحصيل من الرصيد السابق {fmt(lastInvoice.extraCollection || 0)} ج.م · المتبقي {fmt(lastInvoice.balance)} ج.م</span>
+    {lastInvoice && <section className="poultry-last-invoice">
+      <div className="poultry-invoice-head">
+        <div><span className="poultry-box-kicker">تم الحفظ بنجاح</span><h2>فاتورة {lastInvoice.invoiceNo}</h2><span>التاريخ والوقت: {new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</span></div>
+        <ReceiptText size={28}/>
+      </div>
+      <div className="poultry-invoice-customer"><b>العميل:</b> {customer.name} <span>·</span> <b>المحل:</b> {customer.shopName || 'غير مسجل'} <span>·</span> <b>الهاتف:</b> {customer.phone}</div>
+      <div className="table-wrap">
+        <table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>إجمالي الفاتورة</th></tr></thead>
+        <tbody><tr><td>{lastInvoiceDetails.productName}</td><td>{fmt(lastInvoiceDetails.quantityKg)} كجم</td><td>{fmt(lastInvoiceDetails.unitPrice)} ج.م</td><td><b>{fmt(lastInvoice.total)} ج.م</b></td></tr></tbody></table>
+      </div>
+      <div className="poultry-invoice-totals">
+        <div><span>المدفوع على الفاتورة</span><b>{fmt(lastInvoice.amountPaid)} ج.م</b></div>
+        <div><span>تحصيل من الرصيد السابق</span><b>{fmt(lastInvoice.extraCollection || 0)} ج.م</b></div>
+        <div><span>إجمالي المدفوع اليوم</span><b>{fmt(lastInvoice.amountReceived ?? lastInvoice.amountPaid)} ج.م</b></div>
+        <div className="total"><span>المتبقي</span><strong>{fmt(lastInvoice.balance)} ج.م</strong></div>
+      </div>
       <div className="form-actions">
         <button className="button button-primary" onClick={printInvoice}><Printer size={16}/> طباعة / حفظ PDF</button>
         <button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال واتساب</button>
         <button className="button button-quiet" onClick={downloadInvoice}><ReceiptText size={16}/> حفظ على الجهاز</button>
         <button className="button button-quiet" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> بيع لعميل آخر</button>
       </div>
-    </div>}
+    </section>}
   </div>;
 }
 
