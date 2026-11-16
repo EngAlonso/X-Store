@@ -1162,9 +1162,9 @@ function PoultryDashboardPage() {
 
 function DashboardPage() {
   const {data:session}=useGetXStoreSession();
-  if (session?.storeType === 'poultry') return <PoultryDashboardPage />;
   const dash=useGetXStoreDashboard();
   const money=useMoney();
+  if (session?.storeType === 'poultry') return <PoultryDashboardPage />;
   const d=dash.data;
   const isPlatform=session?.role==='platform_admin';
   const isCashier=hasAppRole(session,['cashier'])&&!hasAppRole(session,['accountant']);
