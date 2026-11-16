@@ -337,8 +337,10 @@
 .poultry-invoice-details .table-wrap,.poultry-statement .table-wrap{width:100%;max-width:100%;overflow:visible}
 .poultry-invoice-details table,.poultry-statement table{width:100%;max-width:100%;table-layout:fixed;white-space:normal}
 .poultry-invoice-details th,.poultry-invoice-details td,.poultry-statement th,.poultry-statement td{min-width:0;overflow-wrap:anywhere;word-break:break-word}
-.poultry-invoice-card.is-open::before{display:none}
-.poultry-invoice-card.is-open .poultry-invoice-details{position:static;inset:auto;transform:none;width:100%;max-width:100%;max-height:none;overflow:visible;border-radius:0 0 16px 16px;box-shadow:none}
+.poultry-invoice-card.is-open::before{content:"";position:fixed;inset:0;background:rgba(15,28,20,.48);z-index:1090}
+.poultry-invoice-card.is-open .poultry-invoice-details{position:fixed;z-index:1100;top:50%;left:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);width:min(920px,calc(100vw - 24px));max-width:calc(100vw - 24px);max-height:86vh;overflow:auto;border:1px solid #d6e1d8;border-radius:18px;background:#fff;box-shadow:0 24px 80px rgba(0,0,0,.25)}
+@media(max-width:650px){.poultry-invoice-card.is-open .poultry-invoice-details{width:calc(100vw - 18px);max-width:calc(100vw - 18px);max-height:88vh;padding:14px}}
+@media print{.poultry-invoice-card.is-open::before{display:none!important}.poultry-invoice-card.is-open .poultry-invoice-details{position:static;transform:none;width:100%;max-width:none;max-height:none;overflow:visible;box-shadow:none}}
 .poultry-invoice-meta-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .poultry-invoice-meta-grid>span,.poultry-invoice-sale-details>div{display:flex;flex-direction:column;gap:4px;min-width:0;padding:8px 10px;border:1px solid #e2eae3;border-radius:10px;background:#fff}
 .poultry-invoice-meta-grid small,.poultry-invoice-sale-details span{font-size:10px;color:#718078}
