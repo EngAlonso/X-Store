@@ -6,14 +6,15 @@ import {
 } from 'lucide-react';
 import type { SessionUser } from '@workspace/api-client-react';
 import './poultry.css';
+import { APP_EGYPT_DATE_LOCALE, APP_NUMBER_LOCALE } from '../../lib/formatting';
 import { poultryApi, type PoultryCustomer, type PoultryInvoiceResult, type PoultryStatement } from './poultryApi';
 
-const fmt = (value: number) => new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 2 }).format(Number(value) || 0);
+const fmt = (value: number) => new Intl.NumberFormat(APP_NUMBER_LOCALE, { maximumFractionDigits: 2 }).format(Number(value) || 0);
 const roundMoney = (amount: number) => Math.round((amount + Number.EPSILON) * 100) / 100;
 const dateLabel = (value?: string | null) => {
   if (!value) return '—';
   const date = new Date(value);
-  return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat('ar-EG', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Africa/Cairo' }).format(date) : '—';
+  return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Africa/Cairo' }).format(date) : '—';
 };
 function hasAppRole(user: SessionUser | null | undefined, roles: readonly string[]): boolean {
   if (!user) return false;
@@ -152,7 +153,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
 
   function whatsappInvoice(){
     if(!lastInvoice||!selected)return;
-    const text='فاتورة '+lastInvoice.invoiceNo+'\nالعميل: '+selected.name+'\nالقيمة: '+fmt(lastInvoice.total)+' ج.م\nالمدفوع على الفاتورة: '+fmt(lastInvoice.amountPaid)+' ج.م\nتحصيل من الرصيد السابق: '+fmt(lastInvoice.extraCollection||0)+' ج.م\nإجمالي المدفوع اليوم: '+fmt(lastInvoice.amountReceived??lastInvoice.amountPaid)+' ج.م\nالمتبقي من الفاتورة: '+fmt(lastInvoice.balance)+' ج.م\nالتاريخ والوقت: '+new Intl.DateTimeFormat('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(lastInvoice.createdAt));
+    const text='فاتورة '+lastInvoice.invoiceNo+'\nالعميل: '+selected.name+'\nالقيمة: '+fmt(lastInvoice.total)+' ج.م\nالمدفوع على الفاتورة: '+fmt(lastInvoice.amountPaid)+' ج.م\nتحصيل من الرصيد السابق: '+fmt(lastInvoice.extraCollection||0)+' ج.م\nإجمالي المدفوع اليوم: '+fmt(lastInvoice.amountReceived??lastInvoice.amountPaid)+' ج.م\nالمتبقي من الفاتورة: '+fmt(lastInvoice.balance)+' ج.م\nالتاريخ والوقت: '+new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(lastInvoice.createdAt));
     window.open('https://wa.me/'+String(selected.phone).replace(/\D/g,'')+'?text='+encodeURIComponent(text),'_blank');
   }
 
@@ -160,7 +161,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     if(!selected||!statement)return '';
     const s=statement.summary;
     const rows=statement.rows.map((row:any)=>[
-      new Intl.DateTimeFormat('ar-EG',{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)),
+      new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)),
       row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):'تحصيل',
       row.items?.length?fmt(row.items.reduce((sum:number,item:any)=>sum+Number(item.quantityKg||0),0))+' كجم':'—',
       fmt(row.type==='invoice'?row.total:row.paid)+' ج.م',
@@ -180,7 +181,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     const csvRows=[
       ['التاريخ','الحركة','رقم الفاتورة','الكمية بالكيلو','القيمة','الموظف'],
       ...statement.rows.map((row:any)=>[
-        new Intl.DateTimeFormat('ar-EG',{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)),
+        new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)),
         row.type==='invoice'?'فاتورة':'تحصيل',row.invoiceNo||'',
         row.items?.length?row.items.reduce((sum:number,item:any)=>sum+Number(item.quantityKg||0),0):0,
         row.type==='invoice'?row.total:row.paid,row.actorName||''
@@ -203,7 +204,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     const popup=window.open('','_blank');
     if(!popup){setError('المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم أعد المحاولة.');return;}
     const esc=(value:any)=>String(value??'').replace(/[&<>"]/g,(char)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[char]||char));
-    const rows=statement.rows.map((row:any)=>'<tr><td>'+esc(new Intl.DateTimeFormat('ar-EG',{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)))+'</td><td>'+esc(row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):'تحصيل')+'</td><td>'+esc(row.items?.length?fmt(row.items.reduce((sum:number,item:any)=>sum+Number(item.quantityKg||0),0))+' كجم':'—')+'</td><td>'+esc(fmt(row.type==='invoice'?row.total:row.paid))+' ج.م</td><td>'+esc(row.actorName||'—')+'</td></tr>').join('');
+    const rows=statement.rows.map((row:any)=>'<tr><td>'+esc(new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)))+'</td><td>'+esc(row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):'تحصيل')+'</td><td>'+esc(row.items?.length?fmt(row.items.reduce((sum:number,item:any)=>sum+Number(item.quantityKg||0),0))+' كجم':'—')+'</td><td>'+esc(fmt(row.type==='invoice'?row.total:row.paid))+' ج.م</td><td>'+esc(row.actorName||'—')+'</td></tr>').join('');
     popup.document.open();
     popup.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>كشف حساب '+esc(selected.name)+'</title><style>@page{size:A4 portrait;margin:12mm}*{box-sizing:border-box}body{font-family:Arial,Tahoma,sans-serif;color:#17251b;padding:0;direction:rtl;font-size:12px}h1{font-size:23px;margin:0 0 8px}.muted{color:#526257;font-size:13px;line-height:1.9}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:20px 0}.summary div{border:1px solid #ccd8ce;padding:12px;border-radius:8px}.summary small{display:block;color:#526257;margin-bottom:6px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #d6ddd7;padding:9px;text-align:right;font-size:12px}th{background:#edf3ed}.foot{margin-top:18px;font-size:12px;color:#526257}@media print{body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.summary div{break-inside:avoid}table{break-inside:auto}tr{break-inside:avoid;break-after:auto}}</style></head><body><h1>كشف حساب عميل</h1><div class="muted">اسم العميل: '+esc(selected.name)+'<br>المحل: '+esc(selected.shopName||'—')+'<br>الهاتف: '+esc(selected.phone)+'<br>الفترة: '+esc(from)+' إلى '+esc(to)+'<br>رصيد أول الفترة: '+esc(fmt(statement.openingBalance))+' ج.م</div><div class="summary"><div><small>إجمالي الكمية</small><b>'+esc(fmt(statement.summary.totalKg))+' كجم</b></div><div><small>المبيعات</small><b>'+esc(fmt(statement.summary.sales))+' ج.م</b></div><div><small>التحصيلات</small><b>'+esc(fmt(statement.summary.paid))+' ج.م</b></div><div><small>الرصيد المتبقي</small><b>'+esc(fmt(statement.summary.remaining))+' ج.م</b></div></div><table><thead><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكمية</th><th>القيمة</th><th>الموظف</th></tr></thead><tbody>'+rows+'</tbody></table><div class="foot">تم استخراج الكشف من نظام X-Store</div></body></html>');
     popup.document.close();
@@ -307,7 +308,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
         <StatCard label="المتبقي" value={fmt(statement.summary.remaining)+' ج.م'} detail="الرصيد بعد الفترة" icon={CreditCard}/>
       </div>
       <div className="table-wrap"><table><thead><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكيلو</th><th>سعر الكيلو</th><th>القيمة</th><th>الموظف</th></tr></thead><tbody>
-        {statement.rows.map((row:any)=><tr key={row.id}><td>{new Intl.DateTimeFormat('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date))}</td><td><b>{row.type==='invoice'?'فاتورة '+row.invoiceNo:'تحصيل'}</b></td><td>{row.items.length?fmt(row.items.reduce((s:number,x:any)=>s+x.quantityKg,0)):'—'}</td><td>{row.items.length?fmt(row.items[0].unitPrice)+' ج.م':'—'}</td><td>{fmt(row.type==='invoice'?row.total:row.paid)} ج.م</td><td>{row.actorName}</td></tr>)}
+        {statement.rows.map((row:any)=><tr key={row.id}><td>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date))}</td><td><b>{row.type==='invoice'?'فاتورة '+row.invoiceNo:'تحصيل'}</b>{row.type==='payment'&&row.note&&<small className="poultry-payment-note">{row.note}</small>}</td><td>{row.items.length?fmt(row.items.reduce((s:number,x:any)=>s+x.quantityKg,0)):'—'}</td><td>{row.items.length?fmt(row.items[0].unitPrice)+' ج.م':'—'}</td><td>{fmt(row.type==='invoice'?row.total:row.paid)} ج.م</td><td>{row.actorName}</td></tr>)}
       </tbody></table></div>
     </Card>}
 
@@ -462,13 +463,13 @@ export function PoultrySalePage() {
       'المحل: ' + (customer.shopName || 'غير مسجل') + '\n' +
       'الهاتف: ' + customer.phone + '\n' +
       'حررها الموظف: ' + (lastInvoice.cashierName || 'غير محدد') + '\n' +
-      'اليوم: ' + new Intl.DateTimeFormat('ar-EG', { weekday: 'long', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt)) + '\n' +
+      'اليوم: ' + new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { weekday: 'long', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt)) + '\n' +
       'القيمة: ' + fmt(lastInvoice.total) + ' ج.م\n' +
       'المدفوع على الفاتورة: ' + fmt(lastInvoice.amountPaid) + ' ج.م\n' +
       'تحصيل من الرصيد السابق: ' + fmt(lastInvoice.extraCollection || 0) + ' ج.م\n' +
       'إجمالي المدفوع اليوم: ' + fmt(lastInvoice.amountReceived ?? lastInvoice.amountPaid) + ' ج.م\n' +
       'المتبقي: ' + fmt(lastInvoice.balance) + ' ج.م\n' +
-      'التاريخ والوقت: ' + new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
+      'التاريخ والوقت: ' + new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
   }
 
   function whatsappInvoice() {
@@ -485,8 +486,8 @@ export function PoultrySalePage() {
       setError('المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم جرّب مرة أخرى.');
       return;
     }
-    const createdDate = new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
-    const createdTime = new Intl.DateTimeFormat('ar-EG', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
+    const createdDate = new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
+    const createdTime = new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
     const created = createdDate + ' - ' + createdTime;
     popup.document.write('<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>فاتورة ' + lastInvoice.invoiceNo + '</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111;direction:rtl}h1{margin:0 0 8px}table{width:100%;border-collapse:collapse;margin:24px 0}td,th{border:1px solid #ddd;padding:10px;text-align:right}.total{font-size:20px;font-weight:700}.muted{color:#666}@media print{body{padding:12px}}</style></head><body><h1>فاتورة دواجن</h1><div class="muted">فاتورة رقم ' + lastInvoice.invoiceNo + ' · ' + created + '</div><hr><p><b>العميل:</b> ' + customer.name + '</p><p><b>المحل:</b> ' + (customer.shopName || 'غير مسجل') + '</p><p><b>الهاتف:</b> ' + customer.phone + '</p><p><b>حررها الموظف:</b> ' + (lastInvoice.cashierName || 'غير محدد') + '</p><table><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr><tr><td>' + lastInvoiceDetails.productName + '</td><td>' + fmt(lastInvoiceDetails.quantityKg) + ' كجم</td><td>' + fmt(lastInvoiceDetails.unitPrice) + ' ج.م</td><td>' + fmt(lastInvoice.total) + ' ج.م</td></tr></table><p>المدفوع على الفاتورة: <b>' + fmt(lastInvoice.amountPaid) + ' ج.م</b></p><p>تحصيل من الرصيد السابق: <b>' + fmt(lastInvoice.extraCollection || 0) + ' ج.م</b></p><p class="total">المتبقي من الفاتورة: ' + fmt(lastInvoice.balance) + ' ج.م</p><script>window.onload=function(){window.print();}</script></body></html>');
     popup.document.close();
@@ -501,7 +502,7 @@ export function PoultrySalePage() {
     ctx.direction='rtl';ctx.textAlign='right';ctx.fillStyle='#f5f8f5';ctx.fillRect(0,0,width,height);
     ctx.fillStyle='#173f2b';ctx.fillRect(0,0,width,190);ctx.fillStyle='#fff';ctx.font='700 44px Arial';ctx.fillText('فاتورة دواجن',width-70,72);
     ctx.font='600 26px Arial';ctx.fillText('رقم الفاتورة: '+lastInvoice.invoiceNo,width-70,120);ctx.font='22px Arial';
-    ctx.fillText(new Intl.DateTimeFormat('ar-EG',{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(lastInvoice.createdAt)),width-70,158);
+    ctx.fillText(new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(lastInvoice.createdAt)),width-70,158);
     const x=55,w=width-110;ctx.fillStyle='#fff';ctx.fillRect(x,220,w,170);ctx.fillStyle='#6b786f';ctx.font='700 20px Arial';ctx.fillText('بيانات العميل',width-85,255);
     ctx.fillStyle='#17251b';ctx.font='700 28px Arial';ctx.fillText(customer.name,width-85,295);ctx.font='22px Arial';ctx.fillText('المحل: '+(customer.shopName||'غير مسجل'),width-85,332);ctx.fillText('الهاتف: '+customer.phone,width-85,366);
     const y=425,col=[width-90,730,485,260];ctx.fillStyle='#edf3ed';ctx.fillRect(x,y,w,72);ctx.fillStyle='#24553b';ctx.font='700 21px Arial';
@@ -604,26 +605,37 @@ export function PoultrySalePage() {
     </Card>
 
     {lastInvoice && <section id="poultry-created-invoice" className="poultry-last-invoice">
-      <div className="poultry-invoice-head">
-        <div><span className="poultry-box-kicker">تم الحفظ بنجاح</span><h2>فاتورة {lastInvoice.invoiceNo}</h2><span>{new Intl.DateTimeFormat('ar-EG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</span><span>الساعة: {new Intl.DateTimeFormat('ar-EG', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</span><span>حررها الموظف: {lastInvoice.cashierName || 'غير محدد'}</span></div>
-        <ReceiptText size={28}/>
+      <div className="poultry-invoice-mobile-meta">
+        <div className="poultry-invoice-head">
+          <div><span className="poultry-box-kicker">تم الحفظ بنجاح</span><h2>فاتورة {lastInvoice.invoiceNo}</h2></div>
+          <ReceiptText size={25}/>
+        </div>
+        <div className="poultry-invoice-meta-grid">
+          <span><small>العميل</small><b>{customer.name}</b></span>
+          <span><small>المحل</small><b>{customer.shopName || 'غير مسجل'}</b></span>
+          <span><small>الهاتف</small><b dir="ltr">{customer.phone}</b></span>
+          <span><small>اليوم والتاريخ</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</b></span>
+          <span><small>الوقت</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</b></span>
+          <span><small>الموظف</small><b>{lastInvoice.cashierName || 'غير محدد'}</b></span>
+        </div>
       </div>
-      <div className="poultry-invoice-customer"><div><b>العميل:</b> {customer.name}</div><div><b>المحل / صاحب المحل:</b> {customer.shopName || 'غير مسجل'}</div><div><b>الهاتف:</b> <span dir="ltr">{customer.phone}</span></div><div><b>الموظف:</b> {lastInvoice.cashierName || 'غير محدد'}</div></div>
-      <div className="table-wrap">
-        <table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>إجمالي الفاتورة</th></tr></thead>
-        <tbody><tr><td data-label="الصنف">{lastInvoiceDetails.productName}</td><td data-label="الكمية">{fmt(lastInvoiceDetails.quantityKg)} كجم</td><td data-label="سعر الكيلو">{fmt(lastInvoiceDetails.unitPrice)} ج.م</td><td data-label="إجمالي الفاتورة"><b>{fmt(lastInvoice.total)} ج.م</b></td></tr></tbody></table>
+      <div className="poultry-invoice-sale-details">
+        <span className="poultry-box-kicker">تفاصيل البيع</span>
+        <div><span>الصنف</span><b>{lastInvoiceDetails.productName}</b></div>
+        <div><span>الوزن</span><b>{fmt(lastInvoiceDetails.quantityKg)} كجم</b></div>
+        <div><span>سعر الكيلو</span><b>{fmt(lastInvoiceDetails.unitPrice)} ج.م</b></div>
+        <div className="sale-total"><span>إجمالي البيع</span><strong>{fmt(lastInvoice.total)} ج.م</strong></div>
       </div>
       <div className="poultry-invoice-totals">
-        <div><span>المدفوع على الفاتورة</span><b>{fmt(lastInvoice.amountPaid)} ج.م</b></div>
-        <div><span>تحصيل من الرصيد السابق</span><b>{fmt(lastInvoice.extraCollection || 0)} ج.م</b></div>
-        <div><span>إجمالي المدفوع اليوم</span><b>{fmt(lastInvoice.amountReceived ?? lastInvoice.amountPaid)} ج.م</b></div>
+        <div><span>المدفوع</span><b>{fmt(lastInvoice.amountPaid)} ج.م</b></div>
+        <div><span>التحصيل من الرصيد السابق</span><b>{fmt(lastInvoice.extraCollection || 0)} ج.م</b></div>
         <div className="total"><span>المتبقي</span><strong>{fmt(lastInvoice.balance)} ج.م</strong></div>
       </div>
-      <div className="form-actions">
-        <button className="button button-primary" onClick={printInvoice}><Printer size={16}/> طباعة / حفظ PDF</button>
-        <button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال واتساب</button>
+      <div className="poultry-invoice-actions">
+        <button className="button button-primary" onClick={() => setLocation('/poultry-sale/' + encodeURIComponent(customer.id))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button>
+        <button className="button button-quiet" onClick={printInvoice}><Printer size={16}/> طباعة</button>
         <button className="button button-quiet" onClick={downloadInvoice}><Download size={16}/> حفظ كصورة</button>
-        <button className="button button-quiet" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> بيع لعميل آخر</button>
+        <button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال واتساب</button>
       </div>
     </section>}
 
@@ -661,7 +673,7 @@ export function PoultryInvoicesPage() {
     const canvas=document.createElement('canvas');const width=1080,rowHeight=92,itemCount=Math.max(invoice.items.length,1),height=760+itemCount*rowHeight;
     canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');if(!ctx)return;ctx.direction='rtl';ctx.textAlign='right';
     ctx.fillStyle='#f5f8f5';ctx.fillRect(0,0,width,height);ctx.fillStyle='#173f2b';ctx.fillRect(0,0,width,180);ctx.fillStyle='#fff';ctx.font='700 42px Arial';ctx.fillText('فاتورة دواجن',width-65,70);
-    ctx.font='600 24px Arial';ctx.fillText('فاتورة رقم '+invoice.invoiceNo,width-65,112);ctx.font='20px Arial';ctx.fillText(dateLabel(invoice.date)+' · '+new Intl.DateTimeFormat('ar-EG',{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date)),width-65,150);
+    ctx.font='600 24px Arial';ctx.fillText('فاتورة رقم '+invoice.invoiceNo,width-65,112);ctx.font='20px Arial';ctx.fillText(dateLabel(invoice.date)+' · '+new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date)),width-65,150);
     const x=55,w=width-110;ctx.fillStyle='#fff';ctx.fillRect(x,210,w,145);ctx.fillStyle='#718078';ctx.font='700 18px Arial';ctx.fillText('العميل',width-80,242);ctx.fillStyle='#17251b';ctx.font='700 28px Arial';ctx.fillText(invoice.customerName,width-80,282);ctx.font='20px Arial';ctx.fillText('المحل: '+(invoice.shopName||'غير مسجل'),width-80,316);ctx.fillText('الهاتف: '+invoice.phone,width-80,345);
     let y=390;const cols=[width-80,760,510,260];ctx.fillStyle='#edf3ed';ctx.fillRect(x,y,w,60);ctx.fillStyle='#24553b';ctx.font='700 19px Arial';['الصنف','الكمية','سعر الكيلو','القيمة'].forEach((label,i)=>ctx.fillText(label,cols[i],y+38));
     ctx.font='600 20px Arial';invoice.items.forEach((item,index)=>{const iy=y+60+index*rowHeight;ctx.fillStyle='#fff';ctx.fillRect(x,iy,w,rowHeight);ctx.fillStyle='#17251b';ctx.fillText(item.productName,cols[0],iy+36);ctx.fillText(fmt(item.quantityKg)+' كجم',cols[1],iy+36);ctx.fillText(fmt(item.unitPrice)+' ج.م',cols[2],iy+36);ctx.fillText(fmt(item.total)+' ج.م',cols[3],iy+36);ctx.strokeStyle='#dfe7e1';ctx.beginPath();ctx.moveTo(x,iy+rowHeight);ctx.lineTo(x+w,iy+rowHeight);ctx.stroke();});
@@ -706,16 +718,16 @@ export function PoultryInvoicesPage() {
             <button type="button" className="poultry-invoice-card-main" onClick={() => setExpanded(isOpen ? null : invoice.id)}>
               <div className="poultry-invoice-number"><span>فاتورة</span><strong>{invoice.invoiceNo}</strong></div>
               <div className="poultry-invoice-customer"><b>{invoice.customerName}</b><small>{invoice.shopName || 'بدون اسم محل'} · {invoice.phone}</small></div>
-              <div className="poultry-invoice-date"><small>التاريخ</small><b>{dateLabel(invoice.date)}</b><span>{new Intl.DateTimeFormat('ar-EG',{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))}</span></div>
+              <div className="poultry-invoice-date"><small>التاريخ</small><b>{dateLabel(invoice.date)}</b><span>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))}</span></div>
               <div className="poultry-invoice-money"><small>الإجمالي</small><strong>{fmt(invoice.total)} ج.م</strong></div>
               <div className="poultry-invoice-status"><span className={invoice.balance > 0 ? 'due' : 'paid'}>{invoice.balance > 0 ? 'آجل' : 'مدفوعة'}</span><small>{invoice.balance > 0 ? 'متبقي '+fmt(invoice.balance)+' ج.م' : 'تم السداد'}</small></div>
               <div className="poultry-invoice-chevron">{isOpen ? '−' : '+'}</div>
             </button>
             {isOpen && <div className="poultry-invoice-details">
-              <div className="poultry-invoice-detail-head"><div><span className="poultry-box-kicker">تفاصيل الفاتورة · {invoice.invoiceNo}</span><h3>{invoice.customerName}</h3><div className="poultry-invoice-audit"><span>اليوم والتاريخ: {new Intl.DateTimeFormat('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))}</span><span>الساعة: {new Intl.DateTimeFormat('ar-EG',{hour:'numeric',minute:'2-digit',second:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))}</span><span>الموظف: {invoice.cashierName || 'غير محدد'}</span><span>المحل: {invoice.shopName || 'غير مسجل'}</span><span>الهاتف: {invoice.phone}</span></div></div><button type="button" className="button button-quiet poultry-invoice-close" onClick={() => setExpanded(null)}>إغلاق ×</button></div>
+              <div className="poultry-invoice-detail-head"><div><span className="poultry-box-kicker">تفاصيل الفاتورة · {invoice.invoiceNo}</span><h3>{invoice.customerName}</h3><div className="poultry-invoice-audit"><span>اليوم والتاريخ: {new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))}</span><span>الساعة: {new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{hour:'numeric',minute:'2-digit',second:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))}</span><span>الموظف: {invoice.cashierName || 'غير محدد'}</span><span>المحل: {invoice.shopName || 'غير مسجل'}</span><span>الهاتف: {invoice.phone}</span></div></div><button type="button" className="button button-quiet poultry-invoice-close" onClick={() => setExpanded(null)}>إغلاق ×</button></div>
               <div className="table-wrap"><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr></thead><tbody>{invoice.items.map((item, index) => <tr key={invoice.id+'-'+index}><td data-label="الصنف"><strong className="poultry-invoice-cell-value">{item.productName || '—'}</strong></td><td data-label="الكمية"><strong className="poultry-invoice-cell-value">{fmt(Number(item.quantityKg) || 0)} كجم</strong></td><td data-label="سعر الكيلو"><strong className="poultry-invoice-cell-value">{fmt(Number(item.unitPrice) || 0)} ج.م</strong></td><td data-label="القيمة"><strong className="poultry-invoice-cell-value">{fmt(Number(item.total) || 0)} ج.م</strong></td></tr>)}</tbody></table></div>
               <div className="poultry-invoice-detail-totals"><div><span>إجمالي الفاتورة</span><b>{fmt(invoice.total)} ج.م</b></div><div><span>مدفوع على الفاتورة</span><b>{fmt(invoice.amountPaid)} ج.م</b></div><div><span>تحصيل من الرصيد السابق</span><b>{fmt(invoice.extraCollection)} ج.م</b></div><div><span>إجمالي المدفوع اليوم</span><b>{fmt(invoice.amountReceived)} ج.م</b></div><div className="total"><span>المتبقي من الفاتورة</span><strong>{fmt(invoice.balance)} ج.م</strong></div></div>
-              <div className="form-actions"><button className="button button-primary" onClick={() => setLocation('/poultry-sale/'+encodeURIComponent(invoice.customerId))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button><button className="button button-quiet" onClick={() => { const popup=window.open('','_blank','width=900,height=800'); if(!popup)return; popup.document.open(); popup.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>فاتورة '+invoice.invoiceNo+'</title><style>@page{size:A5 portrait;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Tahoma,sans-serif;padding:0;color:#17251b;direction:rtl;font-size:12px}h1{font-size:22px;color:#173f2b}table{width:100%;border-collapse:collapse;margin:18px 0}th,td{border:1px solid #d6ddd7;padding:9px;text-align:right}th{background:#edf3ed} .totals{margin-top:18px;line-height:2}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><h1>فاتورة دواجن</h1><p>رقم الفاتورة: <b>'+invoice.invoiceNo+'</b></p><p>اليوم والتاريخ: <b>'+new Intl.DateTimeFormat('ar-EG',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))+'</b></p><p>الساعة: <b>'+new Intl.DateTimeFormat('ar-EG',{hour:'numeric',minute:'2-digit',second:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))+'</b></p><p>العميل: <b>'+invoice.customerName+'</b></p><p>المحل: <b>'+(invoice.shopName||'غير مسجل')+'</b></p><p>الهاتف: <b>'+invoice.phone+'</b></p><p>حررها الموظف: <b>'+invoice.cashierName+'</b></p><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr></thead><tbody>'+invoice.items.map(item=>'<tr><td>'+item.productName+'</td><td>'+fmt(item.quantityKg)+' كجم</td><td>'+fmt(item.unitPrice)+' ج.م</td><td>'+fmt(item.total)+' ج.م</td></tr>').join('')+'</tbody></table><p>إجمالي الفاتورة: <b>'+fmt(invoice.total)+' ج.م</b></p><p>مدفوع على الفاتورة: <b>'+fmt(invoice.amountPaid)+' ج.م</b></p><p>إجمالي المدفوع اليوم: <b>'+fmt(invoice.amountReceived)+' ج.م</b></p><p>تحصيل سابق: <b>'+fmt(invoice.extraCollection)+' ج.م</b></p><p>المتبقي: <b>'+fmt(invoice.balance)+' ج.م</b></p></body></html>'); popup.document.close(); popup.focus(); window.setTimeout(()=>{try{popup.print();}catch{}},800); }}><Printer size={16}/> طباعة</button><button className="button button-quiet" onClick={() => downloadInvoiceImage(invoice)}><Download size={16}/> حفظ كصورة</button></div>
+              <div className="form-actions"><button className="button button-primary" onClick={() => setLocation('/poultry-sale/'+encodeURIComponent(invoice.customerId))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button><button className="button button-quiet" onClick={() => { const popup=window.open('','_blank','width=900,height=800'); if(!popup)return; popup.document.open(); popup.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>فاتورة '+invoice.invoiceNo+'</title><style>@page{size:A5 portrait;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Tahoma,sans-serif;padding:0;color:#17251b;direction:rtl;font-size:12px}h1{font-size:22px;color:#173f2b}table{width:100%;border-collapse:collapse;margin:18px 0}th,td{border:1px solid #d6ddd7;padding:9px;text-align:right}th{background:#edf3ed} .totals{margin-top:18px;line-height:2}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><h1>فاتورة دواجن</h1><p>رقم الفاتورة: <b>'+invoice.invoiceNo+'</b></p><p>اليوم والتاريخ: <b>'+new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))+'</b></p><p>الساعة: <b>'+new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{hour:'numeric',minute:'2-digit',second:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))+'</b></p><p>العميل: <b>'+invoice.customerName+'</b></p><p>المحل: <b>'+(invoice.shopName||'غير مسجل')+'</b></p><p>الهاتف: <b>'+invoice.phone+'</b></p><p>حررها الموظف: <b>'+invoice.cashierName+'</b></p><table><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr></thead><tbody>'+invoice.items.map(item=>'<tr><td>'+item.productName+'</td><td>'+fmt(item.quantityKg)+' كجم</td><td>'+fmt(item.unitPrice)+' ج.م</td><td>'+fmt(item.total)+' ج.م</td></tr>').join('')+'</tbody></table><p>إجمالي الفاتورة: <b>'+fmt(invoice.total)+' ج.م</b></p><p>مدفوع على الفاتورة: <b>'+fmt(invoice.amountPaid)+' ج.م</b></p><p>إجمالي المدفوع اليوم: <b>'+fmt(invoice.amountReceived)+' ج.م</b></p><p>تحصيل سابق: <b>'+fmt(invoice.extraCollection)+' ج.م</b></p><p>المتبقي: <b>'+fmt(invoice.balance)+' ج.م</b></p></body></html>'); popup.document.close(); popup.focus(); window.setTimeout(()=>{try{popup.print();}catch{}},800); }}><Printer size={16}/> طباعة</button><button className="button button-quiet" onClick={() => downloadInvoiceImage(invoice)}><Download size={16}/> حفظ كصورة</button></div>
             </div>}
           </article>;
         })}

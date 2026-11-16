@@ -102,7 +102,7 @@ router.get("/xstore/poultry/customers/:customerId/statement", async (req, res): 
   const to = typeof req.query.to === "string" && req.query.to ? new Date(req.query.to + "T23:59:59.999+02:00") : new Date();
   if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) { res.status(400).json({ error: "الفترة الزمنية غير صحيحة." }); return; }
   const allInvoices = await db.select({ invoice: xstorePoultryInvoices, cashierName: xstoreUsers.name }).from(xstorePoultryInvoices).innerJoin(xstoreUsers, eq(xstorePoultryInvoices.cashierUserId, xstoreUsers.id)).where(and(eq(xstorePoultryInvoices.customerId, customer.id), eq(xstorePoultryInvoices.tenantId, user.tenantId))).orderBy(xstorePoultryInvoices.createdAt);
-  const allPayments = await db.select({ payment: xstorePoultryPayments, cashierName: xstoreUsers.name }).from(xstorePoultryPayments).innerJoin(xstoreUsers, eq(xstorePoultryPayments.cashierUserId, xstoreUsers.id)).where(and(eq(xstorePoultryPayments.customerId, customer.id), eq(xstorePoultryPayments.tenantId, user.tenantId))).orderBy(xstorePoultryPayments.createdAt);
+  const allPayments = await db.select({ payment: xstorePoultryPayments, cashierName: xstoreUsers.name }).from(xstorePoultryPayments).leftJoin(xstoreUsers, eq(xstorePoultryPayments.cashierUserId, xstoreUsers.id)).where(and(eq(xstorePoultryPayments.customerId, customer.id), eq(xstorePoultryPayments.tenantId, user.tenantId))).orderBy(xstorePoultryPayments.createdAt);
   const beforeSales = allInvoices.filter(x => x.invoice.createdAt < from).reduce((s,x)=>s+toNumber(x.invoice.total),0);
   const beforePaid = allInvoices.filter(x => x.invoice.createdAt < from).reduce((s,x)=>s+toNumber(x.invoice.amountPaid),0) + allPayments.filter(x => x.payment.createdAt < from).reduce((s,x)=>s+toNumber(x.payment.amount),0);
   const invoices = allInvoices.filter(x => x.invoice.createdAt >= from && x.invoice.createdAt <= to);
@@ -111,7 +111,7 @@ router.get("/xstore/poultry/customers/:customerId/statement", async (req, res): 
   const items = invoiceIds.length ? await db.select().from(xstorePoultryInvoiceItems).where(inArray(xstorePoultryInvoiceItems.invoiceId, invoiceIds)) : [];
   const rows = [
     ...invoices.map(({invoice,cashierName}) => ({ type:"invoice", id:invoice.id, invoiceNo:invoice.invoiceNo, date:iso(invoice.createdAt), actorName:cashierName, total:toNumber(invoice.total), paid:toNumber(invoice.amountPaid), note:null, items:items.filter(item=>item.invoiceId===invoice.id).map(item=>({productName:item.productName,quantityKg:toNumber(item.quantityKg),unitPrice:toNumber(item.unitPrice),total:toNumber(item.total)})) })),
-    ...payments.map(({payment,cashierName}) => ({ type:"payment", id:payment.id, invoiceNo:null, date:iso(payment.createdAt), actorName:cashierName, total:0, paid:toNumber(payment.amount), note:payment.note, items:[] })),
+    ...payments.map(({payment,cashierName}) => ({ type:"payment", id:payment.id, invoiceNo:null, date:iso(payment.createdAt), actorName:cashierName || "—", total:0, paid:toNumber(payment.amount), note:payment.note, items:[] })),
   ].sort((a,b)=>new Date(a.date).getTime()-new Date(b.date).getTime());
   const periodSales = invoices.reduce((s,x)=>s+toNumber(x.invoice.total),0);
   const periodPaid = invoices.reduce((s,x)=>s+toNumber(x.invoice.amountPaid),0) + payments.reduce((s,x)=>s+toNumber(x.payment.amount),0);
