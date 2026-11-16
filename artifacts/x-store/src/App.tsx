@@ -63,6 +63,7 @@ import { isOfflineHardwareFingerprint, type OfflineLicensePlan } from './offline
 const queryClient = new QueryClient();
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const PoultryFeatureCustomersPage = lazy(() => import('@/features/poultry/PoultryPages').then(module => ({ default: module.PoultryCustomersPage })));
+const PoultryFeatureInvoicesPage = lazy(() => import('@/features/poultry/PoultryPages').then(module => ({ default: module.PoultryInvoicesPage })));
 import { PoultrySalePage as PoultryFeatureSalePage } from '@/features/poultry/PoultryPages';
 const PoultryFeatureDashboardPage = lazy(() => import('@/features/poultry/PoultryPages').then(module => ({ default: module.PoultryDashboardPage })));
 
@@ -79,6 +80,7 @@ function getPoultryNavigation(user: SessionUser) {
     ...(canSell ? [{ href: '/poultry-sales', label: 'البيع', icon: ReceiptText }] : []),
     ...(canCollect ? [{ href: '/poultry-collections', label: 'التحصيل', icon: Wallet }] : []),
     ...(canViewCustomers ? [{ href: '/poultry-customers', label: 'العملاء', icon: Users }] : []),
+    ...(canViewCustomers ? [{ href: '/poultry-invoices', label: 'الفواتير', icon: ReceiptText }] : []),
   ];
 }
 
@@ -963,15 +965,15 @@ function ProtectedLayout() {
     session.data?.storeType === 'restaurant' ||
     (session.data?.storeType == null && restaurantFeature === true)
   );
-  const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','customer_management','custom'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-sale/:customerId':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','customer_management','custom'],'/poultry-invoices':['tenant_admin','cashier','accountant','retail_sales','collector','custom'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-sale/:customerId':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   if (session.data?.storeType === 'poultry' && ['/pos', '/inventory', '/sales'].includes(location)) return <Redirect to="/poultry-customers" />;
-  if (session.data?.storeType !== 'poultry' && ['/poultry-customers','/poultry-sales','/poultry-collections'].includes(location)) return <Redirect to="/dashboard"/>;
+  if (session.data?.storeType !== 'poultry' && ['/poultry-customers','/poultry-sales','/poultry-sale/:customerId','/poultry-collections','/poultry-invoices'].includes(location)) return <Redirect to="/dashboard"/>;
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
   if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
   return <AppShell user={session.data} refetch={session.refetch}><Switch>
-    <Route path="/dashboard" component={DashboardPage}/><Route path="/poultry-customers" component={PoultryCustomersPage}/><Route path="/poultry-sales" component={PoultrySalesPage}/><Route path="/poultry-sale/:customerId" component={PoultrySalePage}/><Route path="/poultry-collections" component={PoultryCollectionsPage}/><Route path="/tenants" component={TenantsPage}/>
+    <Route path="/dashboard" component={DashboardPage}/><Route path="/poultry-customers" component={PoultryCustomersPage}/><Route path="/poultry-invoices" component={PoultryInvoicesPage}/><Route path="/poultry-sales" component={PoultrySalesPage}/><Route path="/poultry-sale/:customerId" component={PoultrySalePage}/><Route path="/poultry-collections" component={PoultryCollectionsPage}/><Route path="/tenants" component={TenantsPage}/>
     <Route path="/subscriptions" component={SubscriptionsPage}/>
     <Route path="/offline-license-issuer" component={OfflineLicenseIssuerPage}/>
     <Route path="/team" component={TeamPage}/>
