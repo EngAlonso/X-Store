@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type { SessionUser } from '@workspace/api-client-react';
 import './poultry.css';
-import { poultryApi } from './poultryApi';
+import { poultryApi, type PoultryCustomer, type PoultryInvoiceResult, type PoultryStatement } from './poultryApi';
 
 const fmt = (value: number) => new Intl.NumberFormat('ar-EG', { maximumFractionDigits: 2 }).format(Number(value) || 0);
 const roundMoney = (amount: number) => Math.round((amount + Number.EPSILON) * 100) / 100;
@@ -40,10 +40,10 @@ function Modal({ title, close, children }: { title: string; close: () => void; c
 }
 
 function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'customers' | 'sales' | 'collections'; session: SessionUser | null }) {
-  const [customers,setCustomers]=useState<any[]>([]);
+  const [customers,setCustomers]=useState<PoultryCustomer[]>([]);
   const [search,setSearch]=useState('');
-  const [selected,setSelected]=useState<any|null>(null);
-  const [statement,setStatement]=useState<any|null>(null);
+  const [selected,setSelected]=useState<PoultryCustomer|null>(null);
+  const [statement,setStatement]=useState<PoultryStatement|null>(null);
   const [from,setFrom]=useState(new Date().toISOString().slice(0,8)+'01');
   const [to,setTo]=useState(new Date().toISOString().slice(0,10));
   const [busy,setBusy]=useState(false);
@@ -53,7 +53,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
   const [newCustomer,setNewCustomer]=useState({name:'',phone:'',shopName:'',shopAddress:''});
   const [invoice,setInvoice]=useState({productName:'فراخ',quantityKg:'',unitPrice:'',amountPaid:''});
   const [payment,setPayment]=useState('');
-  const [lastInvoice,setLastInvoice]=useState<any|null>(null);
+  const [lastInvoice,setLastInvoice]=useState<PoultryInvoiceResult|null>(null);
 
   const pageMode=mode;
   const canAddCustomer=pageMode==='customers' && hasAppRole(session,['tenant_admin','cashier','customer_management']);
@@ -123,7 +123,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     setBusy(true);setError('');setNotice('');
     try{
       const j = await poultryApi.createInvoice(selected.id, { items: [{ productName: invoice.productName.trim() || 'فراخ', quantityKg: quantity, unitPrice }], amountPaid: amountReceived });
-      setLastInvoice({...j,customerName:selected.name});
+      setLastInvoice(j);
       setNotice(j.extraCollection>0
         ? 'تم تسجيل الفاتورة بقيمة '+fmt(j.total)+' ج.م، وتسجيل '+fmt(j.extraCollection)+' ج.م تحصيلًا من الرصيد السابق.'
         : 'تم تسجيل الفاتورة '+j.invoiceNo+' بقيمة '+fmt(j.total)+' ج.م.');
