@@ -119,6 +119,77 @@ router.get("/xstore/poultry/customers/:customerId/statement", async (req, res): 
   res.json({ customer:{...customer,createdAt:iso(customer.createdAt),updatedAt:iso(customer.updatedAt)}, from:req.query.from||null, to:req.query.to||null, openingBalance:roundMoney(beforeSales-beforePaid), summary:{totalKg,sales:periodSales,paid:periodPaid,remaining:roundMoney(beforeSales-beforePaid+periodSales-periodPaid)}, rows });
 });
 
+router.get("/xstore/poultry/invoices", async (req, res): Promise<void> => {
+  const user = getXStoreUser(res);
+  if (!user.tenantId || !hasRole(user, poultryUserRoles)) { res.status(403).json({ error: "ليس لديك صلاحية لعرض الفواتير." }); return; }
+  if (!(await ensurePoultryTenantAccess(user, res))) return;
+  const from = typeof req.query.from === "string" && req.query.from ? new Date(req.query.from + "T00:00:00+02:00") : null;
+  const to = typeof req.query.to === "string" && req.query.to ? new Date(req.query.to + "T23:59:59.999+02:00") : null;
+  if ((from && Number.isNaN(from.getTime())) || (to && Number.isNaN(to.getTime())) || (from && to && from > to)) { res.status(400).json({ error: "الفترة الزمنية غير صحيحة." }); return; }
+  const search = typeof req.query.search === "string" ? req.query.search.trim().toLowerCase() : "";
+  const invoiceRows = await db.select({
+    invoice: xstorePoultryInvoices,
+    customerName: xstoreCustomers.name,
+    shopName: xstoreCustomers.shopName,
+    phone: xstoreCustomers.phone,
+    cashierName: xstoreUsers.name,
+  })
+    .from(xstorePoultryInvoices)
+    .innerJoin(xstoreCustomers, eq(xstorePoultryInvoices.customerId, xstoreCustomers.id))
+    .innerJoin(xstoreUsers, eq(xstorePoultryInvoices.cashierUserId, xstoreUsers.id))
+    .where(eq(xstorePoultryInvoices.tenantId, user.tenantId))
+    .orderBy(desc(xstorePoultryInvoices.createdAt));
+  const payments = await db.select().from(xstorePoultryPayments).where(eq(xstorePoultryPayments.tenantId, user.tenantId));
+  const invoiceRowsFiltered = invoiceRows.filter(row => {
+    const date = row.invoice.createdAt.getTime();
+    const matchesDate = (!from || date >= from.getTime()) && (!to || date <= to.getTime());
+    const haystack = [row.invoice.invoiceNo, row.customerName, row.shopName || "", row.phone].join(" ").toLowerCase();
+    return matchesDate && (!search || haystack.includes(search));
+  });
+  const invoiceIds = invoiceRowsFiltered.map(row => row.invoice.id);
+  const items = invoiceIds.length ? await db.select().from(xstorePoultryInvoiceItems).where(inArray(xstorePoultryInvoiceItems.invoiceId, invoiceIds)) : [];
+  const invoices = invoiceRowsFiltered.map(row => {
+    const invoiceItems = items.filter(item => item.invoiceId === row.invoice.id).map(item => ({
+      productName: item.productName,
+      quantityKg: toNumber(item.quantityKg),
+      unitPrice: toNumber(item.unitPrice),
+      total: toNumber(item.total),
+    }));
+    const total = toNumber(row.invoice.total);
+    const amountPaid = toNumber(row.invoice.amountPaid);
+    const extraCollection = payments
+      .filter(payment => payment.note?.includes(row.invoice.invoiceNo))
+      .reduce((sum, payment) => sum + toNumber(payment.amount), 0);
+    return {
+      id: row.invoice.id,
+      invoiceNo: row.invoice.invoiceNo,
+      date: iso(row.invoice.createdAt),
+      customerId: row.invoice.customerId,
+      customerName: row.customerName,
+      shopName: row.shopName,
+      phone: row.phone,
+      cashierName: row.cashierName,
+      total,
+      amountPaid,
+      balance: roundMoney(total - amountPaid),
+      amountReceived: roundMoney(amountPaid + extraCollection),
+      extraCollection,
+      items: invoiceItems,
+    };
+  });
+  const paidFromExtra = invoices.reduce((sum, row) => sum + row.extraCollection, 0);
+  res.json({
+    invoices,
+    summary: {
+      count: invoices.length,
+      sales: invoices.reduce((sum, row) => sum + row.total, 0),
+      paid: roundMoney(invoices.reduce((sum, row) => sum + row.amountPaid, 0) + paidFromExtra),
+      outstanding: roundMoney(invoices.reduce((sum, row) => sum + row.balance, 0)),
+      totalKg: invoices.reduce((sum, row) => sum + row.items.reduce((s, item) => s + item.quantityKg, 0), 0),
+    },
+  });
+});
+
 router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
   if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "retail_sales"])) { res.status(403).json({ error: "ليس لديك صلاحية إنشاء فاتورة دواجن." }); return; }
