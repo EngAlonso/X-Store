@@ -36,7 +36,7 @@ import {
   Bell, LogOut, Menu, X, ArrowUpLeft, ChevronLeft, ChevronDown, CreditCard, Banknote,
   Wallet, CircleCheck, Clock3, AlertTriangle, RotateCcw,
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
-  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, ArrowUp, Eye, EyeOff, LockKeyhole, Smartphone, Database, Coffee, Utensils, Pencil,
+  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, ArrowUp, Eye, EyeOff, LockKeyhole, Smartphone, Database, Coffee, Utensils, Pencil, Bird,
 } from 'lucide-react';
 import {
   FaFacebook,
@@ -140,6 +140,7 @@ const storeTypeOptions = [
   { value: 'perfume_beauty', label: 'العطور والتجميل' },
   { value: 'cafe', label: 'الكافيهات' },
   { value: 'restaurant', label: 'المطاعم' },
+  { value: 'poultry', label: 'الدواجن والفراخ' },
 ] as const;
 function storeTypeName(value: string | null | undefined) {
   return storeTypeOptions.find((type) => type.value === value)?.label ?? 'غير محدد';
@@ -217,6 +218,7 @@ const teamPermissionOptions: { value: TeamPermission; label: string; description
   { value: 'wholesale_sales', label: 'بيع جملة', description: 'إتمام الفواتير بسعر الجملة عند تفعيل قسم الجملة للمتجر.' },
   { value: 'warehouse_manager', label: 'إدارة المخزون', description: 'عرض المنتجات وتعديل الكميات دون تغيير أسعار المنتجات.' },
   { value: 'accountant', label: 'التقارير المالية', description: 'عرض التقارير المالية والمبيعات المسجلة.' },
+  { value: 'collector', label: 'التحصيل', description: 'عرض حسابات العملاء وتسجيل التحصيل فقط.' },
 ];
 const teamPermissionNames: Record<TeamPermission, string> = {
   retail_sales: 'بيع قطاعي',
@@ -224,6 +226,7 @@ const teamPermissionNames: Record<TeamPermission, string> = {
   cashier: 'نقطة البيع والمبيعات',
   warehouse_manager: 'إدارة المخزون',
   accountant: 'التقارير المالية',
+  collector: 'التحصيل',
 };
 function normalizeTeamPermissions(permissions: TeamPermission[]): TeamPermission[] {
   const normalized = new Set<TeamPermission>(
@@ -279,6 +282,7 @@ const nav = [
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
+  { href: '/poultry-customers', label: 'حسابات العملاء', icon: Bird, roles: ['tenant_admin', 'cashier', 'accountant', 'custom'] },
 ];
 
 function Logo({ compact = false }: { compact?: boolean }) {
@@ -803,7 +807,8 @@ function AppShell({ children }: { children: ReactNode }) {
     user.storeType === 'cafe' || user.storeType === 'restaurant' ||
     (user.storeType == null && restaurantFeatureEnabled === true)
   );
-  const items = nav.filter(n => (n.href !== '/restaurant-menu' || restaurantMenuEnabled) && (n.roles.includes('all') || hasAppRole(user, n.roles)));
+  const poultryCustomersEnabled = user.storeType === 'poultry' && (user.role !== 'custom' || user.permissions?.includes('collector') || user.permissions?.includes('accountant'));
+  const items = nav.filter(n => (n.href !== '/restaurant-menu' || restaurantMenuEnabled) && (n.href !== '/poultry-customers' || poultryCustomersEnabled) && (n.roles.includes('all') || hasAppRole(user, n.roles)));
   const canSeeSalesNotifications = hasAppRole(user,['platform_admin','tenant_admin','cashier','accountant']) || (user.role==='custom' && Boolean(user.permissions?.some(p=>p==='retail_sales'||p==='wholesale_sales')));
   const canSeeInventoryNotifications = hasAppRole(user,['platform_admin','tenant_admin','warehouse_manager']);
   const notificationRows = [
@@ -845,13 +850,13 @@ function ProtectedLayout() {
     session.data?.storeType === 'restaurant' ||
     (session.data?.storeType == null && restaurantFeature === true)
   );
-  const allowed:Record<string,string[]>={'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','custom'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to="/dashboard"/>;
   if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
   return <AppShell><Switch>
-    <Route path="/dashboard" component={DashboardPage}/><Route path="/tenants" component={TenantsPage}/>
+    <Route path="/dashboard" component={DashboardPage}/><Route path="/poultry-customers" component={PoultryCustomersPage}/><Route path="/tenants" component={TenantsPage}/>
     <Route path="/subscriptions" component={SubscriptionsPage}/>
     <Route path="/offline-license-issuer" component={OfflineLicenseIssuerPage}/>
     <Route path="/team" component={TeamPage}/>
@@ -961,6 +966,76 @@ function StateBlock({loading,error,onRetry,empty,emptyTitle='لا توجد بي�
   if(empty) return <div className="state-box"><div className="empty-symbol"><Boxes size={22}/></div><b>{emptyTitle}</b><span>ستظهر البيانات هنا عند توفرها.</span></div>;
   return null;
 }
+
+function PoultryCustomersPage() {
+  const { data: session } = useGetXStoreSession();
+  const [customers,setCustomers]=useState<any[]>([]);
+  const [search,setSearch]=useState("");
+  const [selected,setSelected]=useState<any|null>(null);
+  const [statement,setStatement]=useState<any|null>(null);
+  const [from,setFrom]=useState(new Date().toISOString().slice(0,8)+"01");
+  const [to,setTo]=useState(new Date().toISOString().slice(0,10));
+  const [busy,setBusy]=useState(false);
+  const [notice,setNotice]=useState("");
+  const [error,setError]=useState("");
+  const [newCustomer,setNewCustomer]=useState({name:"",phone:"",shopName:"",shopAddress:""});
+  const [invoice,setInvoice]=useState({productName:"فراخ",quantityKg:"",unitPrice:"",amountPaid:""});
+  const [payment,setPayment]=useState("");
+  const canSell=session?.role==="tenant_admin"||session?.role==="cashier";
+  async function loadCustomers(q=search){
+    const r=await fetch("/api/xstore/poultry/customers?search="+encodeURIComponent(q),{credentials:"include"});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(j.error||"تعذر تحميل العملاء.");
+    setCustomers(j);
+  }
+  useEffect(()=>{void loadCustomers().catch(e=>setError(e.message));},[]);
+  async function createCustomer(){
+    setBusy(true);setError("");setNotice("");
+    try{const r=await fetch("/api/xstore/poultry/customers",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify(newCustomer)});const j=await r.json();if(!r.ok)throw new Error(j.error||"تعذر إضافة العميل.");setNewCustomer({name:"",phone:"",shopName:"",shopAddress:""});setNotice("تم إضافة العميل.");await loadCustomers();setSelected(j);}catch(e){setError(e instanceof Error?e.message:"تعذر إضافة العميل.");}finally{setBusy(false);}
+  }
+  async function loadStatement(customer=selected){
+    if(!customer)return;
+    setBusy(true);setError("");
+    try{const r=await fetch("/api/xstore/poultry/customers/"+customer.id+"/statement?from="+encodeURIComponent(from)+"&to="+encodeURIComponent(to),{credentials:"include"});const j=await r.json();if(!r.ok)throw new Error(j.error||"تعذر تحميل كشف الحساب.");setStatement(j);}catch(e){setError(e instanceof Error?e.message:"تعذر تحميل كشف الحساب.");}finally{setBusy(false);}
+  }
+  async function createInvoice(){
+    if(!selected)return;
+    setBusy(true);setError("");setNotice("");
+    try{const r=await fetch("/api/xstore/poultry/customers/"+selected.id+"/invoices",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({items:[{productName:invoice.productName,quantityKg:Number(invoice.quantityKg),unitPrice:Number(invoice.unitPrice)}],amountPaid:Number(invoice.amountPaid)||0})});const j=await r.json();if(!r.ok)throw new Error(j.error||"تعذر تسجيل الفاتورة.");setNotice("تم تسجيل الفاتورة "+j.invoiceNo+" بقيمة "+fmt(j.total)+" جنيه.");setInvoice({productName:"فراخ",quantityKg:"",unitPrice:"",amountPaid:""});await loadCustomers();await loadStatement(selected);}catch(e){setError(e instanceof Error?e.message:"تعذر تسجيل الفاتورة.");}finally{setBusy(false);}
+  }
+  async function collectPayment(){
+    if(!selected)return;
+    setBusy(true);setError("");setNotice("");
+    try{const r=await fetch("/api/xstore/poultry/customers/"+selected.id+"/payments",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({amount:Number(payment)})});const j=await r.json();if(!r.ok)throw new Error(j.error||"تعذر تسجيل التحصيل.");setNotice("تم تسجيل تحصيل "+fmt(j.amount)+" جنيه.");setPayment("");await loadCustomers();await loadStatement(selected);}catch(e){setError(e instanceof Error?e.message:"تعذر تسجيل التحصيل.");}finally{setBusy(false);}
+  }
+  function whatsappStatement(){
+    if(!selected||!statement)return;
+    const s=statement.summary;
+    const text="كشف حساب "+selected.name+"\nالفترة: "+from+" إلى "+to+"\nإجمالي الكمية: "+fmt(s.totalKg)+" كجم\nالمبيعات: "+fmt(s.sales)+" جنيه\nالمدفوع: "+fmt(s.paid)+" جنيه\nالمتبقي: "+fmt(s.remaining)+" جنيه";
+    window.open("https://wa.me/"+String(selected.phone).replace(/\D/g,"")+"?text="+encodeURIComponent(text),"_blank");
+  }
+  return <div dir="rtl">
+    <PageTitle eyebrow="الدواجن والفراخ" title="حسابات العملاء" desc="بيع آجل، تحصيل، وكشف حساب دقيق لكل عميل مع حفظ سعر الكيلو وقت الفاتورة." action={<button className="button button-primary" onClick={()=>window.print()}><Printer size={16}/> طباعة</button>}/>
+    {error&&<div className="form-error">{error}</div>}{notice&&<div className="notice-box success">{notice}</div>}
+    <div className="dashboard-grid poultry-grid">
+      <Card><SectionHead title="العملاء" detail="ابحث بالاسم أو رقم الهاتف أو اسم المحل."/>
+        <div className="form-grid"><label className="field field-wide"><span>بحث</span><input value={search} onChange={e=>{setSearch(e.target.value);void loadCustomers(e.target.value)}} placeholder="اسم العميل أو الهاتف أو المحل"/></label></div>
+        <div className="poultry-customer-list">{customers.map(c=><button type="button" className={"poultry-customer "+(selected?.id===c.id?"selected":"")} key={c.id} onClick={()=>{setSelected(c);setStatement(null);}}><span className="poultry-customer-icon"><Bird size={18}/></span><span><b>{c.name}</b><small>{c.shopName||"بدون اسم محل"} · {c.phone}</small></span><strong>{fmt(c.balance)} ج.م</strong></button>)}</div>
+        <div className="form-grid poultry-add"><label className="field"><span>اسم العميل</span><input value={newCustomer.name} onChange={e=>setNewCustomer({...newCustomer,name:e.target.value})}/></label><label className="field"><span>رقم الهاتف</span><input value={newCustomer.phone} onChange={e=>setNewCustomer({...newCustomer,phone:e.target.value})}/></label><label className="field"><span>اسم المحل</span><input value={newCustomer.shopName} onChange={e=>setNewCustomer({...newCustomer,shopName:e.target.value})}/></label><label className="field"><span>عنوان المحل</span><input value={newCustomer.shopAddress} onChange={e=>setNewCustomer({...newCustomer,shopAddress:e.target.value})}/></label></div>
+        <button className="button button-primary" disabled={busy||!newCustomer.name||!newCustomer.phone} onClick={()=>void createCustomer()}><Plus size={16}/> إضافة عميل</button>
+      </Card>
+      <Card>{selected?<><SectionHead title={selected.name} detail={(selected.shopName||"بدون اسم محل")+" · "+selected.phone}/>
+        <div className="poultry-customer-meta"><span><b>المحل</b>{selected.shopName||"—"}</span><span><b>العنوان</b>{selected.shopAddress||"—"}</span><span><b>الرصيد الحالي</b>{fmt(selected.balance)} ج.م</span></div>
+        <div className="form-grid"><label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>
+        <div className="form-actions"><button className="button button-primary" onClick={()=>void loadStatement()} disabled={busy}>عرض الجرد</button>{statement&&<><button className="button button-quiet" onClick={whatsappStatement}><MessageCircle size={16}/> واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></>}</div>
+        {canSell&&<div className="poultry-action-box"><h3>فاتورة جديدة</h3><div className="form-grid"><label className="field"><span>الصنف</span><input value={invoice.productName} onChange={e=>setInvoice({...invoice,productName:e.target.value})}/></label><label className="field"><span>الكمية بالكيلو</span><input type="number" step="0.001" value={invoice.quantityKg} onChange={e=>setInvoice({...invoice,quantityKg:e.target.value})}/></label><label className="field"><span>سعر الكيلو</span><input type="number" step="0.01" value={invoice.unitPrice} onChange={e=>setInvoice({...invoice,unitPrice:e.target.value})}/></label><label className="field"><span>المدفوع</span><input type="number" step="0.01" value={invoice.amountPaid} onChange={e=>setInvoice({...invoice,amountPaid:e.target.value})}/></label></div><button className="button button-primary" disabled={busy} onClick={()=>void createInvoice()}><ReceiptText size={16}/> تسجيل الفاتورة</button></div>}
+        <div className="poultry-action-box"><h3>تحصيل</h3><div className="form-grid"><label className="field"><span>المبلغ</span><input type="number" step="0.01" value={payment} onChange={e=>setPayment(e.target.value)} placeholder="0.00"/></label></div><button className="button button-primary" disabled={busy||!payment} onClick={()=>void collectPayment()}><Wallet size={16}/> تسجيل التحصيل</button></div>
+      </>:<div className="state-box"><div className="empty-symbol"><Bird size={22}/></div><b>اختر عميلًا</b><span>اعرض حسابه أو سجل فاتورة أو تحصيل.</span></div>}</Card>
+    </div>
+    {statement&&<Card className="poultry-statement"><SectionHead title="كشف الحساب" detail={"من "+from+" إلى "+to}/><div className="stat-grid"><StatCard label="إجمالي الكمية" value={fmt(statement.summary.totalKg)+" كجم"} detail="إجمالي الوزن خلال الفترة" icon={Bird}/><StatCard label="المبيعات" value={fmt(statement.summary.sales)+" ج.م"} detail="قيمة الفواتير" icon={ReceiptText} tint="gold"/><StatCard label="المدفوع" value={fmt(statement.summary.paid)+" ج.م"} detail="إجمالي التحصيل" icon={Wallet} tint="sage"/><StatCard label="المتبقي" value={fmt(statement.summary.remaining)+" ج.م"} detail="الرصيد بعد الفترة" icon={CreditCard}/></div><div className="table-wrap"><table><thead><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكيلو</th><th>سعر الكيلو</th><th>القيمة</th><th>الموظف</th></tr></thead><tbody>{statement.rows.map((row:any)=><tr key={row.id}><td>{dateTimeLabel(row.date)}</td><td><b>{row.type==="invoice"?"فاتورة "+row.invoiceNo:"تحصيل"}</b></td><td>{row.items.length?fmt(row.items.reduce((s:number,x:any)=>s+x.quantityKg,0)):"—"}</td><td>{row.items.length?fmt(row.items[0].unitPrice)+" ج.م":"—"}</td><td>{fmt(row.type==="invoice"?row.total:row.paid)} ج.م</td><td>{row.actorName}</td></tr>)}</tbody></table></div></Card>}
+  </div>;
+}
+
 function DashboardPage() {
   const {data:session}=useGetXStoreSession();
   const dash=useGetXStoreDashboard();
