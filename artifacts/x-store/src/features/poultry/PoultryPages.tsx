@@ -635,7 +635,12 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
           {invoiceSettingsOrDefault(session?.invoiceSettings).showCustomer&&<span><small>الاسم</small><b>{customer.name}</b></span>}
           {invoiceSettingsOrDefault(session?.invoiceSettings).showShop&&<span><small>المحل</small><b>{customer.shopName || 'غير مسجل'}</b></span>}
           {invoiceSettingsOrDefault(session?.invoiceSettings).showPhone&&<span><small>الهاتف</small><b dir="ltr">{customer.phone||'—'}</b></span>}
-          {invoiceSettingsOrDefault(session?.invoiceSettings).showDateTime&&<><span><small>اليوم والتاريخ</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</b></span><span><small>الوقت</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</b></span></>}
+          {invoiceSettingsOrDefault(session?.invoiceSettings).showDateTime ? (
+            <>
+              <span><small>اليوم والتاريخ</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</b></span>
+              <span><small>الوقت</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</b></span>
+            </>
+          ) : null}
           {invoiceSettingsOrDefault(session?.invoiceSettings).showCashier&&<span><small>الموظف</small><b>{lastInvoice.cashierName || 'غير محدد'}</b></span>}
         </div>
       </div>
