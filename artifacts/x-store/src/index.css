@@ -6911,3 +6911,89 @@ input,select,textarea{max-width:100%;min-width:0;box-sizing:border-box}.panel,.c
     font-size:12px;
   }
 }
+
+/* Team members: dedicated mobile cards to avoid squeezed table columns */
+.team-mobile-list{display:none}
+@media (max-width:767px){
+  .team-desktop-table{display:none !important}
+  .team-mobile-list{display:grid;gap:12px}
+  .team-mobile-card{
+    display:block;
+    width:100%;
+    box-sizing:border-box;
+    padding:14px;
+    border:1px solid #dfe8e1;
+    border-radius:16px;
+    background:#fff;
+    box-shadow:0 5px 18px rgba(23,63,43,.06);
+    overflow:hidden;
+  }
+  .team-mobile-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:10px;
+    padding-bottom:12px;
+    border-bottom:1px solid #edf1ee;
+  }
+  .team-mobile-head .member-name{display:flex;align-items:center;gap:9px;min-width:0}
+  .team-mobile-head .member-name>span{
+    width:38px;height:38px;min-width:38px;
+    display:grid;place-items:center;
+    border-radius:12px;
+    background:#eaf3ec;
+    color:#24553b;
+    font-weight:800;
+  }
+  .team-mobile-head .member-name>div{min-width:0;display:grid;gap:2px}
+  .team-mobile-head .member-name b{font-size:14px;overflow-wrap:anywhere}
+  .team-mobile-head .member-name small{font-size:10px;color:#7b877f;overflow-wrap:anywhere}
+  .team-mobile-head .status-pill{flex:0 0 auto}
+  .team-mobile-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0;
+    margin-top:4px;
+  }
+  .team-mobile-grid>div{
+    min-width:0;
+    padding:11px 7px;
+    border-bottom:1px solid #edf1ee;
+  }
+  .team-mobile-grid>div:nth-child(odd){border-left:1px solid #edf1ee;padding-right:0}
+  .team-mobile-grid>div:nth-child(even){padding-left:0}
+  .team-mobile-grid small{
+    display:block;
+    margin-bottom:4px;
+    color:#8a958d;
+    font-size:9px;
+    font-weight:700;
+  }
+  .team-mobile-grid b{
+    display:block;
+    color:#26352c;
+    font-size:11px;
+    line-height:1.55;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+  }
+  .team-mobile-actions{
+    display:flex;
+    gap:8px;
+    margin-top:12px;
+  }
+  .team-mobile-actions .button{
+    min-height:38px;
+    flex:1 1 0;
+    justify-content:center;
+  }
+  .team-mobile-actions .team-owner-note{
+    width:100%;
+    text-align:center;
+    padding:9px;
+    border-radius:9px;
+    background:#f3f6f3;
+    color:#6f7b73;
+    font-size:11px;
+  }
+}
