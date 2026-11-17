@@ -116,6 +116,27 @@ router.post("/xstore/poultry/customers", async (req, res): Promise<void> => {
   res.status(201).json({ ...customer, createdAt: iso(customer.createdAt), updatedAt: iso(customer.updatedAt) });
 });
 
+router.patch("/xstore/poultry/customers/:customerId", async (req, res): Promise<void> => {
+  const user = getXStoreUser(res);
+  if (!user.tenantId || !hasRole(user, ["tenant_admin", "customer_management"])) { res.status(403).json({ error: "ليس لديك صلاحية تعديل بيانات العميل." }); return; }
+  if (!(await ensurePoultryTenantAccess(user, res))) return;
+  const [existing] = await db.select().from(xstoreCustomers).where(and(eq(xstoreCustomers.id, req.params.customerId), eq(xstoreCustomers.tenantId, user.tenantId))).limit(1);
+  if (!existing) { res.status(404).json({ error: "العميل غير موجود." }); return; }
+  const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+  const phone = typeof req.body?.phone === "string" ? req.body.phone.trim() : "";
+  const shopName = typeof req.body?.shopName === "string" ? req.body.shopName.trim() : "";
+  const shopAddress = typeof req.body?.shopAddress === "string" ? req.body.shopAddress.trim() : "";
+  if (!name) { res.status(400).json({ error: "اسم العميل مطلوب." }); return; }
+  const [customer] = await db.update(xstoreCustomers).set({ name, phone, shopName: shopName || null, shopAddress: shopAddress || null, updatedAt: new Date() }).where(and(eq(xstoreCustomers.id, existing.id), eq(xstoreCustomers.tenantId, user.tenantId))).returning();
+  if (!customer) { res.status(500).json({ error: "تعذر تحديث بيانات العميل." }); return; }
+  try {
+    await audit(user, "poultry.customer_updated", user.tenantId, "poultry_customer", customer.id, "تم تعديل بيانات العميل " + name);
+  } catch (error) {
+    console.error("Poultry customer audit failed after successful customer update:", error);
+  }
+  res.json({ ...customer, createdAt: iso(customer.createdAt), updatedAt: iso(customer.updatedAt) });
+});
+
 router.get("/xstore/poultry/customers/:customerId/statement", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
   if (!user.tenantId || !hasRole(user, poultryUserRoles)) { res.status(403).json({ error: "ليس لديك صلاحية لعرض كشف الحساب." }); return; }
