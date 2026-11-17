@@ -938,7 +938,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
         ...getPoultryNavigation(user),
         ...nav.filter(n => n.href === '/team' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
         ...nav.filter(n => n.href === '/reports' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
-        ...(user.storeType !== 'poultry' ? nav.filter(n => n.href === '/store-settings' && (n.roles.includes('all') || hasAppRole(user, n.roles))) : []),
+        ...nav.filter(n => n.href === '/store-settings' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
         ...nav.filter(n => n.href === '/store-backup' && (n.roles.includes('all') || hasAppRole(user, n.roles))).map(n => ({ ...n, label: 'النسخه الاحتياطية' })),
       ]
     : nav.filter(n =>
