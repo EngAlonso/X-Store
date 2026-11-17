@@ -4,6 +4,7 @@
   "description": "X-Store offline Windows edition",
   "private": true,
   "type": "module",
+  "x-deploy-trigger": "2026-11-17T15:15:00+02:00",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
