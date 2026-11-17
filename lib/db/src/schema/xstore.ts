@@ -495,6 +495,8 @@ export const xstorePoultryInvoiceItems = pgTable(
     quantityKg: numeric("quantity_kg", { precision: 12, scale: 3 }).notNull(),
     unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
     total: numeric("total", { precision: 12, scale: 2 }).notNull(),
+    deadWeightKg: numeric("dead_weight_kg", { precision: 12, scale: 3 }).notNull().default("0"),
+    deadTotal: numeric("dead_total", { precision: 12, scale: 2 }).notNull().default("0"),
   },
   (table) => [index("xstore_poultry_invoice_items_invoice_idx").on(table.invoiceId)],
 );

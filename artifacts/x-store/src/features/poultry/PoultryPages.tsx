@@ -53,7 +53,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
   const [error,setError]=useState('');
   const [customerDialog,setCustomerDialog]=useState(false);
   const [newCustomer,setNewCustomer]=useState({name:'',phone:'',shopName:'',shopAddress:''});
-  const [invoice,setInvoice]=useState({productName:'فراخ',quantityKg:'',unitPrice:'',amountPaid:''});
+  const [invoice,setInvoice]=useState({productName:'فراخ',quantityKg:'',unitPrice:'',deadWeightKg:'',amountPaid:''});
   const [payment,setPayment]=useState('');
   const [lastInvoice,setLastInvoice]=useState<PoultryInvoiceResult|null>(null);
 
@@ -111,6 +111,8 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
   const paidOnInvoice=Math.min(invoiceTotal,amountReceivedToday);
   const extraCollection=Math.max(0,roundMoney(amountReceivedToday-invoiceTotal));
   const invoiceRemaining=Math.max(0,roundMoney(invoiceTotal-paidOnInvoice));
+  const deadWeightKg=Math.max(0,Number(invoice.deadWeightKg)||0);
+  const deadTotal=roundMoney(deadWeightKg*(Number(invoice.unitPrice)||0));
 
   async function createInvoice(){
     if(!selected){setError('اختَر العميل أولاً.');return;}
@@ -124,12 +126,12 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     if(amountReceived<0){setError('المبلغ المدفوع اليوم لا يمكن أن يكون سالبًا.');return;}
     setBusy(true);setError('');setNotice('');
     try{
-      const j = await poultryApi.createInvoice(selected.id, { items: [{ productName: invoice.productName.trim() || 'فراخ', quantityKg: quantity, unitPrice }], amountPaid: amountReceived });
+      const j = await poultryApi.createInvoice(selected.id, { items: [{ productName: invoice.productName.trim() || 'فراخ', quantityKg: quantity, unitPrice, deadWeightKg }], amountPaid: amountReceived });
       setLastInvoice(j);
       setNotice(j.extraCollection>0
         ? 'تم تسجيل الفاتورة بقيمة '+fmt(j.total)+' ج.م، وتسجيل '+fmt(j.extraCollection)+' ج.م تحصيلًا من الرصيد السابق.'
         : 'تم تسجيل الفاتورة '+j.invoiceNo+' بقيمة '+fmt(j.total)+' ج.م.');
-      setInvoice({productName:'فراخ',quantityKg:'',unitPrice:'',amountPaid:''});
+      setInvoice({productName:'فراخ',quantityKg:'',unitPrice:'',deadWeightKg:'',amountPaid:''});
       await loadCustomers();
       await loadStatement(selected);
     }catch(e){setError(e instanceof Error?e.message:'تعذر تسجيل الفاتورة.');}
@@ -178,25 +180,22 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
 
   function downloadStatement(){
     if(!selected||!statement)return;
-    const csvRows=[
-      ['التاريخ','الحركة','رقم الفاتورة','الكمية بالكيلو','القيمة','الموظف'],
-      ...statement.rows.map((row:any)=>[
-        new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)),
-        row.type==='invoice'?'فاتورة':'تحصيل',row.invoiceNo||'',
-        row.items?.length?row.items.reduce((sum:number,item:any)=>sum+Number(item.quantityKg||0),0):0,
-        row.type==='invoice'?row.total:row.paid,row.actorName||''
-      ]),
-      [],
-      ['رصيد أول الفترة',statement.openingBalance],
-      ['إجمالي الكمية بالكيلو',statement.summary.totalKg],
-      ['إجمالي المبيعات',statement.summary.sales],
-      ['إجمالي التحصيلات',statement.summary.paid],
-      ['الرصيد المتبقي',statement.summary.remaining]
-    ];
-    const csv='\\uFEFF'+csvRows.map(row=>row.map((cell:any)=>'"'+String(cell??'').replace(/"/g,'""')+'"').join(',')).join('\\r\\n');
-    const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
-    const link=document.createElement('a');link.href=url;link.download='كشف-حساب-'+selected.name+'-'+from+'-'+to+'.csv';
-    document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);
+    const rows=statement.rows,rowHeight=78,width=1200,height=520+Math.max(rows.length,1)*rowHeight;
+    const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');if(!ctx)return;
+    ctx.direction='rtl';ctx.textAlign='right';ctx.fillStyle='#f5f8f5';ctx.fillRect(0,0,width,height);ctx.fillStyle='#173f2b';ctx.fillRect(0,0,width,190);
+    ctx.fillStyle='#fff';ctx.font='700 42px Arial';ctx.fillText('كشف حساب عميل',width-60,70);ctx.font='600 24px Arial';ctx.fillText(selected.name,width-60,112);ctx.font='20px Arial';ctx.fillText('الفترة: '+from+' إلى '+to,width-60,150);
+    const x=50,w=width-100;let y=220;ctx.fillStyle='#fff';ctx.fillRect(x,y,w,115);ctx.fillStyle='#718078';ctx.font='700 18px Arial';
+    ctx.fillText('المحل: '+(selected.shopName||'—'),width-80,y+34);ctx.fillText('الهاتف: '+selected.phone,width-80,y+66);ctx.fillStyle='#17251b';ctx.font='700 20px Arial';ctx.fillText('رصيد أول الفترة: '+fmt(statement.openingBalance)+' ج.م',width-80,y+99);
+    y+=145;ctx.fillStyle='#edf3ed';ctx.fillRect(x,y,w,58);ctx.fillStyle='#24553b';ctx.font='700 18px Arial';['التاريخ','الحركة','الكيلو','سعر الكيلو','القيمة','الموظف'].forEach((label,i)=>ctx.fillText(label,[width-70,930,730,540,330,110][i],y+36));
+    ctx.font='600 18px Arial';rows.forEach((row:any,index:number)=>{const ry=y+58+index*rowHeight;ctx.fillStyle='#fff';ctx.fillRect(x,ry,w,rowHeight);ctx.fillStyle='#17251b';
+      ctx.fillText(new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)),width-70,ry+31);
+      ctx.fillText(row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):'تحصيل',930,ry+31);
+      ctx.fillText(row.items?.length?fmt(row.items.reduce((sum:number,item:any)=>sum+Number(item.quantityKg||0),0))+' كجم':'—',730,ry+31);
+      ctx.fillText(row.items?.length?fmt(row.items[0].unitPrice)+' ج.م':'—',540,ry+31);ctx.fillText(fmt(row.type==='invoice'?row.total:row.paid)+' ج.م',330,ry+31);ctx.fillText(row.actorName||'—',110,ry+31);
+    });
+    y+=58+Math.max(rows.length,1)*rowHeight+28;const sums=[['إجمالي الكمية',fmt(statement.summary.totalKg)+' كجم'],['المبيعات',fmt(statement.summary.sales)+' ج.م'],['التحصيلات',fmt(statement.summary.paid)+' ج.م'],['الرصيد المتبقي',fmt(statement.summary.remaining)+' ج.م']];
+    sums.forEach((item,index)=>{const bw=(w-18)/2,bx=x+(index%2)*(bw+18),by=y+Math.floor(index/2)*92;ctx.fillStyle=index===3?'#173f2b':'#fff';ctx.fillRect(bx,by,bw,78);ctx.fillStyle=index===3?'#d8e5da':'#718078';ctx.font='700 17px Arial';ctx.fillText(item[0],bx+bw-22,by+28);ctx.fillStyle=index===3?'#fff':'#17251b';ctx.font='700 23px Arial';ctx.fillText(item[1],bx+bw-22,by+60);});
+    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='كشف-حساب-'+selected.name+'-'+from+'-'+to+'.jpg';document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/jpeg',0.92);
   }
 
   function printStatement(){
@@ -266,11 +265,13 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
               <label className="field"><span>الصنف</span><input value={invoice.productName} onChange={e=>setInvoice({...invoice,productName:e.target.value})} placeholder="مثال: فراخ بيضاء"/></label>
               <label className="field"><span>الكمية بالكيلو <b className="required-mark">*</b></span><input type="number" min="0.001" step="0.001" value={invoice.quantityKg} onChange={e=>setInvoice({...invoice,quantityKg:e.target.value})} placeholder="مثال: 12.500"/></label>
               <label className="field"><span>سعر الكيلو <b className="required-mark">*</b></span><input type="number" min="0" step="0.01" value={invoice.unitPrice} onChange={e=>setInvoice({...invoice,unitPrice:e.target.value})} placeholder="مثال: 145"/></label>
+              <label className="field"><span>نافِق (كجم)</span><input type="number" min="0" step="0.001" max={Number(invoice.quantityKg)||undefined} value={invoice.deadWeightKg} onChange={e=>setInvoice({...invoice,deadWeightKg:e.target.value})} placeholder="مثال: 10"/></label>
               <label className="field"><span>المبلغ المدفوع اليوم</span><input type="number" min="0" step="0.01" value={invoice.amountPaid} onChange={e=>setInvoice({...invoice,amountPaid:e.target.value})} placeholder="0 = آجل بالكامل"/></label>
             </div>
             <div className="poultry-sale-calculation">
               <div><span>الوزن</span><b>{fmt(Number(invoice.quantityKg)||0)} كجم</b></div>
               <div><span>سعر الكيلو</span><b>{fmt(Number(invoice.unitPrice)||0)} ج.م</b></div>
+              <div><span>نافِق</span><b>{fmt(deadWeightKg)} كجم · {fmt(deadTotal)} ج.م</b></div>
               <div className="total"><span>إجمالي الفاتورة</span><strong>{fmt(invoiceTotal)} ج.م</strong></div>
               <div><span>مدفوع على الفاتورة</span><b>{fmt(paidOnInvoice)} ج.م</b></div>
               <div><span>تحصيل من الرصيد السابق</span><b>{fmt(extraCollection)} ج.م</b></div>
@@ -291,7 +292,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
           {(pageMode==='collections'||pageMode==='customers')&&<div className="poultry-statement-controls">
             <SectionHead title="كشف الحساب" detail="حدد الفترة ثم اعرض كل الفواتير والتحصيلات."/>
             <div className="form-grid"><label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div>
-            <div className="form-actions"><button className="button button-primary" onClick={()=>void loadStatement()} disabled={busy}><ReceiptText size={16}/> عرض كشف الحساب</button>{statement&&<><button className="button button-quiet" onClick={whatsappStatement}><MessageCircle size={16}/> واتساب</button><button className="button button-quiet" onClick={printStatement}><Printer size={16}/> طباعة / PDF</button><button className="button button-quiet" onClick={downloadStatement}>تنزيل كشف الحساب</button></>}</div>
+            <div className="form-actions"><button className="button button-primary" onClick={()=>void loadStatement()} disabled={busy}><ReceiptText size={16}/> عرض كشف الحساب</button>{statement&&<><button className="button button-quiet" onClick={whatsappStatement}><MessageCircle size={16}/> واتساب</button><button className="button button-quiet" onClick={printStatement}><Printer size={16}/> طباعة / PDF</button><button className="button button-quiet" onClick={downloadStatement}><Download size={16}/> تنزيل كشف الحساب JPG</button></>}</div>
           </div>}
 
           {pageMode==='sales'&&lastInvoice&&<div className="notice-box success poultry-last-invoice"><b>آخر فاتورة: {lastInvoice.invoiceNo}</b><span>القيمة {fmt(lastInvoice.total)} ج.م · المدفوع على الفاتورة {fmt(lastInvoice.amountPaid)} ج.م · تحصيل من الرصيد السابق {fmt(lastInvoice.extraCollection||0)} ج.م · المتبقي من الفاتورة {fmt(lastInvoice.balance)} ج.م</span><div className="form-actions"><button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال الفاتورة واتساب</button><button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة / PDF</button></div></div>}
@@ -308,7 +309,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
         <StatCard label="المتبقي" value={fmt(statement.summary.remaining)+' ج.م'} detail="الرصيد بعد الفترة" icon={CreditCard}/>
       </div>
       <div className="table-wrap"><table><thead><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكيلو</th><th>سعر الكيلو</th><th>القيمة</th><th>الموظف</th></tr></thead><tbody>
-        {statement.rows.map((row:any)=><tr key={row.id}><td>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date))}</td><td><b>{row.type==='invoice'?'فاتورة '+row.invoiceNo:'تحصيل'}</b>{row.type==='payment'&&row.note&&<small className="poultry-payment-note">{row.note}</small>}</td><td>{row.items.length?fmt(row.items.reduce((s:number,x:any)=>s+x.quantityKg,0)):'—'}</td><td>{row.items.length?fmt(row.items[0].unitPrice)+' ج.م':'—'}</td><td>{fmt(row.type==='invoice'?row.total:row.paid)} ج.م</td><td>{row.actorName}</td></tr>)}
+        {statement.rows.map((row:any)=><tr key={row.id} className={row.type==='payment'?'poultry-payment-row':''}><td>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date))}</td><td><b>{row.type==='invoice'?'فاتورة '+row.invoiceNo:'تحصيل'}</b>{row.type==='payment'&&row.note&&<small className="poultry-payment-note">{row.note}</small>}</td><td>{row.items.length?fmt(row.items.reduce((s:number,x:any)=>s+x.quantityKg,0)):'—'}</td><td>{row.items.length?fmt(row.items[0].unitPrice)+' ج.م':'—'}</td><td>{fmt(row.type==='invoice'?row.total:row.paid)} ج.م</td><td>{row.actorName}</td></tr>)}
       </tbody></table></div>
     </Card>}
 
@@ -425,9 +426,9 @@ export function PoultrySalePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [invoice, setInvoice] = useState({ productName: 'فراخ', quantityKg: '', unitPrice: '', amountPaid: '' });
+  const [invoice, setInvoice] = useState({ productName: 'فراخ', quantityKg: '', unitPrice: '', deadWeightKg: '', amountPaid: '' });
   const [lastInvoice, setLastInvoice] = useState<PoultryInvoiceResult | null>(null);
-  const [lastInvoiceDetails, setLastInvoiceDetails] = useState({ productName: 'فراخ', quantityKg: 0, unitPrice: 0 });
+  const [lastInvoiceDetails, setLastInvoiceDetails] = useState({ productName: 'فراخ', quantityKg: 0, unitPrice: 0, deadWeightKg: 0, deadTotal: 0 });
 
   useEffect(() => {
     let cancelled = false;
@@ -455,6 +456,8 @@ export function PoultrySalePage() {
   const paidOnInvoice = Math.min(invoiceTotal, amountReceivedToday);
   const extraCollection = Math.max(0, roundMoney(amountReceivedToday - invoiceTotal));
   const invoiceRemaining = Math.max(0, roundMoney(invoiceTotal - paidOnInvoice));
+  const deadWeightKg = Math.max(0, Number(invoice.deadWeightKg) || 0);
+  const deadTotal = roundMoney(deadWeightKg * (Number(invoice.unitPrice) || 0));
 
   function invoiceMessage() {
     if (!lastInvoice || !customer) return '';
@@ -489,7 +492,7 @@ export function PoultrySalePage() {
     const createdDate = new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
     const createdTime = new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
     const created = createdDate + ' - ' + createdTime;
-    popup.document.write('<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>فاتورة ' + lastInvoice.invoiceNo + '</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111;direction:rtl}h1{margin:0 0 8px}table{width:100%;border-collapse:collapse;margin:24px 0}td,th{border:1px solid #ddd;padding:10px;text-align:right}.total{font-size:20px;font-weight:700}.muted{color:#666}@media print{body{padding:12px}}</style></head><body><h1>فاتورة دواجن</h1><div class="muted">فاتورة رقم ' + lastInvoice.invoiceNo + ' · ' + created + '</div><hr><p><b>العميل:</b> ' + customer.name + '</p><p><b>المحل:</b> ' + (customer.shopName || 'غير مسجل') + '</p><p><b>الهاتف:</b> ' + customer.phone + '</p><p><b>حررها الموظف:</b> ' + (lastInvoice.cashierName || 'غير محدد') + '</p><table><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr><tr><td>' + lastInvoiceDetails.productName + '</td><td>' + fmt(lastInvoiceDetails.quantityKg) + ' كجم</td><td>' + fmt(lastInvoiceDetails.unitPrice) + ' ج.م</td><td>' + fmt(lastInvoice.total) + ' ج.م</td></tr></table><p>المدفوع على الفاتورة: <b>' + fmt(lastInvoice.amountPaid) + ' ج.م</b></p><p>تحصيل من الرصيد السابق: <b>' + fmt(lastInvoice.extraCollection || 0) + ' ج.م</b></p><p class="total">المتبقي من الفاتورة: ' + fmt(lastInvoice.balance) + ' ج.م</p><script>window.onload=function(){window.print();}</script></body></html>');
+    popup.document.write('<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>فاتورة ' + lastInvoice.invoiceNo + '</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111;direction:rtl}h1{margin:0 0 8px}table{width:100%;border-collapse:collapse;margin:24px 0}td,th{border:1px solid #ddd;padding:10px;text-align:right}.total{font-size:20px;font-weight:700}.muted{color:#666}@media print{body{padding:12px}}</style></head><body><h1>فاتورة دواجن</h1><div class="muted">فاتورة رقم ' + lastInvoice.invoiceNo + ' · ' + created + '</div><hr><p><b>العميل:</b> ' + customer.name + '</p><p><b>المحل:</b> ' + (customer.shopName || 'غير مسجل') + '</p><p><b>الهاتف:</b> ' + customer.phone + '</p><p><b>حررها الموظف:</b> ' + (lastInvoice.cashierName || 'غير محدد') + '</p><table><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr><tr><td>' + lastInvoiceDetails.productName + '</td><td>' + fmt(lastInvoiceDetails.quantityKg) + ' كجم</td><td>' + fmt(lastInvoiceDetails.unitPrice) + ' ج.م</td><td>' + fmt(lastInvoice.total) + ' ج.م</td></tr><tr><th>النافِق</th><td>' + fmt(lastInvoiceDetails.deadWeightKg) + ' كجم</td><td>قيمة النافق</td><td>' + fmt(lastInvoiceDetails.deadTotal) + ' ج.م</td></tr></table><p>المدفوع على الفاتورة: <b>' + fmt(lastInvoice.amountPaid) + ' ج.م</b></p><p>تحصيل من الرصيد السابق: <b>' + fmt(lastInvoice.extraCollection || 0) + ' ج.م</b></p><p class="total">المتبقي من الفاتورة: ' + fmt(lastInvoice.balance) + ' ج.م</p><script>window.onload=function(){window.print();}</script></body></html>');
     popup.document.close();
     popup.focus();
     window.setTimeout(() => { try { popup.print(); } catch {} }, 400);
@@ -507,11 +510,11 @@ export function PoultrySalePage() {
     ctx.fillStyle='#17251b';ctx.font='700 28px Arial';ctx.fillText(customer.name,width-85,295);ctx.font='22px Arial';ctx.fillText('المحل: '+(customer.shopName||'غير مسجل'),width-85,332);ctx.fillText('الهاتف: '+customer.phone,width-85,366);
     const y=425,col=[width-90,730,485,260];ctx.fillStyle='#edf3ed';ctx.fillRect(x,y,w,72);ctx.fillStyle='#24553b';ctx.font='700 21px Arial';
     ['الصنف','الكمية','سعر الكيلو','القيمة'].forEach((label,i)=>ctx.fillText(label,col[i],y+45));ctx.fillStyle='#17251b';ctx.font='600 22px Arial';
-    ctx.fillText(lastInvoiceDetails.productName,col[0],y+115);ctx.fillText(fmt(lastInvoiceDetails.quantityKg)+' كجم',col[1],y+115);ctx.fillText(fmt(lastInvoiceDetails.unitPrice)+' ج.م',col[2],y+115);ctx.fillText(fmt(lastInvoice.total)+' ج.م',col[3],y+115);
+    ctx.fillText(lastInvoiceDetails.productName,col[0],y+115);ctx.fillText(fmt(lastInvoiceDetails.quantityKg)+' كجم',col[1],y+115);ctx.fillText(fmt(lastInvoiceDetails.unitPrice)+' ج.م',col[2],y+115);ctx.fillText(fmt(lastInvoice.total)+' ج.م',col[3],y+115);ctx.font='500 18px Arial';ctx.fillStyle='#718078';ctx.fillText('نافِق: '+fmt(lastInvoiceDetails.deadWeightKg)+' كجم · '+fmt(lastInvoiceDetails.deadTotal)+' ج.م',col[0],y+150);ctx.font='600 22px Arial';ctx.fillStyle='#17251b';
     const summary=[['المدفوع على الفاتورة',fmt(lastInvoice.amountPaid)+' ج.م'],['تحصيل من الرصيد السابق',fmt(lastInvoice.extraCollection||0)+' ج.م'],['إجمالي المدفوع اليوم',fmt(lastInvoice.amountReceived??lastInvoice.amountPaid)+' ج.م'],['المتبقي',fmt(lastInvoice.balance)+' ج.م']];
     summary.forEach((item,i)=>{const bx=x+(i%2)*(w/2+8),by=610+Math.floor(i/2)*105,bw=w/2-8;ctx.fillStyle=i===3?'#173f2b':'#fff';ctx.fillRect(bx,by,bw,88);ctx.fillStyle=i===3?'#d8e5da':'#718078';ctx.font='700 18px Arial';ctx.fillText(item[0],bx+bw-28,by+30);ctx.fillStyle=i===3?'#fff':'#17251b';ctx.font='700 25px Arial';ctx.fillText(item[1],bx+bw-28,by+65);});
     ctx.fillStyle='#718078';ctx.font='18px Arial';ctx.fillText('تم استخراج الفاتورة من نظام X-Store',width-70,930);
-    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='فاتورة-'+lastInvoice.invoiceNo+'.png';document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/png');
+    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='فاتورة-'+lastInvoice.invoiceNo+'.jpg';document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/jpeg',0.92);
   }
 
   async function createInvoice() {
@@ -525,15 +528,15 @@ export function PoultrySalePage() {
     setBusy(true); setError(''); setNotice('');
     try {
       const result = await poultryApi.createInvoice(customer.id, {
-        items: [{ productName: invoice.productName.trim() || 'فراخ', quantityKg: quantity, unitPrice }],
+        items: [{ productName: invoice.productName.trim() || 'فراخ', quantityKg: quantity, unitPrice, deadWeightKg }],
         amountPaid: amountReceived,
       });
       setLastInvoice(result);
-      setLastInvoiceDetails({ productName: invoice.productName.trim() || 'فراخ', quantityKg: quantity, unitPrice });
+      setLastInvoiceDetails({ productName: invoice.productName.trim() || 'فراخ', quantityKg: quantity, unitPrice, deadWeightKg, deadTotal });
       setNotice(result.extraCollection > 0
         ? 'تم تسجيل الفاتورة وتسجيل المبلغ الزائد كتحصيل من الرصيد السابق.'
         : 'تم تسجيل الفاتورة بنجاح.');
-      setInvoice({ productName: 'فراخ', quantityKg: '', unitPrice: '', amountPaid: '' });
+      setInvoice({ productName: 'فراخ', quantityKg: '', unitPrice: '', deadWeightKg: '', amountPaid: '' });
       const refreshed = await poultryApi.listCustomers();
       const updated = refreshed.find(row => row.id === customer.id);
       if (updated) setCustomer(updated);
@@ -589,11 +592,13 @@ export function PoultrySalePage() {
           <label className="field"><span>الصنف</span><input value={invoice.productName} onChange={e => setInvoice({...invoice, productName: e.target.value})} placeholder="مثال: فراخ بيضاء"/></label>
           <label className="field"><span>الكمية بالكيلو <b className="required-mark">*</b></span><input type="number" min="0.001" step="0.001" value={invoice.quantityKg} onChange={e => setInvoice({...invoice, quantityKg: e.target.value})} placeholder="مثال: 12.500"/></label>
           <label className="field"><span>سعر الكيلو <b className="required-mark">*</b></span><input type="number" min="0" step="0.01" value={invoice.unitPrice} onChange={e => setInvoice({...invoice, unitPrice: e.target.value})} placeholder="مثال: 145"/></label>
+          <label className="field"><span>نافِق (كجم)</span><input type="number" min="0" step="0.001" max={Number(invoice.quantityKg)||undefined} value={invoice.deadWeightKg} onChange={e => setInvoice({...invoice, deadWeightKg: e.target.value})} placeholder="مثال: 10"/></label>
           <label className="field"><span>المبلغ المدفوع اليوم</span><input type="number" min="0" step="0.01" value={invoice.amountPaid} onChange={e => setInvoice({...invoice, amountPaid: e.target.value})} placeholder="0 = آجل بالكامل"/></label>
         </div>
         <div className="poultry-sale-calculation">
           <div><span>الوزن</span><b>{fmt(Number(invoice.quantityKg) || 0)} كجم</b></div>
           <div><span>سعر الكيلو</span><b>{fmt(Number(invoice.unitPrice) || 0)} ج.م</b></div>
+          <div><span>نافِق</span><b>{fmt(deadWeightKg)} كجم · {fmt(deadTotal)} ج.م</b></div>
           <div className="total"><span>إجمالي الفاتورة</span><strong>{fmt(invoiceTotal)} ج.م</strong></div>
           <div><span>مدفوع على الفاتورة</span><b>{fmt(paidOnInvoice)} ج.م</b></div>
           <div><span>تحصيل من الرصيد السابق</span><b>{fmt(extraCollection)} ج.م</b></div>
@@ -624,6 +629,7 @@ export function PoultrySalePage() {
         <div><span>الصنف</span><b>{lastInvoiceDetails.productName}</b></div>
         <div><span>الوزن</span><b>{fmt(lastInvoiceDetails.quantityKg)} كجم</b></div>
         <div><span>سعر الكيلو</span><b>{fmt(lastInvoiceDetails.unitPrice)} ج.م</b></div>
+        <div><span>نافِق</span><b>{fmt(lastInvoiceDetails.deadWeightKg)} كجم · {fmt(lastInvoiceDetails.deadTotal)} ج.م</b></div>
         <div className="sale-total"><span>إجمالي البيع</span><strong>{fmt(lastInvoice.total)} ج.م</strong></div>
       </div>
       <div className="poultry-invoice-totals">
@@ -632,6 +638,7 @@ export function PoultrySalePage() {
         <div className="total"><span>المتبقي</span><strong>{fmt(lastInvoice.balance)} ج.م</strong></div>
       </div>
       <div className="poultry-invoice-actions">
+        <button className="button button-quiet poultry-invoice-exit" onClick={() => setLocation('/poultry-sales')}>خروج</button>
         <button className="button button-primary" onClick={() => setLocation('/poultry-sale/' + encodeURIComponent(customer.id))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button>
         <button className="button button-quiet" onClick={printInvoice}><Printer size={16}/> طباعة</button>
         <button className="button button-quiet" onClick={downloadInvoice}><Download size={16}/> حفظ كصورة</button>
@@ -676,10 +683,10 @@ export function PoultryInvoicesPage() {
     ctx.font='600 24px Arial';ctx.fillText('فاتورة رقم '+invoice.invoiceNo,width-65,112);ctx.font='20px Arial';ctx.fillText(dateLabel(invoice.date)+' · '+new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date)),width-65,150);
     const x=55,w=width-110;ctx.fillStyle='#fff';ctx.fillRect(x,210,w,145);ctx.fillStyle='#718078';ctx.font='700 18px Arial';ctx.fillText('العميل',width-80,242);ctx.fillStyle='#17251b';ctx.font='700 28px Arial';ctx.fillText(invoice.customerName,width-80,282);ctx.font='20px Arial';ctx.fillText('المحل: '+(invoice.shopName||'غير مسجل'),width-80,316);ctx.fillText('الهاتف: '+invoice.phone,width-80,345);
     let y=390;const cols=[width-80,760,510,260];ctx.fillStyle='#edf3ed';ctx.fillRect(x,y,w,60);ctx.fillStyle='#24553b';ctx.font='700 19px Arial';['الصنف','الكمية','سعر الكيلو','القيمة'].forEach((label,i)=>ctx.fillText(label,cols[i],y+38));
-    ctx.font='600 20px Arial';invoice.items.forEach((item,index)=>{const iy=y+60+index*rowHeight;ctx.fillStyle='#fff';ctx.fillRect(x,iy,w,rowHeight);ctx.fillStyle='#17251b';ctx.fillText(item.productName,cols[0],iy+36);ctx.fillText(fmt(item.quantityKg)+' كجم',cols[1],iy+36);ctx.fillText(fmt(item.unitPrice)+' ج.م',cols[2],iy+36);ctx.fillText(fmt(item.total)+' ج.م',cols[3],iy+36);ctx.strokeStyle='#dfe7e1';ctx.beginPath();ctx.moveTo(x,iy+rowHeight);ctx.lineTo(x+w,iy+rowHeight);ctx.stroke();});
+    ctx.font='600 20px Arial';invoice.items.forEach((item,index)=>{const iy=y+60+index*rowHeight;ctx.fillStyle='#fff';ctx.fillRect(x,iy,w,rowHeight);ctx.fillStyle='#17251b';ctx.fillText(item.productName,cols[0],iy+36);ctx.fillText(fmt(item.quantityKg)+' كجم',cols[1],iy+36);ctx.fillText(fmt(item.unitPrice)+' ج.م',cols[2],iy+36);ctx.fillText(fmt(item.total)+' ج.م',cols[3],iy+36);if(Number(item.deadWeightKg)>0){ctx.font='500 17px Arial';ctx.fillStyle='#718078';ctx.fillText('نافِق: '+fmt(item.deadWeightKg)+' كجم · '+fmt(item.deadTotal)+' ج.م',cols[0],iy+68);ctx.font='600 20px Arial';ctx.fillStyle='#17251b';}ctx.strokeStyle='#dfe7e1';ctx.beginPath();ctx.moveTo(x,iy+rowHeight);ctx.lineTo(x+w,iy+rowHeight);ctx.stroke();});
     y+=60+itemCount*rowHeight+24;const totals=[['إجمالي الفاتورة',fmt(invoice.total)+' ج.م'],['مدفوع على الفاتورة',fmt(invoice.amountPaid)+' ج.م'],['تحصيل من الرصيد السابق',fmt(invoice.extraCollection)+' ج.م'],['المتبقي',fmt(invoice.balance)+' ج.م']];
     totals.forEach((item,index)=>{const bw=(w-12)/2,bx=x+(index%2)*(bw+12),by=y+Math.floor(index/2)*92;ctx.fillStyle=index===3?'#173f2b':'#fff';ctx.fillRect(bx,by,bw,78);ctx.fillStyle=index===3?'#d8e5da':'#718078';ctx.font='700 17px Arial';ctx.fillText(item[0],bx+bw-22,by+28);ctx.fillStyle=index===3?'#fff':'#17251b';ctx.font='700 23px Arial';ctx.fillText(item[1],bx+bw-22,by+60);});
-    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='فاتورة-'+invoice.invoiceNo+'.png';document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/png');
+    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='فاتورة-'+invoice.invoiceNo+'.jpg';document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/jpeg',0.92);
   }
 
 
@@ -696,6 +703,7 @@ export function PoultryInvoicesPage() {
       'الصنف: ' + (invoice.items[0]?.productName || '—'),
       'الوزن: ' + fmt(invoice.items.reduce((sum, item) => sum + Number(item.quantityKg || 0), 0)) + ' كجم',
       'سعر الكيلو: ' + fmt(invoice.items[0]?.unitPrice || 0) + ' ج.م',
+      'النافِق: ' + fmt(invoice.items.reduce((sum, item) => sum + Number(item.deadWeightKg || 0), 0)) + ' كجم · ' + fmt(invoice.items.reduce((sum, item) => sum + Number(item.deadTotal || 0), 0)) + ' ج.م',
       'إجمالي البيع: ' + fmt(invoice.total) + ' ج.م',
       'المدفوع: ' + fmt(invoice.amountPaid) + ' ج.م',
       'تحصيل من الرصيد السابق: ' + fmt(invoice.extraCollection || 0) + ' ج.م',
@@ -802,7 +810,7 @@ export function PoultryInvoicesPage() {
               </div>
               <div className="poultry-invoice-sale-details">
                 <span className="poultry-box-kicker">تفاصيل البيع</span>
-                {invoice.items.map((item, index) => <div key={invoice.id+'-'+index}><span>الصنف</span><b>{item.productName || '—'}</b><span>الوزن</span><b>{fmt(Number(item.quantityKg) || 0)} كجم</b><span>سعر الكيلو</span><b>{fmt(Number(item.unitPrice) || 0)} ج.م</b><div className="sale-total"><span>إجمالي البيع</span><strong>{fmt(Number(item.total) || 0)} ج.م</strong></div></div>)}
+                {invoice.items.map((item, index) => <div key={invoice.id+'-'+index}><span>الصنف</span><b>{item.productName || '—'}</b><span>الوزن</span><b>{fmt(Number(item.quantityKg) || 0)} كجم</b><span>سعر الكيلو</span><b>{fmt(Number(item.unitPrice) || 0)} ج.م</b><span>نافِق</span><b>{fmt(Number(item.deadWeightKg) || 0)} كجم · {fmt(Number(item.deadTotal) || 0)} ج.م</b><div className="sale-total"><span>إجمالي البيع</span><strong>{fmt(Number(item.total) || 0)} ج.م</strong></div></div>)}
               </div>
               <div className="poultry-invoice-totals">
                 <div><span>المدفوع</span><b>{fmt(invoice.amountPaid)} ج.م</b></div>
@@ -810,6 +818,7 @@ export function PoultryInvoicesPage() {
                 <div className="total"><span>المتبقي</span><strong>{fmt(invoice.balance)} ج.م</strong></div>
               </div>
               <div className="poultry-invoice-actions">
+                <button className="button button-quiet poultry-invoice-exit" onClick={() => setExpanded(null)}>خروج</button>
                 <button className="button button-primary" onClick={() => setLocation('/poultry-sale/'+encodeURIComponent(invoice.customerId))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button>
                 <button className="button button-quiet" onClick={() => printInvoice(invoice)}><Printer size={16}/> طباعة</button>
                 <button className="button button-quiet" onClick={() => downloadInvoiceImage(invoice)}><Download size={16}/> حفظ كصورة</button>

@@ -1,0 +1,2 @@
+ALTER TABLE "xstore_poultry_invoice_items" ADD COLUMN "dead_weight_kg" numeric(12,3) DEFAULT '0' NOT NULL;--> statement-breakpoint
+ALTER TABLE "xstore_poultry_invoice_items" ADD COLUMN "dead_total" numeric(12,2) DEFAULT '0' NOT NULL;

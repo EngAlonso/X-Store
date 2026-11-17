@@ -110,7 +110,7 @@ router.get("/xstore/poultry/customers/:customerId/statement", async (req, res): 
   const invoiceIds = invoices.map(x => x.invoice.id);
   const items = invoiceIds.length ? await db.select().from(xstorePoultryInvoiceItems).where(inArray(xstorePoultryInvoiceItems.invoiceId, invoiceIds)) : [];
   const rows = [
-    ...invoices.map(({invoice,cashierName}) => ({ type:"invoice", id:invoice.id, invoiceNo:invoice.invoiceNo, date:iso(invoice.createdAt), actorName:cashierName || "—", total:toNumber(invoice.total), paid:toNumber(invoice.amountPaid), note:null, items:items.filter(item=>item.invoiceId===invoice.id).map(item=>({productName:item.productName,quantityKg:toNumber(item.quantityKg),unitPrice:toNumber(item.unitPrice),total:toNumber(item.total)})) })),
+    ...invoices.map(({invoice,cashierName}) => ({ type:"invoice", id:invoice.id, invoiceNo:invoice.invoiceNo, date:iso(invoice.createdAt), actorName:cashierName || "—", total:toNumber(invoice.total), paid:toNumber(invoice.amountPaid), note:null, items:items.filter(item=>item.invoiceId===invoice.id).map(item=>({productName:item.productName,quantityKg:toNumber(item.quantityKg),unitPrice:toNumber(item.unitPrice),total:toNumber(item.total),deadWeightKg:toNumber(item.deadWeightKg),deadTotal:toNumber(item.deadTotal)})) })),
     ...payments.map(({payment,cashierName}) => ({ type:"payment", id:payment.id, invoiceNo:null, date:iso(payment.createdAt), actorName:cashierName || "—", total:0, paid:toNumber(payment.amount), note:payment.note, items:[] })),
   ].sort((a,b)=>new Date(a.date).getTime()-new Date(b.date).getTime());
   const periodSales = invoices.reduce((s,x)=>s+toNumber(x.invoice.total),0);
@@ -154,6 +154,8 @@ router.get("/xstore/poultry/invoices", async (req, res): Promise<void> => {
       quantityKg: toNumber(item.quantityKg),
       unitPrice: toNumber(item.unitPrice),
       total: toNumber(item.total),
+      deadWeightKg: toNumber(item.deadWeightKg),
+      deadTotal: toNumber(item.deadTotal),
     }));
     const total = toNumber(row.invoice.total);
     const amountPaid = toNumber(row.invoice.amountPaid);
@@ -203,11 +205,16 @@ router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): 
       productName:typeof item?.productName==="string"?item.productName.trim():"",
       quantityKg:Number(item?.quantityKg),
       unitPrice:Number(item?.unitPrice),
+      deadWeightKg:Number(item?.deadWeightKg || 0),
     }))
-    .filter((item:any)=>item.productName && Number.isFinite(item.quantityKg) && item.quantityKg>0 && Number.isFinite(item.unitPrice) && item.unitPrice>=0);
+    .filter((item:any)=>item.productName && Number.isFinite(item.quantityKg) && item.quantityKg>0 && Number.isFinite(item.unitPrice) && item.unitPrice>=0 && Number.isFinite(item.deadWeightKg) && item.deadWeightKg>=0);
 
   if (!items.length) {
     res.status(400).json({ error: "أضف صنفًا واحدًا على الأقل بالوزن وسعر الكيلو." });
+    return;
+  }
+  if (items.some((item:any)=>item.deadWeightKg > item.quantityKg)) {
+    res.status(400).json({ error: "وزن النافق لا يمكن أن يكون أكبر من وزن البيع." });
     return;
   }
 
@@ -259,6 +266,8 @@ router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): 
         quantityKg:String(item.quantityKg),
         unitPrice:String(item.unitPrice),
         total:String(roundMoney(item.quantityKg*item.unitPrice)),
+        deadWeightKg:String(item.deadWeightKg),
+        deadTotal:String(roundMoney(item.deadWeightKg*item.unitPrice)),
       })),
     );
 
@@ -299,6 +308,8 @@ router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): 
     id:invoice.id,
     invoiceNo,
     total,
+    deadWeightKg:roundMoney(items.reduce((sum:number,item:any)=>sum+item.deadWeightKg,0)),
+    deadTotal:roundMoney(items.reduce((sum:number,item:any)=>sum+roundMoney(item.deadWeightKg*item.unitPrice),0)),
     amountPaid,
     extraCollection,
     amountReceived,

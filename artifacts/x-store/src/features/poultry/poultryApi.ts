@@ -21,7 +21,7 @@ export type PoultryStatementRow = {
   total: number;
   paid: number;
   note: string | null;
-  items: Array<{ productName: string; quantityKg: number; unitPrice: number; total: number }>;
+  items: Array<{ productName: string; quantityKg: number; unitPrice: number; total: number; deadWeightKg: number; deadTotal: number }>;
 };
 export type PoultryStatement = {
   customer: PoultryCustomerRecord;
@@ -35,6 +35,8 @@ export type PoultryInvoiceResult = {
   id: string;
   invoiceNo: string;
   total: number;
+  deadWeightKg: number;
+  deadTotal: number;
   amountPaid: number;
   extraCollection: number;
   amountReceived: number;
@@ -62,7 +64,7 @@ export type PoultryInvoiceListItem = {
   balance: number;
   amountReceived: number;
   extraCollection: number;
-  items: Array<{ productName: string; quantityKg: number; unitPrice: number; total: number }>;
+  items: Array<{ productName: string; quantityKg: number; unitPrice: number; total: number; deadWeightKg: number; deadTotal: number }>;
 };
 export type PoultryInvoiceListResponse = {
   invoices: PoultryInvoiceListItem[];
@@ -82,7 +84,7 @@ export type PoultryNotification = {
   href: string;
 };
 export type PoultryCustomerInput = { name: string; phone: string; shopName?: string; shopAddress?: string };
-export type PoultryInvoiceInput = { items: Array<{ productName: string; quantityKg: number; unitPrice: number }>; amountPaid: number };
+export type PoultryInvoiceInput = { items: Array<{ productName: string; quantityKg: number; unitPrice: number; deadWeightKg?: number }>; amountPaid: number };
 
 async function poultryRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);

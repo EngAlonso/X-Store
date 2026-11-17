@@ -127,6 +127,13 @@
       "when": 1795200000000,
       "tag": "0017_poultry_customer_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795300000000,
+      "tag": "0018_poultry_dead_weight",
+      "breakpoints": true
     }
   ]
 }
