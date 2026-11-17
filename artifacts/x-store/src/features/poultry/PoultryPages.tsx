@@ -51,6 +51,19 @@ const defaultPoultryInvoiceSettings: PoultryInvoiceSettings = {
 };
 function invoiceSettingsOrDefault(settings?: PoultryInvoiceSettings|null): PoultryInvoiceSettings { return {...defaultPoultryInvoiceSettings,...(settings||{})}; }
 
+function PoultryInvoiceHeader({settings}:{settings?:PoultryInvoiceSettings|null}) {
+  const s=invoiceSettingsOrDefault(settings);
+  const lines=[s.headerStoreName,s.headerOwnerName,s.headerMessage,s.headerPhones].filter(line=>String(line||'').trim());
+  if(!s.showHeader||!lines.length)return null;
+  return <div dir="rtl" className="poultry-invoice-store-header" style={{display:'grid',gridTemplateColumns:'34px minmax(0,1fr) 34px',alignItems:'center',gap:8,padding:'12px 10px',marginBottom:10,borderRadius:13,background:'#173f2b',color:'#fff',textAlign:'center'}}>
+    <span aria-hidden="true" style={{fontSize:27,lineHeight:1}}>🐔</span>
+    <div style={{display:'grid',gap:3,minWidth:0}}>
+      {lines.map((line,i)=><b key={i} style={{fontSize:i===0?19:i===1?16:13,lineHeight:1.45,overflowWrap:'anywhere'}}>{line}</b>)}
+    </div>
+    <span aria-hidden="true" style={{fontSize:27,lineHeight:1}}>🐔</span>
+  </div>;
+}
+
 function drawUnifiedInvoiceImage(invoice:any,customer:any,details:any,filename:string,settings?:PoultryInvoiceSettings){
   const s=invoiceSettingsOrDefault(settings),item=details||invoice.items?.[0]||{},rows:Array<[string,string]>=[],totals:Array<[string,string]>=[],width=1200;
   if(s.showCustomer)rows.push(['العميل',customer?.name||invoice.customerName||'—']);if(s.showShop)rows.push(['المحل',customer?.shopName||invoice.shopName||'غير مسجل']);if(s.showPhone)rows.push(['الهاتف',customer?.phone||invoice.phone||'—']);if(s.showCashier)rows.push(['الموظف',invoice.cashierName||'غير محدد']);
@@ -609,6 +622,7 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
     </Card>
 
     {lastInvoice && <section id="poultry-created-invoice" className="poultry-last-invoice">
+      <PoultryInvoiceHeader settings={session?.invoiceSettings}/>
       <div className="poultry-invoice-mobile-meta">
         <div className="poultry-invoice-head">
           <div><span className="poultry-box-kicker">تم الحفظ بنجاح</span><h2>فاتورة {lastInvoice.invoiceNo}</h2></div>
@@ -748,6 +762,7 @@ export function PoultryInvoicesPage({ session }: { session: SessionUser | null }
               <div className="poultry-invoice-chevron">{isOpen ? '−' : '+'}</div>
             </button>
             {isOpen && <div className="poultry-invoice-details">
+              <PoultryInvoiceHeader settings={session?.invoiceSettings}/>
               <div className="poultry-invoice-mobile-meta">
                 <div className="poultry-invoice-head">
                   <div><span className="poultry-box-kicker">تم الحفظ بنجاح</span><h2>فاتورة {invoice.invoiceNo}</h2></div>
