@@ -652,7 +652,7 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
         {invoiceSettingsOrDefault(session?.invoiceSettings).showProduct&&<div><span>الصنف</span><b>{lastInvoiceDetails.productName}</b></div>}
         {invoiceSettingsOrDefault(session?.invoiceSettings).showQuantity&&<div><span>الوزن</span><b>{fmt(lastInvoiceDetails.quantityKg)} كجم</b></div>}
         {invoiceSettingsOrDefault(session?.invoiceSettings).showUnitPrice&&<div><span>سعر الكيلو</span><b>{fmt(lastInvoiceDetails.unitPrice)} ج.م</b></div>}
-        {invoiceSettingsOrDefault(session?.invoiceSettings).showDeadWeight&&<div><span>نافِق</span><b>{fmt(lastInvoiceDetails.deadWeightKg)} كجم · {fmt(lastInvoiceDetails.deadTotal)} ج.م</b></div>}
+        {<div><span>نافِق</span><b>{fmt(lastInvoiceDetails.deadWeightKg)} كجم · {fmt(lastInvoiceDetails.deadTotal)} ج.م</b></div>}
         {invoiceSettingsOrDefault(session?.invoiceSettings).showTotal&&<div className="sale-total"><span>إجمالي البيع</span><strong>{fmt(lastInvoice.total)} ج.م</strong></div>}
       </div>}
       {(invoiceSettingsOrDefault(session?.invoiceSettings).showPaid||invoiceSettingsOrDefault(session?.invoiceSettings).showExtraCollection||invoiceSettingsOrDefault(session?.invoiceSettings).showBalance)&&<div className="poultry-invoice-totals">
@@ -793,7 +793,7 @@ export function PoultryInvoicesPage({ session }: { session: SessionUser | null }
                   {invoiceSettingsOrDefault(session?.invoiceSettings).showProduct&&<><span>الصنف</span><b>{item.productName||'—'}</b></>}
                   {invoiceSettingsOrDefault(session?.invoiceSettings).showQuantity&&<><span>الوزن</span><b>{fmt(Number(item.quantityKg)||0)} كجم</b></>}
                   {invoiceSettingsOrDefault(session?.invoiceSettings).showUnitPrice&&<><span>سعر الكيلو</span><b>{fmt(Number(item.unitPrice)||0)} ج.م</b></>}
-                  {invoiceSettingsOrDefault(session?.invoiceSettings).showDeadWeight&&<><span>نافِق</span><b>{fmt(Number(item.deadWeightKg)||0)} كجم · {fmt(Number(item.deadTotal)||0)} ج.م</b></>}
+                  {<><span>نافِق</span><b>{fmt(Number(item.deadWeightKg)||0)} كجم · {fmt(Number(item.deadTotal)||0)} ج.م</b></>}
                   {invoiceSettingsOrDefault(session?.invoiceSettings).showTotal&&<div className="sale-total"><span>إجمالي البيع</span><strong>{fmt(Number(item.total)||0)} ج.م</strong></div>}
                 </div>)}
               </div>}
