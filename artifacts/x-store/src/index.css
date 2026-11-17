@@ -6916,7 +6916,7 @@ input,select,textarea{max-width:100%;min-width:0;box-sizing:border-box}.panel,.c
 .team-mobile-list{display:none}
 @media (max-width:767px){
   .team-desktop-table{display:none !important}
-  .team-mobile-list{display:grid;gap:12px}
+  .team-mobile-list{display:grid !important;gap:12px}
   .team-mobile-card{
     display:block;
     width:100%;
