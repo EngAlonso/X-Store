@@ -403,3 +403,16 @@
 .invoice-editor-fields{display:grid;gap:12px}.invoice-editor-header-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .invoice-header-toggle,.invoice-fields-toggle label{display:flex;align-items:center;gap:8px}.invoice-fields-toggle{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;border:1px solid #dfe7e1;border-radius:14px}.invoice-fields-toggle>b{grid-column:1/-1;color:#173f2b}
 @media(max-width:700px){.invoice-editor-header-fields,.invoice-preview-grid,.invoice-fields-toggle{grid-template-columns:1fr}.invoice-editor{max-height:72vh}}
+
+
+.poultry-sale-header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.poultry-calculator-backdrop{position:fixed;inset:0;z-index:1000;background:rgba(12,24,17,.28);display:flex;align-items:flex-start;justify-content:center;padding:90px 18px 24px;backdrop-filter:blur(2px)}
+.poultry-calculator{width:min(360px,calc(100vw - 32px));border:1px solid #dbe4dc;border-radius:18px;background:#fff;box-shadow:0 24px 70px rgba(15,35,22,.28);overflow:hidden;direction:rtl}
+.poultry-calculator-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e7ece8;background:#f8fbf9}
+.poultry-calculator-head>div{display:flex;flex-direction:column;gap:3px}.poultry-calculator-head span{font-size:10px;color:#718078}.poultry-calculator-head h3{display:flex;align-items:center;gap:7px;margin:0;font-size:15px;color:#173f2b}
+.poultry-calculator-close{width:32px;height:32px;border:0;border-radius:10px;background:#edf2ee;color:#35523f;font-size:22px;line-height:1;cursor:pointer}
+.poultry-calculator-display{margin:14px 14px 10px;padding:14px 12px;border-radius:12px;background:#173f2b;color:#fff;text-align:left;font-size:28px;font-weight:800;min-height:34px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.poultry-calculator-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 14px 14px}
+.poultry-calculator-grid button{height:48px;border:1px solid #e0e7e2;border-radius:11px;background:#f7f9f8;color:#1d2b22;font-size:17px;font-weight:700;cursor:pointer}
+.poultry-calculator-grid button:hover{background:#eef4ef}.poultry-calculator-grid .calc-clear{color:#a33b32;background:#fff4f2}.poultry-calculator-grid .calc-equals{grid-row:span 2;background:#24553b;color:#fff;border-color:#24553b;height:104px}.poultry-calculator-grid .calc-zero{grid-column:span 2}
+@media(max-width:560px){.poultry-calculator-backdrop{padding-top:76px}.poultry-sale-header-actions{width:100%}.poultry-sale-header-actions .button{flex:1}.poultry-calculator{width:min(360px,calc(100vw - 24px))}}

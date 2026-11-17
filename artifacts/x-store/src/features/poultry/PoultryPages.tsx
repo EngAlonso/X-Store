@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useRoute } from 'wouter';
 import {
   AlertTriangle, ArrowLeft, Bird, Boxes, ChevronLeft, CircleCheck, CreditCard,
-  Download, MessageCircle, Plus, Share2, Printer, ReceiptText, Search, ShieldCheck, Users, Wallet, Pencil as PencilIcon,
+  Calculator, Download, MessageCircle, Plus, Share2, Printer, ReceiptText, Search, ShieldCheck, Users, Wallet, Pencil as PencilIcon,
 } from 'lucide-react';
 import type { SessionUser } from '@workspace/api-client-react';
 import './poultry.css';
@@ -517,6 +517,11 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
   const [invoice, setInvoice] = useState({ productName: 'فراخ', quantityKg: '', unitPrice: '', deadWeightKg: '', amountPaid: '' });
   const [lastInvoice, setLastInvoice] = useState<PoultryInvoiceResult | null>(null);
   const [lastInvoiceDetails, setLastInvoiceDetails] = useState({ productName: 'فراخ', quantityKg: 0, unitPrice: 0, deadWeightKg: 0, deadTotal: 0 });
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const [calculatorDisplay, setCalculatorDisplay] = useState('0');
+  const [calculatorStored, setCalculatorStored] = useState<number | null>(null);
+  const [calculatorOperator, setCalculatorOperator] = useState<string | null>(null);
+  const [calculatorWaiting, setCalculatorWaiting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -547,6 +552,80 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
   const paidOnInvoice = Math.min(invoiceTotal, amountReceivedToday);
   const extraCollection = Math.max(0, roundMoney(amountReceivedToday - invoiceTotal));
   const invoiceRemaining = Math.max(0, roundMoney(invoiceTotal - paidOnInvoice));
+
+  function calculatorInputDigit(digit: string) {
+    if (calculatorWaiting || calculatorDisplay === '0') {
+      setCalculatorDisplay(digit);
+      setCalculatorWaiting(false);
+    } else {
+      setCalculatorDisplay(prev => prev.length >= 12 ? prev : prev + digit);
+    }
+  }
+
+  function calculatorInputDecimal() {
+    if (calculatorWaiting) {
+      setCalculatorDisplay('0.');
+      setCalculatorWaiting(false);
+      return;
+    }
+    if (!calculatorDisplay.includes('.')) setCalculatorDisplay(prev => prev + '.');
+  }
+
+  function calculatorCalculate(a: number, b: number, op: string) {
+    if (op === '+') return a + b;
+    if (op === '-') return a - b;
+    if (op === '×') return a * b;
+    if (op === '÷') return b === 0 ? NaN : a / b;
+    return b;
+  }
+
+  function calculatorChooseOperator(op: string) {
+    const current = Number(calculatorDisplay);
+    if (!Number.isFinite(current)) return;
+    if (calculatorOperator && calculatorStored !== null && !calculatorWaiting) {
+      const result = calculatorCalculate(calculatorStored, current, calculatorOperator);
+      if (!Number.isFinite(result)) {
+        setCalculatorDisplay('خطأ');
+        setCalculatorStored(null);
+        setCalculatorOperator(null);
+        setCalculatorWaiting(true);
+        return;
+      }
+      setCalculatorStored(result);
+      setCalculatorDisplay(String(Number(result.toFixed(10))));
+    } else {
+      setCalculatorStored(current);
+    }
+    setCalculatorOperator(op);
+    setCalculatorWaiting(true);
+  }
+
+  function calculatorEquals() {
+    if (!calculatorOperator || calculatorStored === null) return;
+    const current = Number(calculatorDisplay);
+    if (!Number.isFinite(current)) return;
+    const result = calculatorCalculate(calculatorStored, current, calculatorOperator);
+    if (!Number.isFinite(result)) {
+      setCalculatorDisplay('خطأ');
+    } else {
+      setCalculatorDisplay(String(Number(result.toFixed(10))));
+    }
+    setCalculatorStored(null);
+    setCalculatorOperator(null);
+    setCalculatorWaiting(true);
+  }
+
+  function calculatorClear() {
+    setCalculatorDisplay('0');
+    setCalculatorStored(null);
+    setCalculatorOperator(null);
+    setCalculatorWaiting(false);
+  }
+
+  function calculatorBackspace() {
+    if (calculatorWaiting || calculatorDisplay === 'خطأ') return calculatorClear();
+    setCalculatorDisplay(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+  }
 
   function invoiceMessage() {
     if (!lastInvoice || !customer) return '';
@@ -620,8 +699,36 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
       eyebrow="عملية بيع جديدة"
       title="استكمال بيع الدواجن"
       desc="العميل محدد بالفعل. راجع بيانات الحساب قبل تسجيل الفاتورة."
-      action={<button className="button button-quiet" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> تغيير العميل</button>}
+      action={<div className="poultry-sale-header-actions">
+        <button className="button button-quiet" onClick={() => setLocation('/poultry-sales')}><ArrowLeft size={16}/> تغيير العميل</button>
+        <button className="button button-quiet" onClick={() => setCalculatorOpen(true)}><Calculator size={16}/> الحاسبة</button>
+      </div>}
     />
+
+    
+    {calculatorOpen && <div className="poultry-calculator-backdrop" onMouseDown={() => setCalculatorOpen(false)}>
+      <div className="poultry-calculator" role="dialog" aria-modal="true" aria-label="الحاسبة" onMouseDown={e => e.stopPropagation()}>
+        <div className="poultry-calculator-head">
+          <div><span>أداة سريعة</span><h3><Calculator size={18}/> الحاسبة</h3></div>
+          <button type="button" className="poultry-calculator-close" onClick={() => setCalculatorOpen(false)} aria-label="إغلاق">×</button>
+        </div>
+        <div className="poultry-calculator-display" dir="ltr">{calculatorDisplay}</div>
+        <div className="poultry-calculator-grid" dir="ltr">
+          <button type="button" onClick={calculatorClear} className="calc-clear">AC</button>
+          <button type="button" onClick={calculatorBackspace}>⌫</button>
+          <button type="button" onClick={() => calculatorChooseOperator('÷')}>÷</button>
+          <button type="button" onClick={() => calculatorChooseOperator('×')}>×</button>
+          {['7','8','9'].map(d => <button type="button" key={d} onClick={() => calculatorInputDigit(d)}>{d}</button>)}
+          <button type="button" onClick={() => calculatorChooseOperator('-')}>−</button>
+          {['4','5','6'].map(d => <button type="button" key={d} onClick={() => calculatorInputDigit(d)}>{d}</button>)}
+          <button type="button" onClick={() => calculatorChooseOperator('+')}>+</button>
+          {['1','2','3'].map(d => <button type="button" key={d} onClick={() => calculatorInputDigit(d)}>{d}</button>)}
+          <button type="button" className="calc-equals" onClick={calculatorEquals}>=</button>
+          <button type="button" onClick={() => calculatorInputDigit('0')} className="calc-zero">0</button>
+          <button type="button" onClick={calculatorInputDecimal}>.</button>
+        </div>
+      </div>
+    </div>}
 
     <section className="poultry-sale-identity">
       <div className="poultry-sale-identity-icon"><Users size={22}/></div>
