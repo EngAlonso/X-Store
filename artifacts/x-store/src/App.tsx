@@ -1789,6 +1789,7 @@ function TeamPage() {
         ) : team.isError ? (
           <StateBlock loading={false} error onRetry={() => team.refetch()} empty={false} />
         ) : members.length ? (
+          <>
           <div className="table-wrap team-desktop-table">
             <table>
               <thead>
@@ -1885,6 +1886,7 @@ function TeamPage() {
               </article>
             ))}
           </div>
+          </>
         ) : (
           <div className="state-box">
             <div className="empty-symbol"><Users /></div>
