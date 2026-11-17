@@ -57,6 +57,7 @@ import PlatformDatabasePage from '@/pages/platform-database';
 import StoreBackupPage from '@/pages/store-backup';
 import PoultryBackupPage from '@/features/poultry/PoultryBackupPage';
 import PoultryReportsPage from '@/features/poultry/PoultryReportsPage';
+import PoultryFarmPage from '@/features/poultry/PoultryFarmPage';
 import RestaurantMenuPage from '@/pages/restaurant-menu';
 import PublicRestaurantMenu from '@/pages/public-restaurant-menu';
 import type { OfflineActivationRequest } from './offline/licensing';
@@ -373,6 +374,7 @@ const nav = [
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
+  { href: '/poultry-farm', label: 'المزرعة', icon: Bird, roles: ['tenant_admin', 'warehouse_manager'] },
 ];
 
 function Logo({ compact = false }: { compact?: boolean }) {
@@ -937,6 +939,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
         ...nav.filter(n => n.href === '/dashboard' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
         ...getPoultryNavigation(user),
         ...nav.filter(n => n.href === '/team' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
+        ...nav.filter(n => n.href === '/poultry-farm' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
         ...nav.filter(n => n.href === '/reports' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
         ...nav.filter(n => n.href === '/store-settings' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
         ...nav.filter(n => n.href === '/store-backup' && (n.roles.includes('all') || hasAppRole(user, n.roles))).map(n => ({ ...n, label: 'النسخه الاحتياطية' })),
@@ -1043,7 +1046,8 @@ function ProtectedLayout() {
     session.data?.storeType === 'restaurant' ||
     (session.data?.storeType == null && restaurantFeature === true)
   );
-  const allowed:Record<string,string[]>={'/poultry-customers':['tenant_admin','cashier','accountant','customer_management'],'/poultry-invoices':['tenant_admin','cashier','accountant'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-sale/:customerId':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  const allowed:Record<string,string[]>={'/poultry-farm':['tenant_admin','warehouse_manager'],'/poultry-customers':['tenant_admin','cashier','accountant','customer_management'],'/poultry-invoices':['tenant_admin','cashier','accountant'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-sale/:customerId':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  if (session.data?.storeType !== 'poultry' && location === '/poultry-farm') return <Redirect to="/dashboard"/>;
   if (session.data?.storeType === 'poultry' && ['/pos', '/inventory', '/sales', '/dashboard'].includes(location)) return <Redirect to={getPoultryDefaultPath(session.data)} />;
   if (session.data?.storeType !== 'poultry' && ['/poultry-customers','/poultry-sales','/poultry-sale/:customerId','/poultry-collections','/poultry-invoices'].includes(location)) return <Redirect to="/dashboard"/>;
   if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to={session.data.storeType === 'poultry' ? getPoultryDefaultPath(session.data) : '/dashboard'}/>;
@@ -1051,7 +1055,7 @@ function ProtectedLayout() {
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
   return <AppShell user={session.data} refetch={session.refetch}><Switch>
-    <Route path="/dashboard" component={DashboardPage}/><Route path="/poultry-customers" component={PoultryCustomersPage}/><Route path="/poultry-invoices" component={PoultryInvoicesPage}/><Route path="/poultry-invoices/" component={PoultryInvoicesPage}/><Route path="/poultry-sales" component={PoultrySalesPage}/><Route path="/poultry-sale/:customerId" component={PoultrySalePage}/><Route path="/poultry-collections" component={PoultryCollectionsPage}/><Route path="/tenants" component={TenantsPage}/>
+    <Route path="/dashboard" component={DashboardPage}/><Route path="/poultry-farm" component={PoultryFarmPage}/><Route path="/poultry-customers" component={PoultryCustomersPage}/><Route path="/poultry-invoices" component={PoultryInvoicesPage}/><Route path="/poultry-invoices/" component={PoultryInvoicesPage}/><Route path="/poultry-sales" component={PoultrySalesPage}/><Route path="/poultry-sale/:customerId" component={PoultrySalePage}/><Route path="/poultry-collections" component={PoultryCollectionsPage}/><Route path="/tenants" component={TenantsPage}/>
     <Route path="/subscriptions" component={SubscriptionsPage}/>
     <Route path="/offline-license-issuer" component={OfflineLicenseIssuerPage}/>
     <Route path="/team" component={TeamPage}/>
@@ -2740,7 +2744,7 @@ function moneyLabel(amount:number) {
 }
 
 function Routed() {
-  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/menu/:slug" component={PublicRestaurantMenu}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/offline-license-issuer" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-backup" component={ProtectedLayout}/><Route path="/restaurant-menu" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route path="/poultry-customers" component={ProtectedLayout}/><Route path="/poultry-sales" component={ProtectedLayout}/><Route path="/poultry-sale/:customerId" component={ProtectedLayout}/><Route path="/poultry-collections" component={ProtectedLayout}/><Route path="/poultry-invoices" component={ProtectedLayout}/><Route path="/poultry-invoices/" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
+  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/menu/:slug" component={PublicRestaurantMenu}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/offline-license-issuer" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-backup" component={ProtectedLayout}/><Route path="/restaurant-menu" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route path="/poultry-customers" component={ProtectedLayout}/><Route path="/poultry-sales" component={ProtectedLayout}/><Route path="/poultry-sale/:customerId" component={ProtectedLayout}/><Route path="/poultry-collections" component={ProtectedLayout}/><Route path="/poultry-invoices" component={ProtectedLayout}/><Route path="/poultry-invoices/" component={ProtectedLayout}/><Route path="/poultry-farm" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
 }
 function App() {
   return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><SiteLayout/></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;

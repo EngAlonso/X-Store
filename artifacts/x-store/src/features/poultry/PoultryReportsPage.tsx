@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { RefreshCw, ReceiptText, Banknote, Wallet, Scale, Users, CircleDollarSign } from 'lucide-react';
+import { RefreshCw, ReceiptText, Banknote, Wallet, Scale, Users, CircleDollarSign, Boxes } from 'lucide-react';
 import { poultryApi, type PoultryFinancialReport } from './poultryApi';
 import { APP_NUMBER_LOCALE } from '../../lib/formatting';
 
@@ -34,6 +34,8 @@ export default function PoultryReportsPage() {
         <ReportStat icon={<Scale size={19}/>} label="المتبقي" value={money(data.outstanding)} detail="مبيعات ناقص التحصيلات" />
         <ReportStat icon={<Users size={19}/>} label="العملاء" value={fmt(data.customerCount)} detail="عملاء لديهم فواتير بالفترة" />
         <ReportStat icon={<CircleDollarSign size={19}/>} label="متوسط الفاتورة" value={money(data.averageInvoice)} detail="متوسط قيمة الفاتورة" />
+        <ReportStat icon={<Boxes size={19}/>} label="تكلفة البضاعة" value={money(data.costOfGoodsSold)} detail="تكلفة الكيلو الخارج من المزرعة" />
+        <ReportStat icon={<CircleDollarSign size={19}/>} label="الربح الإجمالي" value={money(data.grossProfit)} detail="المبيعات ناقص تكلفة البضاعة" />
       </div>
       <div className="poultry-report-secondary"><div><span>إجمالي الوزن</span><strong>{fmt(data.totalKg)} كجم</strong></div><div><span>الفترة</span><strong>{data.from} إلى {data.to}</strong></div></div>
     </> : null}

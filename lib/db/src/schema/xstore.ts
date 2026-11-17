@@ -534,6 +534,46 @@ export const xstorePoultryPayments = pgTable(
   (table) => [index("xstore_poultry_payments_customer_created_idx").on(table.customerId, table.createdAt)],
 );
 
+export const xstorePoultryFarmLots = pgTable(
+  "xstore_poultry_farm_lots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull().references(() => xstoreTenants.id, { onDelete: "cascade" }),
+    productName: text("product_name").notNull(),
+    receivedKg: numeric("received_kg", { precision: 12, scale: 3 }).notNull(),
+    remainingKg: numeric("remaining_kg", { precision: 12, scale: 3 }).notNull(),
+    unitCost: numeric("unit_cost", { precision: 12, scale: 2 }).notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("xstore_poultry_farm_lots_tenant_product_created_idx").on(table.tenantId, table.productName, table.createdAt),
+    index("xstore_poultry_farm_lots_tenant_remaining_idx").on(table.tenantId, table.remainingKg),
+  ],
+);
+
+export const xstorePoultryFarmMovements = pgTable(
+  "xstore_poultry_farm_movements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull().references(() => xstoreTenants.id, { onDelete: "cascade" }),
+    lotId: uuid("lot_id").references(() => xstorePoultryFarmLots.id, { onDelete: "set null" }),
+    invoiceId: uuid("invoice_id").references(() => xstorePoultryInvoices.id, { onDelete: "set null" }),
+    actorUserId: uuid("actor_user_id").references(() => xstoreUsers.id, { onDelete: "set null" }),
+    movementType: text("movement_type").notNull(),
+    productName: text("product_name").notNull(),
+    quantityKg: numeric("quantity_kg", { precision: 12, scale: 3 }).notNull(),
+    unitCost: numeric("unit_cost", { precision: 12, scale: 2 }).notNull(),
+    totalCost: numeric("total_cost", { precision: 12, scale: 2 }).notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("xstore_poultry_farm_movements_tenant_created_idx").on(table.tenantId, table.createdAt),
+    index("xstore_poultry_farm_movements_tenant_product_idx").on(table.tenantId, table.productName),
+    index("xstore_poultry_farm_movements_invoice_idx").on(table.invoiceId),
+  ],
+);
 export const xstoreAuditLogs = pgTable(
   "xstore_audit_logs",
   {
@@ -588,3 +628,5 @@ export type XStoreCustomer = typeof xstoreCustomers.$inferSelect;
 export type XStorePoultryInvoice = typeof xstorePoultryInvoices.$inferSelect;
 export type XStorePoultryInvoiceItem = typeof xstorePoultryInvoiceItems.$inferSelect;
 export type XStorePoultryPayment = typeof xstorePoultryPayments.$inferSelect;
+export type XStorePoultryFarmLot = typeof xstorePoultryFarmLots.$inferSelect;
+export type XStorePoultryFarmMovement = typeof xstorePoultryFarmMovements.$inferSelect;

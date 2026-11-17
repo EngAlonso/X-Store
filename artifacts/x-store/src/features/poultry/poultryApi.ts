@@ -74,7 +74,9 @@ export type PoultryInvoiceListResponse = {
 export type PoultryFinancialReport = {
   from: string; to: string; invoiceCount: number; totalSales: number; totalCollected: number;
   outstanding: number; totalKg: number; customerCount: number; averageInvoice: number;
+  costOfGoodsSold: number; grossProfit: number;
 };
+export type PoultryFarmSummary={stock:Array<{productName:string;quantityKg:number;costValue:number}>;movements:Array<{id:string;type:'in'|'out';productName:string;quantityKg:number;unitCost:number;totalCost:number;note:string|null;invoiceId:string|null;createdAt:string}>;summary:{currentKg:number;currentCostValue:number;periodInKg:number;periodOutKg:number;periodInCost:number;periodOutCost:number}};
 export type PoultryNotification = {
   id: string;
   type: 'invoice' | 'payment';
@@ -127,9 +129,9 @@ export const poultryApi = {
     const query = params.toString();
     return poultryRequest<PoultryInvoiceListResponse>('/invoices' + (query ? '?' + query : ''));
   },
-  financialReport(from: string, to: string) {
-    return poultryRequest<PoultryFinancialReport>('/reports/financial?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to));
-  },
+  financialReport(from: string, to: string) { return poultryRequest<PoultryFinancialReport>('/reports/financial?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to)); },
+  farmSummary(from='',to=''){const params=new URLSearchParams();if(from)params.set('from',from);if(to)params.set('to',to);return poultryRequest<PoultryFarmSummary>('/farm/summary'+(params.toString()?'?'+params.toString():''));},
+  addFarmEntry(input:{productName:string;quantityKg:number;unitCost:number;note?:string}){return poultryRequest<{id:string;productName:string;quantityKg:number;unitCost:number;note:string|null;createdAt:string}>('/farm/entries',{method:'POST',body:JSON.stringify(input)});},
   notifications() {
     return poultryRequest<PoultryNotification[]>('/notifications');
   },
