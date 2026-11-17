@@ -241,7 +241,27 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     currency: tenant?.currency ?? null,
     vatRate: tenant ? toNumber(tenant.vatRate) : null,
     invoiceFormat: tenant?.invoiceFormat ?? null,
-    invoiceSettings: tenant?.invoiceSettings,
+    invoiceSettings:
+      tenant?.invoiceSettings ?? {
+        showCustomer: true,
+        showShop: true,
+        showPhone: true,
+        showCashier: true,
+        showProduct: true,
+        showQuantity: true,
+        showUnitPrice: true,
+        showDeadWeight: true,
+        showTotal: true,
+        showPaid: true,
+        showExtraCollection: true,
+        showBalance: true,
+        showDateTime: true,
+        showHeader: true,
+        headerStoreName: "",
+        headerOwnerName: "",
+        headerMessage: "",
+        headerPhones: "",
+      },
     wholesaleEnabled: tenantAllowsWholesale(tenant),
   };
 }
