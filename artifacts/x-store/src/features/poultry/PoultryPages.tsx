@@ -81,12 +81,12 @@ function drawUnifiedInvoiceImage(invoice:any,customer:any,details:any,filename:s
   const style=(markup.match(/<style>([\s\S]*?)<\/style>/i)||[])[1]||"",body=(markup.match(/<body[^>]*>([\s\S]*?)<\/body>/i)||[])[1]||"";
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'"><foreignObject width="'+width+'" height="'+height+'"><div xmlns="http://www.w3.org/1999/xhtml" style="width:'+width+'px;height:'+height+'px;overflow:hidden"><style>'+style+'</style>'+body+'</div></foreignObject></svg>';
   const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),image=new Image();
-  image.onload=()=>{const scale=2,canvas=document.createElement('canvas');canvas.width=width*scale;canvas.height=height*scale;const ctx=canvas.getContext('2d');if(ctx){ctx.scale(scale,scale);ctx.drawImage(image,0,0,width,height);canvas.toBlob(file=>{if(!file)return;const imageUrl=URL.createObjectURL(file),a=document.createElement('a');a.href=imageUrl;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(imageUrl),1000)},'image/jpeg',0.94);}URL.revokeObjectURL(url);};
-  image.onerror=()=>URL.revokeObjectURL(url);image.src=url;
+  image.onload=()=>{const scale=2,canvas=document.createElement('canvas');canvas.width=width*scale;canvas.height=height*scale;const ctx=canvas.getContext('2d');if(!ctx){URL.revokeObjectURL(url);return;}ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.scale(scale,scale);ctx.drawImage(image,0,0,width,height);const finish=(file:Blob|null)=>{if(!file){URL.revokeObjectURL(url);return;}const imageUrl=URL.createObjectURL(file),a=document.createElement('a');a.href=imageUrl;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(imageUrl),1500);};canvas.toBlob(finish,'image/jpeg',0.94);if(!canvas.toDataURL){}URL.revokeObjectURL(url);};
+  image.onerror=()=>{URL.revokeObjectURL(url);};image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
 }
 function buildUnifiedInvoicePrint(invoice:any,customer:any,details:any,settings?:PoultryInvoiceSettings){
   const popup=window.open('','_blank','width=900,height=1000');if(!popup)return;
-  popup.document.open();popup.document.write(buildUnifiedInvoiceMarkup(invoice,customer,details,settings).replace('</head>','<style>@page{size:auto;margin:8mm}@media print{.receipt{padding:0}.store-head,.remaining{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head>'));popup.document.close();popup.focus();setTimeout(()=>{try{popup.print()}catch{}},500);
+  popup.document.open();popup.document.write(buildUnifiedInvoiceMarkup(invoice,customer,details,settings).replace('</head>','<style>@page{size:A5 portrait;margin:0}html,body{width:148mm;min-height:210mm;margin:0;padding:0}@media print{.receipt{width:148mm;height:210mm;min-height:210mm;max-height:210mm;overflow:hidden;padding:5mm;margin:0;break-after:avoid;page-break-after:avoid}.store-head{min-height:0;padding:10px 8px;margin-bottom:8px}.store-head>span{font-size:30px}.line-0{font-size:24px}.line-1{font-size:20px}.line-2,.line-3{font-size:15px}.invoice-top{padding:10px 12px;margin-bottom:5px}.invoice-top small{font-size:16px}.invoice-top h1{font-size:22px;margin:5px 0 0}.invoice-top .receipt-icon{font-size:34px}.meta-wrap{padding:8px;margin-bottom:5px}.meta-grid{gap:5px}.meta{min-height:54px;padding:7px 9px;border-radius:12px;gap:3px}.meta small,.sale-item small,.totals small{font-size:11px}.meta b{font-size:14px}.sale-wrap{padding:9px;margin-bottom:5px}.section-title{font-size:12px;margin-bottom:6px}.sale-item{gap:5px;padding:8px;border-radius:12px;margin-bottom:4px}.sale-item>div{gap:2px}.sale-item b,.sale-item strong{font-size:14px}.sale-total{padding:5px 8px}.totals{gap:4px}.totals>div{padding:7px 6px;border-radius:10px}.totals small{margin-bottom:3px}.totals b,.totals strong{font-size:14px}.foot{font-size:9px;margin-top:6px}.store-head,.remaining{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head>'));popup.document.close();popup.focus();setTimeout(()=>{try{popup.print()}catch{}},500);
 }
 function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'customers' | 'sales' | 'collections'; session: SessionUser | null }) {
   const [, setLocation] = useLocation();
@@ -154,13 +154,14 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     finally{setBusy(false);}
   }
 
-  const invoiceTotal=roundMoney((Number(invoice.quantityKg)||0)*(Number(invoice.unitPrice)||0));
+  const invoiceGrossTotal=roundMoney((Number(invoice.quantityKg)||0)*(Number(invoice.unitPrice)||0));
   const amountReceivedToday=Math.max(0,Number(invoice.amountPaid)||0);
   const paidOnInvoice=Math.min(invoiceTotal,amountReceivedToday);
   const extraCollection=Math.max(0,roundMoney(amountReceivedToday-invoiceTotal));
   const invoiceRemaining=Math.max(0,roundMoney(invoiceTotal-paidOnInvoice));
   const deadWeightKg=Math.max(0,Number(invoice.deadWeightKg)||0);
   const deadTotal=roundMoney(deadWeightKg*(Number(invoice.unitPrice)||0));
+  const invoiceTotal=roundMoney(Math.max(0,invoiceGrossTotal-deadTotal));
 
   async function createInvoice(){
     if(!selected){setError('اختَر العميل أولاً.');return;}
@@ -170,7 +171,9 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     if(!Number.isFinite(quantity)||quantity<=0){setError('اكتب كمية بالكيلو أكبر من صفر.');return;}
     if(!Number.isFinite(unitPrice)||unitPrice<0){setError('اكتب سعر الكيلو بشكل صحيح.');return;}
     if(!Number.isFinite(amountReceived)||amountReceived<0){setError('اكتب المبلغ المدفوع اليوم بشكل صحيح.');return;}
-    const total=roundMoney(quantity*unitPrice);
+    const grossTotal=roundMoney(quantity*unitPrice);
+    const deadTotalForInvoice=roundMoney(deadWeightKg*unitPrice);
+    const total=roundMoney(Math.max(0,grossTotal-deadTotalForInvoice));
     if(amountReceived<0){setError('المبلغ المدفوع اليوم لا يمكن أن يكون سالبًا.');return;}
     setBusy(true);setError('');setNotice('');
     try{

@@ -218,7 +218,7 @@ router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): 
     return;
   }
 
-  const total = roundMoney(items.reduce((s:number,item:any)=>s+roundMoney(item.quantityKg*item.unitPrice),0));
+  const total = roundMoney(items.reduce((s:number,item:any)=>s+Math.max(0,roundMoney(item.quantityKg*item.unitPrice)-roundMoney(item.deadWeightKg*item.unitPrice)),0));
   const amountReceived = Number(req.body?.amountPaid);
   if (!Number.isFinite(amountReceived) || amountReceived < 0) {
     res.status(400).json({ error: "أدخل المبلغ المدفوع اليوم بشكل صحيح." });
@@ -265,7 +265,7 @@ router.post("/xstore/poultry/customers/:customerId/invoices", async (req, res): 
         productName:item.productName,
         quantityKg:String(item.quantityKg),
         unitPrice:String(item.unitPrice),
-        total:String(roundMoney(item.quantityKg*item.unitPrice)),
+        total:String(Math.max(0,roundMoney(item.quantityKg*item.unitPrice)-roundMoney(item.deadWeightKg*item.unitPrice))),
         deadWeightKg:String(item.deadWeightKg),
         deadTotal:String(roundMoney(item.deadWeightKg*item.unitPrice)),
       })),
