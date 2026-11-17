@@ -6795,49 +6795,66 @@ input,select,textarea{max-width:100%;min-width:0;box-sizing:border-box}.panel,.c
 }
 
 @media (max-width: 767px) {
-  /* Team page: the member table sits directly after the summary card */
+  .team-summary {
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    padding:12px;
+  }
+  .team-summary>div:first-child,
+  .team-summary>div:nth-child(2) {
+    width:100%;
+  }
+  .team-summary-note {
+    margin-right:0;
+    padding-top:2px;
+    border-top:1px solid #e2eae3;
+  }
   .team-summary + .card .table-wrap {
     overflow:visible;
   }
   .team-summary + .card .table-wrap table {
     min-width:0 !important;
     width:100%;
-    table-layout:auto;
+    table-layout:fixed;
   }
   .team-summary + .card .table-wrap thead {
     display:none;
   }
   .team-summary + .card .table-wrap tbody {
     display:grid;
-    gap:10px;
+    gap:12px;
   }
   .team-summary + .card .table-wrap tbody tr {
     display:grid;
-    grid-template-columns:1fr 1fr;
+    grid-template-columns:1fr;
     gap:0;
-    padding:10px;
-    border:1px solid #e5ece6;
-    border-radius:12px;
+    padding:6px;
+    border:1px solid #dfe9e1;
+    border-radius:14px;
     background:#fff;
-    box-shadow:0 4px 14px rgba(23,63,43,.04);
+    box-shadow:0 5px 18px rgba(23,63,43,.06);
   }
   .team-summary + .card .table-wrap tbody td {
     display:flex;
     flex-direction:column;
     align-items:flex-start;
-    gap:4px;
+    width:100%;
     min-width:0;
     max-width:none;
-    padding:9px 8px;
+    box-sizing:border-box;
+    padding:10px 11px;
     border-bottom:1px solid #eef2ef;
-    font-size:10px;
-    line-height:1.55;
+    font-size:11px;
+    line-height:1.65;
     white-space:normal;
     overflow-wrap:anywhere;
     word-break:break-word;
   }
   .team-summary + .card .table-wrap tbody td::before {
-    color:#8a958d;
+    display:block;
+    margin-bottom:2px;
+    color:#87938a;
     font-size:8px;
     font-weight:700;
     line-height:1.3;
@@ -6850,12 +6867,11 @@ input,select,textarea{max-width:100%;min-width:0;box-sizing:border-box}.panel,.c
   .team-summary + .card .table-wrap tbody td:nth-child(6)::before { content:"الحالة"; }
   .team-summary + .card .table-wrap tbody td:nth-child(7)::before { content:"تاريخ الإضافة"; }
   .team-summary + .card .table-wrap tbody td:nth-child(8)::before { content:"إجراءات"; }
-  .team-summary + .card .table-wrap tbody td:nth-child(7),
-  .team-summary + .card .table-wrap tbody td:nth-child(8) {
-    border-bottom:0;
+  .team-summary + .card .table-wrap tbody td:nth-child(7) {
+    border-bottom:1px solid #eef2ef;
   }
   .team-summary + .card .table-wrap tbody td:nth-child(8) {
-    grid-column:1/-1;
+    border-bottom:0;
   }
   .team-summary + .card .table-wrap tbody tr:has(td[colspan]) {
     display:block;
@@ -6871,20 +6887,27 @@ input,select,textarea{max-width:100%;min-width:0;box-sizing:border-box}.panel,.c
   }
   .team-summary + .card .table-wrap .team-member-actions {
     width:100%;
+    display:flex;
     flex-wrap:wrap;
-    gap:7px;
+    gap:8px;
   }
   .team-summary + .card .table-wrap .team-member-actions .table-action {
-    min-height:36px;
+    min-height:38px;
     flex:1 1 120px;
     justify-content:center;
-    border:1px solid #e2e9e3;
+    border:1px solid #dfe8e0;
+    border-radius:8px;
     background:#f7faf7;
   }
   .team-summary + .card .table-wrap .member-name {
     width:100%;
   }
+  .team-summary + .card .table-wrap .member-name span {
+    flex:0 0 30px;
+    width:30px;
+    height:30px;
+  }
   .team-summary + .card .table-wrap .member-name b {
-    font-size:11px;
+    font-size:12px;
   }
 }
