@@ -1789,7 +1789,7 @@ function TeamPage() {
         ) : team.isError ? (
           <StateBlock loading={false} error onRetry={() => team.refetch()} empty={false} />
         ) : members.length ? (
-          <div className="table-wrap">
+          <div className="table-wrap team-desktop-table">
             <table>
               <thead>
                 <tr>
@@ -1853,7 +1853,38 @@ function TeamPage() {
                 ))}
               </tbody>
             </table>
+                    <div className="team-mobile-list">
+            {members.map((member) => (
+              <article className="team-mobile-card" key={'mobile-'+member.id}>
+                <div className="team-mobile-head">
+                  <div className="member-name">
+                    <span>{member.name.slice(0, 1)}</span>
+                    <div><b>{member.name}</b><small>{member.roleName || roleTitle[member.role] || member.role}</small></div>
+                  </div>
+                  <span className={`status-pill ${member.status === 'active' ? 'status-active' : 'status-trial'}`}>
+                    {member.status === 'active' ? 'نشط' : 'دعوة مرسلة'}
+                  </span>
+                </div>
+                <div className="team-mobile-grid">
+                  <div><small>رقم الهاتف</small><b dir="ltr">{member.phone || '—'}</b></div>
+                  <div><small>البريد الإلكتروني</small><b>{member.email || '—'}</b></div>
+                  <div><small>الصلاحيات</small><b>{memberPermissionSummary(member.role, member.permissions)}</b></div>
+                  <div><small>تاريخ الإضافة</small><b>{dateLabel(member.createdAt)}</b></div>
+                </div>
+                <div className="team-mobile-actions">
+                  {member.role === 'tenant_admin' ? (
+                    <span className="team-owner-note">حساب المالك</span>
+                  ) : (
+                    <>
+                      <button type="button" className="button button-quiet" onClick={() => openEdit(member)}><Pencil size={15}/> تعديل</button>
+                      <button type="button" className="button button-quiet team-action-danger" onClick={() => { remove.reset(); setDeletingMember(member); }}><Trash2 size={15}/> حذف</button>
+                    </>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
+</div>
         ) : (
           <div className="state-box">
             <div className="empty-symbol"><Users /></div>
