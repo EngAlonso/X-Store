@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useRoute } from 'wouter';
 import {
   AlertTriangle, ArrowLeft, Bird, Boxes, ChevronLeft, CircleCheck, CreditCard,
-  Download, MessageCircle, Plus, Share2, Printer, ReceiptText, Search, ShieldCheck, Users, Wallet,
+  Download, MessageCircle, Plus, Share2, Printer, ReceiptText, Search, ShieldCheck, Users, Wallet, Pencil as PencilIcon,
 } from 'lucide-react';
 import type { SessionUser } from '@workspace/api-client-react';
 import './poultry.css';
@@ -328,7 +328,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
 
       <Card className="poultry-workspace-card">
         {selected?<>
-          <SectionHead title={'حساب '+selected.name} detail={(selected.shopName||'بدون اسم محل')+' · '+selected.phone} action={canEditCustomer?<button className="text-link" onClick={()=>openEditCustomer(selected)}><Pencil size={15}/> تعديل بيانات العميل</button>:null}/>
+          <SectionHead title={'حساب '+selected.name} detail={(selected.shopName||'بدون اسم محل')+' · '+selected.phone} action={canEditCustomer?<button className="text-link" onClick={()=>openEditCustomer(selected)}><PencilIcon size={15}/> تعديل بيانات العميل</button>:null}/>
           <div className="poultry-customer-meta">
             <span><b>المحل</b>{selected.shopName||'—'}</span>
             <span><b>العنوان</b>{selected.shopAddress||'—'}</span>
@@ -391,14 +391,14 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
 
     {pageMode==='customers'&&editingCustomer&&<Modal title="تعديل بيانات العميل" close={()=>{if(!busy)setEditingCustomer(null);}}>
       <form className="poultry-customer-form" onSubmit={e=>{e.preventDefault();void updateCustomer();}}>
-        <div className="poultry-modal-intro"><div className="poultry-modal-icon"><Pencil size={22}/></div><div><b>تعديل بيانات العميل</b><span>عدّل الاسم أو الهاتف أو بيانات المحل، ثم احفظ.</span></div></div>
+        <div className="poultry-modal-intro"><div className="poultry-modal-icon"><PencilIcon size={22}/></div><div><b>تعديل بيانات العميل</b><span>عدّل الاسم أو الهاتف أو بيانات المحل، ثم احفظ.</span></div></div>
         <div className="form-grid">
           <label className="field field-wide"><span>اسم صاحب المحل <b className="required-mark">*</b></span><input required autoFocus value={editCustomerForm.name} onChange={e=>setEditCustomerForm({...editCustomerForm,name:e.target.value})} /></label>
           <label className="field"><span>رقم الهاتف <span className="optional-mark">اختياري</span></span><input type="tel" inputMode="tel" value={editCustomerForm.phone} onChange={e=>setEditCustomerForm({...editCustomerForm,phone:e.target.value})} /></label>
           <label className="field"><span>اسم المحل</span><input value={editCustomerForm.shopName} onChange={e=>setEditCustomerForm({...editCustomerForm,shopName:e.target.value})} /></label>
           <label className="field field-wide"><span>عنوان المحل</span><input value={editCustomerForm.shopAddress} onChange={e=>setEditCustomerForm({...editCustomerForm,shopAddress:e.target.value})} /></label>
         </div>
-        <div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setEditingCustomer(null)} disabled={busy}>إلغاء</button><button className="button button-primary" type="submit" disabled={busy||!editCustomerForm.name.trim()}><Pencil size={16}/>{busy?'جارٍ الحفظ…':'حفظ التعديل'}</button></div>
+        <div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setEditingCustomer(null)} disabled={busy}>إلغاء</button><button className="button button-primary" type="submit" disabled={busy||!editCustomerForm.name.trim()}><PencilIcon size={16}/>{busy?'جارٍ الحفظ…':'حفظ التعديل'}</button></div>
       </form>
     </Modal>}
     {pageMode==='customers'&&customerDialog&&<Modal title="إضافة عميل دواجن" close={()=>{if(!busy)setCustomerDialog(false);}}>
