@@ -110,10 +110,14 @@ router.get("/xstore/poultry/customers/:customerId/statement", async (req, res): 
   const invoiceIds = invoices.map(x => x.invoice.id);
   const items = invoiceIds.length ? await db.select().from(xstorePoultryInvoiceItems).where(inArray(xstorePoultryInvoiceItems.invoiceId, invoiceIds)) : [];
   const rows = [
-    ...invoices.map(({invoice,cashierName}) => ({ type:"invoice", id:invoice.id, invoiceNo:invoice.invoiceNo, date:iso(invoice.createdAt), actorName:cashierName || "—", total:toNumber(invoice.total), paid:toNumber(invoice.amountPaid), note:null, items:items.filter(item=>item.invoiceId===invoice.id).map(item=>({productName:item.productName,quantityKg:toNumber(item.quantityKg),unitPrice:toNumber(item.unitPrice),total:toNumber(item.total),deadWeightKg:toNumber(item.deadWeightKg),deadTotal:toNumber(item.deadTotal)})) })),
+    ...invoices.map(({invoice,cashierName}) => {
+      const invoiceItems = items.filter(item=>item.invoiceId===invoice.id);
+      const netTotal = roundMoney(invoiceItems.reduce((sum,item)=>sum + toNumber(item.total), 0));
+      return { type:"invoice", id:invoice.id, invoiceNo:invoice.invoiceNo, date:iso(invoice.createdAt), actorName:cashierName || "—", total:netTotal, paid:toNumber(invoice.amountPaid), note:null, items:invoiceItems.map(item=>({productName:item.productName,quantityKg:toNumber(item.quantityKg),unitPrice:toNumber(item.unitPrice),total:toNumber(item.total),deadWeightKg:toNumber(item.deadWeightKg),deadTotal:toNumber(item.deadTotal)})) };
+    }),
     ...payments.map(({payment,cashierName}) => ({ type:"payment", id:payment.id, invoiceNo:null, date:iso(payment.createdAt), actorName:cashierName || "—", total:0, paid:toNumber(payment.amount), note:payment.note, items:[] })),
   ].sort((a,b)=>new Date(a.date).getTime()-new Date(b.date).getTime());
-  const periodSales = invoices.reduce((s,x)=>s+toNumber(x.invoice.total),0);
+  const periodSales = rows.filter(row=>row.type==="invoice").reduce((s,row)=>s+row.total,0);
   const periodPaid = invoices.reduce((s,x)=>s+toNumber(x.invoice.amountPaid),0) + payments.reduce((s,x)=>s+toNumber(x.payment.amount),0);
   const totalKg = items.reduce((s,x)=>s+toNumber(x.quantityKg),0);
   res.json({ customer:{...customer,createdAt:iso(customer.createdAt),updatedAt:iso(customer.updatedAt)}, from:req.query.from||null, to:req.query.to||null, openingBalance:roundMoney(beforeSales-beforePaid), summary:{totalKg,sales:periodSales,paid:periodPaid,remaining:roundMoney(beforeSales-beforePaid+periodSales-periodPaid)}, rows });
@@ -157,7 +161,7 @@ router.get("/xstore/poultry/invoices", async (req, res): Promise<void> => {
       deadWeightKg: toNumber(item.deadWeightKg),
       deadTotal: toNumber(item.deadTotal),
     }));
-    const total = toNumber(row.invoice.total);
+    const total = roundMoney(invoiceItems.reduce((sum,item)=>sum + toNumber(item.total), 0));
     const amountPaid = toNumber(row.invoice.amountPaid);
     const extraCollection = payments
       .filter(payment => payment.note?.includes(row.invoice.invoiceNo))
