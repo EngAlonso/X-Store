@@ -83,7 +83,7 @@ export type PoultryNotification = {
   createdAt: string;
   href: string;
 };
-export type PoultryCustomerInput = { name: string; phone: string; shopName?: string; shopAddress?: string };
+export type PoultryCustomerInput = { name: string; phone?: string; shopName?: string; shopAddress?: string };
 export type PoultryInvoiceInput = { items: Array<{ productName: string; quantityKg: number; unitPrice: number; deadWeightKg?: number }>; amountPaid: number };
 
 async function poultryRequest<T>(path: string, init?: RequestInit): Promise<T> {

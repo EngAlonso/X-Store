@@ -64,26 +64,27 @@ function PoultryInvoiceHeader({settings}:{settings?:PoultryInvoiceSettings|null}
   </div>;
 }
 
+function buildUnifiedInvoiceMarkup(invoice:any,customer:any,details:any,settings?:PoultryInvoiceSettings){
+  const s=invoiceSettingsOrDefault(settings),items=Array.isArray(invoice.items)&&invoice.items.length?invoice.items:[details||{}],d=new Date(invoice.createdAt||invoice.date),dateText=new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Cairo'}).format(d),timeText=new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(d);
+  const esc=(v:any)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
+  const field=(label:string,value:any)=>'<div class="meta"><small>'+esc(label)+'</small><b>'+esc(value||'—')+'</b></div>';
+  const headerLines=s.showHeader?[s.headerStoreName,s.headerOwnerName,s.headerMessage,s.headerPhones].filter(x=>String(x||'').trim()):[];
+  const header=headerLines.length?'<header class="store-head"><span>🐔</span><div>'+headerLines.map((line,i)=>'<b class="line line-'+i+'">'+esc(line)+'</b>').join('')+'</div><span>🐔</span></header>':'';
+  const meta=[s.showCustomer?field('الاسم',customer?.name||invoice.customerName):'',s.showShop?field('المحل',customer?.shopName||invoice.shopName||'غير مسجل'):'',s.showPhone?field('الهاتف',customer?.phone||invoice.phone||'—'):'',s.showDateTime?field('اليوم والتاريخ',dateText):'',s.showDateTime?field('الوقت',timeText):'',s.showCashier?field('الموظف',invoice.cashierName||'غير محدد'):''].filter(Boolean).join('');
+  const itemCards=items.map((item:any)=>'<div class="sale-item">'+(s.showProduct?'<div><small>الصنف</small><b>'+esc(item.productName||'فراخ')+'</b></div>':'')+(s.showQuantity?'<div><small>الوزن</small><b>'+esc(fmt(Number(item.quantityKg)||0)+' كجم')+'</b></div>':'')+(s.showUnitPrice?'<div><small>سعر الكيلو</small><b>'+esc(fmt(Number(item.unitPrice)||0)+' ج.م')+'</b></div>':'')+(s.showDeadWeight?'<div><small>نافِق</small><b>'+esc(fmt(Number(item.deadWeightKg)||0)+' كجم · '+fmt(Number(item.deadTotal)||0)+' ج.م')+'</b></div>':'')+(s.showTotal?'<div class="sale-total"><small>إجمالي البيع</small><strong>'+esc(fmt(Number(item.total)||0)+' ج.م')+'</strong></div>':'')+'</div>').join('');
+  const totals=[s.showPaid?'<div><small>المدفوع</small><b>'+esc(fmt(Number(invoice.amountPaid)||0)+' ج.م')+'</b></div>':'',s.showExtraCollection?'<div><small>التحصيل من الرصيد السابق</small><b>'+esc(fmt(Number(invoice.extraCollection)||0)+' ج.م')+'</b></div>':'',s.showBalance?'<div class="remaining"><small>المتبقي</small><strong>'+esc(fmt(Number(invoice.balance)||0)+' ج.م')+'</strong></div>':''].filter(Boolean).join('');
+  return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#202522;font-family:Arial,Tahoma,sans-serif;direction:rtl}.receipt{width:100%;padding:22px;background:#fff}.store-head{display:grid;grid-template-columns:54px minmax(0,1fr) 54px;align-items:center;gap:12px;min-height:170px;padding:22px 18px;margin-bottom:18px;border-radius:24px;background:#173f2b;color:#fff;text-align:center}.store-head>span{font-size:44px}.store-head>div{display:grid;gap:4px;min-width:0}.store-head b{display:block;overflow-wrap:anywhere;line-height:1.45}.line-0{font-size:34px}.line-1{font-size:28px}.line-2,.line-3{font-size:22px}.invoice-top{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border:1px solid #dfe7e1;border-radius:22px;margin-bottom:8px}.invoice-top small{display:block;font-size:22px;font-weight:800}.invoice-top h1{margin:10px 0 0;font-size:30px;font-weight:500;color:#244a35}.invoice-top .receipt-icon{font-size:48px}.meta-wrap{padding:16px;border:1px solid #dfe7e1;border-radius:22px;margin-bottom:8px}.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.meta{min-height:86px;padding:12px 15px;border:1px solid #e0e5e1;border-radius:20px;display:flex;flex-direction:column;justify-content:center;gap:7px;min-width:0}.meta small,.sale-item small,.totals small{font-size:16px;color:#78847d}.meta b{font-size:21px;overflow-wrap:anywhere}.sale-wrap{padding:18px;border:1px solid #dfe7e1;border-radius:22px;margin-bottom:8px}.section-title{font-size:17px;color:#718078;font-weight:800;margin-bottom:12px}.sale-item{display:grid;gap:10px;padding:16px;border:1px solid #e0e5e1;border-radius:20px;margin-bottom:8px}.sale-item>div{display:flex;flex-direction:column;gap:5px}.sale-item b,.sale-item strong{font-size:21px}.sale-total{background:#edf5ee;padding:10px 14px;border-radius:10px}.totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.totals>div{min-width:0;padding:14px 10px;border-radius:18px;text-align:right}.totals small{display:block;margin-bottom:8px}.totals b,.totals strong{font-size:21px;overflow-wrap:anywhere}.totals>div:not(.remaining){background:#fff;border:1px solid #e0e5e1}.totals .remaining{background:#edf5ee;color:#24553b}.foot{text-align:center;color:#718078;font-size:13px;margin-top:16px}</style></head><body><main class="receipt">'+header+'<section class="invoice-top"><div><small>تم الحفظ بنجاح</small><h1>فاتورة '+esc(invoice.invoiceNo)+'</h1></div><span class="receipt-icon">▤</span></section>'+(meta?'<section class="meta-wrap"><div class="meta-grid">'+meta+'</div></section>':'')+(itemCards?'<section class="sale-wrap"><div class="section-title">تفاصيل البيع</div>'+itemCards+'</section>':'')+(totals?'<section class="totals">'+totals+'</section>':'')+'<div class="foot">تم استخراج الفاتورة من نظام X-Store</div></main></body></html>';
+}
 function drawUnifiedInvoiceImage(invoice:any,customer:any,details:any,filename:string,settings?:PoultryInvoiceSettings){
-  const s=invoiceSettingsOrDefault(settings),item=details||invoice.items?.[0]||{},rows:Array<[string,string]>=[],totals:Array<[string,string]>=[],width=1200;
-  if(s.showCustomer)rows.push(['العميل',customer?.name||invoice.customerName||'—']);if(s.showShop)rows.push(['المحل',customer?.shopName||invoice.shopName||'غير مسجل']);if(s.showPhone)rows.push(['الهاتف',customer?.phone||invoice.phone||'—']);if(s.showCashier)rows.push(['الموظف',invoice.cashierName||'غير محدد']);
-  if(s.showProduct)rows.push(['الصنف',item.productName||'فراخ']);if(s.showQuantity)rows.push(['الوزن',fmt(Number(item.quantityKg)||0)+' كجم']);if(s.showUnitPrice)rows.push(['سعر الكيلو',fmt(Number(item.unitPrice)||0)+' ج.م']);if(s.showDeadWeight)rows.push(['نافِق',fmt(Number(item.deadWeightKg)||0)+' كجم · '+fmt(Number(item.deadTotal)||0)+' ج.م']);if(s.showTotal)rows.push(['إجمالي البيع',fmt(Number(invoice.total)||0)+' ج.م']);if(s.showDateTime)rows.push(['التاريخ والوقت',new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.createdAt||invoice.date))]);
-  if(s.showPaid)totals.push(['المدفوع',fmt(Number(invoice.amountPaid)||0)+' ج.م']);if(s.showExtraCollection)totals.push(['تحصيل من الرصيد السابق',fmt(Number(invoice.extraCollection)||0)+' ج.م']);if(s.showBalance)totals.push(['المتبقي',fmt(Number(invoice.balance)||0)+' ج.م']);
-  const lines=s.showHeader?[s.headerStoreName,s.headerOwnerName,s.headerMessage,s.headerPhones].filter(Boolean):[],headerH=lines.length?260:190,totalRows=Math.max(1,Math.ceil(rows.length/2)),height=headerH+70+totalRows*92+Math.max(1,Math.ceil(totals.length/3))*125+90;
-  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');if(!ctx)return;ctx.direction='rtl';ctx.textAlign='right';ctx.fillStyle='#f1f5f2';ctx.fillRect(0,0,width,height);
-  const card=(x:number,y:number,w:number,h:number,fill='#fff')=>{ctx.fillStyle=fill;ctx.fillRect(x,y,w,h)},txt=(v:string,x:number,y:number,sz:number,w='600',col='#17251b')=>{ctx.fillStyle=col;ctx.font=w+' '+sz+'px Arial';ctx.fillText(v,x,y)};
-  card(0,0,width,headerH,'#173f2b');if(lines.length){txt('🐔',width-70,58,36,'800','#fff');txt('🐔',70,58,36,'800','#fff');lines.forEach((line,i)=>txt(line,width/2,55+i*42,i===0?30:i===1?23:19,i<2?'800':'600','#fff'));}else txt('فاتورة دواجن',width-70,58,34,'800','#fff');
-  const x=55,w=width-110;txt('فاتورة '+invoice.invoiceNo,width-70,headerH-70,36,'800','#fff');card(x,headerH+20,w,totalRows*92+50);txt('تفاصيل الفاتورة',width-80,headerH+52,18,'800','#718078');
-  rows.forEach((r,i)=>{const cellW=(w-20)/2,col=i%2,row=Math.floor(i/2),cx=col===0?x+10:x+10+cellW,cy=headerH+72+row*92;card(cx,cy,cellW-10,78);txt(r[0],cx+cellW-28,cy+25,14,'700','#718078');txt(r[1],cx+cellW-28,cy+54,20,'800')});
-  let y=headerH+totalRows*92+80;if(totals.length){const cellW=(w-20)/Math.min(3,totals.length);totals.forEach((r,i)=>{const cx=x+10+i*cellW,isLast=i===totals.length-1&&s.showBalance;card(cx,y,cellW-10,105,isLast?'#173f2b':'#fff');txt(r[0],cx+cellW-28,y+32,14,'700',isLast?'#d8e5da':'#718078');txt(r[1],cx+cellW-28,y+72,24,'800',isLast?'#fff':'#17251b');});y+=120;}card(x,y,w,68,'#edf5ee');txt('X-Store · فاتورة دواجن',width-80,y+43,18,'700','#24553b');
-  canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)},'image/jpeg',0.92);
+  const markup=buildUnifiedInvoiceMarkup(invoice,customer,details,settings),width=760;
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" xmlns:xlink="http://www.w3.org/1999/xlink"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">'+markup.replace(/<!doctype html>/i,'').replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>/gi,'')+'</div></foreignObject></svg>';
+  const blob=new Blob([svg],{type:'image/svg+xml;charset=utf-8'}),url=URL.createObjectURL(blob),image=new Image();
+  image.onload=()=>{const scale=2,canvas=document.createElement('canvas');canvas.width=width*scale;canvas.height=Math.ceil(image.height*scale);const ctx=canvas.getContext('2d');if(ctx){ctx.scale(scale,scale);ctx.drawImage(image,0,0,width,image.height);canvas.toBlob(file=>{if(!file)return;const imageUrl=URL.createObjectURL(file),a=document.createElement('a');a.href=imageUrl;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(imageUrl),1000)},'image/jpeg',0.94);}URL.revokeObjectURL(url);};
+  image.onerror=()=>URL.revokeObjectURL(url);image.src=url;
 }
 function buildUnifiedInvoicePrint(invoice:any,customer:any,details:any,settings?:PoultryInvoiceSettings){
-  const s=invoiceSettingsOrDefault(settings),esc=(v:any)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c)),d=new Date(invoice.createdAt||invoice.date),dateText=new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Cairo'}).format(d),timeText=new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(d),item=details||invoice.items?.[0]||{};
-  const field=(l:string,v:string)=>'<div class="field"><small>'+esc(l)+'</small><b>'+esc(v)+'</b></div>',fields=[s.showCustomer?field('العميل',customer?.name||invoice.customerName||'—'):'',s.showShop?field('المحل',customer?.shopName||invoice.shopName||'غير مسجل'):'',s.showPhone?field('الهاتف',customer?.phone||invoice.phone||'—'):'',s.showCashier?field('الموظف',invoice.cashierName||'غير محدد'):'',s.showProduct?field('الصنف',item.productName||'فراخ'):'',s.showQuantity?field('الوزن',fmt(Number(item.quantityKg)||0)+' كجم'):'',s.showUnitPrice?field('سعر الكيلو',fmt(Number(item.unitPrice)||0)+' ج.م'):'',s.showDeadWeight?field('نافِق',fmt(Number(item.deadWeightKg)||0)+' كجم · '+fmt(Number(item.deadTotal)||0)+' ج.م'):'',s.showTotal?field('إجمالي البيع',fmt(Number(invoice.total)||0)+' ج.م'):'',s.showDateTime?field('التاريخ والوقت',dateText+' · '+timeText):''].filter(Boolean).join('');
-  const totals=[s.showPaid?'<div class="total"><small>المدفوع</small><b>'+esc(fmt(Number(invoice.amountPaid)||0)+' ج.م')+'</b></div>':'',s.showExtraCollection?'<div class="total"><small>تحصيل من الرصيد السابق</small><b>'+esc(fmt(Number(invoice.extraCollection)||0)+' ج.م')+'</b></div>':'',s.showBalance?'<div class="total remaining"><small>المتبقي</small><strong>'+esc(fmt(Number(invoice.balance)||0)+' ج.م')+'</strong></div>':''].filter(Boolean).join('');
-  const lines=s.showHeader?[s.headerStoreName,s.headerOwnerName,s.headerMessage,s.headerPhones].filter(Boolean):[],header=lines.length?'<section class="card header"><div class="birds"><span>🐔</span><div>'+lines.map((line,i)=>'<b class="l'+i+'">'+esc(line)+'</b>').join('')+'</div><span>🐔</span></div></section>':'';
-  const popup=window.open('','_blank','width=900,height=1000');if(!popup)return;popup.document.open();popup.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>فاتورة '+esc(invoice.invoiceNo)+'</title><style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#f1f5f2;color:#17251b;font-family:Arial,Tahoma,sans-serif;direction:rtl}body{padding:18px}.receipt{width:100%;max-width:620px;margin:auto}.card{background:#fff;border:1px solid #dfe7e1;border-radius:16px;padding:14px;margin-bottom:12px}.header{background:#173f2b;color:#fff;border:0}.birds{display:grid;grid-template-columns:40px 1fr 40px;align-items:center;gap:8px;text-align:center}.birds>span{font-size:28px}.birds b{display:block;margin:3px 0}.birds .l0{font-size:22px}.birds .l1{font-size:18px}.birds .l2,.birds .l3{font-size:14px;font-weight:600}.section{font-size:12px;color:#718078;font-weight:800;margin-bottom:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.field{border:1px solid #e2eae3;border-radius:10px;padding:9px;min-width:0}.field small{display:block;color:#718078;font-size:10px;margin-bottom:4px}.field b{display:block;font-size:13px;overflow-wrap:anywhere}.totals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.total{border:1px solid #e2eae3;border-radius:10px;padding:10px}.total small{display:block;color:#718078;font-size:10px;margin-bottom:5px}.total b,.total strong{font-size:14px}.remaining{background:#173f2b;color:#fff;border-color:#173f2b}.remaining small{color:#d8e5da}.foot{text-align:center;color:#718078;font-size:10px}@media print{html,body{background:#fff}body{padding:0}.receipt{max-width:none}.card{break-inside:avoid}.header,.remaining{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><main class="receipt">'+header+'<section class="card"><div class="section">تفاصيل الفاتورة</div><div class="grid">'+fields+'</div></section>'+(totals?'<section class="card"><div class="totals">'+totals+'</div></section>':'')+'<div class="foot">تم استخراج الفاتورة من نظام X-Store</div></main></body></html>');popup.document.close();popup.focus();setTimeout(()=>{try{popup.print()}catch{}},500);
+  const popup=window.open('','_blank','width=900,height=1000');if(!popup)return;
+  popup.document.open();popup.document.write(buildUnifiedInvoiceMarkup(invoice,customer,details,settings).replace('</head>','<style>@page{size:auto;margin:8mm}@media print{.receipt{padding:0}.store-head,.remaining{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head>'));popup.document.close();popup.focus();setTimeout(()=>{try{popup.print()}catch{}},500);
 }
 function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'customers' | 'sales' | 'collections'; session: SessionUser | null }) {
   const [, setLocation] = useLocation();
@@ -123,8 +124,8 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
       shopName:newCustomer.shopName.trim(),
       shopAddress:newCustomer.shopAddress.trim(),
     };
-    if(!payload.name||!payload.phone){
-      setError('اكتب اسم العميل ورقم الهاتف قبل الحفظ.');
+    if(!payload.name){
+      setError('اكتب اسم العميل قبل الحفظ.');
       return;
     }
     setBusy(true);setError('');setNotice('');
@@ -352,10 +353,10 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
 
     {pageMode==='customers'&&customerDialog&&<Modal title="إضافة عميل دواجن" close={()=>{if(!busy)setCustomerDialog(false);}}>
       <form className="poultry-customer-form" onSubmit={e=>{e.preventDefault();void createCustomer();}}>
-        <div className="poultry-modal-intro"><div className="poultry-modal-icon"><Bird size={22}/></div><div><b>بيانات العميل الأساسية</b><span>الاسم ورقم الهاتف مطلوبان. بيانات المحل اختيارية.</span></div></div>
+        <div className="poultry-modal-intro"><div className="poultry-modal-icon"><Bird size={22}/></div><div><b>بيانات العميل الأساسية</b><span>الاسم فقط مطلوب. باقي البيانات اختيارية.</span></div></div>
         <div className="form-grid">
-          <label className="field field-wide"><span>اسم العميل <b className="required-mark">*</b></span><input autoFocus value={newCustomer.name} onChange={e=>setNewCustomer({...newCustomer,name:e.target.value})} placeholder="مثال: أحمد محمد"/></label>
-          <label className="field"><span>رقم الهاتف <b className="required-mark">*</b></span><input type="tel" inputMode="tel" value={newCustomer.phone} onChange={e=>setNewCustomer({...newCustomer,phone:e.target.value})} placeholder="01xxxxxxxxx"/></label>
+          <label className="field field-wide"><span>الاسم <b className="required-mark">*</b></span><input autoFocus value={newCustomer.name} onChange={e=>setNewCustomer({...newCustomer,name:e.target.value})} placeholder="مثال: أحمد محمد"/></label>
+          <label className="field"><span>رقم الهاتف <span className="optional-mark">اختياري</span></span><input type="tel" inputMode="tel" value={newCustomer.phone} onChange={e=>setNewCustomer({...newCustomer,phone:e.target.value})} placeholder="01xxxxxxxxx"/></label>
           <label className="field"><span>اسم المحل</span><input value={newCustomer.shopName} onChange={e=>setNewCustomer({...newCustomer,shopName:e.target.value})} placeholder="مثال: محل البركة"/></label>
           <label className="field field-wide"><span>عنوان المحل</span><input value={newCustomer.shopAddress} onChange={e=>setNewCustomer({...newCustomer,shopAddress:e.target.value})} placeholder="المنطقة / الشارع"/></label>
         </div>
@@ -629,27 +630,27 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
           <ReceiptText size={25}/>
         </div>
         <div className="poultry-invoice-meta-grid">
-          <span><small>العميل</small><b>{customer.name}</b></span>
-          <span><small>المحل</small><b>{customer.shopName || 'غير مسجل'}</b></span>
-          <span><small>الهاتف</small><b dir="ltr">{customer.phone}</b></span>
-          <span><small>اليوم والتاريخ</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</b></span>
-          <span><small>الوقت</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</b></span>
-          <span><small>الموظف</small><b>{lastInvoice.cashierName || 'غير محدد'}</b></span>
+          {invoiceSettingsOrDefault(session?.invoiceSettings).showCustomer&&<span><small>الاسم</small><b>{customer.name}</b></span>}
+          {invoiceSettingsOrDefault(session?.invoiceSettings).showShop&&<span><small>المحل</small><b>{customer.shopName || 'غير مسجل'}</b></span>}
+          {invoiceSettingsOrDefault(session?.invoiceSettings).showPhone&&<span><small>الهاتف</small><b dir="ltr">{customer.phone||'—'}</b></span>}
+          {invoiceSettingsOrDefault(session?.invoiceSettings).showDateTime&&<span><small>اليوم والتاريخ</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</b></span>}
+          <span><small>الوقت</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt))}</b></span>}
+          {invoiceSettingsOrDefault(session?.invoiceSettings).showCashier&&<span><small>الموظف</small><b>{lastInvoice.cashierName || 'غير محدد'}</b></span>}
         </div>
       </div>
-      <div className="poultry-invoice-sale-details">
+      {(invoiceSettingsOrDefault(session?.invoiceSettings).showProduct||invoiceSettingsOrDefault(session?.invoiceSettings).showQuantity||invoiceSettingsOrDefault(session?.invoiceSettings).showUnitPrice||invoiceSettingsOrDefault(session?.invoiceSettings).showDeadWeight||invoiceSettingsOrDefault(session?.invoiceSettings).showTotal)&&<div className="poultry-invoice-sale-details">
         <span className="poultry-box-kicker">تفاصيل البيع</span>
-        <div><span>الصنف</span><b>{lastInvoiceDetails.productName}</b></div>
-        <div><span>الوزن</span><b>{fmt(lastInvoiceDetails.quantityKg)} كجم</b></div>
-        <div><span>سعر الكيلو</span><b>{fmt(lastInvoiceDetails.unitPrice)} ج.م</b></div>
-        <div><span>نافِق</span><b>{fmt(lastInvoiceDetails.deadWeightKg)} كجم · {fmt(lastInvoiceDetails.deadTotal)} ج.م</b></div>
-        <div className="sale-total"><span>إجمالي البيع</span><strong>{fmt(lastInvoice.total)} ج.م</strong></div>
-      </div>
-      <div className="poultry-invoice-totals">
-        <div><span>المدفوع</span><b>{fmt(lastInvoice.amountPaid)} ج.م</b></div>
-        <div><span>التحصيل من الرصيد السابق</span><b>{fmt(lastInvoice.extraCollection || 0)} ج.م</b></div>
-        <div className="total"><span>المتبقي</span><strong>{fmt(lastInvoice.balance)} ج.م</strong></div>
-      </div>
+        {invoiceSettingsOrDefault(session?.invoiceSettings).showProduct&&<div><span>الصنف</span><b>{lastInvoiceDetails.productName}</b></div>}
+        {invoiceSettingsOrDefault(session?.invoiceSettings).showQuantity&&<div><span>الوزن</span><b>{fmt(lastInvoiceDetails.quantityKg)} كجم</b></div>}
+        {invoiceSettingsOrDefault(session?.invoiceSettings).showUnitPrice&&<div><span>سعر الكيلو</span><b>{fmt(lastInvoiceDetails.unitPrice)} ج.م</b></div>}
+        {invoiceSettingsOrDefault(session?.invoiceSettings).showDeadWeight&&<div><span>نافِق</span><b>{fmt(lastInvoiceDetails.deadWeightKg)} كجم · {fmt(lastInvoiceDetails.deadTotal)} ج.م</b></div>}
+        {invoiceSettingsOrDefault(session?.invoiceSettings).showTotal&&<div className="sale-total"><span>إجمالي البيع</span><strong>{fmt(lastInvoice.total)} ج.م</strong></div>}
+      </div>}
+      {(invoiceSettingsOrDefault(session?.invoiceSettings).showPaid||invoiceSettingsOrDefault(session?.invoiceSettings).showExtraCollection||invoiceSettingsOrDefault(session?.invoiceSettings).showBalance)&&<div className="poultry-invoice-totals">
+        {invoiceSettingsOrDefault(session?.invoiceSettings).showPaid&&<div><span>المدفوع</span><b>{fmt(lastInvoice.amountPaid)} ج.م</b></div>}
+        {invoiceSettingsOrDefault(session?.invoiceSettings).showExtraCollection&&<div><span>التحصيل من الرصيد السابق</span><b>{fmt(lastInvoice.extraCollection || 0)} ج.م</b></div>}
+        {invoiceSettingsOrDefault(session?.invoiceSettings).showBalance&&<div className="total"><span>المتبقي</span><strong>{fmt(lastInvoice.balance)} ج.م</strong></div>}
+      </div>}
       <div className="poultry-invoice-actions">
         <button className="button button-quiet poultry-invoice-exit" onClick={() => setLocation('/poultry-sales')}>خروج</button>
         <button className="button button-primary" onClick={() => setLocation('/poultry-sale/' + encodeURIComponent(customer.id))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button>
@@ -769,23 +770,29 @@ export function PoultryInvoicesPage({ session }: { session: SessionUser | null }
                   <ReceiptText size={25}/>
                 </div>
                 <div className="poultry-invoice-meta-grid">
-                  <span><small>العميل</small><b>{invoice.customerName}</b></span>
-                  <span><small>المحل</small><b>{invoice.shopName || 'غير مسجل'}</b></span>
-                  <span><small>الهاتف</small><b dir="ltr">{invoice.phone}</b></span>
-                  <span><small>اليوم والتاريخ</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))}</b></span>
-                  <span><small>الوقت</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))}</b></span>
-                  <span><small>الموظف</small><b>{invoice.cashierName || 'غير محدد'}</b></span>
+                  {invoiceSettingsOrDefault(session?.invoiceSettings).showCustomer&&<span><small>الاسم</small><b>{invoice.customerName}</b></span>}
+                  {invoiceSettingsOrDefault(session?.invoiceSettings).showShop&&<span><small>المحل</small><b>{invoice.shopName || 'غير مسجل'}</b></span>}
+                  {invoiceSettingsOrDefault(session?.invoiceSettings).showPhone&&<span><small>الهاتف</small><b dir="ltr">{invoice.phone||'—'}</b></span>}
+                  {invoiceSettingsOrDefault(session?.invoiceSettings).showDateTime&&<span><small>اليوم والتاريخ</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))}</b></span>}
+                  {invoiceSettingsOrDefault(session?.invoiceSettings).showDateTime&&<span><small>الوقت</small><b>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date))}</b></span>}
+                  {invoiceSettingsOrDefault(session?.invoiceSettings).showCashier&&<span><small>الموظف</small><b>{invoice.cashierName || 'غير محدد'}</b></span>}
                 </div>
               </div>
-              <div className="poultry-invoice-sale-details">
+              {(invoiceSettingsOrDefault(session?.invoiceSettings).showProduct||invoiceSettingsOrDefault(session?.invoiceSettings).showQuantity||invoiceSettingsOrDefault(session?.invoiceSettings).showUnitPrice||invoiceSettingsOrDefault(session?.invoiceSettings).showDeadWeight||invoiceSettingsOrDefault(session?.invoiceSettings).showTotal)&&<div className="poultry-invoice-sale-details">
                 <span className="poultry-box-kicker">تفاصيل البيع</span>
-                {invoice.items.map((item, index) => <div key={invoice.id+'-'+index}><span>الصنف</span><b>{item.productName || '—'}</b><span>الوزن</span><b>{fmt(Number(item.quantityKg) || 0)} كجم</b><span>سعر الكيلو</span><b>{fmt(Number(item.unitPrice) || 0)} ج.م</b><span>نافِق</span><b>{fmt(Number(item.deadWeightKg) || 0)} كجم · {fmt(Number(item.deadTotal) || 0)} ج.م</b><div className="sale-total"><span>إجمالي البيع</span><strong>{fmt(Number(item.total) || 0)} ج.م</strong></div></div>)}
-              </div>
-              <div className="poultry-invoice-totals">
-                <div><span>المدفوع</span><b>{fmt(invoice.amountPaid)} ج.م</b></div>
-                <div><span>التحصيل من الرصيد السابق</span><b>{fmt(invoice.extraCollection || 0)} ج.م</b></div>
-                <div className="total"><span>المتبقي</span><strong>{fmt(invoice.balance)} ج.م</strong></div>
-              </div>
+                {invoice.items.map((item,index)=><div key={invoice.id+'-'+index}>
+                  {invoiceSettingsOrDefault(session?.invoiceSettings).showProduct&&<><span>الصنف</span><b>{item.productName||'—'}</b></>}
+                  {invoiceSettingsOrDefault(session?.invoiceSettings).showQuantity&&<><span>الوزن</span><b>{fmt(Number(item.quantityKg)||0)} كجم</b></>}
+                  {invoiceSettingsOrDefault(session?.invoiceSettings).showUnitPrice&&<><span>سعر الكيلو</span><b>{fmt(Number(item.unitPrice)||0)} ج.م</b></>}
+                  {invoiceSettingsOrDefault(session?.invoiceSettings).showDeadWeight&&<><span>نافِق</span><b>{fmt(Number(item.deadWeightKg)||0)} كجم · {fmt(Number(item.deadTotal)||0)} ج.م</b></>}
+                  {invoiceSettingsOrDefault(session?.invoiceSettings).showTotal&&<div className="sale-total"><span>إجمالي البيع</span><strong>{fmt(Number(item.total)||0)} ج.م</strong></div>}
+                </div>)}
+              </div>}
+              {(invoiceSettingsOrDefault(session?.invoiceSettings).showPaid||invoiceSettingsOrDefault(session?.invoiceSettings).showExtraCollection||invoiceSettingsOrDefault(session?.invoiceSettings).showBalance)&&<div className="poultry-invoice-totals">
+                {invoiceSettingsOrDefault(session?.invoiceSettings).showPaid&&<div><span>المدفوع</span><b>{fmt(invoice.amountPaid)} ج.م</b></div>}
+                {invoiceSettingsOrDefault(session?.invoiceSettings).showExtraCollection&&<div><span>التحصيل من الرصيد السابق</span><b>{fmt(invoice.extraCollection||0)} ج.م</b></div>}
+                {invoiceSettingsOrDefault(session?.invoiceSettings).showBalance&&<div className="total"><span>المتبقي</span><strong>{fmt(invoice.balance)} ج.م</strong></div>}
+              </div>}
               <div className="poultry-invoice-actions">
                 <button className="button button-quiet poultry-invoice-exit" onClick={() => setExpanded(null)}>خروج</button>
                 <button className="button button-primary" onClick={() => setLocation('/poultry-sale/'+encodeURIComponent(invoice.customerId))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button>

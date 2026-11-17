@@ -143,7 +143,7 @@ const defaultInvoiceSettings: NonNullable<SessionUser['invoiceSettings']> = {
   showDateTime:true,showHeader:true,headerStoreName:'',headerOwnerName:'',headerMessage:'',headerPhones:'',
 };
 const invoiceSettingOptions: Array<{key: keyof NonNullable<SessionUser['invoiceSettings']>; label:string}> = [
-  {key:'showCustomer',label:'اسم العميل'},{key:'showShop',label:'المحل'},{key:'showPhone',label:'هاتف العميل'},
+  {key:'showCustomer',label:'الاسم'},{key:'showShop',label:'المحل'},{key:'showPhone',label:'هاتف العميل'},
   {key:'showCashier',label:'الموظف'},{key:'showProduct',label:'الصنف'},{key:'showQuantity',label:'الوزن'},
   {key:'showUnitPrice',label:'سعر الكيلو'},{key:'showDeadWeight',label:'النافِق'},{key:'showTotal',label:'إجمالي البيع'},
   {key:'showPaid',label:'المدفوع'},{key:'showExtraCollection',label:'تحصيل من الرصيد السابق'},
