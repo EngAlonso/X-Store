@@ -137,6 +137,18 @@ const poultryPermissionDescription: Record<string, string> = {
 type SocialLinkKey = keyof AuthStatus['socialLinks'];
 type SocialLinkInputValues = Record<SocialLinkKey, string>;
 type InvoiceFormat = NonNullable<SessionUser['invoiceFormat']>;
+const defaultInvoiceSettings: NonNullable<SessionUser['invoiceSettings']> = {
+  showCustomer:true,showShop:true,showPhone:true,showCashier:true,showProduct:true,showQuantity:true,
+  showUnitPrice:true,showDeadWeight:true,showTotal:true,showPaid:true,showExtraCollection:true,showBalance:true,
+  showDateTime:true,showHeader:true,headerStoreName:'',headerOwnerName:'',headerMessage:'',headerPhones:'',
+};
+const invoiceSettingOptions: Array<{key: keyof NonNullable<SessionUser['invoiceSettings']>; label:string}> = [
+  {key:'showCustomer',label:'اسم العميل'},{key:'showShop',label:'المحل'},{key:'showPhone',label:'هاتف العميل'},
+  {key:'showCashier',label:'الموظف'},{key:'showProduct',label:'الصنف'},{key:'showQuantity',label:'الوزن'},
+  {key:'showUnitPrice',label:'سعر الكيلو'},{key:'showDeadWeight',label:'النافِق'},{key:'showTotal',label:'إجمالي البيع'},
+  {key:'showPaid',label:'المدفوع'},{key:'showExtraCollection',label:'تحصيل من الرصيد السابق'},
+  {key:'showBalance',label:'المتبقي'},{key:'showDateTime',label:'التاريخ والوقت'},
+];
 const invoiceFormatOptions: {
   value: InvoiceFormat;
   label: string;
@@ -1158,13 +1170,15 @@ function PoultrySalesPage() {
   return <PoultryCustomersPage mode="sales"/>;
 }
 function PoultrySalePage() {
-  return <PoultryFeatureSalePage />;
+  const session=useContext(XStoreSessionContext);
+  return <PoultryFeatureSalePage session={session}/>;
 }
 function PoultryCollectionsPage() {
   return <PoultryCustomersPage mode="collections"/>;
 }
 function PoultryInvoicesPage() {
-  return <PoultryFeatureInvoicesPage />;
+  const session=useContext(XStoreSessionContext);
+  return <PoultryFeatureInvoicesPage session={session}/>;
 }
 function StoreBackupRoutePage() {
   const session = useContext(XStoreSessionContext);
@@ -2017,49 +2031,34 @@ function PlatformSettingsPage() {
   </>;
 }
 function StoreSettingsPage() {
-  const qc=useQueryClient();
-  const session=useGetXStoreSession();
-  const update=useUpdateXStoreStoreSettings();
-  const [vatPercent,setVatPercent]=useState('15');
-  const [invoiceFormat,setInvoiceFormat]=useState<InvoiceFormat>('wide');
-  const [notice,setNotice]=useState('');
-  useEffect(()=>{
-    if(session.data?.vatRate!=null)setVatPercent(String(session.data.vatRate*100));
-    if(session.data?.invoiceFormat)setInvoiceFormat(session.data.invoiceFormat);
-  },[session.data?.vatRate,session.data?.invoiceFormat]);
-  function submit(e:FormEvent<HTMLFormElement>){
-    e.preventDefault();
-    const percent=Number(vatPercent);
-    if(!Number.isFinite(percent)||percent<0||percent>100)return;
-    update.mutate({data:{vatRate:percent/100,invoiceFormat}},{onSuccess:settings=>{
-      setVatPercent(String(settings.vatRate*100));
-      setInvoiceFormat(settings.invoiceFormat);
-      qc.setQueryData(getGetXStoreSessionQueryKey(),current=>current?{...current,vatRate:settings.vatRate,invoiceFormat:settings.invoiceFormat}:current);
-      void qc.invalidateQueries({queryKey:getGetXStoreSessionQueryKey()});
-      setNotice('تم حفظ نسبة الضريبة وتصميم الفاتورة لهذا المتجر.');
-    }});
-  }
-  return <><PageTitle eyebrow="إعدادات المتجر" title="إعدادات الفاتورة" desc="اختر تصميم الورق المناسب لطابعتك وحدد نسبة الضريبة."/>
+  const qc=useQueryClient(),session=useGetXStoreSession(),update=useUpdateXStoreStoreSettings();
+  const [vatPercent,setVatPercent]=useState('15'),[invoiceFormat,setInvoiceFormat]=useState<InvoiceFormat>('wide');
+  const [invoiceSettings,setInvoiceSettings]=useState(defaultInvoiceSettings),[invoiceEditorOpen,setInvoiceEditorOpen]=useState(false),[notice,setNotice]=useState('');
+  useEffect(()=>{if(session.data?.vatRate!=null)setVatPercent(String(session.data.vatRate*100));if(session.data?.invoiceFormat)setInvoiceFormat(session.data.invoiceFormat);if(session.data?.invoiceSettings)setInvoiceSettings({...defaultInvoiceSettings,...session.data.invoiceSettings});},[session.data?.vatRate,session.data?.invoiceFormat,session.data?.invoiceSettings]);
+  function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const percent=Number(vatPercent);if(!Number.isFinite(percent)||percent<0||percent>100)return;update.mutate({data:{vatRate:percent/100,invoiceFormat,invoiceSettings}},{onSuccess:settings=>{setVatPercent(String(settings.vatRate*100));setInvoiceFormat(settings.invoiceFormat);setInvoiceSettings({...defaultInvoiceSettings,...settings.invoiceSettings});qc.setQueryData(getGetXStoreSessionQueryKey(),current=>current?{...current,vatRate:settings.vatRate,invoiceFormat:settings.invoiceFormat,invoiceSettings:settings.invoiceSettings}:current);void qc.invalidateQueries({queryKey:getGetXStoreSessionQueryKey()});setNotice('تم حفظ إعدادات الفاتورة لهذا المتجر.');setInvoiceEditorOpen(false);}});}
+  const p=invoiceSettings;
+  return <><PageTitle eyebrow="إعدادات المتجر" title="إعدادات الفاتورة" desc="تحكم في شكل الفاتورة والبيانات التي تظهر فيها، وتطبق الإعدادات على فواتير المتجر كلها." action={<button className="button button-primary" type="button" onClick={()=>setInvoiceEditorOpen(true)}><Pencil size={16}/> تعديل الفاتورة</button>}/>
     <Card className="settings-card"><SectionHead title="نسبة الضريبة" detail="تُحفظ النسبة للمتجر كله، وتظهر لأمناء الصندوق عند البيع."/>
       {session.isLoading?<StateBlock loading error={false} onRetry={()=>session.refetch()} empty={false}/>:session.isError?<StateBlock loading={false} error onRetry={()=>session.refetch()} empty={false}/>:<form className="form-grid settings-form" onSubmit={submit}>
         <label className="field field-wide"><span>نسبة ضريبة القيمة المضافة</span><div className="vat-rate-input"><input aria-label="نسبة ضريبة القيمة المضافة" type="number" min="0" max="100" step="0.01" required value={vatPercent} onChange={e=>{setVatPercent(e.target.value);setNotice('')}}/><span>%</span></div></label>
         <div className="role-hint field-wide"><ShieldCheck size={16}/><span>اكتب النسبة من 0 إلى 100٪. تغييرها لا يعدّل الفواتير السابقة.</span></div>
-        <div className="invoice-format-section field-wide">
-          <SectionHead title="تصميم ومقاس الطباعة" detail="سيُستخدم الاختيار على فواتير المتجر عند الطباعة."/>
-          <div className="invoice-format-options" role="radiogroup" aria-label="تصميم ومقاس الفاتورة">
-            {invoiceFormatOptions.map(option=><label className={`invoice-format-option${invoiceFormat===option.value?' is-selected':''}`} key={option.value} data-testid={`invoice-format-${option.value}`}>
-              <input type="radio" name="invoiceFormat" value={option.value} checked={invoiceFormat===option.value} onChange={()=>{setInvoiceFormat(option.value);setNotice('')}}/>
-              <span className={`invoice-format-sample invoice-format-sample--${option.sampleClass}`} aria-hidden="true"><i/><i/><i/></span>
-              <span className="invoice-format-copy"><b>{option.label}</b><small>{option.detail}</small></span>
-            </label>)}
-          </div>
-          <div className="role-hint"><Printer size={16}/><span>اختر نفس عرض الرول الموجود في إعدادات الطابعة: 80 مم أو 58 مم.</span></div>
-        </div>
-        {update.isError&&<div className="form-error">{apiErrorMessage(update.error,'تعذر حفظ إعدادات الفاتورة.')}</div>}
+        <div className="invoice-format-section field-wide"><SectionHead title="تصميم ومقاس الطباعة" detail="سيُستخدم الاختيار على فواتير المتجر عند الطباعة."/><div className="invoice-format-options" role="radiogroup" aria-label="تصميم ومقاس الفاتورة">{invoiceFormatOptions.map(option=><label className={`invoice-format-option${invoiceFormat===option.value?' is-selected':''}`} key={option.value}><input type="radio" name="invoiceFormat" value={option.value} checked={invoiceFormat===option.value} onChange={()=>setInvoiceFormat(option.value)}/><span className={`invoice-format-sample invoice-format-sample--${option.sampleClass}`} aria-hidden="true"><i/><i/><i/></span><span className="invoice-format-copy"><b>{option.label}</b><small>{option.detail}</small></span></label>)}</div></div>
         {notice&&<div className="settings-success"><CircleCheck size={16}/>{notice}</div>}
-        <div className="modal-actions"><button className="button button-primary" disabled={update.isPending}>{update.isPending?'جارٍ الحفظ…':'حفظ إعدادات الفاتورة'}</button></div>
+        {update.isError&&<div className="form-error">{apiErrorMessage(update.error,'تعذر حفظ إعدادات الفاتورة.')}</div>}
+        <div className="modal-actions"><button className="button button-primary" disabled={update.isPending}>{update.isPending?'جارٍ الحفظ…':'حفظ إعدادات المتجر'}</button></div>
       </form>}
     </Card>
+    {invoiceEditorOpen&&<Modal title="تعديل الفاتورة" close={()=>setInvoiceEditorOpen(false)}><div className="invoice-editor" dir="rtl">
+      <div className="invoice-editor-preview"><div className="invoice-preview-header"><span className="invoice-preview-bird">🐔</span><div className="invoice-preview-copy">{p.showHeader&&<><b>{p.headerStoreName||session.data?.tenantName||'اسم المحل'}</b><b>{p.headerOwnerName||session.data?.name||'اسم صاحب المحل'}</b><span>{p.headerMessage||'الجملة التي تكتبها هنا'}</span><span>{p.headerPhones||'أرقام التليفونات'}</span></>}</div><span className="invoice-preview-bird">🐔</span></div><div className="invoice-preview-title">فاتورة دواجن</div><div className="invoice-preview-grid">{invoiceSettingOptions.map(o=>p[o.key]&&<span key={String(o.key)}>{o.label}</span>)}</div></div>
+      <div className="invoice-editor-fields"><div className="invoice-editor-header-fields">
+        <label className="field"><span>اسم المحل — السطر الأول</span><input maxLength={120} value={p.headerStoreName} onChange={e=>setInvoiceSettings(v=>({...v,headerStoreName:e.target.value}))}/></label>
+        <label className="field"><span>اسم صاحب المحل — السطر الثاني</span><input maxLength={120} value={p.headerOwnerName} onChange={e=>setInvoiceSettings(v=>({...v,headerOwnerName:e.target.value}))}/></label>
+        <label className="field field-wide"><span>الجملة — السطر الثالث</span><input maxLength={240} value={p.headerMessage} placeholder="اكتب الجملة التي تريدها" onChange={e=>setInvoiceSettings(v=>({...v,headerMessage:e.target.value}))}/></label>
+        <label className="field field-wide"><span>أرقام التليفونات — السطر الرابع</span><input maxLength={160} value={p.headerPhones} placeholder="01000000000 - 01111111111" onChange={e=>setInvoiceSettings(v=>({...v,headerPhones:e.target.value}))}/></label>
+      </div><label className="invoice-header-toggle"><input type="checkbox" checked={p.showHeader} onChange={e=>setInvoiceSettings(v=>({...v,showHeader:e.target.checked}))}/><span>إظهار رأس الفاتورة</span></label>
+      <div className="invoice-fields-toggle"><b>اختار البيانات اللي تظهر في الفاتورة</b>{invoiceSettingOptions.map(o=><label key={String(o.key)}><input type="checkbox" checked={Boolean(p[o.key])} onChange={e=>setInvoiceSettings(v=>({...v,[o.key]:e.target.checked}))}/><span>{o.label}</span></label>)}</div></div>
+      <div className="modal-actions"><button type="button" className="button button-quiet" onClick={()=>setInvoiceEditorOpen(false)}>إلغاء</button><button type="button" className="button button-primary" disabled={update.isPending} onClick={()=>document.querySelector<HTMLFormElement>('.settings-form')?.requestSubmit()}>{update.isPending?'جارٍ الحفظ…':'حفظ التعديلات'}</button></div>
+    </div></Modal>}
   </>;
 }
 function SubscriptionsPage() {

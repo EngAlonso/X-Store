@@ -65,6 +65,14 @@ export const TeamPermission = {
   customer_management: 'customer_management',
 } as const;
 
+export interface InvoiceSettings {
+  showCustomer: boolean; showShop: boolean; showPhone: boolean; showCashier: boolean;
+  showProduct: boolean; showQuantity: boolean; showUnitPrice: boolean; showDeadWeight: boolean;
+  showTotal: boolean; showPaid: boolean; showExtraCollection: boolean; showBalance: boolean;
+  showDateTime: boolean; showHeader: boolean;
+  headerStoreName: string; headerOwnerName: string; headerMessage: string; headerPhones: string;
+}
+
 export interface SessionUser {
   id: string;
   name: string;
@@ -97,6 +105,7 @@ export interface SessionUser {
   vatRate: number | null;
   /** @nullable */
   invoiceFormat: SessionUserInvoiceFormat;
+  invoiceSettings: InvoiceSettings;
   wholesaleEnabled: boolean;
 }
 
@@ -116,6 +125,7 @@ export interface StoreSettings {
      */
   vatRate: number;
   invoiceFormat: StoreSettingsInvoiceFormat;
+  invoiceSettings: InvoiceSettings;
 }
 
 export type StoreSettingsInputInvoiceFormat = typeof StoreSettingsInputInvoiceFormat[keyof typeof StoreSettingsInputInvoiceFormat];
@@ -135,6 +145,7 @@ export interface StoreSettingsInput {
      */
   vatRate: number;
   invoiceFormat?: StoreSettingsInputInvoiceFormat;
+  invoiceSettings?: InvoiceSettings;
 }
 
 export interface SocialLinks {

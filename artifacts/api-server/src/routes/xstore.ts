@@ -219,6 +219,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
           currency: xstoreTenants.currency,
           vatRate: xstoreTenants.vatRate,
           invoiceFormat: xstoreTenants.invoiceFormat,
+          invoiceSettings: xstoreTenants.invoiceSettings,
           wholesaleEnabled: xstoreTenants.wholesaleEnabled,
         })
         .from(xstoreTenants)
@@ -240,6 +241,7 @@ async function sessionUserDto(user: typeof xstoreUsers.$inferSelect) {
     currency: tenant?.currency ?? null,
     vatRate: tenant ? toNumber(tenant.vatRate) : null,
     invoiceFormat: tenant?.invoiceFormat ?? null,
+    invoiceSettings: tenant?.invoiceSettings,
     wholesaleEnabled: tenantAllowsWholesale(tenant),
   };
 }
@@ -1151,15 +1153,13 @@ router.patch("/xstore/store-settings", async (req, res): Promise<void> => {
     .update(xstoreTenants)
     .set({
       vatRate: String(parsed.data.vatRate),
-      ...(parsed.data.invoiceFormat
-        ? { invoiceFormat: parsed.data.invoiceFormat }
-        : {}),
+      ...(parsed.data.invoiceFormat ? { invoiceFormat: parsed.data.invoiceFormat } : {}),
+      ...(parsed.data.invoiceSettings ? { invoiceSettings: parsed.data.invoiceSettings } : {}),
     })
     .where(eq(xstoreTenants.id, tenantId))
     .returning({
-      id: xstoreTenants.id,
-      vatRate: xstoreTenants.vatRate,
-      invoiceFormat: xstoreTenants.invoiceFormat,
+      id: xstoreTenants.id, vatRate: xstoreTenants.vatRate,
+      invoiceFormat: xstoreTenants.invoiceFormat, invoiceSettings: xstoreTenants.invoiceSettings,
     });
   if (!tenant) {
     res.status(404).json({ error: "Store settings not found." });
@@ -1177,6 +1177,7 @@ router.patch("/xstore/store-settings", async (req, res): Promise<void> => {
     UpdateXStoreStoreSettingsResponse.parse({
       vatRate: toNumber(tenant.vatRate),
       invoiceFormat: tenant.invoiceFormat,
+      invoiceSettings: tenant.invoiceSettings,
     }),
   );
 });

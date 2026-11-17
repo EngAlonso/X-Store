@@ -44,6 +44,21 @@ export const xstoreInvoiceFormats = [
 ] as const;
 export type XStoreInvoiceFormat = (typeof xstoreInvoiceFormats)[number];
 
+export type XStoreInvoiceSettings = {
+  showCustomer: boolean; showShop: boolean; showPhone: boolean; showCashier: boolean;
+  showProduct: boolean; showQuantity: boolean; showUnitPrice: boolean; showDeadWeight: boolean;
+  showTotal: boolean; showPaid: boolean; showExtraCollection: boolean; showBalance: boolean;
+  showDateTime: boolean; showHeader: boolean;
+  headerStoreName: string; headerOwnerName: string; headerMessage: string; headerPhones: string;
+};
+export const defaultXStoreInvoiceSettings: XStoreInvoiceSettings = {
+  showCustomer: true, showShop: true, showPhone: true, showCashier: true,
+  showProduct: true, showQuantity: true, showUnitPrice: true, showDeadWeight: true,
+  showTotal: true, showPaid: true, showExtraCollection: true, showBalance: true,
+  showDateTime: true, showHeader: true, headerStoreName: '', headerOwnerName: '',
+  headerMessage: '', headerPhones: '',
+};
+
 export const xstoreSaleTypes = ["retail", "wholesale"] as const;
 export type XStoreSaleType = (typeof xstoreSaleTypes)[number];
 
@@ -73,6 +88,10 @@ export const xstoreTenants = pgTable("xstore_tenants", {
     .$type<XStoreInvoiceFormat>()
     .notNull()
     .default("wide"),
+  invoiceSettings: jsonb("invoice_settings")
+    .$type<XStoreInvoiceSettings>()
+    .notNull()
+    .default(defaultXStoreInvoiceSettings),
   wholesaleEnabled: boolean("wholesale_enabled").notNull().default(false),
   status: text("status").notNull().default("trial"),
   plan: text("plan").notNull().default("monthly"),

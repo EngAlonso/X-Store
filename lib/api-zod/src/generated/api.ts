@@ -110,6 +110,14 @@ export const CreateInitialPlatformOwnerResponse = zod.object({
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
   "vatRate": zod.number().min(createInitialPlatformOwnerResponseVatRateMin).max(createInitialPlatformOwnerResponseVatRateMax).nullable(),
   "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable(),
+  "invoiceSettings": zod.object({
+  "showCustomer": zod.boolean(), "showShop": zod.boolean(), "showPhone": zod.boolean(), "showCashier": zod.boolean(),
+  "showProduct": zod.boolean(), "showQuantity": zod.boolean(), "showUnitPrice": zod.boolean(), "showDeadWeight": zod.boolean(),
+  "showTotal": zod.boolean(), "showPaid": zod.boolean(), "showExtraCollection": zod.boolean(), "showBalance": zod.boolean(),
+  "showDateTime": zod.boolean(), "showHeader": zod.boolean(),
+  "headerStoreName": zod.string().max(120), "headerOwnerName": zod.string().max(120),
+  "headerMessage": zod.string().max(240), "headerPhones": zod.string().max(160)
+}),
   "wholesaleEnabled": zod.boolean()
 })
 
@@ -154,6 +162,14 @@ export const LoginXStoreWithPhoneResponse = zod.object({
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
   "vatRate": zod.number().min(loginXStoreWithPhoneResponseVatRateMin).max(loginXStoreWithPhoneResponseVatRateMax).nullable(),
   "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable(),
+  "invoiceSettings": zod.object({
+  "showCustomer": zod.boolean(), "showShop": zod.boolean(), "showPhone": zod.boolean(), "showCashier": zod.boolean(),
+  "showProduct": zod.boolean(), "showQuantity": zod.boolean(), "showUnitPrice": zod.boolean(), "showDeadWeight": zod.boolean(),
+  "showTotal": zod.boolean(), "showPaid": zod.boolean(), "showExtraCollection": zod.boolean(), "showBalance": zod.boolean(),
+  "showDateTime": zod.boolean(), "showHeader": zod.boolean(),
+  "headerStoreName": zod.string().max(120), "headerOwnerName": zod.string().max(120),
+  "headerMessage": zod.string().max(240), "headerPhones": zod.string().max(160)
+}),
   "wholesaleEnabled": zod.boolean()
 })
 
@@ -192,6 +208,14 @@ export const GetXStoreSessionResponse = zod.object({
   "currency": zod.union([zod.literal('EGP'),zod.literal('SAR'),zod.literal('AED'),zod.literal('USD'),zod.literal('EUR'),zod.literal('GBP'),zod.literal(null)]).nullable(),
   "vatRate": zod.number().min(getXStoreSessionResponseVatRateMin).max(getXStoreSessionResponseVatRateMax).nullable(),
   "invoiceFormat": zod.union([zod.literal('wide'),zod.literal('thermal_80mm'),zod.literal('thermal_58mm'),zod.literal(null)]).nullable(),
+  "invoiceSettings": zod.object({
+  "showCustomer": zod.boolean(), "showShop": zod.boolean(), "showPhone": zod.boolean(), "showCashier": zod.boolean(),
+  "showProduct": zod.boolean(), "showQuantity": zod.boolean(), "showUnitPrice": zod.boolean(), "showDeadWeight": zod.boolean(),
+  "showTotal": zod.boolean(), "showPaid": zod.boolean(), "showExtraCollection": zod.boolean(), "showBalance": zod.boolean(),
+  "showDateTime": zod.boolean(), "showHeader": zod.boolean(),
+  "headerStoreName": zod.string().max(120), "headerOwnerName": zod.string().max(120),
+  "headerMessage": zod.string().max(240), "headerPhones": zod.string().max(160)
+}),
   "wholesaleEnabled": zod.boolean()
 })
 
@@ -206,7 +230,15 @@ export const updateXStoreStoreSettingsBodyVatRateMax = 1;
 
 export const UpdateXStoreStoreSettingsBody = zod.object({
   "vatRate": zod.number().min(updateXStoreStoreSettingsBodyVatRateMin).max(updateXStoreStoreSettingsBodyVatRateMax).describe('VAT rate as a fraction; 0.15 means 15%.'),
-  "invoiceFormat": zod.enum(['wide', 'thermal_80mm', 'thermal_58mm']).optional()
+  "invoiceFormat": zod.enum(['wide', 'thermal_80mm', 'thermal_58mm']).optional(),
+  "invoiceSettings": zod.object({
+  "showCustomer": zod.boolean(), "showShop": zod.boolean(), "showPhone": zod.boolean(), "showCashier": zod.boolean(),
+  "showProduct": zod.boolean(), "showQuantity": zod.boolean(), "showUnitPrice": zod.boolean(), "showDeadWeight": zod.boolean(),
+  "showTotal": zod.boolean(), "showPaid": zod.boolean(), "showExtraCollection": zod.boolean(), "showBalance": zod.boolean(),
+  "showDateTime": zod.boolean(), "showHeader": zod.boolean(),
+  "headerStoreName": zod.string().max(120), "headerOwnerName": zod.string().max(120),
+  "headerMessage": zod.string().max(240), "headerPhones": zod.string().max(160)
+}).optional()
 })
 
 export const updateXStoreStoreSettingsResponseVatRateMin = 0;
@@ -216,7 +248,15 @@ export const updateXStoreStoreSettingsResponseVatRateMax = 1;
 
 export const UpdateXStoreStoreSettingsResponse = zod.object({
   "vatRate": zod.number().min(updateXStoreStoreSettingsResponseVatRateMin).max(updateXStoreStoreSettingsResponseVatRateMax),
-  "invoiceFormat": zod.enum(['wide', 'thermal_80mm', 'thermal_58mm'])
+  "invoiceFormat": zod.enum(['wide', 'thermal_80mm', 'thermal_58mm']),
+  "invoiceSettings": zod.object({
+  "showCustomer": zod.boolean(), "showShop": zod.boolean(), "showPhone": zod.boolean(), "showCashier": zod.boolean(),
+  "showProduct": zod.boolean(), "showQuantity": zod.boolean(), "showUnitPrice": zod.boolean(), "showDeadWeight": zod.boolean(),
+  "showTotal": zod.boolean(), "showPaid": zod.boolean(), "showExtraCollection": zod.boolean(), "showBalance": zod.boolean(),
+  "showDateTime": zod.boolean(), "showHeader": zod.boolean(),
+  "headerStoreName": zod.string().max(120), "headerOwnerName": zod.string().max(120),
+  "headerMessage": zod.string().max(240), "headerPhones": zod.string().max(160)
+})
 })
 
 
