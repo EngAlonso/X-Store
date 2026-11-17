@@ -297,8 +297,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
         <button className="button button-quiet" onClick={()=>window.print()}><Printer size={16}/> طباعة</button>
       </div>}
     />
-    {error&&<div className="form-error poultry-form-error" role="alert"><AlertTriangle size={16}/><span>{error}</span></div>}
-    {notice&&<div className="notice-box success poultry-form-notice"><CircleCheck size={16}/><span>{notice}</span></div>}
+    {error&&<div className="form-error poultry-form-error" role="alert"><AlertTriangle size={16}/><span>{error}</span></div>}    {notice&&<div className="notice-box success poultry-form-notice"><CircleCheck size={16}/><span>{notice}</span></div>}
 
     {pageMode==='sales'&&<div className="poultry-step-strip" aria-label="خطوات البيع">
       <div className="poultry-step"><b>1</b><span>اختَر العميل</span></div>
@@ -519,6 +518,7 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
   const [lastInvoiceDetails, setLastInvoiceDetails] = useState({ productName: 'فراخ', quantityKg: 0, unitPrice: 0, deadWeightKg: 0, deadTotal: 0 });
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [calculatorDisplay, setCalculatorDisplay] = useState('0');
+  const [calculatorExpression, setCalculatorExpression] = useState('0');
   const [calculatorStored, setCalculatorStored] = useState<number | null>(null);
   const [calculatorOperator, setCalculatorOperator] = useState<string | null>(null);
   const [calculatorWaiting, setCalculatorWaiting] = useState(false);
@@ -557,18 +557,26 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
     if (calculatorWaiting || calculatorDisplay === '0') {
       setCalculatorDisplay(digit);
       setCalculatorWaiting(false);
-    } else {
-      setCalculatorDisplay(prev => prev.length >= 12 ? prev : prev + digit);
+      setCalculatorExpression(calculatorOperator !== null && calculatorStored !== null ? String(calculatorStored) + ' ' + calculatorOperator + ' ' + digit : digit);
+      return;
     }
+    const next = calculatorDisplay.length >= 12 ? calculatorDisplay : calculatorDisplay + digit;
+    setCalculatorDisplay(next);
+    setCalculatorExpression(calculatorOperator !== null && calculatorStored !== null ? String(calculatorStored) + ' ' + calculatorOperator + ' ' + next : next);
   }
 
   function calculatorInputDecimal() {
     if (calculatorWaiting) {
       setCalculatorDisplay('0.');
       setCalculatorWaiting(false);
+      setCalculatorExpression(calculatorOperator !== null && calculatorStored !== null ? String(calculatorStored) + ' ' + calculatorOperator + ' 0.' : '0.');
       return;
     }
-    if (!calculatorDisplay.includes('.')) setCalculatorDisplay(prev => prev + '.');
+    if (!calculatorDisplay.includes('.')) {
+      const next = calculatorDisplay + '.';
+      setCalculatorDisplay(next);
+      setCalculatorExpression(calculatorOperator !== null && calculatorStored !== null ? String(calculatorStored) + ' ' + calculatorOperator + ' ' + next : next);
+    }
   }
 
   function calculatorCalculate(a: number, b: number, op: string) {
@@ -597,8 +605,7 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
       setCalculatorStored(current);
     }
     setCalculatorOperator(op);
-    setCalculatorWaiting(true);
-  }
+    setCalculatorWaiting(true);  }
 
   function calculatorEquals() {
     if (!calculatorOperator || calculatorStored === null) return;
@@ -607,8 +614,11 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
     const result = calculatorCalculate(calculatorStored, current, calculatorOperator);
     if (!Number.isFinite(result)) {
       setCalculatorDisplay('خطأ');
+      setCalculatorExpression(String(calculatorStored) + ' ' + calculatorOperator + ' ' + calculatorDisplay + ' =');
     } else {
-      setCalculatorDisplay(String(Number(result.toFixed(10))));
+      const resultText = String(Number(result.toFixed(10)));
+      setCalculatorDisplay(resultText);
+      setCalculatorExpression(String(calculatorStored) + ' ' + calculatorOperator + ' ' + calculatorDisplay + ' =');
     }
     setCalculatorStored(null);
     setCalculatorOperator(null);
@@ -617,6 +627,7 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
 
   function calculatorClear() {
     setCalculatorDisplay('0');
+    setCalculatorExpression('0');
     setCalculatorStored(null);
     setCalculatorOperator(null);
     setCalculatorWaiting(false);
@@ -624,7 +635,9 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
 
   function calculatorBackspace() {
     if (calculatorWaiting || calculatorDisplay === 'خطأ') return calculatorClear();
-    setCalculatorDisplay(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+    const next = calculatorDisplay.length > 1 ? calculatorDisplay.slice(0, -1) : '0';
+    setCalculatorDisplay(next);
+    setCalculatorExpression(calculatorOperator !== null && calculatorStored !== null ? String(calculatorStored) + ' ' + calculatorOperator + ' ' + next : next);
   }
 
   function invoiceMessage() {
@@ -712,7 +725,10 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
           <div><span>أداة سريعة</span><h3><Calculator size={18}/> الحاسبة</h3></div>
           <button type="button" className="poultry-calculator-close" onClick={() => setCalculatorOpen(false)} aria-label="إغلاق">×</button>
         </div>
-        <div className="poultry-calculator-display" dir="ltr">{calculatorDisplay}</div>
+        <div className="poultry-calculator-display" dir="ltr">
+          <div className="poultry-calculator-expression" aria-live="polite">{calculatorExpression}</div>
+          <div className="poultry-calculator-result" aria-live="polite">{calculatorDisplay}</div>
+        </div>
         <div className="poultry-calculator-grid" dir="ltr">
           <button type="button" onClick={calculatorClear} className="calc-clear">AC</button>
           <button type="button" onClick={calculatorBackspace}>⌫</button>
@@ -897,8 +913,7 @@ export function PoultryInvoicesPage({ session }: { session: SessionUser | null }
 
     <div className="poultry-invoice-stats">
       <StatCard label="عدد الفواتير" value={fmt(data?.summary.count || 0)} detail="الفواتير الظاهرة" icon={ReceiptText}/>
-      <StatCard label="إجمالي المبيعات" value={fmt(data?.summary.sales || 0) + ' ج.م'} detail="قيمة الفواتير" icon={CreditCard} tint="gold"/>
-      <StatCard label="إجمالي المدفوع" value={fmt(data?.summary.paid || 0) + ' ج.م'} detail="يشمل التحصيل المرتبط" icon={Wallet}/>
+      <StatCard label="إجمالي المبيعات" value={fmt(data?.summary.sales || 0) + ' ج.م'} detail="قيمة الفواتير" icon={CreditCard} tint="gold"/>      <StatCard label="إجمالي المدفوع" value={fmt(data?.summary.paid || 0) + ' ج.م'} detail="يشمل التحصيل المرتبط" icon={Wallet}/>
       <StatCard label="إجمالي الكمية" value={fmt(data?.summary.totalKg || 0) + ' كجم'} detail="وزن الأصناف المباعة" icon={Bird} tint="green"/>
     </div>
 
