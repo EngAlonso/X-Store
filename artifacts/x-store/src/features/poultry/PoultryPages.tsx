@@ -494,13 +494,14 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
     return () => { cancelled = true; };
   }, [customerId]);
 
-  const invoiceTotal = roundMoney((Number(invoice.quantityKg) || 0) * (Number(invoice.unitPrice) || 0));
+  const deadWeightKg = Math.max(0, Number(invoice.deadWeightKg) || 0);
+  const deadTotal = roundMoney(deadWeightKg * (Number(invoice.unitPrice) || 0));
+  const grossInvoiceTotal = roundMoney((Number(invoice.quantityKg) || 0) * (Number(invoice.unitPrice) || 0));
+  const invoiceTotal = roundMoney(Math.max(0, grossInvoiceTotal - deadTotal));
   const amountReceivedToday = Math.max(0, Number(invoice.amountPaid) || 0);
   const paidOnInvoice = Math.min(invoiceTotal, amountReceivedToday);
   const extraCollection = Math.max(0, roundMoney(amountReceivedToday - invoiceTotal));
   const invoiceRemaining = Math.max(0, roundMoney(invoiceTotal - paidOnInvoice));
-  const deadWeightKg = Math.max(0, Number(invoice.deadWeightKg) || 0);
-  const deadTotal = roundMoney(deadWeightKg * (Number(invoice.unitPrice) || 0));
 
   function invoiceMessage() {
     if (!lastInvoice || !customer) return '';
