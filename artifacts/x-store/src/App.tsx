@@ -36,7 +36,7 @@ import {
   Bell, LogOut, Menu, X, ArrowUpLeft, ChevronLeft, ChevronDown, CreditCard, Banknote,
   Wallet, CircleCheck, Clock3, AlertTriangle, RotateCcw,
   Pause, Play, Minus, Trash2, RefreshCw, CalendarDays, Users, Boxes, Activity, ShieldCheck, ArrowLeftRight, Printer,
-  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, ArrowUp, Eye, EyeOff, LockKeyhole, Smartphone, Database, Coffee, Utensils, Pencil, Bird,
+  Settings2, KeyRound, Phone, Mail, MessageCircle, ArrowLeft, ArrowUp, Eye, EyeOff, LockKeyhole, Smartphone, Database, Coffee, Utensils, Pencil as PencilIcon, Bird,
 } from 'lucide-react';
 import {
   FaFacebook,
@@ -1547,7 +1547,7 @@ function TenantsPage() {
     <div className="tenant-summary"><span><Store size={17}/> {fmt(filtered.length)} متجر</span><span><CircleCheck size={17}/> {fmt(filtered.filter(t=>t.status==='active').length)} نشط</span><span><Clock3 size={17}/> {fmt(filtered.filter(t=>t.status==='trial').length)} تجريبي</span></div>
     <div className="tenant-edit-toolbar">
       <label className="field"><span>اختر متجرًا لتعديل بياناته</span><select value={tenantToEditId} onChange={e=>setTenantToEditId(e.target.value)}><option value="">اختر متجرًا</option>{tenants.data?.map(tenant=><option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></label>
-      <button className="button button-quiet" type="button" disabled={!tenantToEdit||update.isPending} onClick={()=>tenantToEdit&&openTenantEdit(tenantToEdit)}><Pencil size={15}/> تعديل المتجر</button>
+      <button className="button button-quiet" type="button" disabled={!tenantToEdit||update.isPending} onClick={()=>tenantToEdit&&openTenantEdit(tenantToEdit)}><PencilIcon size={15}/> تعديل المتجر</button>
     </div>
     <Card><SectionHead title="قائمة المتاجر" detail="تحديث الحالة وتغيير بيانات دخول المالك مسجلان في سجل التدقيق."/>
       <div className="table-toolbar"><label className="search-box"><Search size={17}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="ابحث باسم المتجر أو المالك أو الهاتف" data-testid="input-search-tenants"/></label><span className="result-count">{fmt(filtered.length)} نتيجة</span></div>
@@ -1834,7 +1834,7 @@ function TeamPage() {
                             aria-label={`تعديل حساب ${member.name}`}
                             title="تعديل الحساب"
                           >
-                            <Pencil size={15} /> تعديل
+                            <PencilIcon size={15} /> تعديل
                           </button>
                           <button
                             className="table-action team-action-danger"
@@ -1878,7 +1878,7 @@ function TeamPage() {
                     <span className="team-owner-note">حساب المالك</span>
                   ) : (
                     <>
-                      <button type="button" className="button button-quiet" onClick={() => openEdit(member)}><Pencil size={15}/> تعديل</button>
+                      <button type="button" className="button button-quiet" onClick={() => openEdit(member)}><PencilIcon size={15}/> تعديل</button>
                       <button type="button" className="button button-quiet team-action-danger" onClick={() => { remove.reset(); setDeletingMember(member); }}><Trash2 size={15}/> حذف</button>
                     </>
                   )}
@@ -2074,7 +2074,7 @@ function StoreSettingsPage() {
   useEffect(()=>{if(session.data?.vatRate!=null)setVatPercent(String(session.data.vatRate*100));if(session.data?.invoiceFormat)setInvoiceFormat(session.data.invoiceFormat);if(session.data?.invoiceSettings)setInvoiceSettings({...defaultInvoiceSettings,...session.data.invoiceSettings});},[session.data?.vatRate,session.data?.invoiceFormat,session.data?.invoiceSettings]);
   function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();const percent=Number(vatPercent);if(!Number.isFinite(percent)||percent<0||percent>100)return;update.mutate({data:{vatRate:percent/100,invoiceFormat,invoiceSettings}},{onSuccess:settings=>{setVatPercent(String(settings.vatRate*100));setInvoiceFormat(settings.invoiceFormat);setInvoiceSettings({...defaultInvoiceSettings,...settings.invoiceSettings});qc.setQueryData(getGetXStoreSessionQueryKey(),current=>current?{...current,vatRate:settings.vatRate,invoiceFormat:settings.invoiceFormat,invoiceSettings:settings.invoiceSettings}:current);void qc.invalidateQueries({queryKey:getGetXStoreSessionQueryKey()});setNotice('تم حفظ إعدادات الفاتورة لهذا المتجر.');setInvoiceEditorOpen(false);}});}
   const p=invoiceSettings;
-  return <><PageTitle eyebrow="إعدادات المتجر" title="إعدادات الفاتورة" desc="تحكم في شكل الفاتورة والبيانات التي تظهر فيها، وتطبق الإعدادات على فواتير المتجر كلها." action={<button className="button button-primary" type="button" onClick={()=>setInvoiceEditorOpen(true)}><Pencil size={16}/> تعديل الفاتورة</button>}/>
+  return <><PageTitle eyebrow="إعدادات المتجر" title="إعدادات الفاتورة" desc="تحكم في شكل الفاتورة والبيانات التي تظهر فيها، وتطبق الإعدادات على فواتير المتجر كلها." action={<button className="button button-primary" type="button" onClick={()=>setInvoiceEditorOpen(true)}><PencilIcon size={16}/> تعديل الفاتورة</button>}/>
     <Card className="settings-card"><SectionHead title="نسبة الضريبة" detail="تُحفظ النسبة للمتجر كله، وتظهر لأمناء الصندوق عند البيع."/>
       {session.isLoading?<StateBlock loading error={false} onRetry={()=>session.refetch()} empty={false}/>:session.isError?<StateBlock loading={false} error onRetry={()=>session.refetch()} empty={false}/>:<form className="form-grid settings-form" onSubmit={submit}>
         <label className="field field-wide"><span>نسبة ضريبة القيمة المضافة</span><div className="vat-rate-input"><input aria-label="نسبة ضريبة القيمة المضافة" type="number" min="0" max="100" step="0.01" required value={vatPercent} onChange={e=>{setVatPercent(e.target.value);setNotice('')}}/><span>%</span></div></label>
