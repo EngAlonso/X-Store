@@ -861,12 +861,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { 
 .store-chip small { color:#b5cbb9; font-size:11px; }
 .store-chip>svg { color:#b3c5b6; }
 .nav-caption { margin:27px 10px 10px; color:#9bb69f; font-size:12px; font-weight:500; }
-.side-nav { display:flex; flex-direction:column; gap:5px; }
+.side-nav { display:flex; flex-direction:column; gap:5px; flex:1; min-height:0; overflow-y:auto; padding-bottom:8px; scrollbar-width:thin; }
 .nav-link { position:relative; display:flex; align-items:center; gap:11px; min-height:46px; padding:0 12px; border-radius:8px; color:#c0d1c3; font-size:14px; transition:background .16s,color .16s; }
 .nav-link:hover { background:#ffffff12; color:#fff; }
 .nav-active { background:#ffffff17; color:#fff; font-weight:600; }
 .nav-active>i { position:absolute; right:0; width:3px;height:22px;border-radius:3px 0 0 3px;background:#79c18b; }
-.sidebar-bottom { margin-top:auto; }
+.sidebar-bottom { margin-top:auto; flex:0 0 auto; }
 .support-box { margin:0 2px 14px; padding:14px 13px; border:1px solid #ffffff1c; border-radius:10px; background:#ffffff09; }
 .support-icon { display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:#ffffff16;color:#b4d5bc;margin-bottom:10px; }
 .support-box>b { font-size:12px; }
