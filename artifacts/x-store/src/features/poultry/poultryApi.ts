@@ -112,6 +112,9 @@ export const poultryApi = {
   createCustomer(input: PoultryCustomerInput) {
     return poultryRequest<PoultryCustomerRecord>('/customers', { method: 'POST', body: JSON.stringify(input) });
   },
+  updateCustomer(customerId: string, input: PoultryCustomerInput) {
+    return poultryRequest<PoultryCustomerRecord>('/customers/' + encodeURIComponent(customerId), { method: 'PATCH', body: JSON.stringify(input) });
+  },
   getStatement(customerId: string, from: string, to: string) {
     return poultryRequest<PoultryStatement>('/customers/' + encodeURIComponent(customerId) + '/statement?from=' + encodeURIComponent(from) + '&to=' + encodeURIComponent(to));
   },
