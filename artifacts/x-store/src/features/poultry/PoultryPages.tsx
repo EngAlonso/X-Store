@@ -318,7 +318,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
           <button className="button button-quiet" onClick={()=>void loadCustomers(search)} disabled={busy}><Search size={15}/> بحث</button>
         </div>
         <div className="poultry-customer-list">
-          {customers.length?customers.map(c=><button type="button" className={'poultry-customer '+(selected?.id===c.id?'selected':'')} key={c.id} onClick={()=>{if(pageMode==='sales'){setLocation('/poultry-sale/'+encodeURIComponent(c.id));return;}setSelected(c);setStatement(null);setError('');}}>
+          {customers.length?customers.map(c=><button type="button" className={'poultry-customer '+(selected?.id===c.id?'selected':'')} key={c.id} onClick={()=>{if(pageMode==='sales'){setLocation('/poultry-sale/'+encodeURIComponent(c.id));return;}setSelected(c);setStatement(null);setError('');void loadStatement(c).catch(e=>setError(e instanceof Error?e.message:'تعذر تحميل كشف الحساب.'));}}>
             <span className="poultry-customer-icon"><Bird size={18}/></span>
             <span><b>{c.name}</b><small>{c.shopName||'بدون اسم محل'} · {c.phone}</small></span>
             <strong>{fmt(c.balance)} ج.م</strong>
