@@ -6793,3 +6793,98 @@ input,select,textarea{max-width:100%;min-width:0;box-sizing:border-box}.panel,.c
     font-size:11px;
   }
 }
+
+@media (max-width: 767px) {
+  /* Team page: the member table sits directly after the summary card */
+  .team-summary + .card .table-wrap {
+    overflow:visible;
+  }
+  .team-summary + .card .table-wrap table {
+    min-width:0 !important;
+    width:100%;
+    table-layout:auto;
+  }
+  .team-summary + .card .table-wrap thead {
+    display:none;
+  }
+  .team-summary + .card .table-wrap tbody {
+    display:grid;
+    gap:10px;
+  }
+  .team-summary + .card .table-wrap tbody tr {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0;
+    padding:10px;
+    border:1px solid #e5ece6;
+    border-radius:12px;
+    background:#fff;
+    box-shadow:0 4px 14px rgba(23,63,43,.04);
+  }
+  .team-summary + .card .table-wrap tbody td {
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    gap:4px;
+    min-width:0;
+    max-width:none;
+    padding:9px 8px;
+    border-bottom:1px solid #eef2ef;
+    font-size:10px;
+    line-height:1.55;
+    white-space:normal;
+    overflow-wrap:anywhere;
+    word-break:break-word;
+  }
+  .team-summary + .card .table-wrap tbody td::before {
+    color:#8a958d;
+    font-size:8px;
+    font-weight:700;
+    line-height:1.3;
+  }
+  .team-summary + .card .table-wrap tbody td:nth-child(1)::before { content:"عضو الفريق"; }
+  .team-summary + .card .table-wrap tbody td:nth-child(2)::before { content:"رقم الهاتف"; }
+  .team-summary + .card .table-wrap tbody td:nth-child(3)::before { content:"البريد الإلكتروني"; }
+  .team-summary + .card .table-wrap tbody td:nth-child(4)::before { content:"الدور"; }
+  .team-summary + .card .table-wrap tbody td:nth-child(5)::before { content:"الصلاحيات"; }
+  .team-summary + .card .table-wrap tbody td:nth-child(6)::before { content:"الحالة"; }
+  .team-summary + .card .table-wrap tbody td:nth-child(7)::before { content:"تاريخ الإضافة"; }
+  .team-summary + .card .table-wrap tbody td:nth-child(8)::before { content:"إجراءات"; }
+  .team-summary + .card .table-wrap tbody td:nth-child(7),
+  .team-summary + .card .table-wrap tbody td:nth-child(8) {
+    border-bottom:0;
+  }
+  .team-summary + .card .table-wrap tbody td:nth-child(8) {
+    grid-column:1/-1;
+  }
+  .team-summary + .card .table-wrap tbody tr:has(td[colspan]) {
+    display:block;
+    padding:14px;
+  }
+  .team-summary + .card .table-wrap tbody tr:has(td[colspan]) td {
+    display:block;
+    border:0;
+    text-align:center;
+  }
+  .team-summary + .card .table-wrap tbody tr:has(td[colspan]) td::before {
+    content:none;
+  }
+  .team-summary + .card .table-wrap .team-member-actions {
+    width:100%;
+    flex-wrap:wrap;
+    gap:7px;
+  }
+  .team-summary + .card .table-wrap .team-member-actions .table-action {
+    min-height:36px;
+    flex:1 1 120px;
+    justify-content:center;
+    border:1px solid #e2e9e3;
+    background:#f7faf7;
+  }
+  .team-summary + .card .table-wrap .member-name {
+    width:100%;
+  }
+  .team-summary + .card .table-wrap .member-name b {
+    font-size:11px;
+  }
+}
