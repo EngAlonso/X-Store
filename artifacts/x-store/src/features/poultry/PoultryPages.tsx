@@ -40,6 +40,40 @@ function Modal({ title, close, children }: { title: string; close: () => void; c
   return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) close(); }}><section className="modal" role="dialog" aria-modal="true"><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={close} aria-label="إغلاق">×</button></div>{children}</section></div>;
 }
 
+
+function drawUnifiedInvoiceImage(invoice:any, customer:any, details:any, filename:string) {
+  const width=1200,height=1320,canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+  const ctx=canvas.getContext('2d');if(!ctx)return;ctx.direction='rtl';ctx.textAlign='right';ctx.fillStyle='#f1f5f2';ctx.fillRect(0,0,width,height);
+  const card=(x:number,y:number,w:number,h:number,fill='#fff')=>{ctx.fillStyle=fill;ctx.fillRect(x,y,w,h)};
+  const txt=(v:string,x:number,y:number,s:number,w='600',col='#17251b')=>{ctx.fillStyle=col;ctx.font=w+' '+s+'px Arial';ctx.fillText(v,x,y)};
+  const field=(label:string,value:string,x:number,y:number,w:number)=>{card(x,y,w,72);txt(label,x+w-18,y+25,17,'700','#718078');txt(value,x+w-18,y+53,21,'800')};
+  card(0,0,width,190,'#173f2b');txt('تم الحفظ بنجاح',width-65,62,22,'800','#d8e5da');txt('فاتورة '+invoice.invoiceNo,width-65,108,42,'800','#fff');
+  txt(new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.createdAt||invoice.date)),width-65,150,20,'600','#fff');
+  const x=55,w=width-110;card(x,215,w,185);txt('بيانات الفاتورة',width-80,250,18,'800','#718078');
+  field('العميل',customer?.name||invoice.customerName,width-595,270,510);field('المحل',customer?.shopName||invoice.shopName||'غير مسجل',width-80,270,510);
+  field('الهاتف',customer?.phone||invoice.phone||'—',width-595,350,510);field('الموظف',invoice.cashierName||'غير محدد',width-80,350,510);
+  card(x,420,w,300);txt('تفاصيل البيع',width-80,455,20,'800','#718078');
+  const item=details||invoice.items?.[0]||{};
+  field('الصنف',item.productName||'فراخ',width-595,475,510);field('الوزن',fmt(Number(item.quantityKg)||0)+' كجم',width-80,475,510);
+  field('سعر الكيلو',fmt(Number(item.unitPrice)||0)+' ج.م',width-595,555,510);field('نافِق',fmt(Number(item.deadWeightKg)||0)+' كجم · '+fmt(Number(item.deadTotal)||0)+' ج.م',width-80,555,510);
+  field('إجمالي البيع',fmt(Number(invoice.total)||0)+' ج.م',width-595,635,510);field('التاريخ والوقت',new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.createdAt||invoice.date)),width-80,635,510);
+  card(x,740,w,100);field('المدفوع',fmt(Number(invoice.amountPaid)||0)+' ج.م',width-595,755,340);field('تحصيل من الرصيد السابق',fmt(Number(invoice.extraCollection)||0)+' ج.م',width-225,755,340);
+  card(width-225,855,340,100,'#173f2b');txt('المتبقي',width-243,885,17,'700','#d8e5da');txt(fmt(Number(invoice.balance)||0)+' ج.م',width-243,920,28,'800','#fff');
+  card(x,975,w,75,'#edf5ee');txt('X-Store · فاتورة دواجن',width-80,1022,18,'700','#24553b');
+  canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)},'image/jpeg',0.92);
+}
+function buildUnifiedInvoicePrint(invoice:any,customer:any,details:any) {
+  const esc=(v:any)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
+  const d=new Date(invoice.createdAt||invoice.date),dateText=new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Cairo'}).format(d),timeText=new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(d),item=details||invoice.items?.[0]||{};
+  const popup=window.open('','_blank','width=900,height=1000');if(!popup)return;
+  popup.document.open();popup.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>فاتورة '+esc(invoice.invoiceNo)+'</title><style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#f1f5f2;color:#17251b;font-family:Arial,Tahoma,sans-serif;direction:rtl}body{padding:18px}.receipt{width:100%;max-width:620px;margin:auto}.card{background:#fff;border:1px solid #dfe7e1;border-radius:16px;padding:14px;margin-bottom:12px}.header{background:#173f2b;color:#fff;border:0;padding:20px}.header small{display:block;color:#d8e5da;font-size:12px;font-weight:800}.header h1{margin:6px 0;font-size:25px}.header p{margin:0;font-size:13px}.section{font-size:12px;color:#718078;font-weight:800;margin-bottom:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.field{border:1px solid #e2eae3;border-radius:10px;padding:9px;min-width:0}.field small{display:block;color:#718078;font-size:10px;margin-bottom:4px}.field b,.field strong{display:block;font-size:13px;overflow-wrap:anywhere}.totals{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.total{border:1px solid #e2eae3;border-radius:10px;padding:10px}.total small{display:block;color:#718078;font-size:10px;margin-bottom:5px}.total b,.total strong{font-size:14px}.remaining{background:#173f2b;color:#fff;border-color:#173f2b}.remaining small{color:#d8e5da}.foot{text-align:center;color:#718078;font-size:10px}@media print{html,body{background:#fff}body{padding:0}.receipt{max-width:none}.card{break-inside:avoid}.header,.remaining{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><main class="receipt">'+
+  '<section class="card header"><small>تم الحفظ بنجاح</small><h1>فاتورة '+esc(invoice.invoiceNo)+'</h1><p>'+esc(dateText)+' · '+esc(timeText)+'</p></section>'+
+  '<section class="card"><div class="section">بيانات الفاتورة</div><div class="grid"><div class="field"><small>العميل</small><b>'+esc(customer?.name||invoice.customerName)+'</b></div><div class="field"><small>المحل</small><b>'+esc(customer?.shopName||invoice.shopName||'غير مسجل')+'</b></div><div class="field"><small>الهاتف</small><b dir="ltr">'+esc(customer?.phone||invoice.phone||'—')+'</b></div><div class="field"><small>الموظف</small><b>'+esc(invoice.cashierName||'غير محدد')+'</b></div></div></section>'+
+  '<section class="card"><div class="section">تفاصيل البيع</div><div class="grid"><div class="field"><small>الصنف</small><b>'+esc(item.productName||'فراخ')+'</b></div><div class="field"><small>الوزن</small><b>'+esc(fmt(Number(item.quantityKg)||0)+' كجم')+'</b></div><div class="field"><small>سعر الكيلو</small><b>'+esc(fmt(Number(item.unitPrice)||0)+' ج.م')+'</b></div><div class="field"><small>نافِق</small><b>'+esc(fmt(Number(item.deadWeightKg)||0)+' كجم · '+fmt(Number(item.deadTotal)||0)+' ج.م')+'</b></div><div class="field"><small>إجمالي البيع</small><strong>'+esc(fmt(Number(invoice.total)||0)+' ج.م')+'</strong></div><div class="field"><small>التاريخ والوقت</small><b>'+esc(dateText+' · '+timeText)+'</b></div></div></section>'+
+  '<section class="card"><div class="totals"><div class="total"><small>المدفوع</small><b>'+esc(fmt(Number(invoice.amountPaid)||0)+' ج.م')+'</b></div><div class="total"><small>تحصيل من الرصيد السابق</small><b>'+esc(fmt(Number(invoice.extraCollection)||0)+' ج.م')+'</b></div><div class="total remaining"><small>المتبقي</small><strong>'+esc(fmt(Number(invoice.balance)||0)+' ج.م')+'</strong></div></div></section>'+
+  '<div class="foot">تم استخراج الفاتورة من نظام X-Store</div></main></body></html>');
+  popup.document.close();popup.focus();setTimeout(()=>{try{popup.print()}catch{}},500);
+}
 function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'customers' | 'sales' | 'collections'; session: SessionUser | null }) {
   const [, setLocation] = useLocation();
   const [customers,setCustomers]=useState<PoultryCustomer[]>([]);
@@ -180,22 +214,14 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
 
   function downloadStatement(){
     if(!selected||!statement)return;
-    const rows=statement.rows,rowHeight=78,width=1200,height=520+Math.max(rows.length,1)*rowHeight;
-    const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');if(!ctx)return;
-    ctx.direction='rtl';ctx.textAlign='right';ctx.fillStyle='#f5f8f5';ctx.fillRect(0,0,width,height);ctx.fillStyle='#173f2b';ctx.fillRect(0,0,width,190);
-    ctx.fillStyle='#fff';ctx.font='700 42px Arial';ctx.fillText('كشف حساب عميل',width-60,70);ctx.font='600 24px Arial';ctx.fillText(selected.name,width-60,112);ctx.font='20px Arial';ctx.fillText('الفترة: '+from+' إلى '+to,width-60,150);
-    const x=50,w=width-100;let y=220;ctx.fillStyle='#fff';ctx.fillRect(x,y,w,115);ctx.fillStyle='#718078';ctx.font='700 18px Arial';
-    ctx.fillText('المحل: '+(selected.shopName||'—'),width-80,y+34);ctx.fillText('الهاتف: '+selected.phone,width-80,y+66);ctx.fillStyle='#17251b';ctx.font='700 20px Arial';ctx.fillText('رصيد أول الفترة: '+fmt(statement.openingBalance)+' ج.م',width-80,y+99);
-    y+=145;ctx.fillStyle='#edf3ed';ctx.fillRect(x,y,w,58);ctx.fillStyle='#24553b';ctx.font='700 18px Arial';['التاريخ','الحركة','الكيلو','سعر الكيلو','القيمة','الموظف'].forEach((label,i)=>ctx.fillText(label,[width-70,930,730,540,330,110][i],y+36));
-    ctx.font='600 18px Arial';rows.forEach((row:any,index:number)=>{const ry=y+58+index*rowHeight;ctx.fillStyle='#fff';ctx.fillRect(x,ry,w,rowHeight);ctx.fillStyle='#17251b';
-      ctx.fillText(new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)),width-70,ry+31);
-      ctx.fillText(row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):'تحصيل',930,ry+31);
-      ctx.fillText(row.items?.length?fmt(row.items.reduce((sum:number,item:any)=>sum+Number(item.quantityKg||0),0))+' كجم':'—',730,ry+31);
-      ctx.fillText(row.items?.length?fmt(row.items[0].unitPrice)+' ج.م':'—',540,ry+31);ctx.fillText(fmt(row.type==='invoice'?row.total:row.paid)+' ج.م',330,ry+31);ctx.fillText(row.actorName||'—',110,ry+31);
-    });
-    y+=58+Math.max(rows.length,1)*rowHeight+28;const sums=[['إجمالي الكمية',fmt(statement.summary.totalKg)+' كجم'],['المبيعات',fmt(statement.summary.sales)+' ج.م'],['التحصيلات',fmt(statement.summary.paid)+' ج.م'],['الرصيد المتبقي',fmt(statement.summary.remaining)+' ج.م']];
-    sums.forEach((item,index)=>{const bw=(w-18)/2,bx=x+(index%2)*(bw+18),by=y+Math.floor(index/2)*92;ctx.fillStyle=index===3?'#173f2b':'#fff';ctx.fillRect(bx,by,bw,78);ctx.fillStyle=index===3?'#d8e5da':'#718078';ctx.font='700 17px Arial';ctx.fillText(item[0],bx+bw-22,by+28);ctx.fillStyle=index===3?'#fff':'#17251b';ctx.font='700 23px Arial';ctx.fillText(item[1],bx+bw-22,by+60);});
-    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='كشف-حساب-'+selected.name+'-'+from+'-'+to+'.jpg';document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/jpeg',0.92);
+    const rows=statement.rows,width=1200,rowHeight=205,height=620+Math.max(rows.length,1)*rowHeight,canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+    const ctx=canvas.getContext('2d');if(!ctx)return;ctx.direction='rtl';ctx.textAlign='right';ctx.fillStyle='#f1f5f2';ctx.fillRect(0,0,width,height);
+    const card=(x:number,y:number,w:number,h:number,fill='#fff')=>{ctx.fillStyle=fill;ctx.fillRect(x,y,w,h)},txt=(v:string,x:number,y:number,s:number,w='600',c='#17251b')=>{ctx.fillStyle=c;ctx.font=w+' '+s+'px Arial';ctx.fillText(v,x,y)},wrap=(v:string,x:number,y:number,max:number,s:number,w='600',c='#17251b')=>{ctx.fillStyle=c;ctx.font=w+' '+s+'px Arial';let line='',yy=y;for(const word of String(v).split(' ')){const t=line?line+' '+word:word;if(ctx.measureText(t).width>max&&line){ctx.fillText(line,x,yy);line=word;yy+=s+7}else line=t}if(line)ctx.fillText(line,x,yy)};
+    card(0,0,width,190,'#173f2b');txt('كشف حساب عميل',width-60,70,42,'800','#fff');txt(selected.name,width-60,112,25,'800','#fff');txt('الفترة: '+from+' إلى '+to,width-60,150,20,'600','#fff');
+    const x=55,w=width-110;card(x,215,w,145);txt('بيانات الحساب',width-80,250,18,'800','#718078');txt('المحل: '+(selected.shopName||'—'),width-80,285,21,'700');txt('الهاتف: '+selected.phone,width-80,320,21,'700');txt('رصيد أول الفترة: '+fmt(statement.openingBalance)+' ج.م',width-80,348,21,'700');
+    let y=385;rows.forEach((row:any)=>{card(x,y,w,rowHeight-15);txt(row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):'تحصيل',width-80,y+35,22,'800',row.type==='payment'?'#24553b':'#17251b');const date=new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date));const qty=row.items?.length?fmt(row.items.reduce((s:number,i:any)=>s+Number(i.quantityKg||0),0))+' كجم':'—';const price=row.items?.length?fmt(row.items[0].unitPrice)+' ج.م':'—';const value=fmt(row.type==='invoice'?row.total:row.paid)+' ج.م';const fields=[['التاريخ والوقت',date],['الكيلو',qty],['سعر الكيلو',price],['القيمة',value],['الموظف',row.actorName||'—']];fields.forEach((f,i)=>wrap(f[0]+' : '+f[1],width-80-(i%2)*540,y+65+Math.floor(i/2)*55,500,17,'700'));if(row.type==='payment'&&row.note)wrap('ملاحظة: '+row.note,width-80,y+170,1040,16,'600','#63746a');y+=rowHeight});
+    y+=8;[['إجمالي الكمية',fmt(statement.summary.totalKg)+' كجم'],['المبيعات',fmt(statement.summary.sales)+' ج.م'],['التحصيلات',fmt(statement.summary.paid)+' ج.م'],['الرصيد المتبقي',fmt(statement.summary.remaining)+' ج.م']].forEach((f,i)=>{const bx=x+(i%2)*540,by=y+Math.floor(i/2)*95;card(bx,by,500,78,i===3?'#173f2b':'#fff');txt(f[0],bx+478,by+29,17,'700',i===3?'#d8e5da':'#718078');txt(f[1],bx+478,by+61,24,'800',i===3?'#fff':'#17251b')});
+    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='كشف-حساب-'+selected.name+'-'+from+'-'+to+'.jpg';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)},'image/jpeg',0.92);
   }
 
   function printStatement(){
@@ -483,38 +509,13 @@ export function PoultrySalePage() {
   }
 
   function printInvoice() {
-    if (!lastInvoice || !customer) return;
-    const popup = window.open('', '_blank', 'width=900,height=800');
-    if (!popup) {
-      setError('المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم جرّب مرة أخرى.');
-      return;
-    }
-    const createdDate = new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
-    const createdTime = new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'Africa/Cairo' }).format(new Date(lastInvoice.createdAt));
-    const created = createdDate + ' - ' + createdTime;
-    popup.document.write('<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>فاتورة ' + lastInvoice.invoiceNo + '</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111;direction:rtl}h1{margin:0 0 8px}table{width:100%;border-collapse:collapse;margin:24px 0}td,th{border:1px solid #ddd;padding:10px;text-align:right}.total{font-size:20px;font-weight:700}.muted{color:#666}@media print{body{padding:12px}}</style></head><body><h1>فاتورة دواجن</h1><div class="muted">فاتورة رقم ' + lastInvoice.invoiceNo + ' · ' + created + '</div><hr><p><b>العميل:</b> ' + customer.name + '</p><p><b>المحل:</b> ' + (customer.shopName || 'غير مسجل') + '</p><p><b>الهاتف:</b> ' + customer.phone + '</p><p><b>حررها الموظف:</b> ' + (lastInvoice.cashierName || 'غير محدد') + '</p><table><tr><th>الصنف</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th></tr><tr><td>' + lastInvoiceDetails.productName + '</td><td>' + fmt(lastInvoiceDetails.quantityKg) + ' كجم</td><td>' + fmt(lastInvoiceDetails.unitPrice) + ' ج.م</td><td>' + fmt(lastInvoice.total) + ' ج.م</td></tr><tr><th>النافِق</th><td>' + fmt(lastInvoiceDetails.deadWeightKg) + ' كجم</td><td>قيمة النافق</td><td>' + fmt(lastInvoiceDetails.deadTotal) + ' ج.م</td></tr></table><p>المدفوع على الفاتورة: <b>' + fmt(lastInvoice.amountPaid) + ' ج.م</b></p><p>تحصيل من الرصيد السابق: <b>' + fmt(lastInvoice.extraCollection || 0) + ' ج.م</b></p><p class="total">المتبقي من الفاتورة: ' + fmt(lastInvoice.balance) + ' ج.م</p><script>window.onload=function(){window.print();}</script></body></html>');
-    popup.document.close();
-    popup.focus();
-    window.setTimeout(() => { try { popup.print(); } catch {} }, 400);
+    if(!lastInvoice||!customer)return;
+    buildUnifiedInvoicePrint(lastInvoice,customer,lastInvoiceDetails);
   }
 
   function downloadInvoice() {
-    if (!lastInvoice || !customer) return;
-    const canvas=document.createElement('canvas'); const width=1080,height=1320;
-    canvas.width=width;canvas.height=height; const ctx=canvas.getContext('2d'); if(!ctx)return;
-    ctx.direction='rtl';ctx.textAlign='right';ctx.fillStyle='#f5f8f5';ctx.fillRect(0,0,width,height);
-    ctx.fillStyle='#173f2b';ctx.fillRect(0,0,width,190);ctx.fillStyle='#fff';ctx.font='700 44px Arial';ctx.fillText('فاتورة دواجن',width-70,72);
-    ctx.font='600 26px Arial';ctx.fillText('رقم الفاتورة: '+lastInvoice.invoiceNo,width-70,120);ctx.font='22px Arial';
-    ctx.fillText(new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(lastInvoice.createdAt)),width-70,158);
-    const x=55,w=width-110;ctx.fillStyle='#fff';ctx.fillRect(x,220,w,170);ctx.fillStyle='#6b786f';ctx.font='700 20px Arial';ctx.fillText('بيانات العميل',width-85,255);
-    ctx.fillStyle='#17251b';ctx.font='700 28px Arial';ctx.fillText(customer.name,width-85,295);ctx.font='22px Arial';ctx.fillText('المحل: '+(customer.shopName||'غير مسجل'),width-85,332);ctx.fillText('الهاتف: '+customer.phone,width-85,366);
-    const y=425,col=[width-90,730,485,260];ctx.fillStyle='#edf3ed';ctx.fillRect(x,y,w,72);ctx.fillStyle='#24553b';ctx.font='700 21px Arial';
-    ['الصنف','الكمية','سعر الكيلو','القيمة'].forEach((label,i)=>ctx.fillText(label,col[i],y+45));ctx.fillStyle='#17251b';ctx.font='600 22px Arial';
-    ctx.fillText(lastInvoiceDetails.productName,col[0],y+115);ctx.fillText(fmt(lastInvoiceDetails.quantityKg)+' كجم',col[1],y+115);ctx.fillText(fmt(lastInvoiceDetails.unitPrice)+' ج.م',col[2],y+115);ctx.fillText(fmt(lastInvoice.total)+' ج.م',col[3],y+115);ctx.font='500 18px Arial';ctx.fillStyle='#718078';ctx.fillText('نافِق: '+fmt(lastInvoiceDetails.deadWeightKg)+' كجم · '+fmt(lastInvoiceDetails.deadTotal)+' ج.م',col[0],y+150);ctx.font='600 22px Arial';ctx.fillStyle='#17251b';
-    const summary=[['المدفوع على الفاتورة',fmt(lastInvoice.amountPaid)+' ج.م'],['تحصيل من الرصيد السابق',fmt(lastInvoice.extraCollection||0)+' ج.م'],['إجمالي المدفوع اليوم',fmt(lastInvoice.amountReceived??lastInvoice.amountPaid)+' ج.م'],['المتبقي',fmt(lastInvoice.balance)+' ج.م']];
-    summary.forEach((item,i)=>{const bx=x+(i%2)*(w/2+8),by=610+Math.floor(i/2)*105,bw=w/2-8;ctx.fillStyle=i===3?'#173f2b':'#fff';ctx.fillRect(bx,by,bw,88);ctx.fillStyle=i===3?'#d8e5da':'#718078';ctx.font='700 18px Arial';ctx.fillText(item[0],bx+bw-28,by+30);ctx.fillStyle=i===3?'#fff':'#17251b';ctx.font='700 25px Arial';ctx.fillText(item[1],bx+bw-28,by+65);});
-    ctx.fillStyle='#718078';ctx.font='18px Arial';ctx.fillText('تم استخراج الفاتورة من نظام X-Store',width-70,930);
-    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='فاتورة-'+lastInvoice.invoiceNo+'.jpg';document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/jpeg',0.92);
+    if(!lastInvoice||!customer)return;
+    drawUnifiedInvoiceImage(lastInvoice,customer,lastInvoiceDetails,'فاتورة-'+lastInvoice.invoiceNo+'.jpg');
   }
 
   async function createInvoice() {
@@ -677,18 +678,8 @@ export function PoultryInvoicesPage() {
   const invoices = data?.invoices || [];
 
   function downloadInvoiceImage(invoice: Awaited<ReturnType<typeof poultryApi.listInvoices>>['invoices'][number]) {
-    const canvas=document.createElement('canvas');const width=1080,rowHeight=92,itemCount=Math.max(invoice.items.length,1),height=760+itemCount*rowHeight;
-    canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d');if(!ctx)return;ctx.direction='rtl';ctx.textAlign='right';
-    ctx.fillStyle='#f5f8f5';ctx.fillRect(0,0,width,height);ctx.fillStyle='#173f2b';ctx.fillRect(0,0,width,180);ctx.fillStyle='#fff';ctx.font='700 42px Arial';ctx.fillText('فاتورة دواجن',width-65,70);
-    ctx.font='600 24px Arial';ctx.fillText('فاتورة رقم '+invoice.invoiceNo,width-65,112);ctx.font='20px Arial';ctx.fillText(dateLabel(invoice.date)+' · '+new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(invoice.date)),width-65,150);
-    const x=55,w=width-110;ctx.fillStyle='#fff';ctx.fillRect(x,210,w,145);ctx.fillStyle='#718078';ctx.font='700 18px Arial';ctx.fillText('العميل',width-80,242);ctx.fillStyle='#17251b';ctx.font='700 28px Arial';ctx.fillText(invoice.customerName,width-80,282);ctx.font='20px Arial';ctx.fillText('المحل: '+(invoice.shopName||'غير مسجل'),width-80,316);ctx.fillText('الهاتف: '+invoice.phone,width-80,345);
-    let y=390;const cols=[width-80,760,510,260];ctx.fillStyle='#edf3ed';ctx.fillRect(x,y,w,60);ctx.fillStyle='#24553b';ctx.font='700 19px Arial';['الصنف','الكمية','سعر الكيلو','القيمة'].forEach((label,i)=>ctx.fillText(label,cols[i],y+38));
-    ctx.font='600 20px Arial';invoice.items.forEach((item,index)=>{const iy=y+60+index*rowHeight;ctx.fillStyle='#fff';ctx.fillRect(x,iy,w,rowHeight);ctx.fillStyle='#17251b';ctx.fillText(item.productName,cols[0],iy+36);ctx.fillText(fmt(item.quantityKg)+' كجم',cols[1],iy+36);ctx.fillText(fmt(item.unitPrice)+' ج.م',cols[2],iy+36);ctx.fillText(fmt(item.total)+' ج.م',cols[3],iy+36);if(Number(item.deadWeightKg)>0){ctx.font='500 17px Arial';ctx.fillStyle='#718078';ctx.fillText('نافِق: '+fmt(item.deadWeightKg)+' كجم · '+fmt(item.deadTotal)+' ج.م',cols[0],iy+68);ctx.font='600 20px Arial';ctx.fillStyle='#17251b';}ctx.strokeStyle='#dfe7e1';ctx.beginPath();ctx.moveTo(x,iy+rowHeight);ctx.lineTo(x+w,iy+rowHeight);ctx.stroke();});
-    y+=60+itemCount*rowHeight+24;const totals=[['إجمالي الفاتورة',fmt(invoice.total)+' ج.م'],['مدفوع على الفاتورة',fmt(invoice.amountPaid)+' ج.م'],['تحصيل من الرصيد السابق',fmt(invoice.extraCollection)+' ج.م'],['المتبقي',fmt(invoice.balance)+' ج.م']];
-    totals.forEach((item,index)=>{const bw=(w-12)/2,bx=x+(index%2)*(bw+12),by=y+Math.floor(index/2)*92;ctx.fillStyle=index===3?'#173f2b':'#fff';ctx.fillRect(bx,by,bw,78);ctx.fillStyle=index===3?'#d8e5da':'#718078';ctx.font='700 17px Arial';ctx.fillText(item[0],bx+bw-22,by+28);ctx.fillStyle=index===3?'#fff':'#17251b';ctx.font='700 23px Arial';ctx.fillText(item[1],bx+bw-22,by+60);});
-    canvas.toBlob(blob=>{if(!blob)return;const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='فاتورة-'+invoice.invoiceNo+'.jpg';document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),1000);},'image/jpeg',0.92);
+    drawUnifiedInvoiceImage(invoice,{name:invoice.customerName,shopName:invoice.shopName,phone:invoice.phone},invoice.items?.[0],'فاتورة-'+invoice.invoiceNo+'.jpg');
   }
-
 
   function whatsappInvoice(invoice: Awaited<ReturnType<typeof poultryApi.listInvoices>>['invoices'][number]) {
     const phone = String(invoice.phone || '').replace(/\D/g, '');
@@ -714,42 +705,7 @@ export function PoultryInvoicesPage() {
   }
 
   function printInvoice(invoice: Awaited<ReturnType<typeof poultryApi.listInvoices>>['invoices'][number]) {
-    const popup = window.open('', '_blank', 'width=900,height=1000');
-    if (!popup) {
-      window.alert('المتصفح منع نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم أعد المحاولة.');
-      return;
-    }
-    const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({
-      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-    }[char] || char));
-    const created = new Date(invoice.date);
-    const dateText = new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Cairo'
-    }).format(created);
-    const timeText = new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE, {
-      hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Cairo'
-    }).format(created);
-    const item = invoice.items[0];
-    const saleCells = invoice.items.map(item => '<div class="sale-cell"><span>الصنف</span><b>' + esc(item.productName || '—') + '</b><span>الوزن</span><b>' + esc(fmt(Number(item.quantityKg) || 0) + ' كجم') + '</b><span>سعر الكيلو</span><b>' + esc(fmt(Number(item.unitPrice) || 0) + ' ج.م') + '</b><span>إجمالي البيع</span><strong>' + esc(fmt(Number(item.total) || 0) + ' ج.م') + '</strong></div>').join('');
-
-    popup.document.open();
-    popup.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>فاتورة ' + esc(invoice.invoiceNo) + '</title><style>' +
-      '*{box-sizing:border-box}html,body{margin:0;padding:0;background:#eef2ef;color:#17251b;font-family:Arial,Tahoma,sans-serif;direction:rtl}' +
-      'body{padding:18px}.receipt{width:100%;max-width:560px;margin:0 auto}.card{background:#fff;border:1px solid #dfe7e1;border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(15,28,20,.05)}' +
-      '.head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.head-icon{font-size:28px}.kicker{display:block;color:#718078;font-size:11px;font-weight:800;margin-bottom:4px}.title{font-size:21px;font-weight:800;margin:0}.meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}.meta>div,.sale-cell>span,.sale-cell>b,.sale-cell>strong{min-width:0}.meta>div{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:1px solid #e2eae3;border-radius:10px;background:#fff}.meta small,.sale-cell span{font-size:10px;color:#718078}.meta b,.sale-cell b,.sale-cell strong{font-size:12px;overflow-wrap:anywhere}.sale-title{font-size:12px;color:#718078;font-weight:800;margin-bottom:7px}.sale{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.sale-cell{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;padding:8px 10px;border:1px solid #e2eae3;border-radius:10px;background:#fff}.sale-cell span:nth-of-type(1),.sale-cell span:nth-of-type(2){grid-column:1}.sale-cell b:nth-of-type(1),.sale-cell b:nth-of-type(2){grid-column:2;text-align:right}.sale-cell strong{grid-column:2;text-align:right}.sale-cell span:nth-of-type(2),.sale-cell b:nth-of-type(2){display:none}.totals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.totals>div{min-width:0;padding:9px 8px;border:1px solid #e2eae3;border-radius:10px;background:#fff}.totals span{display:block;font-size:10px;color:#718078;margin-bottom:4px}.totals b,.totals strong{font-size:13px;overflow-wrap:anywhere}.totals .remaining{background:#edf5ee;border-color:#cbdcca}.actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.actions span{display:flex;align-items:center;justify-content:center;min-height:38px;padding:6px 4px;border:1px solid #dfe7e1;border-radius:10px;font-size:10px;font-weight:800;text-align:center}.foot{text-align:center;color:#718078;font-size:10px;margin-top:8px}' +
-      '@media print{html,body{background:#fff}body{padding:0}.receipt{max-width:none}.card{box-shadow:none;break-inside:avoid}.actions{display:none}.foot{margin-top:8px}}' +
-      '</style></head><body><main class="receipt">' +
-      '<section class="card"><div class="head"><div><span class="kicker">تم الحفظ بنجاح</span><h1 class="title">فاتورة ' + esc(invoice.invoiceNo) + '</h1></div><div class="head-icon">▤</div></div>' +
-      '<div class="meta"><div><small>العميل</small><b>' + esc(invoice.customerName) + '</b></div><div><small>المحل</small><b>' + esc(invoice.shopName || 'غير مسجل') + '</b></div><div><small>الهاتف</small><b dir="ltr">' + esc(invoice.phone) + '</b></div><div><small>اليوم والتاريخ</small><b>' + esc(dateText) + '</b></div><div><small>الوقت</small><b>' + esc(timeText) + '</b></div><div><small>الموظف</small><b>' + esc(invoice.cashierName || 'غير محدد') + '</b></div></div></section>' +
-      '<section class="card"><div class="sale-title">تفاصيل البيع</div><div class="sale">' +
-      saleCells +
-      '</div></section>' +
-      '<section class="card"><div class="totals"><div><span>المدفوع</span><b>' + esc(fmt(invoice.amountPaid) + ' ج.م') + '</b></div><div><span>التحصيل من الرصيد السابق</span><b>' + esc(fmt(invoice.extraCollection || 0) + ' ج.م') + '</b></div><div class="remaining"><span>المتبقي</span><strong>' + esc(fmt(invoice.balance) + ' ج.م') + '</strong></div></div></section>' +
-      '<div class="actions"><span>فتح صفحة بيع العميل</span><span>طباعة</span><span>حفظ كصورة</span><span>إرسال واتساب</span></div>' +
-      '<div class="foot">تم استخراج الفاتورة من نظام X-Store</div></main></body></html>');
-    popup.document.close();
-    popup.focus();
-    window.setTimeout(() => { try { popup.print(); } catch {} }, 500);
+    buildUnifiedInvoicePrint(invoice,{name:invoice.customerName,shopName:invoice.shopName,phone:invoice.phone},invoice.items?.[0]);
   }
 
   return <div dir="rtl" className="poultry-invoices-page">
