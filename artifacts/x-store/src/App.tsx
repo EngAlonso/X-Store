@@ -1853,7 +1853,8 @@ function TeamPage() {
                 ))}
               </tbody>
             </table>
-                    <div className="team-mobile-list">
+          </div>
+          <div className="team-mobile-list">
             {members.map((member) => (
               <article className="team-mobile-card" key={'mobile-'+member.id}>
                 <div className="team-mobile-head">
@@ -1884,7 +1885,6 @@ function TeamPage() {
               </article>
             ))}
           </div>
-</div>
         ) : (
           <div className="state-box">
             <div className="empty-symbol"><Users /></div>
