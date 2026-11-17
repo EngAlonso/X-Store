@@ -101,13 +101,16 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
   const [notice,setNotice]=useState('');
   const [error,setError]=useState('');
   const [customerDialog,setCustomerDialog]=useState(false);
+  const [editingCustomer,setEditingCustomer]=useState<PoultryCustomer|null>(null);
   const [newCustomer,setNewCustomer]=useState({name:'',phone:'',shopName:'',shopAddress:''});
+  const [editCustomerForm,setEditCustomerForm]=useState({name:'',phone:'',shopName:'',shopAddress:''});
   const [invoice,setInvoice]=useState({productName:'فراخ',quantityKg:'',unitPrice:'',deadWeightKg:'',amountPaid:''});
   const [payment,setPayment]=useState('');
   const [lastInvoice,setLastInvoice]=useState<PoultryInvoiceResult|null>(null);
 
   const pageMode=mode;
   const canAddCustomer=pageMode==='customers' && hasAppRole(session,['tenant_admin','cashier','customer_management']);
+  const canEditCustomer=pageMode==='customers' && hasAppRole(session,['tenant_admin','customer_management']);
   const canSell=pageMode==='sales' && hasAppRole(session,['tenant_admin','cashier','retail_sales']);
   const canCollect=pageMode==='collections' && hasAppRole(session,['tenant_admin','cashier','collector']);
 
@@ -143,6 +146,27 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
     }catch(e){
       setError(e instanceof Error?e.message:'تعذر إضافة العميل.');
     }finally{setBusy(false);}
+  }
+
+  function openEditCustomer(customer:PoultryCustomer){
+    setError('');
+    setEditCustomerForm({name:customer.name||'',phone:customer.phone||'',shopName:customer.shopName||'',shopAddress:customer.shopAddress||''});
+    setEditingCustomer(customer);
+  }
+
+  async function updateCustomer(){
+    if(!editingCustomer)return;
+    const payload={name:editCustomerForm.name.trim(),phone:editCustomerForm.phone.trim(),shopName:editCustomerForm.shopName.trim(),shopAddress:editCustomerForm.shopAddress.trim()};
+    if(!payload.name){setError('اكتب اسم العميل قبل الحفظ.');return;}
+    setBusy(true);setError('');setNotice('');
+    try{
+      const updated=await poultryApi.updateCustomer(editingCustomer.id,payload);
+      setCustomers(current=>current.map(row=>row.id===updated.id?{...row,...updated}:row));
+      setSelected(current=>current&&current.id===updated.id?{...current,...updated}:current);
+      setEditingCustomer(null);
+      setNotice('تم تحديث بيانات العميل بنجاح.');
+    }catch(e){setError(e instanceof Error?e.message:'تعذر تحديث بيانات العميل.');}
+    finally{setBusy(false);}
   }
 
   async function loadStatement(customer=selected){
@@ -304,7 +328,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
 
       <Card className="poultry-workspace-card">
         {selected?<>
-          <SectionHead title={'حساب '+selected.name} detail={(selected.shopName||'بدون اسم محل')+' · '+selected.phone}/>
+          <SectionHead title={'حساب '+selected.name} detail={(selected.shopName||'بدون اسم محل')+' · '+selected.phone} action={canEditCustomer?<button className="text-link" onClick={()=>openEditCustomer(selected)}><Pencil size={15}/> تعديل بيانات العميل</button>:null}/>
           <div className="poultry-customer-meta">
             <span><b>المحل</b>{selected.shopName||'—'}</span>
             <span><b>العنوان</b>{selected.shopAddress||'—'}</span>
@@ -365,6 +389,18 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
       </tbody></table></div>
     </Card>}
 
+    {pageMode==='customers'&&editingCustomer&&<Modal title="تعديل بيانات العميل" close={()=>{if(!busy)setEditingCustomer(null);}}>
+      <form className="poultry-customer-form" onSubmit={e=>{e.preventDefault();void updateCustomer();}}>
+        <div className="poultry-modal-intro"><div className="poultry-modal-icon"><Pencil size={22}/></div><div><b>تعديل بيانات العميل</b><span>عدّل الاسم أو الهاتف أو بيانات المحل، ثم احفظ.</span></div></div>
+        <div className="form-grid">
+          <label className="field field-wide"><span>اسم صاحب المحل <b className="required-mark">*</b></span><input required autoFocus value={editCustomerForm.name} onChange={e=>setEditCustomerForm({...editCustomerForm,name:e.target.value})} /></label>
+          <label className="field"><span>رقم الهاتف <span className="optional-mark">اختياري</span></span><input type="tel" inputMode="tel" value={editCustomerForm.phone} onChange={e=>setEditCustomerForm({...editCustomerForm,phone:e.target.value})} /></label>
+          <label className="field"><span>اسم المحل</span><input value={editCustomerForm.shopName} onChange={e=>setEditCustomerForm({...editCustomerForm,shopName:e.target.value})} /></label>
+          <label className="field field-wide"><span>عنوان المحل</span><input value={editCustomerForm.shopAddress} onChange={e=>setEditCustomerForm({...editCustomerForm,shopAddress:e.target.value})} /></label>
+        </div>
+        <div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setEditingCustomer(null)} disabled={busy}>إلغاء</button><button className="button button-primary" type="submit" disabled={busy||!editCustomerForm.name.trim()}><Pencil size={16}/>{busy?'جارٍ الحفظ…':'حفظ التعديل'}</button></div>
+      </form>
+    </Modal>}
     {pageMode==='customers'&&customerDialog&&<Modal title="إضافة عميل دواجن" close={()=>{if(!busy)setCustomerDialog(false);}}>
       <form className="poultry-customer-form" onSubmit={e=>{e.preventDefault();void createCustomer();}}>
         <div className="poultry-modal-intro"><div className="poultry-modal-icon"><Bird size={22}/></div><div><b>بيانات العميل الأساسية</b><span>الاسم فقط مطلوب. باقي البيانات اختيارية.</span></div></div>
