@@ -6997,3 +6997,11 @@ input,select,textarea{max-width:100%;min-width:0;box-sizing:border-box}.panel,.c
     font-size:11px;
   }
 }
+
+
+/* Per-account display settings */
+.sidebar-display-settings{display:flex;align-items:center;gap:9px;margin:0 0 10px;padding:10px 12px;border:1px solid rgba(255,255,255,.11);border-radius:12px;background:rgba(255,255,255,.055);color:rgba(255,255,255,.9);text-decoration:none;font-size:13px;font-weight:600;transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.sidebar-display-settings:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18);transform:translateY(-1px)}
+.sidebar-display-settings span{flex:1}.sidebar-display-settings-active{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.24)}
+.display-settings-card{max-width:820px}.display-scale-options{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}.display-scale-option{position:relative;display:flex;align-items:center;gap:12px;min-height:86px;padding:14px;border:1px solid #dfe7e1;border-radius:14px;background:#fff;color:#173f2b;text-align:right;cursor:pointer;transition:border-color .16s ease,box-shadow .16s ease,background .16s ease}.display-scale-option:hover{border-color:#a9c4b2;background:#f9fbfa}.display-scale-option.is-selected{border-color:#24553b;background:#f2f8f4;box-shadow:0 0 0 2px rgba(36,85,59,.08)}.display-scale-option>span:nth-child(2){display:flex;flex-direction:column;gap:3px}.display-scale-option b{font-size:14px}.display-scale-option small{font-size:11px;color:#6d7d73}.display-scale-preview{display:grid;place-items:center;width:42px;height:42px;border-radius:10px;background:#edf4ef;font-weight:800;line-height:1;color:#24553b}.display-scale-option>svg{margin-inline-start:auto;color:#24553b;flex:none}.display-settings-note{display:flex;align-items:flex-start;gap:8px;margin-top:16px;padding:12px 14px;border:1px solid #e1e9e3;border-radius:12px;background:#f7faf8;color:#617168;font-size:12px}.display-settings-note svg{color:#24553b;flex:none;margin-top:1px}.display-settings-note b{color:#173f2b}
+@media(max-width:700px){.display-scale-options{grid-template-columns:repeat(2,minmax(0,1fr))}.display-scale-option{min-height:78px;padding:12px}}

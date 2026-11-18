@@ -375,6 +375,7 @@ const nav = [
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
   { href: '/poultry-farm', label: 'المزرعة', icon: Bird, roles: ['tenant_admin', 'warehouse_manager'] },
+  { href: '/display-settings', label: 'إعداد العرض', icon: Settings2, roles: ['all'] },
 ];
 
 function Logo({ compact = false }: { compact?: boolean }) {
@@ -862,6 +863,21 @@ function SignUpPage() { return <Redirect to="/sign-in"/>; }
 function AppShell({ children, user, refetch }: { children: ReactNode; user: SessionUser; refetch: () => unknown }) {
   const isPoultryStore = user.storeType === 'poultry';
   const [location, setLocation] = useLocation(); const [open,setOpen] = useState(false);
+  const displayScaleKey = `xstore-display-scale:${user.id}`;
+  const [displayScale, setDisplayScale] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(displayScaleKey));
+      return Number.isFinite(saved) && saved >= 0.85 && saved <= 1.2 ? saved : 1;
+    } catch { return 1; }
+  });
+  useEffect(() => {
+    const onDisplayScaleChange = (event: Event) => {
+      const value = Number((event as CustomEvent<number>).detail);
+      if (Number.isFinite(value) && value >= 0.85 && value <= 1.2) setDisplayScale(value);
+    };
+    window.addEventListener('xstore-display-scale-change', onDisplayScaleChange);
+    return () => window.removeEventListener('xstore-display-scale-change', onDisplayScaleChange);
+  }, []);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   useEffect(() => {
     const handleTouchStart = (event: TouchEvent) => {
@@ -992,13 +1008,16 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
   return (
     <XStoreSessionContext.Provider value={user}>
       <CurrencyContext.Provider value={(user.currency as StoreCurrency | null) || 'SAR'}>
-        <div dir="rtl" className="app-frame">
+        <div dir="rtl" className="app-frame" style={{ zoom: displayScale, width: `${100 / displayScale}%` }}>
           <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
             <div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={() => setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div>
             <div className="store-chip"><span className="store-avatar">{(user.tenantName || user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{user.roleName || roleNames[user.role] || user.role}</small></span><ChevronDown size={15}/></div>
             <div className="nav-caption">القائمة الرئيسية</div>
             <nav className="side-nav">{items.map(item => <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className={`nav-link ${location === item.href ? 'nav-active' : ''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location === item.href && <i/>}</Link>)}</nav>
             <div className="sidebar-bottom">
+              <Link href="/display-settings" onClick={() => setOpen(false)} className={`sidebar-display-settings ${location === '/display-settings' ? 'sidebar-display-settings-active' : ''}`} data-testid="link-nav-display-settings">
+                <Settings2 size={17}/><span>إعداد العرض</span><ChevronLeft size={15}/>
+              </Link>
               <div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div>
               <div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.phone}</small></span><button type="button" className="icon-button" onClick={() => void handleLogout()} disabled={loggingOut} title={loggingOut ? 'جارٍ تسجيل الخروج…' : 'تسجيل الخروج'} aria-label={loggingOut ? 'جارٍ تسجيل الخروج' : 'تسجيل الخروج'} data-testid="button-sign-out"><LogOut size={17}/></button></div>
             </div>
@@ -1065,8 +1084,45 @@ function ProtectedLayout() {
       <Route path="/platform-database" component={PlatformDatabasePage}/>
      <Route path="/platform-backup" component={PlatformBackupPage}/><Route path="/store-backup" component={StoreBackupRoutePage}/><Route path="/restaurant-menu" component={RestaurantMenuPage}/>
     <Route path="/store-settings" component={StoreSettingsPage}/>
+    <Route path="/display-settings" component={DisplaySettingsPage}/>
     <Route component={NotFound}/>
   </Switch>{location === '/subscriptions' && <OfflineLicenseIssuerPanel />}</AppShell>;
+}
+function DisplaySettingsPage() {
+  const user = useContext(XStoreSessionContext);
+  const userId = user?.id || 'unknown';
+  const storageKey = `xstore-display-scale:${userId}`;
+  const options = [
+    { value: 0.85, label: 'صغير', detail: '90% تقريبًا' },
+    { value: 1, label: 'عادي', detail: '100% — الوضع الافتراضي' },
+    { value: 1.1, label: 'كبير', detail: '110%' },
+    { value: 1.2, label: 'أكبر', detail: '120%' },
+  ];
+  const [scale, setScale] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(storageKey));
+      return Number.isFinite(saved) && saved >= 0.85 && saved <= 1.2 ? saved : 1;
+    } catch { return 1; }
+  });
+  function changeScale(value: number) {
+    setScale(value);
+    try { localStorage.setItem(storageKey, String(value)); } catch {}
+    window.dispatchEvent(new CustomEvent('xstore-display-scale-change', { detail: value }));
+  }
+  return <>
+    <PageTitle eyebrow="تخصيص الواجهة" title="إعداد العرض" desc="تحكم في حجم عرض الواجهة على حسابك فقط. الإعداد محفوظ بشكل مستقل لكل حساب على هذا الجهاز."/>
+    <Card className="display-settings-card">
+      <SectionHead title="حجم الخط والعرض" detail="اختر الحجم المناسب لك. التغيير يظهر مباشرة على كل صفحات حسابك."/>
+      <div className="display-scale-options" role="radiogroup" aria-label="حجم العرض">
+        {options.map(option => <button type="button" key={option.value} className={`display-scale-option ${scale === option.value ? 'is-selected' : ''}`} onClick={() => changeScale(option.value)} aria-pressed={scale === option.value}>
+          <span className="display-scale-preview" style={{ fontSize: `${16 * option.value}px` }}>Aa</span>
+          <span><b>{option.label}</b><small>{option.detail}</small></span>
+          {scale === option.value && <CircleCheck size={18}/>} 
+        </button>)}
+      </div>
+      <div className="display-settings-note"><Settings2 size={17}/><span>هذا الإعداد خاص بحساب <b>{user?.name || 'الحساب الحالي'}</b>، ولا يغيّر حجم العرض لباقي الحسابات.</span></div>
+    </Card>
+  </>;
 }
 function PageTitle({ eyebrow, title, desc, action }: { eyebrow:string; title:string; desc:string; action?:ReactNode }) {
   return <div className="page-title"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{desc}</p></div>{action&&<div className="page-action">{action}</div>}</div>;
@@ -2777,7 +2833,7 @@ function moneyLabel(amount:number) {
 }
 
 function Routed() {
-  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/menu/:slug" component={PublicRestaurantMenu}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/offline-license-issuer" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-backup" component={ProtectedLayout}/><Route path="/restaurant-menu" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route path="/poultry-customers" component={ProtectedLayout}/><Route path="/poultry-sales" component={ProtectedLayout}/><Route path="/poultry-sale/:customerId" component={ProtectedLayout}/><Route path="/poultry-collections" component={ProtectedLayout}/><Route path="/poultry-invoices" component={ProtectedLayout}/><Route path="/poultry-invoices/" component={ProtectedLayout}/><Route path="/poultry-farm" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
+  return <ErrorBoundary><Switch><Route path="/" component={HomeRedirect}/><Route path="/contact" component={ContactPage}/><Route path="/menu/:slug" component={PublicRestaurantMenu}/><Route path="/sign-in/*?" component={SignInPage}/><Route path="/sign-up/*?" component={SignUpPage}/><Route path="/dashboard" component={ProtectedLayout}/><Route path="/tenants" component={ProtectedLayout}/><Route path="/subscriptions" component={ProtectedLayout}/><Route path="/offline-license-issuer" component={ProtectedLayout}/><Route path="/team" component={ProtectedLayout}/><Route path="/pos" component={ProtectedLayout}/><Route path="/inventory" component={ProtectedLayout}/><Route path="/reports" component={ProtectedLayout}/><Route path="/sales" component={ProtectedLayout}/><Route path="/audit-log" component={ProtectedLayout}/><Route path="/settings" component={ProtectedLayout}/><Route path="/platform-database" component={ProtectedLayout}/><Route path="/platform-backup" component={ProtectedLayout}/><Route path="/store-backup" component={ProtectedLayout}/><Route path="/restaurant-menu" component={ProtectedLayout}/><Route path="/store-settings" component={ProtectedLayout}/><Route path="/display-settings" component={ProtectedLayout}/><Route path="/poultry-customers" component={ProtectedLayout}/><Route path="/poultry-sales" component={ProtectedLayout}/><Route path="/poultry-sale/:customerId" component={ProtectedLayout}/><Route path="/poultry-collections" component={ProtectedLayout}/><Route path="/poultry-invoices" component={ProtectedLayout}/><Route path="/poultry-invoices/" component={ProtectedLayout}/><Route path="/poultry-farm" component={ProtectedLayout}/><Route component={NotFound}/></Switch></ErrorBoundary>;
 }
 function App() {
   return <TooltipProvider><QueryClientProvider client={queryClient}><WouterRouter base={basePath}><SiteLayout/></WouterRouter></QueryClientProvider><Toaster/></TooltipProvider>;
