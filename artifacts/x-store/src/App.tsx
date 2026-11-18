@@ -370,12 +370,12 @@ const nav = [
   { href: '/platform-database', label: 'قاعدة البيانات', icon: Database, roles: ['platform_admin'] },
   { href: '/platform-backup', label: 'النسخ الاحتياطي', icon: Database, roles: ['platform_admin'] },
   { href: '/store-backup', label: 'النسخ الاحتياطي', icon: Database, roles: ['tenant_admin'] },
+  { href: '/display-settings', label: 'إعداد العرض', icon: Settings2, roles: ['all'] },
   { href: '/restaurant-menu', label: 'المنيو', icon: Utensils, roles: ['tenant_admin'] },
   { href: '/settings', label: 'إعدادات المنصة', icon: Settings2, roles: ['platform_admin'] },
   { href: '/store-settings', label: 'إعدادات المتجر', icon: Settings2, roles: ['tenant_admin'] },
   { href: '/team', label: 'فريق العمل', icon: Users, roles: ['tenant_admin'] },
   { href: '/poultry-farm', label: 'المزرعة', icon: Bird, roles: ['tenant_admin', 'warehouse_manager'] },
-  { href: '/display-settings', label: 'إعداد العرض', icon: Settings2, roles: ['all'] },
 ];
 
 function Logo({ compact = false }: { compact?: boolean }) {
@@ -1022,9 +1022,6 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
             <div className="nav-caption">القائمة الرئيسية</div>
             <nav className="side-nav">{items.map(item => <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className={`nav-link ${location === item.href ? 'nav-active' : ''}`} data-testid={`link-nav-${item.href.slice(1)}`}><item.icon size={18}/><span>{item.label}</span>{location === item.href && <i/>}</Link>)}</nav>
             <div className="sidebar-bottom">
-              <Link href="/display-settings" onClick={() => setOpen(false)} className={`sidebar-display-settings ${location === '/display-settings' ? 'sidebar-display-settings-active' : ''}`} data-testid="link-nav-display-settings">
-                <Settings2 size={17}/><span>إعداد العرض</span><ChevronLeft size={15}/>
-              </Link>
               <div className="support-box"><span className="support-icon"><ShieldCheck size={17}/></span><b>كل شيء تحت السيطرة</b><p>بيانات المتجر محفوظة ومحدّثة.</p></div>
               <div className="profile-row"><span className="profile-avatar">{user.name.slice(0,1)}</span><span className="profile-info"><b>{user.name}</b><small>{user.phone}</small></span><button type="button" className="icon-button" onClick={() => void handleLogout()} disabled={loggingOut} title={loggingOut ? 'جارٍ تسجيل الخروج…' : 'تسجيل الخروج'} aria-label={loggingOut ? 'جارٍ تسجيل الخروج' : 'تسجيل الخروج'} data-testid="button-sign-out"><LogOut size={17}/></button></div>
             </div>
