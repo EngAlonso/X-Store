@@ -1019,7 +1019,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
   return (
     <XStoreSessionContext.Provider value={user}>
       <CurrencyContext.Provider value={(user.currency as StoreCurrency | null) || 'SAR'}>
-        <div dir="rtl" className="app-frame" style={isMobileViewport ? undefined : { zoom: displayScale, width: `${100 / displayScale}%` }}>
+        <div dir="rtl" className="app-frame">
           <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
             <div className="sidebar-top"><Logo/><button className="icon-button sidebar-close" onClick={() => setOpen(false)} aria-label="إغلاق القائمة"><X size={19}/></button></div>
             <div className="store-chip"><span className="store-avatar">{(user.tenantName || user.name).slice(0,1)}</span><span><b>{user.tenantName || 'إدارة المنصة'}</b><small>{user.roleName || roleNames[user.role] || user.role}</small></span><ChevronDown size={15}/></div>
@@ -1034,7 +1034,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
             </div>
           </aside>
           {open && <button aria-label="إغلاق القائمة" className="mobile-scrim" onClick={() => setOpen(false)}/>} 
-          <div className="workspace" style={isMobileViewport ? { zoom: displayScale, width: '100%', maxWidth: '100vw', overflowX: 'hidden' } : undefined}>
+          <div className="workspace" style={{ zoom: displayScale, width: `${100 / displayScale}%`, maxWidth: '100vw', overflowX: 'hidden' }}>
             <header className="topbar">
               <button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={() => setOpen(true)}><Menu size={20}/></button>
               <div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i => i.href === location)?.label || 'لوحة التحكم'}</b></div>
