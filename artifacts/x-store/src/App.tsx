@@ -968,6 +968,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
         ...nav.filter(n => n.href === '/poultry-farm' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
         ...nav.filter(n => n.href === '/reports' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
         ...nav.filter(n => n.href === '/store-settings' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
+        ...nav.filter(n => n.href === '/display-settings' && (n.roles.includes('all') || hasAppRole(user, n.roles))),
         ...nav.filter(n => n.href === '/store-backup' && (n.roles.includes('all') || hasAppRole(user, n.roles))).map(n => ({ ...n, label: 'النسخه الاحتياطية' })),
       ]
     : nav.filter(n =>
@@ -1033,7 +1034,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
             </div>
           </aside>
           {open && <button aria-label="إغلاق القائمة" className="mobile-scrim" onClick={() => setOpen(false)}/>} 
-          <div className="workspace" style={isMobileViewport ? { zoom: displayScale, width: `${100 / displayScale}%` } : undefined}>
+          <div className="workspace" style={isMobileViewport ? { zoom: displayScale, width: '100%', maxWidth: '100vw', overflowX: 'hidden' } : undefined}>
             <header className="topbar">
               <button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={() => setOpen(true)}><Menu size={20}/></button>
               <div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i => i.href === location)?.label || 'لوحة التحكم'}</b></div>
