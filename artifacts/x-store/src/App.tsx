@@ -1034,7 +1034,17 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
             </div>
           </aside>
           {open && <button aria-label="إغلاق القائمة" className="mobile-scrim" onClick={() => setOpen(false)}/>} 
-          <div className="workspace" style={{ zoom: displayScale, width: `${100 / displayScale}%`, maxWidth: '100vw', overflowX: 'hidden' }}>
+          <div
+            className="workspace"
+            style={{
+              zoom: displayScale,
+              width: isMobileViewport
+                ? `${100 / displayScale}%`
+                : `calc(${100 / displayScale}% - ${254 / displayScale}px)`,
+              maxWidth: 'none',
+              overflowX: 'hidden',
+            }}
+          >
             <header className="topbar">
               <button className="icon-button mobile-menu" aria-label="فتح القائمة" onClick={() => setOpen(true)}><Menu size={20}/></button>
               <div className="crumbs"><span>مساحة العمل</span><ChevronLeft size={14}/><b>{items.find(i => i.href === location)?.label || 'لوحة التحكم'}</b></div>
