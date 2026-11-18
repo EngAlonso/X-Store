@@ -867,7 +867,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
   const [displayScale, setDisplayScale] = useState(() => {
     try {
       const saved = Number(localStorage.getItem(displayScaleKey));
-      return Number.isFinite(saved) && saved >= 0.85 && saved <= 1.2 ? saved : 1;
+      return Number.isFinite(saved) && saved >= 0.5 && saved <= 2 ? saved : 1;
     } catch { return 1; }
   });
   const [isMobileViewport, setIsMobileViewport] = useState(() => (
@@ -883,7 +883,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
   useEffect(() => {
     const onDisplayScaleChange = (event: Event) => {
       const value = Number((event as CustomEvent<number>).detail);
-      if (Number.isFinite(value) && value >= 0.85 && value <= 1.2) setDisplayScale(value);
+      if (Number.isFinite(value) && value >= 0.5 && value <= 2) setDisplayScale(value);
     };
     window.addEventListener('xstore-display-scale-change', onDisplayScaleChange);
     return () => window.removeEventListener('xstore-display-scale-change', onDisplayScaleChange);
@@ -1075,7 +1075,7 @@ function ProtectedLayout() {
     session.data?.storeType === 'restaurant' ||
     (session.data?.storeType == null && restaurantFeature === true)
   );
-  const allowed:Record<string,string[]>={'/poultry-farm':['tenant_admin','warehouse_manager'],'/poultry-customers':['tenant_admin','cashier','accountant','customer_management'],'/poultry-invoices':['tenant_admin','cashier','accountant'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-sale/:customerId':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
+  const allowed:Record<string,string[]>={'/poultry-farm':['tenant_admin','warehouse_manager'],'/poultry-customers':['tenant_admin','cashier','accountant','customer_management'],'/poultry-invoices':['tenant_admin','cashier','accountant'],'/poultry-sales':['tenant_admin','cashier','retail_sales'],'/poultry-sale/:customerId':['tenant_admin','cashier','retail_sales'],'/poultry-collections':['tenant_admin','cashier','collector'],'/tenants':['platform_admin'],'/subscriptions':['platform_admin'],'/offline-license-issuer':['platform_admin'],'/settings':['platform_admin'],'/platform-backup':['platform_admin'],'/platform-database':['platform_admin'],'/store-backup':['tenant_admin'],'/restaurant-menu':['tenant_admin'],'/store-settings':['tenant_admin'],'/display-settings':['all'],'/team':['tenant_admin'],'/pos':['tenant_admin','cashier'],'/inventory':['tenant_admin','warehouse_manager'],'/reports':['platform_admin','tenant_admin','accountant'],'/sales':['tenant_admin','cashier','accountant'],'/audit-log':['platform_admin']};
   if (session.data?.storeType !== 'poultry' && location === '/poultry-farm') return <Redirect to="/dashboard"/>;
   if (session.data?.storeType === 'poultry' && ['/pos', '/inventory', '/sales', '/dashboard'].includes(location)) return <Redirect to={getPoultryDefaultPath(session.data)} />;
   if (session.data?.storeType !== 'poultry' && ['/poultry-customers','/poultry-sales','/poultry-sale/:customerId','/poultry-collections','/poultry-invoices'].includes(location)) return <Redirect to="/dashboard"/>;
@@ -2164,6 +2164,38 @@ function StoreSettingsPage() {
     </div></Modal>}
   </>;
 }
+function DisplaySettingsPage() {
+  const user = useContext(XStoreSessionContext);
+  const userId = user?.id || 'unknown';
+  const storageKey = `xstore-display-scale:${userId}`;
+  const [scale, setScale] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(storageKey));
+      return Number.isFinite(saved) && saved >= 0.5 && saved <= 2 ? saved : 1;
+    } catch { return 1; }
+  });
+  function changeScale(value: number) {
+    const safeValue = Math.max(0.5, Math.min(2, value));
+    setScale(safeValue);
+    try { localStorage.setItem(storageKey, String(safeValue)); } catch {}
+    window.dispatchEvent(new CustomEvent('xstore-display-scale-change', { detail: safeValue }));
+  }
+  return <>
+    <PageTitle eyebrow="تخصيص الواجهة" title="إعداد العرض" desc="تحكم في حجم عرض الواجهة على حسابك فقط."/>
+    <Card className="display-settings-card">
+      <SectionHead title="حجم العرض" detail="اسحب الشريط يمينًا أو يسارًا لتكبير أو تصغير الواجهة."/>
+      <div className="display-scale-slider-wrap">
+        <div className="display-scale-slider-top">
+          <span>50%</span><strong>{Math.round(scale * 100)}%</strong><span>200%</span>
+        </div>
+        <input className="display-scale-slider" type="range" min="0.5" max="2" step="0.05" value={scale} onChange={event => changeScale(Number(event.target.value))} aria-label="حجم العرض"/>
+        <div className="display-scale-slider-labels"><span>أصغر</span><span>عادي 100%</span><span>أكبر</span></div>
+      </div>
+      <div className="display-settings-note"><Settings2 size={17}/><span>الإعداد خاص بحساب <b>{user?.name || 'الحساب الحالي'}</b> ومحفوظ على هذا الجهاز.</span></div>
+    </Card>
+  </>;
+}
+
 function SubscriptionsPage() {
   const qc=useQueryClient(), tenants=useListXStoreTenants(), payments=useListXStoreSubscriptionPayments(), update=useUpdateXStoreTenant(), createPayment=useCreateXStoreSubscriptionPayment();
   const money=useMoney();
