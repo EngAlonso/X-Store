@@ -1,22 +1,22 @@
 /* Poultry feature styles — intentionally scoped to the poultry module. */
-.poultry-customers-page,.poultry-dashboard{direction:rtl;display:flex;flex-direction:column;gap:20px}
+.poultry-customers-page,.poultry-dashboard{direction:rtl;display:flex;flex-direction:column;gap:calc(20px * var(--xstore-font-scale,1))}
 .poultry-customers-page .page-title,.poultry-dashboard .page-title{margin-bottom:0}
-.poultry-header-actions{display:flex;gap:8px;flex-wrap:wrap}
+.poultry-header-actions{display:flex;gap:calc(8px * var(--xstore-font-scale,1));flex-wrap:wrap}
 .poultry-grid{grid-template-columns:minmax(280px,.85fr) minmax(0,1.5fr);align-items:start}
 .poultry-customers-card,.poultry-workspace-card{min-width:0}
-.poultry-search-row{display:flex;gap:8px;margin:14px 0}
+.poultry-search-row{display:flex;gap:calc(8px * var(--xstore-font-scale,1));margin:calc(14px * var(--xstore-font-scale,1)) 0}
 .poultry-search{flex:1;min-width:0}
-.poultry-customer-list{display:flex;flex-direction:column;gap:8px;height:360px;max-height:360px;overflow-y:auto;overflow-x:hidden;padding-right:2px}
-.poultry-customer{width:100%;display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:10px;text-align:right;padding:12px;border:1px solid var(--border,#e5e7eb);border-radius:12px;background:var(--card,#fff);color:inherit;cursor:pointer;direction:rtl}
+.poultry-customer-list{display:flex;flex-direction:column;gap:calc(8px * var(--xstore-font-scale,1));height:calc(360px * var(--xstore-font-scale,1));max-height:calc(360px * var(--xstore-font-scale,1));overflow-y:auto;overflow-x:hidden;padding-right:2px}
+.poultry-customer{width:100%;display:grid;grid-template-columns:calc(42px * var(--xstore-font-scale,1)) minmax(0,1fr) auto;align-items:center;gap:calc(10px * var(--xstore-font-scale,1));text-align:right;padding:calc(12px * var(--xstore-font-scale,1));border:1px solid var(--border,#e5e7eb);border-radius:calc(12px * var(--xstore-font-scale,1));background:var(--card,#fff);color:inherit;cursor:pointer;direction:rtl}
 .poultry-customer.selected{border-color:#64836b;background:rgba(36,85,59,.07);box-shadow:inset 0 0 0 1px #64836b}
-.poultry-customer>span:nth-child(2){display:flex;flex-direction:column;gap:4px;min-width:0}
-.poultry-customer small,.poultry-customer-meta span{color:var(--muted-foreground,#737373);font-size:12px}
-.poultry-customer strong{white-space:nowrap;font-variant-numeric:tabular-nums}
-.poultry-customer-icon,.poultry-modal-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#edf3ed;color:#24553b}
-.poultry-customer-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
-.poultry-customer-meta span{display:flex;flex-direction:column;gap:5px;padding:10px;border-radius:10px;background:var(--muted,#f5f5f5)}
-.poultry-customer-meta b{font-size:11px}
-.poultry-customer-meta strong{font-size:14px;color:var(--foreground,#222)}
+.poultry-customer>span:nth-child(2){display:flex;flex-direction:column;gap:calc(4px * var(--xstore-font-scale,1));min-width:0}
+.poultry-customer small,.poultry-customer-meta span{color:var(--muted-foreground,#737373);font-size:calc(12px * var(--xstore-font-scale,1))}
+.poultry-customer strong{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:calc(14px * var(--xstore-font-scale,1))}
+.poultry-customer-icon,.poultry-modal-icon{display:grid;place-items:center;width:calc(40px * var(--xstore-font-scale,1));height:calc(40px * var(--xstore-font-scale,1));border-radius:calc(12px * var(--xstore-font-scale,1));background:#edf3ed;color:#24553b}
+.poultry-customer-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:calc(10px * var(--xstore-font-scale,1));margin:calc(14px * var(--xstore-font-scale,1)) 0}
+.poultry-customer-meta span{display:flex;flex-direction:column;gap:calc(5px * var(--xstore-font-scale,1));padding:calc(10px * var(--xstore-font-scale,1));border-radius:calc(10px * var(--xstore-font-scale,1));background:var(--muted,#f5f5f5)}
+.poultry-customer-meta b{font-size:calc(11px * var(--xstore-font-scale,1))}
+.poultry-customer-meta strong{font-size:calc(14px * var(--xstore-font-scale,1));color:var(--foreground,#222)}
 .poultry-balance-due{color:#a34b25!important}.poultry-balance-clear{color:#24553b!important}
 .poultry-action-box{border:1px solid var(--border,#e5e7eb);border-radius:14px;padding:16px;margin-top:14px}
 .poultry-sale-box{background:linear-gradient(145deg,rgba(36,85,59,.055),transparent)}
