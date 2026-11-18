@@ -1013,9 +1013,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
           dir="rtl"
           className="app-frame"
           style={{
-            zoom: displayScale,
-            width: `${100 / displayScale}%`,
-            minHeight: `${100 / displayScale}dvh`,
+            ['--xstore-font-scale' as string]: displayScale,
           }}
         >
           <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
