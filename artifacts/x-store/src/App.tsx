@@ -1080,7 +1080,7 @@ function ProtectedLayout() {
   if (session.data?.storeType !== 'poultry' && location === '/poultry-farm') return <Redirect to="/dashboard"/>;
   if (session.data?.storeType === 'poultry' && ['/pos', '/inventory', '/sales', '/dashboard'].includes(location)) return <Redirect to={getPoultryDefaultPath(session.data)} />;
   if (session.data?.storeType !== 'poultry' && ['/poultry-customers','/poultry-sales','/poultry-sale/:customerId','/poultry-collections','/poultry-invoices'].includes(location)) return <Redirect to="/dashboard"/>;
-  if(session.data&&allowed[location]&&!hasAppRole(session.data, allowed[location]))return <Redirect to={session.data.storeType === 'poultry' ? getPoultryDefaultPath(session.data) : '/dashboard'}/>;
+  if(session.data&&allowed[location]&&location !== '/display-settings'&&!hasAppRole(session.data, allowed[location]))return <Redirect to={session.data.storeType === 'poultry' ? getPoultryDefaultPath(session.data) : '/dashboard'}/>;
   if(location === '/restaurant-menu' && !restaurantMenuAccessLoading && !restaurantMenuEnabled)return <Redirect to="/dashboard"/>;
   if(session.isLoading)return <div className="loading-page" dir="rtl"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
   if(session.isError||!session.data)return <Redirect to="/sign-in"/>;
