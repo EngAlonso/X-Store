@@ -1098,42 +1098,6 @@ function ProtectedLayout() {
     <Route component={NotFound}/>
   </Switch>{location === '/subscriptions' && <OfflineLicenseIssuerPanel />}</AppShell>;
 }
-function DisplaySettingsPage() {
-  const user = useContext(XStoreSessionContext);
-  const userId = user?.id || 'unknown';
-  const storageKey = `xstore-display-scale:${userId}`;
-  const options = [
-    { value: 0.85, label: 'صغير', detail: '90% تقريبًا' },
-    { value: 1, label: 'عادي', detail: '100% — الوضع الافتراضي' },
-    { value: 1.1, label: 'كبير', detail: '110%' },
-    { value: 1.2, label: 'أكبر', detail: '120%' },
-  ];
-  const [scale, setScale] = useState(() => {
-    try {
-      const saved = Number(localStorage.getItem(storageKey));
-      return Number.isFinite(saved) && saved >= 0.85 && saved <= 1.2 ? saved : 1;
-    } catch { return 1; }
-  });
-  function changeScale(value: number) {
-    setScale(value);
-    try { localStorage.setItem(storageKey, String(value)); } catch {}
-    window.dispatchEvent(new CustomEvent('xstore-display-scale-change', { detail: value }));
-  }
-  return <>
-    <PageTitle eyebrow="تخصيص الواجهة" title="إعداد العرض" desc="تحكم في حجم عرض الواجهة على حسابك فقط. الإعداد محفوظ بشكل مستقل لكل حساب على هذا الجهاز."/>
-    <Card className="display-settings-card">
-      <SectionHead title="حجم الخط والعرض" detail="اختر الحجم المناسب لك. التغيير يظهر مباشرة على كل صفحات حسابك."/>
-      <div className="display-scale-options" role="radiogroup" aria-label="حجم العرض">
-        {options.map(option => <button type="button" key={option.value} className={`display-scale-option ${scale === option.value ? 'is-selected' : ''}`} onClick={() => changeScale(option.value)} aria-pressed={scale === option.value}>
-          <span className="display-scale-preview" style={{ fontSize: `${16 * option.value}px` }}>Aa</span>
-          <span><b>{option.label}</b><small>{option.detail}</small></span>
-          {scale === option.value && <CircleCheck size={18}/>} 
-        </button>)}
-      </div>
-      <div className="display-settings-note"><Settings2 size={17}/><span>هذا الإعداد خاص بحساب <b>{user?.name || 'الحساب الحالي'}</b>، ولا يغيّر حجم العرض لباقي الحسابات.</span></div>
-    </Card>
-  </>;
-}
 function PageTitle({ eyebrow, title, desc, action }: { eyebrow:string; title:string; desc:string; action?:ReactNode }) {
   return <div className="page-title"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{desc}</p></div>{action&&<div className="page-action">{action}</div>}</div>;
 }
