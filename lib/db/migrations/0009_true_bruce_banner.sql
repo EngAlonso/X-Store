@@ -1,1 +1,0 @@
-ALTER TABLE "xstore_tenants" ADD COLUMN "store_type" text;

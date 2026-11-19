@@ -58,14 +58,76 @@ async function ensurePoultryTenantAccess(user: XStoreUser, res: Response): Promi
   return true;
 }
 
-function normalizeFarmProductName(value: string): string { return value.trim().replace(/\s+/g, " "); }
+function normalizeFarmProductName(value: string): string {
+  return value
+    .normalize("NFKC")
+    .replace(/[\\u0640]/g, "")
+    .replace(/[\\u064B-\\u065F\\u0670]/g, "")
+    .replace(/[إأآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .trim()
+    .replace(/\\s+/g, " ")
+    .toLowerCase();
+}
 async function consumeFarmStock(tx: any, tenantId: string, productName: string, quantityKg: number, invoiceId: string, actorUserId: string) {
-  const normalizedName=normalizeFarmProductName(productName);
-  const result=await tx.execute(sql`select id, remaining_kg, unit_cost from xstore_poultry_farm_lots where tenant_id=${tenantId} and lower(product_name)=lower(${normalizedName}) and remaining_kg>0 order by created_at asc,id asc for update`) as {rows:Array<{id:string;remaining_kg:string;unit_cost:string}>};
-  const rows=result.rows; const availableKg=rows.reduce((sum,row)=>sum+toNumber(row.remaining_kg),0);
-  if(availableKg+0.000001<quantityKg) throw new DomainError(`رصيد المزرعة من ${normalizedName} غير كافٍ. المتاح ${roundMoney(availableKg)} كجم والمطلوب ${roundMoney(quantityKg)} كجم.`,409);
+  const requestedName=normalizeFarmProductName(productName);
+  const result=await tx.execute(sql`select id, product_name, remaining_kg, unit_cost from xstore_poultry_farm_lots where tenant_id=${tenantId} and remaining_kg>0 order by created_at asc,id asc for update`) as {rows:Array<{id:string;product_name:string;remaining_kg:string;unit_cost:string}>};
+  const grouped=new Map<string,Array<{id:string;product_name:string;remaining_kg:string;unit_cost:string}>>();
+  for(const row of result.rows){
+    const key=normalizeFarmProductName(row.product_name);
+    const list=grouped.get(key) || [];
+    list.push(row);
+    grouped.set(key,list);
+  }
+
+  let matchedKey=requestedName;
+  if(!grouped.has(matchedKey)){
+    const candidates=[...grouped.keys()].filter(key => key.includes(requestedName) || requestedName.includes(key));
+    if(candidates.length===1) matchedKey=candidates[0];
+  }
+
+  const rows=grouped.get(matchedKey) || [];
+  const availableKg=rows.reduce((sum,row)=>sum+toNumber(row.remaining_kg),0);
+  if(!rows.length){
+    const availableNames=[...grouped.values()].map(list=>list[0]?.product_name).filter(Boolean).slice(0,8).join("، ");
+    throw new DomainError(
+      availableNames
+        ? `الصنف "${productName}" غير مطابق لصنف موجود في المزرعة. الأصناف المتاحة: ${availableNames}.`
+        : `لا يوجد رصيد متاح في المزرعة للصنف "${productName}".`,
+      409,
+    );
+  }
+  if(availableKg+0.000001<quantityKg) {
+    throw new DomainError(`رصيد المزرعة من ${rows[0].product_name} غير كافٍ. المتاح ${roundMoney(availableKg)} كجم والمطلوب ${roundMoney(quantityKg)} كجم.`,409);
+  }
+
+  const stockProductName=rows[0].product_name;
   let left=quantityKg,totalCost=0;
-  for(const row of rows){if(left<=0)break;const lotRemaining=toNumber(row.remaining_kg);const takeKg=Math.min(lotRemaining,left);const unitCost=toNumber(row.unit_cost);const takeCost=roundMoney(takeKg*unitCost);await tx.update(xstorePoultryFarmLots).set({remainingKg:String(Math.max(0,roundMoney(lotRemaining-takeKg)))}).where(eq(xstorePoultryFarmLots.id,row.id));await tx.insert(xstorePoultryFarmMovements).values({tenantId,lotId:row.id,invoiceId,actorUserId,movementType:"out",productName:normalizedName,quantityKg:String(takeKg),unitCost:String(unitCost),totalCost:String(takeCost),note:`صرف تلقائي مع الفاتورة ${invoiceId}`});totalCost+=takeCost;left=roundMoney(left-takeKg);}
+  for(const row of rows){
+    if(left<=0)break;
+    const lotRemaining=toNumber(row.remaining_kg);
+    const takeKg=Math.min(lotRemaining,left);
+    const unitCost=toNumber(row.unit_cost);
+    const takeCost=roundMoney(takeKg*unitCost);
+    await tx.update(xstorePoultryFarmLots)
+      .set({remainingKg:String(Math.max(0,roundMoney(lotRemaining-takeKg)))})
+      .where(eq(xstorePoultryFarmLots.id,row.id));
+    await tx.insert(xstorePoultryFarmMovements).values({
+      tenantId,
+      lotId:row.id,
+      invoiceId,
+      actorUserId,
+      movementType:"out",
+      productName:stockProductName,
+      quantityKg:String(takeKg),
+      unitCost:String(unitCost),
+      totalCost:String(takeCost),
+      note:`صرف تلقائي مع الفاتورة ${invoiceId}`,
+    });
+    totalCost+=takeCost;
+    left=roundMoney(left-takeKg);
+  }
   return roundMoney(totalCost);
 }
 router.get("/xstore/poultry/farm/summary", async (req,res): Promise<void> => {

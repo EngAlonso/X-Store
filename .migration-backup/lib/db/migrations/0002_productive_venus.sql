@@ -1,1 +1,0 @@
-ALTER TABLE "xstore_sales" ADD COLUMN IF NOT EXISTS "customer_phone" text;

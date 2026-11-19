@@ -1,1 +1,0 @@
-ALTER TABLE "xstore_tenants" ADD COLUMN "country_code" text DEFAULT 'EG' NOT NULL;

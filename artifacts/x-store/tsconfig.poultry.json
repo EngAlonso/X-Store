@@ -1,5 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "include": ["src/features/poultry/**/*"],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"]
-}

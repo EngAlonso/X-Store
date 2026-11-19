@@ -1,1 +1,0 @@
-ALTER TABLE "xstore_sale_items" ADD COLUMN "product_name" text;

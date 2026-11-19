@@ -1,1 +1,0 @@
-ALTER TABLE "xstore_platform_settings" ALTER COLUMN "social_links" SET DEFAULT '{"facebook":null,"instagram":null,"whatsapp":null,"tiktok":null,"snapchat":null,"x":null,"youtube":null,"linkedin":null,"telegram":null,"threads":null,"pinterest":null}'::jsonb;
