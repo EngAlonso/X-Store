@@ -317,7 +317,7 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
           <button className="button button-quiet" onClick={()=>void loadCustomers(search)} disabled={busy}><Search size={15}/> بحث</button>
         </div>
         <div className="poultry-customer-list">
-          {customers.length?customers.map(c=><button type="button" className={'poultry-customer '+(selected?.id===c.id?'selected':'')} key={c.id} onClick={()=>{if(pageMode==='sales'){setLocation('/poultry-sale/'+encodeURIComponent(c.id));return;}setSelected(c);setStatement(null);setError('');void loadStatement(c).catch(e=>setError(e instanceof Error?e.message:'تعذر تحميل كشف الحساب.'));}}>
+          {customers.length?customers.map(c=><button type="button" className={'poultry-customer '+(selected?.id===c.id?'selected':'')} key={c.id} onClick={()=>{if(pageMode==='sales'){setLocation('/poultry-sale/'+encodeURIComponent(c.id));return;}if(pageMode==='customers'){setLocation('/poultry-customer/'+encodeURIComponent(c.id));return;}setSelected(c);setStatement(null);setError('');void loadStatement(c).catch(e=>setError(e instanceof Error?e.message:'تعذر تحميل كشف الحساب.'));}}>
             <span className="poultry-customer-icon"><Bird size={18}/></span>
             <span><b>{c.name}</b><small>{c.shopName||'بدون اسم محل'} · {c.phone}</small></span>
             <strong>{fmt(c.balance)} ج.م</strong>
@@ -416,6 +416,48 @@ function PoultryCustomersView({ mode = 'customers', session }: { mode?: 'custome
   </div>;
 }
 
+function PoultryCustomerAccountPageView({ session }: { session: SessionUser | null }) {
+  const [, setLocation]=useLocation();
+  const [, params]=useRoute('/poultry-customer/:customerId');
+  const customerId=params?.customerId?decodeURIComponent(params.customerId):'';
+  const [customer,setCustomer]=useState<PoultryCustomer|null>(null);
+  const [statement,setStatement]=useState<PoultryStatement|null>(null);
+  const [from,setFrom]=useState(new Date().toISOString().slice(0,8)+'01');
+  const [to,setTo]=useState(new Date().toISOString().slice(0,10));
+  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false);
+  const [error,setError]=useState(''),[notice,setNotice]=useState('');
+  const [editingCustomer,setEditingCustomer]=useState<PoultryCustomer|null>(null);
+  const [editForm,setEditForm]=useState({name:'',phone:'',shopName:'',shopAddress:''});
+  const [debtOpen,setDebtOpen]=useState(false),[debtAmount,setDebtAmount]=useState(''),[debtNote,setDebtNote]=useState('');
+  const canEditCustomer=hasAppRole(session,['tenant_admin','customer_management']);
+  const canAddDebt=hasAppRole(session,['tenant_admin','cashier','accountant','customer_management']);
+  async function loadAccount(showLoading=true){
+    if(showLoading)setLoading(true);setError('');
+    try{const rows=await poultryApi.listCustomers();const found=rows.find(row=>row.id===customerId);if(!found)throw new Error('لم يتم العثور على العميل.');setCustomer(found);setStatement(await poultryApi.getStatement(customerId,from,to));}
+    catch(e){setError(e instanceof Error?e.message:'تعذر تحميل حساب العميل.');}
+    finally{if(showLoading)setLoading(false);}
+  }
+  useEffect(()=>{void loadAccount();},[customerId]);
+  function openEdit(){if(!customer)return;setEditForm({name:customer.name||'',phone:customer.phone||'',shopName:customer.shopName||'',shopAddress:customer.shopAddress||''});setEditingCustomer(customer);}
+  async function saveEdit(){if(!editingCustomer)return;if(!editForm.name.trim()){setError('اسم العميل مطلوب.');return;}setBusy(true);setError('');setNotice('');try{await poultryApi.updateCustomer(editingCustomer.id,{name:editForm.name.trim(),phone:editForm.phone.trim(),shopName:editForm.shopName.trim(),shopAddress:editForm.shopAddress.trim()});setEditingCustomer(null);setNotice('تم تعديل بيانات العميل بنجاح.');await loadAccount(false);}catch(e){setError(e instanceof Error?e.message:'تعذر تعديل بيانات العميل.');}finally{setBusy(false);}}
+  async function saveManualDebt(){const amount=Number(debtAmount),note=debtNote.trim();if(!Number.isFinite(amount)||amount<=0){setError('اكتب مبلغ مديونية أكبر من صفر.');return;}if(!note){setError('اكتب ملاحظة المديونية.');return;}setBusy(true);setError('');setNotice('');try{await poultryApi.addManualDebt(customerId,amount,note);setDebtAmount('');setDebtNote('');setDebtOpen(false);setNotice('تمت إضافة المديونية وإدخالها في كشف الحساب بالملاحظة.');await loadAccount(false);}catch(e){setError(e instanceof Error?e.message:'تعذر إضافة المديونية.');}finally{setBusy(false);}}
+  if(loading)return <div dir="rtl" className="loading-page"><div className="loading-card"><span className="skeleton-logo"/><span className="skeleton-line"/><span className="skeleton-line short"/></div></div>;
+  return <div dir="rtl" className="poultry-customers-page"><PageTitle eyebrow="حسابات العملاء" title={customer?'حساب '+customer.name:'حساب العميل'} desc="بيانات العميل وكشف حسابه خلال الفترة التي تحددها." action={<div className="poultry-header-actions">
+    <button className="button button-quiet" onClick={()=>setLocation('/poultry-customers')}><ArrowLeft size={16}/> رجوع للعملاء</button>
+    {canEditCustomer&&customer&&<button className="button button-quiet" onClick={openEdit}><PencilIcon size={16}/> تعديل بيانات العميل</button>}
+    {canAddDebt&&customer&&<button className="button button-primary" onClick={()=>{setError('');setNotice('');setDebtOpen(true);}}><Plus size={16}/> إضافة حساب يدوي</button>}
+  </div>}/>
+  {error&&<div className="form-error poultry-form-error" role="alert"><AlertTriangle size={16}/><span>{error}</span></div>}{notice&&<div className="notice-box success poultry-form-notice"><CircleCheck size={16}/><span>{notice}</span></div>}
+  {customer&&<Card className="poultry-workspace-card"><SectionHead title={customer.name} detail={(customer.shopName||'بدون اسم محل')+' · '+(customer.phone||'بدون هاتف')}/><div className="poultry-customer-meta"><span><b>المحل</b>{customer.shopName||'—'}</span><span><b>العنوان</b>{customer.shopAddress||'—'}</span><span><b>الرصيد الحالي</b><strong className={Number(customer.balance)>0?'poultry-balance-due':'poultry-balance-clear'}>{fmt(Math.abs(Number(customer.balance)||0))} ج.م</strong></span></div>
+  <div className="poultry-statement-controls"><SectionHead title="كشف الحساب" detail="اختَر الفترة التي تريد مراجعة الحساب خلالها."/><div className="form-grid"><label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div><div className="form-actions"><button className="button button-primary" onClick={()=>void loadAccount(false)} disabled={busy}><ReceiptText size={16}/> عرض كشف الحساب</button></div></div>
+  {statement&&<><div className="stat-grid"><StatCard label="رصيد أول الفترة" value={fmt(statement.openingBalance)+' ج.م'} detail="المستحق قبل بداية الفترة" icon={CreditCard}/><StatCard label="مبيعات الفترة" value={fmt(statement.summary.sales)+' ج.م'} detail="قيمة الفواتير خلال الفترة" icon={ReceiptText} tint="gold"/><StatCard label="التحصيلات" value={fmt(statement.summary.paid)+' ج.م'} detail="المبالغ التي تم تحصيلها" icon={Wallet} tint="sage"/><StatCard label="الرصيد بعد الفترة" value={fmt(statement.summary.remaining)+' ج.م'} detail="المستحق بعد كل حركات الفترة" icon={CreditCard}/></div>
+  <div className="table-wrap"><table><thead><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th><th>الموظف</th></tr></thead><tbody>{statement.rows.map(row=><tr key={row.id} className={row.type!=='invoice'?'poultry-payment-row':''}><td>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date))}</td><td><b>{row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):row.type==='manual_debt'?'مديونية يدوية':'تحصيل'}</b>{row.note&&<small className="poultry-payment-note">{row.note}</small>}</td><td>{row.items.length?fmt(row.items.reduce((s,x)=>s+x.quantityKg,0)):'—'}</td><td>{row.items.length?fmt(row.items[0].unitPrice)+' ج.م':'—'}</td><td>{fmt(row.type==='invoice'?row.total:Math.abs(row.paid))} ج.م</td><td>{row.actorName}</td></tr>)}</tbody></table></div></>}</Card>}
+  {!customer&&<div className="state-box"><b>تعذر العثور على العميل</b><button className="button button-quiet" onClick={()=>setLocation('/poultry-customers')}>العودة للعملاء</button></div>}
+  {editingCustomer&&<Modal title="تعديل بيانات العميل" close={()=>{if(!busy)setEditingCustomer(null);}}><form className="poultry-customer-form" onSubmit={e=>{e.preventDefault();void saveEdit();}}><div className="poultry-modal-intro"><div className="poultry-modal-icon"><PencilIcon size={22}/></div><div><b>تعديل بيانات العميل</b><span>عدّل بيانات العميل ثم احفظ.</span></div></div><div className="form-grid"><label className="field field-wide"><span>اسم صاحب المحل <b className="required-mark">*</b></span><input required autoFocus value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})}/></label><label className="field"><span>رقم الهاتف <span className="optional-mark">اختياري</span></span><input type="tel" value={editForm.phone} onChange={e=>setEditForm({...editForm,phone:e.target.value})}/></label><label className="field"><span>اسم المحل</span><input value={editForm.shopName} onChange={e=>setEditForm({...editForm,shopName:e.target.value})}/></label><label className="field field-wide"><span>عنوان المحل</span><input value={editForm.shopAddress} onChange={e=>setEditForm({...editForm,shopAddress:e.target.value})}/></label></div><div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setEditingCustomer(null)} disabled={busy}>إلغاء</button><button className="button button-primary" type="submit" disabled={busy||!editForm.name.trim()}><PencilIcon size={16}/>{busy?'جارٍ الحفظ…':'حفظ التعديل'}</button></div></form></Modal>}
+  {debtOpen&&<Modal title="إضافة حساب يدوي" close={()=>{if(!busy)setDebtOpen(false);}}><form className="poultry-customer-form" onSubmit={e=>{e.preventDefault();void saveManualDebt();}}><div className="poultry-modal-intro"><div className="poultry-modal-icon"><CreditCard size={22}/></div><div><b>إضافة مديونية يدوية</b><span>المبلغ سيُضاف مباشرة على رصيد العميل ويظهر في كشف الحساب بالملاحظة.</span></div></div><div className="form-grid"><label className="field field-wide"><span>المبلغ بالجنيه <b className="required-mark">*</b></span><input required type="number" min="0.01" step="0.01" value={debtAmount} onChange={e=>setDebtAmount(e.target.value)} placeholder="مثال: 500"/></label><label className="field field-wide"><span>ملاحظة <b className="required-mark">*</b></span><textarea rows={4} value={debtNote} onChange={e=>setDebtNote(e.target.value)} placeholder="مثال: حساب سابق / بضاعة لم تُسدد"/></label></div><div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setDebtOpen(false)} disabled={busy}>إلغاء</button><button className="button button-primary" type="submit" disabled={busy||!debtAmount||!debtNote.trim()}><Plus size={16}/>{busy?'جارٍ الحفظ…':'حفظ المديونية'}</button></div></form></Modal>}
+  </div>;
+}
+
 function PoultryDashboardView() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -502,6 +544,10 @@ function PoultryDashboardView() {
 
 export function PoultryCustomersPage({ mode, session }: { mode: 'customers' | 'sales' | 'collections'; session: SessionUser | null }) {
   return <PoultryCustomersView mode={mode} session={session}/>;
+}
+
+export function PoultryCustomerAccountPage({ session }: { session: SessionUser | null }) {
+  return <PoultryCustomerAccountPageView session={session}/>;
 }
 
 export function PoultrySalePage({ session }: { session: SessionUser | null }) {

@@ -14,7 +14,7 @@ export type PoultryCustomer = PoultryCustomerRecord & {
 };
 export type PoultryStatementRow = {
   id: string;
-  type: 'invoice' | 'payment';
+  type: 'invoice' | 'payment' | 'manual_debt';
   invoiceNo: string | null;
   date: string;
   actorName: string;
@@ -123,6 +123,9 @@ export const poultryApi = {
   },
   collectPayment(customerId: string, amount: number) {
     return poultryRequest<PoultryPaymentResult>('/customers/' + encodeURIComponent(customerId) + '/payments', { method: 'POST', body: JSON.stringify({ amount }) });
+  },
+  addManualDebt(customerId: string, amount: number, note: string) {
+    return poultryRequest<PoultryPaymentResult>('/customers/' + encodeURIComponent(customerId) + '/manual-debt', { method: 'POST', body: JSON.stringify({ amount, note }) });
   },
   listInvoices(from = '', to = '', search = '') {
     const params = new URLSearchParams();

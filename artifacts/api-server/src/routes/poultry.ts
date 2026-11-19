@@ -211,7 +211,10 @@ router.get("/xstore/poultry/customers/:customerId/statement", async (req, res): 
   const allInvoices = await db.select({ invoice: xstorePoultryInvoices, cashierName: xstoreUsers.name }).from(xstorePoultryInvoices).leftJoin(xstoreUsers, eq(xstorePoultryInvoices.cashierUserId, xstoreUsers.id)).where(and(eq(xstorePoultryInvoices.customerId, customer.id), eq(xstorePoultryInvoices.tenantId, user.tenantId))).orderBy(xstorePoultryInvoices.createdAt);
   const allPayments = await db.select({ payment: xstorePoultryPayments, cashierName: xstoreUsers.name }).from(xstorePoultryPayments).leftJoin(xstoreUsers, eq(xstorePoultryPayments.cashierUserId, xstoreUsers.id)).where(and(eq(xstorePoultryPayments.customerId, customer.id), eq(xstorePoultryPayments.tenantId, user.tenantId))).orderBy(xstorePoultryPayments.createdAt);
   const beforeSales = allInvoices.filter(x => x.invoice.createdAt < from).reduce((s,x)=>s+toNumber(x.invoice.total),0);
-  const beforePaid = allInvoices.filter(x => x.invoice.createdAt < from).reduce((s,x)=>s+toNumber(x.invoice.amountPaid),0) + allPayments.filter(x => x.payment.createdAt < from).reduce((s,x)=>s+toNumber(x.payment.amount),0);
+  const beforeInvoicePaid = allInvoices.filter(x => x.invoice.createdAt < from).reduce((s,x)=>s+toNumber(x.invoice.amountPaid),0);
+  const beforeCollected = allPayments.filter(x => x.payment.createdAt < from && toNumber(x.payment.amount) > 0).reduce((s,x)=>s+toNumber(x.payment.amount),0);
+  const beforeManualDebt = allPayments.filter(x => x.payment.createdAt < from && toNumber(x.payment.amount) < 0).reduce((s,x)=>s+Math.abs(toNumber(x.payment.amount)),0);
+  const openingBalance = roundMoney(beforeSales - beforeInvoicePaid - beforeCollected + beforeManualDebt);
   const invoices = allInvoices.filter(x => x.invoice.createdAt >= from && x.invoice.createdAt <= to);
   const payments = allPayments.filter(x => x.payment.createdAt >= from && x.payment.createdAt <= to);
   const invoiceIds = invoices.map(x => x.invoice.id);
@@ -222,12 +225,18 @@ router.get("/xstore/poultry/customers/:customerId/statement", async (req, res): 
       const netTotal = roundMoney(invoiceItems.reduce((sum,item)=>sum + toNumber(item.total), 0));
       return { type:"invoice", id:invoice.id, invoiceNo:invoice.invoiceNo, date:iso(invoice.createdAt), actorName:cashierName || "—", total:netTotal, paid:toNumber(invoice.amountPaid), note:null, items:invoiceItems.map(item=>({productName:item.productName,quantityKg:toNumber(item.quantityKg),unitPrice:toNumber(item.unitPrice),total:toNumber(item.total),deadWeightKg:toNumber(item.deadWeightKg),deadTotal:toNumber(item.deadTotal)})) };
     }),
-    ...payments.map(({payment,cashierName}) => ({ type:"payment", id:payment.id, invoiceNo:null, date:iso(payment.createdAt), actorName:cashierName || "—", total:0, paid:toNumber(payment.amount), note:payment.note, items:[] })),
+    ...payments.map(({payment,cashierName}) => {
+      const amount=toNumber(payment.amount);
+      return { type:amount<0 ? "manual_debt" : "payment", id:payment.id, invoiceNo:null, date:iso(payment.createdAt), actorName:cashierName || "—", total:0, paid:amount, note:payment.note, items:[] };
+    }),
   ].sort((a,b)=>new Date(a.date).getTime()-new Date(b.date).getTime());
-  const periodSales = rows.filter(row=>row.type==="invoice").reduce((s,row)=>s+row.total,0);
-  const periodPaid = invoices.reduce((s,x)=>s+toNumber(x.invoice.amountPaid),0) + payments.reduce((s,x)=>s+toNumber(x.payment.amount),0);
-  const totalKg = items.reduce((s,x)=>s+toNumber(x.quantityKg),0);
-  res.json({ customer:{...customer,createdAt:iso(customer.createdAt),updatedAt:iso(customer.updatedAt)}, from:req.query.from||null, to:req.query.to||null, openingBalance:roundMoney(beforeSales-beforePaid), summary:{totalKg,sales:periodSales,paid:periodPaid,remaining:roundMoney(beforeSales-beforePaid+periodSales-periodPaid)}, rows });
+  const periodSales=rows.filter(row=>row.type==="invoice").reduce((s,row)=>s+row.total,0);
+  const periodInvoicePaid=invoices.reduce((s,x)=>s+toNumber(x.invoice.amountPaid),0);
+  const periodCollected=payments.filter(x=>toNumber(x.payment.amount)>0).reduce((s,x)=>s+toNumber(x.payment.amount),0);
+  const periodManualDebt=payments.filter(x=>toNumber(x.payment.amount)<0).reduce((s,x)=>s+Math.abs(toNumber(x.payment.amount)),0);
+  const periodPaid=roundMoney(periodInvoicePaid+periodCollected);
+  const totalKg=items.reduce((s,x)=>s+toNumber(x.quantityKg),0);
+  res.json({ customer:{...customer,createdAt:iso(customer.createdAt),updatedAt:iso(customer.updatedAt)}, from:req.query.from||null, to:req.query.to||null, openingBalance, summary:{totalKg,sales:periodSales,paid:periodPaid,manualDebt:periodManualDebt,remaining:roundMoney(openingBalance+periodSales-periodPaid+periodManualDebt)}, rows });
 });
 
 router.get("/xstore/poultry/invoices", async (req, res): Promise<void> => {
@@ -436,6 +445,22 @@ router.post("/xstore/poultry/customers/:customerId/payments", async (req, res): 
   res.status(201).json({id:payment.id,amount:roundMoney(amount),createdAt:iso(payment.createdAt),collectorName:user.name});
 });
 
+router.post("/xstore/poultry/customers/:customerId/manual-debt", async (req, res): Promise<void> => {
+  const user = getXStoreUser(res);
+  if (!user.tenantId || !hasRole(user, ["tenant_admin", "cashier", "accountant", "customer_management"])) { res.status(403).json({ error: "ليس لديك صلاحية إضافة مديونية يدوية." }); return; }
+  if (!(await ensurePoultryTenantAccess(user, res))) return;
+  const [customer] = await db.select().from(xstoreCustomers).where(and(eq(xstoreCustomers.id, req.params.customerId), eq(xstoreCustomers.tenantId, user.tenantId))).limit(1);
+  if (!customer) { res.status(404).json({ error: "العميل غير موجود." }); return; }
+  const amount = Number(req.body?.amount);
+  const note = typeof req.body?.note === "string" ? req.body.note.trim() : "";
+  if (!Number.isFinite(amount) || amount <= 0) { res.status(400).json({ error: "أدخل مبلغ مديونية صحيح أكبر من صفر." }); return; }
+  if (!note) { res.status(400).json({ error: "اكتب ملاحظة المديونية قبل الحفظ." }); return; }
+  const debtAmount = roundMoney(amount);
+  const [payment] = await db.insert(xstorePoultryPayments).values({ tenantId:user.tenantId, customerId:customer.id, cashierUserId:user.id, amount:String(-debtAmount), note:"مديونية يدوية: " + note }).returning();
+  if (!payment) { res.status(500).json({ error: "تعذر تسجيل المديونية اليدوية." }); return; }
+  await audit(user, "poultry.manual_debt_added", user.tenantId, "poultry_payment", payment.id, "تم إضافة مديونية يدوية بقيمة " + debtAmount + " للعميل " + customer.name + " — " + note);
+  res.status(201).json({ id:payment.id, amount:debtAmount, createdAt:iso(payment.createdAt), collectorName:user.name });
+});
 router.get("/xstore/poultry/reports/financial", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
   if (!user.tenantId || !hasRole(user, poultryUserRoles)) { res.status(403).json({ error: "ليس لديك صلاحية لعرض التقرير المالي." }); return; }
