@@ -782,6 +782,7 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
       const resultText = String(Number(result.toFixed(10)));
       setCalculatorDisplay(resultText);
       setCalculatorExpression(String(calculatorStored) + ' ' + calculatorOperator + ' ' + calculatorDisplay + ' =');
+      if (calculatorTarget) applyCalculatorResult(resultText);
     }
     setCalculatorStored(null);
     setCalculatorOperator(null);
@@ -810,9 +811,9 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
     setCalculatorOpen(true);
   }
 
-  function applyCalculatorResult() {
+  function applyCalculatorResult(resultOverride?: string) {
     if (!calculatorTarget) return;
-    const result = Number(calculatorDisplay);
+    const result = Number(resultOverride ?? calculatorDisplay);
     if (!Number.isFinite(result)) return;
     const value = String(Number(result.toFixed(10)));
     setInvoice(current => ({ ...current, [calculatorTarget]: value }));
