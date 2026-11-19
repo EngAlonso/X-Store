@@ -970,7 +970,7 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
         </div>
         <div className="form-grid poultry-sale-form">
           <label className="field"><span>الصنف</span><input value={invoice.productName} onChange={e => setInvoice({...invoice, productName: e.target.value})} placeholder="مثال: فراخ بيضاء"/></label>
-          <label className="field"><span>الكمية بالكيلو <b className="required-mark">*</b></span><input ref={quantityInputRef} type="number" min="0.001" step="0.001" value={invoice.quantityKg} onFocus={() => {
+          <label className="field"><span>الكمية بالكيلو <b className="required-mark">*</b></span><input ref={quantityInputRef} type="number" inputMode="none" readOnly min="0.001" step="0.001" value={invoice.quantityKg} onFocus={() => {
             if (calculatorSkipNextFocusRef.current) {
               calculatorSkipNextFocusRef.current = false;
               return;
