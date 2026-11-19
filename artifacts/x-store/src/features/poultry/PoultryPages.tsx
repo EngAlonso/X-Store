@@ -449,13 +449,69 @@ function PoultryCustomerAccountPageView({ session }: { session: SessionUser | nu
   </div>}/>
   {error&&<div className="form-error poultry-form-error" role="alert"><AlertTriangle size={16}/><span>{error}</span></div>}{notice&&<div className="notice-box success poultry-form-notice"><CircleCheck size={16}/><span>{notice}</span></div>}
   {customer&&<Card className="poultry-workspace-card"><SectionHead title={customer.name} detail={(customer.shopName||'بدون اسم محل')+' · '+(customer.phone||'بدون هاتف')}/><div className="poultry-customer-meta"><span><b>المحل</b>{customer.shopName||'—'}</span><span><b>العنوان</b>{customer.shopAddress||'—'}</span><span><b>الرصيد الحالي</b><strong className={Number(customer.balance)>0?'poultry-balance-due':'poultry-balance-clear'}>{fmt(Math.abs(Number(customer.balance)||0))} ج.م</strong></span></div>
-  <div className="poultry-statement-controls"><SectionHead title="كشف الحساب" detail="اختَر الفترة التي تريد مراجعة الحساب خلالها."/><div className="form-grid"><label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div><div className="form-actions"><button className="button button-primary" onClick={()=>void loadAccount(false)} disabled={busy}><ReceiptText size={16}/> عرض كشف الحساب</button></div></div>
+  <div className="poultry-statement-controls"><SectionHead title="كشف الحساب" detail="اختَر الفترة التي تريد مراجعة الحساب خلالها."/><div className="form-grid"><label className="field"><span>من تاريخ</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label className="field"><span>إلى تاريخ</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div><div className="form-actions"><button className="button button-primary" onClick={()=>void loadAccount(false)} disabled={busy}><ReceiptText size={16}/> عرض كشف الحساب</button>{statement&&<><button className="button button-quiet" onClick={()=>printCustomerStatement(customer,statement,from,to)} disabled={busy}><Printer size={16}/> طباعة كشف الحساب</button><button className="button button-quiet" onClick={()=>void shareCustomerStatement(customer,statement,from,to)} disabled={busy}><Share2 size={16}/> مشاركة كشف الحساب</button></>}</div></div>
   {statement&&<><div className="form-actions poultry-account-actions"><button className="button button-primary" onClick={()=>{setError('');setNotice('');setDebtOpen(true);}} disabled={busy}><Plus size={16}/> إضافة حساب يدوي</button><button className="button button-quiet" onClick={()=>void loadAccount(false)} disabled={busy}><RefreshCw size={16}/> تحديث الحساب</button></div><div className="stat-grid"><StatCard label="رصيد أول الفترة" value={fmt(statement.openingBalance)+' ج.م'} detail="المستحق قبل بداية الفترة" icon={CreditCard}/><StatCard label="مبيعات الفترة" value={fmt(statement.summary.sales)+' ج.م'} detail="قيمة الفواتير خلال الفترة" icon={ReceiptText} tint="gold"/><StatCard label="التحصيلات" value={fmt(statement.summary.paid)+' ج.م'} detail="المبالغ التي تم تحصيلها" icon={Wallet} tint="sage"/><StatCard label="الرصيد بعد الفترة" value={fmt(statement.summary.remaining)+' ج.م'} detail="المستحق بعد كل حركات الفترة" icon={CreditCard}/></div>
   <div className="table-wrap"><table><thead><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th><th>الموظف</th></tr></thead><tbody>{statement.rows.map(row=><tr key={row.id} className={row.type!=='invoice'?'poultry-payment-row':''}><td>{new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{weekday:'long',day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date))}</td><td><b>{row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):row.type==='manual_debt'?'مديونية يدوية':'تحصيل'}</b>{row.note&&<small className="poultry-payment-note">{row.note}</small>}</td><td>{row.items.length?fmt(row.items.reduce((s,x)=>s+x.quantityKg,0)):'—'}</td><td>{row.items.length?fmt(row.items[0].unitPrice)+' ج.م':'—'}</td><td>{fmt(row.type==='invoice'?row.total:Math.abs(row.paid))} ج.م</td><td>{row.actorName}</td></tr>)}</tbody></table></div></>}</Card>}
   {!customer&&<div className="state-box"><b>تعذر العثور على العميل</b><button className="button button-quiet" onClick={()=>setLocation('/poultry-customers')}>العودة للعملاء</button></div>}
   {editingCustomer&&<Modal title="تعديل بيانات العميل" close={()=>{if(!busy)setEditingCustomer(null);}}><form className="poultry-customer-form" onSubmit={e=>{e.preventDefault();void saveEdit();}}><div className="poultry-modal-intro"><div className="poultry-modal-icon"><PencilIcon size={22}/></div><div><b>تعديل بيانات العميل</b><span>عدّل بيانات العميل ثم احفظ.</span></div></div><div className="form-grid"><label className="field field-wide"><span>اسم صاحب المحل <b className="required-mark">*</b></span><input required autoFocus value={editForm.name} onChange={e=>setEditForm({...editForm,name:e.target.value})}/></label><label className="field"><span>رقم الهاتف <span className="optional-mark">اختياري</span></span><input type="tel" value={editForm.phone} onChange={e=>setEditForm({...editForm,phone:e.target.value})}/></label><label className="field"><span>اسم المحل</span><input value={editForm.shopName} onChange={e=>setEditForm({...editForm,shopName:e.target.value})}/></label><label className="field field-wide"><span>عنوان المحل</span><input value={editForm.shopAddress} onChange={e=>setEditForm({...editForm,shopAddress:e.target.value})}/></label></div><div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setEditingCustomer(null)} disabled={busy}>إلغاء</button><button className="button button-primary" type="submit" disabled={busy||!editForm.name.trim()}><PencilIcon size={16}/>{busy?'جارٍ الحفظ…':'حفظ التعديل'}</button></div></form></Modal>}
   {debtOpen&&<Modal title="إضافة حساب يدوي" close={()=>{if(!busy)setDebtOpen(false);}}><form className="poultry-customer-form" onSubmit={e=>{e.preventDefault();void saveManualDebt();}}><div className="poultry-modal-intro"><div className="poultry-modal-icon"><CreditCard size={22}/></div><div><b>إضافة مديونية يدوية</b><span>المبلغ سيُضاف مباشرة على رصيد العميل ويظهر في كشف الحساب بالملاحظة.</span></div></div><div className="form-grid"><label className="field field-wide"><span>المبلغ بالجنيه <b className="required-mark">*</b></span><input required type="number" min="0.01" step="0.01" value={debtAmount} onChange={e=>setDebtAmount(e.target.value)} placeholder="مثال: 500"/></label><label className="field field-wide"><span>ملاحظة <b className="required-mark">*</b></span><textarea rows={4} value={debtNote} onChange={e=>setDebtNote(e.target.value)} placeholder="مثال: حساب سابق / بضاعة لم تُسدد"/></label></div><div className="modal-actions"><button className="button button-quiet" type="button" onClick={()=>setDebtOpen(false)} disabled={busy}>إلغاء</button><button className="button button-primary" type="submit" disabled={busy||!debtAmount||!debtNote.trim()}><Plus size={16}/>{busy?'جارٍ الحفظ…':'حفظ المديونية'}</button></div></form></Modal>}
   </div>;
+}
+
+
+function buildCustomerStatementText(customer:any,statement:any,from:string,to:string){
+  const lines=[
+    'كشف حساب العميل',
+    'الاسم: '+String(customer?.name||'—'),
+    'المحل: '+String(customer?.shopName||'غير مسجل'),
+    'الهاتف: '+String(customer?.phone||'—'),
+    'الفترة: من '+String(from||'—')+' إلى '+String(to||'—'),
+    '',
+    'رصيد أول الفترة: '+fmt(statement?.openingBalance||0)+' ج.م',
+    'مبيعات الفترة: '+fmt(statement?.summary?.sales||0)+' ج.م',
+    'التحصيلات: '+fmt(statement?.summary?.paid||0)+' ج.م',
+    'الرصيد بعد الفترة: '+fmt(statement?.summary?.remaining||0)+' ج.م',
+    '',
+    'تفاصيل الحركات:'
+  ];
+  for(const row of (statement?.rows||[])){
+    const movement=row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):row.type==='manual_debt'?'مديونية يدوية':'تحصيل';
+    const value=fmt(row.type==='invoice'?row.total:Math.abs(row.paid||0))+' ج.م';
+    const note=row.note?' — '+row.note:'';
+    lines.push(
+      new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date))+
+      ' | '+movement+' | '+value+note
+    );
+  }
+  return lines.join('\n');
+}
+
+function printCustomerStatement(customer:any,statement:any,from:string,to:string){
+  if(!statement)return;
+  const popup=window.open('','_blank','width=900,height=1000');
+  if(!popup)return;
+  const esc=(v:any)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
+  const rows=(statement.rows||[]).map((row:any)=>'<tr>'+
+    '<td>'+esc(new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)))+'</td>'+
+    '<td><b>'+esc(row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):row.type==='manual_debt'?'مديونية يدوية':'تحصيل')+'</b>'+(row.note?'<small>'+esc(row.note)+'</small>':'')+'</td>'+
+    '<td>'+esc(row.items?.length?fmt(row.items.reduce((sum:any,item:any)=>sum+Number(item.quantityKg||0),0))+' كجم':'—')+'</td>'+
+    '<td>'+esc(row.items?.length?fmt(row.items[0].unitPrice)+' ج.م':'—')+'</td>'+
+    '<td>'+esc(fmt(row.type==='invoice'?row.total:Math.abs(row.paid||0))+' ج.م')+'</td>'+
+    '<td>'+esc(row.actorName||'—')+'</td>'+
+  '</tr>').join('');
+  popup.document.open();
+  popup.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>كشف حساب '+esc(customer?.name||'')+'</title><style>*{box-sizing:border-box}body{margin:0;background:#fff;color:#202522;font-family:Arial,Tahoma,sans-serif;direction:rtl;padding:24px}.sheet{max-width:1000px;margin:auto}.head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-bottom:3px solid #173f2b;padding-bottom:16px;margin-bottom:18px}.head h1{margin:0 0 8px;font-size:30px}.head p{margin:3px 0;color:#66736b}.period{font-weight:700;color:#173f2b}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}.stat{border:1px solid #dfe7e1;border-radius:14px;padding:14px}.stat small{display:block;color:#718078;margin-bottom:7px}.stat b{font-size:19px}.table{width:100%;border-collapse:collapse}.table th,.table td{border:1px solid #dfe7e1;padding:10px;text-align:right;vertical-align:top}.table th{background:#edf5ee;color:#24553b}.table small{display:block;color:#718078;margin-top:4px}.foot{margin-top:16px;color:#718078;text-align:center;font-size:12px}@media print{body{padding:0}.sheet{max-width:none}.summary{grid-template-columns:repeat(4,1fr)}}@media(max-width:700px){.summary{grid-template-columns:1fr 1fr}.head{display:block}}</style></head><body><main class="sheet"><header class="head"><div><h1>كشف حساب العميل</h1><p>الاسم: <b>'+esc(customer?.name||'—')+'</b></p><p>المحل: '+esc(customer?.shopName||'غير مسجل')+'</p><p>الهاتف: '+esc(customer?.phone||'—')+'</p></div><div class="period">من '+esc(from||'—')+' إلى '+esc(to||'—')+'</div></header><section class="summary"><div class="stat"><small>رصيد أول الفترة</small><b>'+esc(fmt(statement.openingBalance)+' ج.م')+'</b></div><div class="stat"><small>مبيعات الفترة</small><b>'+esc(fmt(statement.summary.sales)+' ج.م')+'</b></div><div class="stat"><small>التحصيلات</small><b>'+esc(fmt(statement.summary.paid)+' ج.م')+'</b></div><div class="stat"><small>الرصيد بعد الفترة</small><b>'+esc(fmt(statement.summary.remaining)+' ج.م')+'</b></div></section><table class="table"><thead><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th><th>الموظف</th></tr></thead><tbody>'+rows+'</tbody></table><div class="foot">تم استخراج كشف الحساب من نظام X-Store</div></main></body></html>');
+  popup.document.close();popup.focus();setTimeout(()=>{try{popup.print()}catch{}},400);
+}
+
+async function shareCustomerStatement(customer:any,statement:any,from:string,to:string){
+  if(!statement)return;
+  const text=buildCustomerStatementText(customer,statement,from,to);
+  try{
+    if(navigator.share){await navigator.share({title:'كشف حساب '+String(customer?.name||''),text});return;}
+  }catch(e:any){if(e?.name==='AbortError')return;}
+  try{await navigator.clipboard.writeText(text);window.alert('تم نسخ كشف الحساب، ويمكنك لصقه ومشاركته.');}
+  catch{window.alert(text);}
 }
 
 function PoultryDashboardView() {
