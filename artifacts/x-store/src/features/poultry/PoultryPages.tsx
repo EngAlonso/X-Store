@@ -834,6 +834,7 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
         <button className="button button-primary" onClick={() => setLocation('/poultry-sale/' + encodeURIComponent(customer.id))}><ReceiptText size={16}/> فتح صفحة بيع العميل</button>
         <button className="button button-quiet" onClick={printInvoice}><Printer size={16}/> طباعة</button>
         <button className="button button-quiet" onClick={downloadInvoice}><Download size={16}/> حفظ كصورة</button>
+        <button className="button button-quiet" onClick={()=>shareUnifiedInvoiceImage(lastInvoice,customer,lastInvoiceDetails,session?.invoiceSettings)}><Share2 size={16}/> مشاركة</button>
         <button className="button button-quiet" onClick={whatsappInvoice}><MessageCircle size={16}/> إرسال واتساب</button>
       </div>
     </section>}
