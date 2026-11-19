@@ -520,7 +520,7 @@ async function buildCustomerStatementImageBlob(customer:any,statement:any,from:s
     '<td>'+esc(fmt(row.type==='invoice'?row.total:Math.abs(row.paid||0))+' ج.م')+'</td>'+
     '<td>'+esc(row.actorName||'—')+'</td>'+
   '</tr>').join('');
-  const invoiceSettings=invoiceSettingsOrDefault(settings);
+  const invoiceSettings=customerStatementInvoiceSettings(settings);
   const headerLines=invoiceSettings.showHeader?[invoiceSettings.headerStoreName,invoiceSettings.headerOwnerName,invoiceSettings.headerMessage,invoiceSettings.headerPhones].filter(line=>String(line||'').trim()):[];
   const statementHeader=headerLines.length?'<header class="store-head"><span>🐔</span><div>'+headerLines.map((line,i)=>'<b class="line line-'+i+'">'+esc(line)+'</b>').join('')+'</div><span>🐔</span></header>':'';
   const width=1100;
