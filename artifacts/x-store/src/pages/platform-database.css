@@ -1,0 +1,1006 @@
+.platform-database-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #23372b;
+}
+
+.platform-database-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 22px;
+}
+
+.platform-database-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6d806f;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.platform-database-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #27854a;
+  box-shadow: 0 0 0 4px #e8f4eb;
+}
+
+.platform-database-heading h1 {
+  margin: 7px 0 5px;
+  color: #25392c;
+  font-size: 30px;
+  line-height: 1.35;
+  letter-spacing: -.035em;
+  font-weight: 700;
+}
+
+.platform-database-heading p {
+  max-width: 680px;
+  margin: 0;
+  color: #78847b;
+  font-size: 13px;
+  line-height: 1.85;
+}
+
+.platform-database-owner-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  padding: 9px 12px;
+  border: 1px solid #dce9df;
+  border-radius: 999px;
+  background: #f4f9f5;
+  color: #2d6940;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.platform-database-summary {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 72px;
+  padding: 14px 17px;
+  border: 1px solid #e5ece6;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 2px 8px #1c372008;
+}
+
+.platform-database-summary-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  place-items: center;
+  border-radius: 11px;
+  background: #edf5ef;
+  color: #34704a;
+}
+
+.platform-database-summary > div:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.platform-database-summary > div:nth-child(2) span {
+  color: #849087;
+  font-size: 11px;
+}
+
+.platform-database-summary > div:nth-child(2) strong {
+  color: #293b30;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.platform-database-summary-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: auto;
+  color: #707d73;
+  font-size: 12px;
+}
+
+.platform-database-summary-note svg {
+  flex: none;
+  color: #6b8370;
+}
+
+.platform-database-workspace {
+  display: grid;
+  grid-template-columns: minmax(225px, 270px) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+.platform-database-table-panel,
+.platform-database-record-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #e7ece8;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 2px 8px #1c372008;
+}
+
+.platform-database-table-panel {
+  position: sticky;
+  top: 16px;
+}
+
+.platform-database-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 17px 16px 14px;
+  border-bottom: 1px solid #eef1ee;
+}
+
+.platform-database-panel-heading > div,
+.platform-database-record-heading > div {
+  min-width: 0;
+}
+
+.platform-database-panel-heading span,
+.platform-database-record-heading > div > span {
+  color: #879289;
+  font-size: 11px;
+}
+
+.platform-database-panel-heading h2,
+.platform-database-record-heading h2 {
+  margin: 4px 0 0;
+  color: #293b30;
+  font-size: 17px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.platform-database-panel-heading > svg {
+  color: #69806e;
+}
+
+.platform-database-table-list {
+  display: flex;
+  max-height: min(680px, calc(100vh - 270px));
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 7px;
+}
+
+.platform-database-table-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding: 10px 9px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  text-align: right;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.platform-database-table-option:hover {
+  background: #f7faf7;
+}
+
+.platform-database-table-option-active {
+  border-color: #dce9df;
+  background: #eff6f0;
+}
+
+.platform-database-table-option-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.platform-database-table-option-copy strong {
+  overflow: hidden;
+  color: #33473a;
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-database-table-option-copy small {
+  overflow: hidden;
+  color: #929c94;
+  direction: ltr;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-database-table-count {
+  min-width: 30px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: #f0f3f0;
+  color: #718076;
+  direction: ltr;
+  font-size: 10px;
+  text-align: center;
+}
+
+.platform-database-table-option-active .platform-database-table-count {
+  background: #dfece2;
+  color: #326342;
+}
+
+.platform-database-record-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 17px 18px 14px;
+}
+
+.platform-database-record-heading h2 {
+  font-size: 20px;
+}
+
+.platform-database-record-heading p {
+  margin: 4px 0 0;
+  color: #8a958d;
+  direction: ltr;
+  font-size: 11px;
+  text-align: right;
+}
+
+.platform-database-refresh,
+.platform-database-pagination button,
+.platform-database-inline-state button,
+.platform-database-empty-state button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 11px;
+  border: 1px solid #e0e7e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #45594b;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.platform-database-refresh:hover:not(:disabled),
+.platform-database-pagination button:hover:not(:disabled),
+.platform-database-inline-state button:hover,
+.platform-database-empty-state button:hover {
+  border-color: #c4d8c9;
+  background: #f5faf6;
+}
+
+.platform-database-refresh:disabled,
+.platform-database-pagination button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.platform-database-spinning {
+  animation: platform-database-spin 1s linear infinite;
+}
+
+.platform-database-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px 14px;
+}
+
+.platform-database-search {
+  display: flex;
+  min-width: 0;
+  max-width: 480px;
+  height: 39px;
+  flex: 1;
+  align-items: center;
+  gap: 9px;
+  padding: 0 11px;
+  border: 1px solid #e3e9e4;
+  border-radius: 9px;
+  background: #fbfcfb;
+  color: #839087;
+}
+
+.platform-database-search:focus-within {
+  border-color: #82ad8e;
+  box-shadow: 0 0 0 3px #eaf4ec;
+}
+
+.platform-database-search > svg {
+  flex: none;
+}
+
+.platform-database-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #2f4135;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.platform-database-search input::placeholder {
+  color: #a1aaa3;
+}
+
+.platform-database-search button,
+.platform-database-notice button,
+.platform-database-detail-dialog > header button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #77857a;
+  cursor: pointer;
+}
+
+.platform-database-search button:hover,
+.platform-database-notice button:hover,
+.platform-database-detail-dialog > header button:hover {
+  background: #edf2ee;
+}
+
+.platform-database-page-size {
+  flex: none;
+  color: #909a92;
+  font-size: 10px;
+}
+
+.platform-database-notice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 18px 12px;
+  padding: 9px 11px;
+  border: 1px solid #d6e8da;
+  border-radius: 8px;
+  background: #f1f8f2;
+  color: #356445;
+  font-size: 12px;
+}
+
+.platform-database-notice > svg {
+  flex: none;
+}
+
+.platform-database-notice span {
+  flex: 1;
+}
+
+.platform-database-table-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 18px 13px;
+  padding: 9px 11px;
+  border: 1px solid #e5e9e4;
+  border-radius: 8px;
+  color: #68756b;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.platform-database-table-warning svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.platform-database-table-warning-caution {
+  border-color: #efe2c4;
+  background: #fffaf0;
+  color: #7a6131;
+}
+
+.platform-database-table-warning-locked {
+  border-color: #e4e9e5;
+  background: #f7f9f7;
+}
+
+.platform-database-grid-wrap {
+  width: 100%;
+  overflow: auto;
+  border-top: 1px solid #edf0ed;
+}
+
+.platform-database-grid {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+  font-size: 11px;
+  text-align: right;
+}
+
+.platform-database-grid th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 10px 11px;
+  border-bottom: 1px solid #e9eeea;
+  background: #f8faf8;
+  color: #69786d;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.platform-database-grid th:not(:first-child):not(:last-child) {
+  direction: ltr;
+  text-align: left;
+}
+
+.platform-database-grid td {
+  max-width: 260px;
+  padding: 10px 11px;
+  border-bottom: 1px solid #f0f2f0;
+  color: #526157;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+}
+
+.platform-database-grid tbody tr:hover {
+  background: #fafcfa;
+}
+
+.platform-database-grid tbody tr.platform-database-row-selected {
+  background: #f1f7f2;
+}
+
+.platform-database-id-cell {
+  min-width: 150px;
+  direction: ltr;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: right;
+}
+
+.platform-database-id-cell span {
+  display: block;
+  max-width: 165px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-database-actions-cell {
+  min-width: 150px;
+  white-space: nowrap;
+}
+
+.platform-database-view-button,
+.platform-database-delete-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.platform-database-view-button {
+  color: #54705b;
+}
+
+.platform-database-view-button:hover {
+  border-color: #dce9df;
+  background: #f3f8f4;
+}
+
+.platform-database-delete-button {
+  color: #a3473e;
+}
+
+.platform-database-delete-button:hover {
+  border-color: #f0dbd8;
+  background: #fff5f3;
+}
+
+.platform-database-protected-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #f2f4f2;
+  color: #78847b;
+  font-size: 10px;
+  cursor: help;
+}
+
+.platform-database-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 18px;
+  color: #7d8980;
+  font-size: 11px;
+}
+
+.platform-database-pagination > div {
+  display: flex;
+  gap: 7px;
+}
+
+.platform-database-pagination button {
+  min-height: 32px;
+}
+
+.platform-database-empty-state,
+.platform-database-inline-state,
+.platform-database-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 190px;
+  padding: 25px;
+  color: #839087;
+}
+
+.platform-database-empty-state {
+  flex-direction: column;
+  text-align: center;
+}
+
+.platform-database-empty-state > svg {
+  margin-bottom: 2px;
+  color: #92a398;
+}
+
+.platform-database-empty-state strong {
+  color: #45574a;
+  font-size: 14px;
+}
+
+.platform-database-empty-state span {
+  font-size: 11px;
+}
+
+.platform-database-inline-state {
+  min-height: 120px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.platform-database-inline-state > svg {
+  color: #a66f38;
+}
+
+.platform-database-loading {
+  flex-direction: column;
+  font-size: 11px;
+}
+
+.platform-database-loading i,
+.platform-database-table-skeleton i {
+  display: block;
+  width: 84%;
+  height: 14px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #f0f3f0 25%, #f7f9f7 50%, #f0f3f0 75%);
+  background-size: 200% 100%;
+  animation: platform-database-shimmer 1.3s infinite;
+}
+
+.platform-database-loading i:nth-child(2) {
+  width: 72%;
+}
+
+.platform-database-loading i:nth-child(3) {
+  width: 90%;
+}
+
+.platform-database-table-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 13px;
+}
+
+.platform-database-table-skeleton i {
+  width: 100%;
+}
+
+.platform-database-table-skeleton i:nth-child(even) {
+  width: 82%;
+}
+
+.platform-database-detail-scrim {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #14241ab8;
+  backdrop-filter: blur(3px);
+}
+
+.platform-database-detail-dialog,
+.platform-database-delete-dialog {
+  width: min(620px, 100%);
+  max-height: min(80vh, 760px);
+  overflow: auto;
+  border: 1px solid #e5ebe6;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 24px 70px #0d1c1240;
+}
+
+.platform-database-detail-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #edf1ed;
+}
+
+.platform-database-detail-dialog > header span {
+  color: #829087;
+  font-size: 11px;
+}
+
+.platform-database-detail-dialog > header h2 {
+  margin: 4px 0 0;
+  color: #2c4032;
+  font-size: 19px;
+}
+
+.platform-database-detail-id {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 16px 20px;
+  padding: 12px;
+  border: 1px solid #e8ede8;
+  border-radius: 9px;
+  background: #f8faf8;
+}
+
+.platform-database-detail-id small {
+  color: #859088;
+  font-size: 10px;
+}
+
+.platform-database-detail-id code {
+  overflow-wrap: anywhere;
+  color: #364b3c;
+  direction: ltr;
+  font-size: 11px;
+  text-align: right;
+}
+
+.platform-database-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0;
+  padding: 0 20px 20px;
+}
+
+.platform-database-detail-fields > div {
+  min-width: 0;
+  padding: 10px 11px;
+  border: 1px solid #edf0ed;
+  border-radius: 8px;
+}
+
+.platform-database-detail-fields dt {
+  margin-bottom: 5px;
+  color: #818d84;
+  direction: ltr;
+  font-size: 10px;
+  text-align: right;
+}
+
+.platform-database-detail-fields dd {
+  margin: 0;
+  color: #3d5043;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.platform-database-delete-dialog {
+  width: min(500px, 100%);
+  padding: 23px;
+}
+
+.platform-database-delete-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 13px;
+  background: #fff0ed;
+  color: #a7473d;
+}
+
+.platform-database-delete-dialog h2 {
+  margin: 15px 0 7px;
+  color: #293b30;
+  font-size: 20px;
+}
+
+.platform-database-delete-dialog > p {
+  margin: 0;
+  color: #758178;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.platform-database-delete-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid #f0dfbf;
+  border-radius: 8px;
+  background: #fffaf1;
+  color: #786038;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.platform-database-delete-warning svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.platform-database-confirmation-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 16px;
+  color: #657267;
+  font-size: 11px;
+}
+
+.platform-database-confirmation-field code {
+  color: #314d38;
+  direction: ltr;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.platform-database-confirmation-field input {
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid #dfe6e0;
+  border-radius: 8px;
+  outline: 0;
+  color: #36483b;
+  direction: ltr;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  text-align: left;
+}
+
+.platform-database-confirmation-field input:focus {
+  border-color: #88aa8e;
+  box-shadow: 0 0 0 3px #eaf4ec;
+}
+
+.platform-database-delete-error {
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid #efd5d2;
+  border-radius: 8px;
+  background: #fff6f4;
+  color: #9a3f37;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.platform-database-delete-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.platform-database-cancel-button,
+.platform-database-confirm-delete-button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.platform-database-cancel-button {
+  border: 1px solid #e1e7e2;
+  background: #fff;
+  color: #647067;
+}
+
+.platform-database-confirm-delete-button {
+  border: 1px solid #a83f36;
+  background: #ad443a;
+  color: #fff;
+}
+
+.platform-database-confirm-delete-button:hover:not(:disabled) {
+  background: #94382f;
+}
+
+.platform-database-confirm-delete-button:disabled,
+.platform-database-cancel-button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.platform-database-page :is(button, input):focus-visible {
+  outline: 3px solid #9dc3a5;
+  outline-offset: 2px;
+}
+
+@keyframes platform-database-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes platform-database-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 980px) {
+  .platform-database-workspace {
+    grid-template-columns: minmax(200px, 230px) minmax(0, 1fr);
+  }
+
+  .platform-database-summary-note {
+    max-width: 260px;
+    line-height: 1.6;
+  }
+}
+
+@media (max-width: 760px) {
+  .platform-database-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .platform-database-heading h1 {
+    font-size: 25px;
+  }
+
+  .platform-database-summary {
+    flex-wrap: wrap;
+  }
+
+  .platform-database-summary-note {
+    width: 100%;
+    max-width: none;
+    margin-inline-start: 55px;
+  }
+
+  .platform-database-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .platform-database-table-panel {
+    position: static;
+  }
+
+  .platform-database-table-list {
+    max-height: 230px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .platform-database-table-option {
+    min-width: 0;
+  }
+
+  .platform-database-record-heading {
+    padding: 15px 13px 12px;
+  }
+
+  .platform-database-controls {
+    padding: 0 13px 12px;
+  }
+
+  .platform-database-table-warning {
+    margin-inline: 13px;
+  }
+
+  .platform-database-notice {
+    margin-inline: 13px;
+  }
+
+  .platform-database-pagination {
+    padding-inline: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .platform-database-page {
+    gap: 13px;
+  }
+
+  .platform-database-summary {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .platform-database-summary-note {
+    margin-inline-start: 0;
+  }
+
+  .platform-database-table-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .platform-database-page-size {
+    display: none;
+  }
+
+  .platform-database-detail-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .platform-database-delete-dialog {
+    padding: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .platform-database-page *,
+  .platform-database-page *::before,
+  .platform-database-page *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

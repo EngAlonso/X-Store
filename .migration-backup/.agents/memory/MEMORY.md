@@ -1,0 +1,11 @@
+- [Tenant currency meaning](tenant-currency.md) — changing a store's currency relabels its saved amounts; it does not convert them.
+- [X-Store password choice](xstore-password-choice.md) — account passwords may be any non-empty value up to 128 characters, without complexity rules.
+- [X-Store founder setup](xstore-founder-setup.md) — keep first-owner registration one-time; after success, show normal sign-in and don't reopen setup.
+- [X-Store product language](xstore-product-language.md) — recognize common Arabic dialect, Fusha, and English product terms in icon selection and search.
+- [POS long-shift comfort](pos-long-shift-comfort.md) — X-Store's checkout should stay legible, calm and engaging during extended shifts.
+- [Drizzle migration output path](drizzle-migration-output-path.md) — keep `out` relative to the database package; an absolute output path can be prefixed incorrectly during generation.
+- [X-Store natural icons](xstore-category-tiles.md) — use compact, familiar object symbols with restrained color to avoid a cartoonish interface.
+- [X-Store invoice lifecycle](xstore-invoice-lifecycle.md) — preserve invoice identity and attribution; use invoice-only multi-item return/exchange selection with remaining quantities.
+- [X-Store sales-page readability](xstore-sales-readability.md) — keep invoice rows, amounts, and exchange details easy to scan with larger text.
+- [Platform database administration](platform-database-management.md) — only the platform owner manages database records across all stores.
+- [X-Store database hosting](xstore-database-hosting.md) — production PostgreSQL is hosted on Aiven and must use its project CA for verified TLS.

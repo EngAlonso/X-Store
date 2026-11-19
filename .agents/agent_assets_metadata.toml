@@ -1,0 +1,44 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "VQYRSvINo1_A3yBLYr_xR"
+uri = "file://artifacts/x-store/dist/xstore-offline-license-private.txt"
+type = "text"
+title = "مفتاح توقيع X-Store للأوفلاين"
+description = "ملف PEM خاص بمفتاح Ed25519. انسخ محتواه إلى Replit Secrets تحت XSTORE_OFFLINE_LICENSE_PRIVATE_KEY، ولا تشاركه. احذف النسخة بعد إضافته."
+logical_id = "2d460867-e725-4d24-8553-06afe051df0d"
+content_hash = "sha256:ac30f52c4842fe1f36dc649b35ab85df6722c186d376599cac78db35cc8bbe6d"
+size = 119
+mtime_ms = 1793222652248
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:58fb8d9a-212e-4e71-9573-06daa78d6a68/2d460867-e725-4d24-8553-06afe051df0d/45ec3b9d-0f2f-4cb8-ae9f-05423d59c952"
+storage_version_token = "1793222657077996"
+content_type = "text/plain"
+
+[[outputs]]
+id = "B1MaP7K9cKahK39NAMhCk"
+uri = "file://artifacts/x-store/dist/xstore-offline-license-private-one-line.txt"
+type = "text"
+title = "مفتاح X-Store الخاص — صيغة سطر واحد"
+description = "ملف PEM خاص بصيغة سطر واحد مع فواصل أسطر مهروبة. استخدم هذا الملف بدل السابق، والصق محتواه كاملًا داخل نموذج Secrets الآمن تحت XSTORE_OFFLINE_LICENSE_PRIVATE_KEY."
+logical_id = "63f652fb-ede2-495a-a0d7-0334ca79b4ef"
+content_hash = "sha256:c5bde833707a854423191d27b18fa1cb19ef49cd6b564df911f2123e71b5c331"
+size = 122
+mtime_ms = 1793223056016
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:58fb8d9a-212e-4e71-9573-06daa78d6a68/63f652fb-ede2-495a-a0d7-0334ca79b4ef/95e6b962-19d2-4927-8e17-ec492d33e8f9"
+storage_version_token = "1793223078706637"
+content_type = "text/plain"
+
+[[outputs]]
+id = "9bkbEj8zvxCQGOZquqLfB"
+uri = "file://artifacts/x-store/release/offline-windows/X-Store%20Offline%200.0.0.exe"
+type = "unspecified"
+title = "X-Store Offline for Windows — x64"
+description = "Single-file portable Windows build. Download and run it on a 64-bit Windows PC; it extracts locally and launches X-Store Offline. This is not the standard setup wizard."
+logical_id = "09aa339d-74ed-47fc-ad08-fc2ca89ea3bc"
+content_hash = "sha256:bad744045bf54f8ba56df80d071d2e5a476d8dd3e9cc329b82a350da06f94732"
+size = 102885469
+mtime_ms = 1793319182797
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:26a00a89-9f22-4958-ad78-f2f05dc4e49e/09aa339d-74ed-47fc-ad08-fc2ca89ea3bc/89730907-2e55-4278-b487-d8cf69551a7f"
+storage_version_token = "1793319196353307"
+content_type = "application/octet-stream"

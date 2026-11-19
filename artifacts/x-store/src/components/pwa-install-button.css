@@ -1,0 +1,124 @@
+html.has-pwa-install-button #root {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+
+.pwa-install-button {
+  position: fixed;
+  left: max(1rem, env(safe-area-inset-left));
+  bottom: max(0.9rem, calc(env(safe-area-inset-bottom) + 0.75rem));
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 3rem;
+  padding: 0.72rem 1.05rem;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: #0b4619;
+  box-shadow: 0 8px 24px rgb(13 39 20 / 24%);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pwa-install-button:hover {
+  background: #17652b;
+  box-shadow: 0 10px 28px rgb(13 39 20 / 30%);
+}
+
+.pwa-install-button:focus-visible,
+.pwa-install-close:focus-visible,
+.pwa-install-confirm:focus-visible {
+  outline: 3px solid #76c989;
+  outline-offset: 3px;
+}
+
+.pwa-install-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(12 24 15 / 48%);
+}
+
+.pwa-install-dialog {
+  position: relative;
+  width: min(100%, 26rem);
+  padding: 2rem;
+  border: 1px solid #e3ebe4;
+  border-radius: 1.25rem;
+  background: #fff;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 22%);
+  color: #203528;
+  direction: rtl;
+}
+
+.pwa-install-dialog-icon {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 0.9rem;
+  background: #eaf2ec;
+  color: #0b4619;
+}
+
+.pwa-install-dialog h2 {
+  margin: 1rem 0 0.6rem;
+  font-size: 1.25rem;
+}
+
+.pwa-install-dialog ol {
+  margin: 0;
+  padding-inline-start: 1.35rem;
+  color: #56665a;
+  line-height: 1.9;
+}
+
+.pwa-install-close {
+  position: absolute;
+  top: 0.85rem;
+  left: 0.85rem;
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #536257;
+  cursor: pointer;
+}
+
+.pwa-install-close:hover {
+  background: #f0f4f0;
+}
+
+.pwa-install-confirm {
+  width: 100%;
+  min-height: 2.8rem;
+  margin-top: 1.4rem;
+  border: 0;
+  border-radius: 0.8rem;
+  background: #0b4619;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media print {
+  .pwa-install-button,
+  .pwa-install-backdrop {
+    display: none !important;
+  }
+
+  html.has-pwa-install-button #root {
+    padding-bottom: 0;
+  }
+}

@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "X-Store"
+description = "A responsive Arabic-first SaaS point-of-sale and inventory platform for multi-branch retailers, with fast cashier workflows and audited owner support controls."
+version = "1.0.0"
+id = "artifacts/x-store"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22067
+
+[services.development]
+run = "pnpm --filter @workspace/x-store run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/x-store", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/x-store/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22067"
+BASE_PATH = "/"

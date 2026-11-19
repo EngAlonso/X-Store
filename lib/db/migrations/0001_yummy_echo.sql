@@ -1,0 +1,1 @@
+ALTER TABLE "xstore_tenants" ADD COLUMN "vat_rate" numeric(5, 4) DEFAULT '0.15' NOT NULL;

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="64" viewBox="0 0 220 64" role="img" aria-label="X-Store">
+  <rect width="64" height="64" rx="15" fill="#0B4619"/>
+  <path d="M17 17h11l9 11 9-11h10L42 32l14 15H45L36 36l-9 11H16l14-15L17 17Z" fill="#fff"/>
+  <path d="M40 17h16v5H40z" fill="#28A745"/>
+  <text x="76" y="43" fill="#0B4619" font-family="DM Sans,Arial,sans-serif" font-size="34" font-weight="700" letter-spacing="-1.7">X-Store</text>
+</svg>

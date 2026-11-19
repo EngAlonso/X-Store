@@ -1,0 +1,1 @@
+ALTER TABLE "xstore_tenants" ADD COLUMN "invoice_format" text DEFAULT 'wide' NOT NULL;

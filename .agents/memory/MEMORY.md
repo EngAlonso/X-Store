@@ -1,0 +1,7 @@
+- [Artifact import routing](artifact-import-routing.md) — keep registered artifact metadata under `artifacts/<slug>` and verify the preview proxy after relocation.
+- [Store types](store-types.md) — preserve current workflows, enforce store-level wholesale eligibility, and grant retail/wholesale selling permissions separately.
+- [Invoice line details](invoice-details.md) — completed invoices must show per-item name, quantity, unit price, and line total across print, WhatsApp, and history.
+- [Latin numerals](display-numerals.md) — show user-visible values with 0–9 across money, dates, quantities, charts, and invoice samples.
+- [Aiven production database](aiven-production-db.md) — use the same-service CA with strict TLS and apply tracked migrations to the Vercel production database.
+- [X-Store offline edition](offline-edition.md) — standalone Windows install, no internet or cloud data, one store/device, local backups in a user-selected folder.
+- [API code generation](api-codegen-runtime.md) — this workspace's Node 20 runtime needs a temporary `Map.groupBy` polyfill for Orval Zod generation.
