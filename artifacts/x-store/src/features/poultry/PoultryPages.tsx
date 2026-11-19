@@ -504,14 +504,47 @@ function printCustomerStatement(customer:any,statement:any,from:string,to:string
   popup.document.close();popup.focus();setTimeout(()=>{try{popup.print()}catch{}},400);
 }
 
+async function buildCustomerStatementImageBlob(customer:any,statement:any,from:string,to:string):Promise<Blob|null>{
+  if(!statement)return null;
+  const esc=(v:any)=>String(v??'').replace(/[&<>\\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',"'":'&#39;'}[c]||c));
+  const rows=(statement.rows||[]).map((row:any)=>'<tr>'+
+    '<td>'+esc(new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)))+'</td>'+
+    '<td><b>'+esc(row.type==='invoice'?'فاتورة '+(row.invoiceNo||''):row.type==='manual_debt'?'مديونية يدوية':'تحصيل')+'</b>'+(row.note?'<small>'+esc(row.note)+'</small>':'')+'</td>'+
+    '<td>'+esc(row.items?.length?fmt(row.items.reduce((sum:any,item:any)=>sum+Number(item.quantityKg||0),0))+' كجم':'—')+'</td>'+
+    '<td>'+esc(row.items?.length?fmt(row.items[0].unitPrice)+' ج.م':'—')+'</td>'+
+    '<td>'+esc(fmt(row.type==='invoice'?row.total:Math.abs(row.paid||0))+' ج.م')+'</td>'+
+    '<td>'+esc(row.actorName||'—')+'</td>'+
+  '</tr>').join('');
+  const width=1100;
+  const height=420+Math.max(1,(statement.rows||[]).length)*78;
+  const html='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#202522;font-family:Arial,Tahoma,sans-serif;direction:rtl}.sheet{width:100%;padding:30px;background:#fff}.head{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;border-bottom:4px solid #173f2b;padding-bottom:20px;margin-bottom:22px}.head h1{margin:0 0 10px;font-size:36px}.head p{margin:5px 0;color:#66736b;font-size:20px}.period{font-weight:800;color:#173f2b;font-size:20px;white-space:nowrap}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}.stat{border:1px solid #dfe7e1;border-radius:18px;padding:18px}.stat small{display:block;color:#718078;margin-bottom:9px;font-size:17px}.stat b{font-size:24px}.table{width:100%;border-collapse:collapse;font-size:18px}.table th,.table td{border:1px solid #dfe7e1;padding:13px;text-align:right;vertical-align:top}.table th{background:#edf5ee;color:#24553b;font-size:18px}.table small{display:block;color:#718078;margin-top:5px;line-height:1.5}.foot{margin-top:20px;color:#718078;text-align:center;font-size:14px}</style></head><body><main class="sheet"><header class="head"><div><h1>كشف حساب العميل</h1><p>الاسم: <b>\${esc(customer?.name||'—')}</b></p><p>المحل: \${esc(customer?.shopName||'غير مسجل')}</p><p>الهاتف: \${esc(customer?.phone||'—')}</p></div><div class="period">من \${esc(from||'—')} إلى \${esc(to||'—')}</div></header><section class="summary"><div class="stat"><small>رصيد أول الفترة</small><b>\${esc(fmt(statement.openingBalance)+' ج.م')}</b></div><div class="stat"><small>مبيعات الفترة</small><b>\${esc(fmt(statement.summary.sales)+' ج.م')}</b></div><div class="stat"><small>التحصيلات</small><b>\${esc(fmt(statement.summary.paid)+' ج.م')}</b></div><div class="stat"><small>الرصيد بعد الفترة</small><b>\${esc(fmt(statement.summary.remaining)+' ج.م')}</b></div></section><table class="table"><thead><tr><th>التاريخ والوقت</th><th>الحركة</th><th>الكمية</th><th>سعر الكيلو</th><th>القيمة</th><th>الموظف</th></tr></thead><tbody>\${rows}</tbody></table><div class="foot">تم استخراج كشف الحساب من نظام X-Store</div></main></body></html>';
+  const style=(html.match(/<style>([\\s\\S]*?)<\\/style>/i)||[])[1]||'';
+  const body=(html.match(/<body[^>]*>([\\s\\S]*?)<\\/body>/i)||[])[1]||'';
+  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+width+'" height="'+height+'"><foreignObject width="'+width+'" height="'+height+'"><div xmlns="http://www.w3.org/1999/xhtml" style="width:'+width+'px;height:'+height+'px;overflow:hidden"><style>'+style+'</style>'+body+'</div></foreignObject></svg>';
+  return await new Promise(resolve=>{
+    const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'})),image=new Image();
+    image.onload=()=>{
+      const scale=2,canvas=document.createElement('canvas');canvas.width=width*scale;canvas.height=height*scale;
+      const ctx=canvas.getContext('2d');
+      if(!ctx){URL.revokeObjectURL(url);resolve(null);return;}
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.scale(scale,scale);ctx.drawImage(image,0,0,width,height);
+      canvas.toBlob(file=>{URL.revokeObjectURL(url);resolve(file)},'image/jpeg',0.94);
+    };
+    image.onerror=()=>{URL.revokeObjectURL(url);resolve(null)};
+    image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  });
+}
 async function shareCustomerStatement(customer:any,statement:any,from:string,to:string){
-  if(!statement)return;
-  const text=buildCustomerStatementText(customer,statement,from,to);
+  const file=await buildCustomerStatementImageBlob(customer,statement,from,to);
+  if(!file)return;
+  const imageFile=new File([file],'كشف-حساب-'+String(customer?.name||'العميل')+'.jpg',{type:'image/jpeg'});
   try{
-    if(navigator.share){await navigator.share({title:'كشف حساب '+String(customer?.name||''),text});return;}
+    if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[imageFile]}))){
+      await navigator.share({files:[imageFile],title:'كشف حساب '+String(customer?.name||''),text:'كشف حساب '+String(customer?.name||'')});
+      return;
+    }
   }catch(e:any){if(e?.name==='AbortError')return;}
-  try{await navigator.clipboard.writeText(text);window.alert('تم نسخ كشف الحساب، ويمكنك لصقه ومشاركته.');}
-  catch{window.alert(text);}
+  const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=imageFile.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
 }
 
 function PoultryDashboardView() {
