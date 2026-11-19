@@ -50,6 +50,10 @@ const defaultPoultryInvoiceSettings: PoultryInvoiceSettings = {
   headerMessage: '', headerPhones: '',
 };
 function invoiceSettingsOrDefault(settings?: PoultryInvoiceSettings|null): PoultryInvoiceSettings { return {...defaultPoultryInvoiceSettings,...(settings||{})}; }
+function customerStatementInvoiceSettings(settings?: PoultryInvoiceSettings|null): PoultryInvoiceSettings {
+  const s=invoiceSettingsOrDefault(settings);
+  return {...s,showHeader:true};
+}
 
 function PoultryInvoiceHeader({settings}:{settings?:PoultryInvoiceSettings|null}) {
   const s=invoiceSettingsOrDefault(settings);
@@ -490,7 +494,7 @@ function printCustomerStatement(customer:any,statement:any,from:string,to:string
   if(!statement)return;
   const popup=window.open('','_blank','width=900,height=1000');if(!popup)return;
   const esc=(v:any)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
-  const invoiceSettings=invoiceSettingsOrDefault(settings);
+  const invoiceSettings=customerStatementInvoiceSettings(settings);
   const headerLines=invoiceSettings.showHeader?[invoiceSettings.headerStoreName,invoiceSettings.headerOwnerName,invoiceSettings.headerMessage,invoiceSettings.headerPhones].filter(line=>String(line||'').trim()):[];
   const statementHeader=headerLines.length?'<header class="store-head"><span>🐔</span><div>'+headerLines.map((line,i)=>'<b class="line line-'+i+'">'+esc(line)+'</b>').join('')+'</div><span>🐔</span></header>':'';
   const rows=(statement.rows||[]).map((row:any)=>'<tr>'+
