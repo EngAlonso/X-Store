@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useLocation, useRoute } from 'wouter';
 import {
   AlertTriangle, ArrowLeft, Bird, Boxes, ChevronLeft, CircleCheck, CreditCard,
@@ -680,6 +680,11 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
   const [calculatorStored, setCalculatorStored] = useState<number | null>(null);
   const [calculatorOperator, setCalculatorOperator] = useState<string | null>(null);
   const [calculatorWaiting, setCalculatorWaiting] = useState(false);
+  const [calculatorTarget, setCalculatorTarget] = useState<'quantityKg' | 'unitPrice' | 'deadWeightKg' | 'amountPaid' | null>(null);
+  const quantityInputRef = useRef<HTMLInputElement | null>(null);
+  const unitPriceInputRef = useRef<HTMLInputElement | null>(null);
+  const deadWeightInputRef = useRef<HTMLInputElement | null>(null);
+  const amountPaidInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -781,6 +786,7 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
     setCalculatorStored(null);
     setCalculatorOperator(null);
     setCalculatorWaiting(true);
+    if (calculatorTarget) applyCalculatorResult();
   }
 
   function calculatorClear() {
@@ -796,6 +802,35 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
     const next = calculatorDisplay.length > 1 ? calculatorDisplay.slice(0, -1) : '0';
     setCalculatorDisplay(next);
     setCalculatorExpression(calculatorOperator !== null && calculatorStored !== null ? String(calculatorStored) + ' ' + calculatorOperator + ' ' + next : next);
+  }
+
+  function openCalculatorForField(field: 'quantityKg' | 'unitPrice' | 'deadWeightKg' | 'amountPaid') {
+    setCalculatorTarget(field);
+    calculatorClear();
+    setCalculatorOpen(true);
+  }
+
+  function applyCalculatorResult() {
+    if (!calculatorTarget) return;
+    const result = Number(calculatorDisplay);
+    if (!Number.isFinite(result)) return;
+    const value = String(Number(result.toFixed(10)));
+    setInvoice(current => ({ ...current, [calculatorTarget]: value }));
+    const nextField: Record<typeof calculatorTarget, typeof calculatorTarget | null> = {
+      quantityKg: 'unitPrice',
+      unitPrice: 'deadWeightKg',
+      deadWeightKg: 'amountPaid',
+      amountPaid: null,
+    };
+    const nextTarget = nextField[calculatorTarget];
+    setCalculatorOpen(false);
+    setCalculatorTarget(null);
+    if (nextTarget) {
+      setTimeout(() => {
+        const refs = { quantityKg: quantityInputRef, unitPrice: unitPriceInputRef, deadWeightKg: deadWeightInputRef, amountPaid: amountPaidInputRef };
+        refs[nextTarget].current?.focus();
+      }, 0);
+    }
   }
 
   function invoiceMessage() {
@@ -935,10 +970,10 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
         </div>
         <div className="form-grid poultry-sale-form">
           <label className="field"><span>الصنف</span><input value={invoice.productName} onChange={e => setInvoice({...invoice, productName: e.target.value})} placeholder="مثال: فراخ بيضاء"/></label>
-          <label className="field"><span>الكمية بالكيلو <b className="required-mark">*</b></span><input type="number" min="0.001" step="0.001" value={invoice.quantityKg} onChange={e => setInvoice({...invoice, quantityKg: e.target.value})} placeholder="مثال: 12.500"/></label>
-          <label className="field"><span>سعر الكيلو <b className="required-mark">*</b></span><input type="number" min="0" step="0.01" value={invoice.unitPrice} onChange={e => setInvoice({...invoice, unitPrice: e.target.value})} placeholder="مثال: 145"/></label>
-          <label className="field"><span>نافِق (كجم)</span><input type="number" min="0" step="0.001" max={Number(invoice.quantityKg)||undefined} value={invoice.deadWeightKg} onChange={e => setInvoice({...invoice, deadWeightKg: e.target.value})} placeholder="مثال: 10"/></label>
-          <label className="field"><span>المبلغ المدفوع اليوم</span><input type="number" min="0" step="0.01" value={invoice.amountPaid} onChange={e => setInvoice({...invoice, amountPaid: e.target.value})} placeholder="0 = آجل بالكامل"/></label>
+          <label className="field"><span>الكمية بالكيلو <b className="required-mark">*</b></span><input ref={quantityInputRef} type="number" min="0.001" step="0.001" value={invoice.quantityKg} onFocus={() => openCalculatorForField('quantityKg')} onChange={e => setInvoice({...invoice, quantityKg: e.target.value})} placeholder="مثال: 12.500"/></label>
+          <label className="field"><span>سعر الكيلو <b className="required-mark">*</b></span><input ref={unitPriceInputRef} type="number" min="0" step="0.01" value={invoice.unitPrice} onFocus={() => openCalculatorForField('unitPrice')} onChange={e => setInvoice({...invoice, unitPrice: e.target.value})} placeholder="مثال: 145"/></label>
+          <label className="field"><span>نافِق (كجم)</span><input ref={deadWeightInputRef} type="number" min="0" step="0.001" max={Number(invoice.quantityKg)||undefined} value={invoice.deadWeightKg} onFocus={() => openCalculatorForField('deadWeightKg')} onChange={e => setInvoice({...invoice, deadWeightKg: e.target.value})} placeholder="مثال: 10"/></label>
+          <label className="field"><span>المبلغ المدفوع اليوم</span><input ref={amountPaidInputRef} type="number" min="0" step="0.01" value={invoice.amountPaid} onFocus={() => openCalculatorForField('amountPaid')} onChange={e => setInvoice({...invoice, amountPaid: e.target.value})} placeholder="0 = آجل بالكامل"/></label>
         </div>
         <div className="poultry-sale-calculation">
           <div><span>الوزن</span><b>{fmt(Number(invoice.quantityKg) || 0)} كجم</b></div>
