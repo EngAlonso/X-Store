@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useRoute } from 'wouter';
 import {
   AlertTriangle, ArrowLeft, Bird, Boxes, ChevronLeft, CircleCheck, CreditCard,
-  Calculator, Download, MessageCircle, Plus, Share2, Printer, ReceiptText, Search, ShieldCheck, Users, Wallet, Pencil as PencilIcon,
+  Calculator, Download, MessageCircle, Plus, Share2, Printer, ReceiptText, Search, ShieldCheck, Users, Wallet, RefreshCw, Pencil as PencilIcon,
 } from 'lucide-react';
 import type { SessionUser } from '@workspace/api-client-react';
 import './poultry.css';
