@@ -787,7 +787,6 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
     setCalculatorStored(null);
     setCalculatorOperator(null);
     setCalculatorWaiting(true);
-    if (calculatorTarget) applyCalculatorResult();
   }
 
   function calculatorClear() {
