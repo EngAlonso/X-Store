@@ -680,7 +680,8 @@ export function PoultrySalePage({ session }: { session: SessionUser | null }) {
   const [calculatorStored, setCalculatorStored] = useState<number | null>(null);
   const [calculatorOperator, setCalculatorOperator] = useState<string | null>(null);
   const [calculatorWaiting, setCalculatorWaiting] = useState(false);
-  const [calculatorTarget, setCalculatorTarget] = useState<'quantityKg' | 'unitPrice' | 'deadWeightKg' | 'amountPaid' | null>(null);\n  const calculatorSkipNextFocusRef = useRef(false);
+  const [calculatorTarget, setCalculatorTarget] = useState<'quantityKg' | 'unitPrice' | 'deadWeightKg' | 'amountPaid' | null>(null);
+  const calculatorSkipNextFocusRef = useRef(false);
   const quantityInputRef = useRef<HTMLInputElement | null>(null);
   const unitPriceInputRef = useRef<HTMLInputElement | null>(null);
   const deadWeightInputRef = useRef<HTMLInputElement | null>(null);
