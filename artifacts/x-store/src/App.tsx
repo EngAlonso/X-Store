@@ -909,6 +909,20 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
     };
   }, []);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    const handleOutsidePointer = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (target && target instanceof Element && target.closest('.notification-wrap')) return;
+      setNotificationsOpen(false);
+    };
+    document.addEventListener('mousedown', handleOutsidePointer);
+    document.addEventListener('touchstart', handleOutsidePointer, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleOutsidePointer);
+      document.removeEventListener('touchstart', handleOutsidePointer);
+    };
+  }, [notificationsOpen]);
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
   const notificationProducts = useListXStoreProducts(undefined, { query: { refetchInterval: 30000, enabled: !isPoultryStore } });
   const notificationSales = useListXStoreSales({ limit: 100 }, { query: { refetchInterval: 30000, enabled: !isPoultryStore } });
