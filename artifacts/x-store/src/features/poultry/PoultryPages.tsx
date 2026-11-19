@@ -490,11 +490,25 @@ function buildCustomerStatementText(customer:any,statement:any,from:string,to:st
   return lines.join('\n');
 }
 
-function printCustomerStatement(customer:any,statement:any,from:string,to:string,settings?:PoultryInvoiceSettings){
+async function resolveCustomerStatementInvoiceSettings(settings?:PoultryInvoiceSettings|null):Promise<PoultryInvoiceSettings>{
+  const fallback=invoiceSettingsOrDefault(settings);
+  try{
+    const response=await fetch('/api/xstore/session',{credentials:'include',headers:{Accept:'application/json'}});
+    if(response.ok){
+      const data=await response.json();
+      const fresh=data?.user?.invoiceSettings ?? data?.invoiceSettings ?? null;
+      if(fresh)return invoiceSettingsOrDefault(fresh);
+    }
+  }catch{}
+  return fallback;
+}
+
+async function printCustomerStatement(customer:any,statement:any,from:string,to:string,settings?:PoultryInvoiceSettings){
   if(!statement)return;
+  const effectiveSettings=await resolveCustomerStatementInvoiceSettings(settings);
   const popup=window.open('','_blank','width=900,height=1000');if(!popup)return;
   const esc=(v:any)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
-  const invoiceSettings=customerStatementInvoiceSettings(settings);
+  const invoiceSettings=customerStatementInvoiceSettings(effectiveSettings);
   const headerLines=invoiceSettings.showHeader?[invoiceSettings.headerStoreName,invoiceSettings.headerOwnerName,invoiceSettings.headerMessage,invoiceSettings.headerPhones].filter(line=>String(line||'').trim()):[];
   const statementHeader=headerLines.length?'<header style="display:grid;grid-template-columns:54px minmax(0,1fr) 54px;align-items:center;gap:12px;min-height:170px;padding:22px 18px;margin-bottom:18px;border-radius:24px;background:#173f2b;color:#fff;text-align:center"><span style="font-size:44px;line-height:1">🐔</span><div style="display:grid;gap:4px;min-width:0">'+headerLines.map((line,i)=>'<b style="display:block;overflow-wrap:anywhere;line-height:1.45;font-size:'+(i===0?'34px':i===1?'28px':'22px')+'">'+esc(line)+'</b>').join('')+'</div><span style="font-size:44px;line-height:1">🐔</span></header>':'';
   const rows=(statement.rows||[]).map((row:any)=>'<tr>'+
@@ -511,6 +525,7 @@ function printCustomerStatement(customer:any,statement:any,from:string,to:string
 }
 async function buildCustomerStatementImageBlob(customer:any,statement:any,from:string,to:string,settings?:PoultryInvoiceSettings):Promise<Blob|null>{
   if(!statement)return null;
+  const effectiveSettings=await resolveCustomerStatementInvoiceSettings(settings);
   const esc=(v:any)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]||c));
   const rows=(statement.rows||[]).map((row:any)=>'<tr>'+
     '<td>'+esc(new Intl.DateTimeFormat(APP_EGYPT_DATE_LOCALE,{day:'numeric',month:'long',year:'numeric',hour:'numeric',minute:'2-digit',timeZone:'Africa/Cairo'}).format(new Date(row.date)))+'</td>'+
@@ -520,7 +535,7 @@ async function buildCustomerStatementImageBlob(customer:any,statement:any,from:s
     '<td>'+esc(fmt(row.type==='invoice'?row.total:Math.abs(row.paid||0))+' ج.م')+'</td>'+
     '<td>'+esc(row.actorName||'—')+'</td>'+
   '</tr>').join('');
-  const invoiceSettings=customerStatementInvoiceSettings(settings);
+  const invoiceSettings=customerStatementInvoiceSettings(effectiveSettings);
   const headerLines=invoiceSettings.showHeader?[invoiceSettings.headerStoreName,invoiceSettings.headerOwnerName,invoiceSettings.headerMessage,invoiceSettings.headerPhones].filter(line=>String(line||'').trim()):[];
   const statementHeader=headerLines.length?'<header style="display:grid;grid-template-columns:54px minmax(0,1fr) 54px;align-items:center;gap:12px;min-height:170px;padding:22px 18px;margin-bottom:18px;border-radius:24px;background:#173f2b;color:#fff;text-align:center"><span style="font-size:44px;line-height:1">🐔</span><div style="display:grid;gap:4px;min-width:0">'+headerLines.map((line,i)=>'<b style="display:block;overflow-wrap:anywhere;line-height:1.45;font-size:'+(i===0?'34px':i===1?'28px':'22px')+'">'+esc(line)+'</b>').join('')+'</div><span style="font-size:44px;line-height:1">🐔</span></header>':'';
   const width=1100;
