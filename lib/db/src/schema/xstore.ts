@@ -182,6 +182,15 @@ export const xstorePlatformSettings = pgTable("xstore_platform_settings", {
       threads: null,
       pinterest: null,
     }),
+  backupEnabled: boolean("backup_enabled").notNull().default(false),
+  backupFrequencyPerDay: integer("backup_frequency_per_day").notNull().default(1),
+  backupNextRunAt: timestamp("backup_next_run_at", { withTimezone: true }),
+  backupLastRunAt: timestamp("backup_last_run_at", { withTimezone: true }),
+  backupLastStatus: text("backup_last_status"),
+  backupLastError: text("backup_last_error"),
+  googleDriveRefreshTokenEncrypted: text("google_drive_refresh_token_encrypted"),
+  googleDriveFolderId: text("google_drive_folder_id"),
+  googleDriveConnectedAt: timestamp("google_drive_connected_at", { withTimezone: true }),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -8,7 +8,18 @@ import {
 } from "@workspace/api-zod";
 import { db, xstoreAuditLogs, xstoreUsers } from "@workspace/db";
 import { denyRole, getXStoreUser, requireXStoreUser } from "../middlewares/xstoreAuth";
-import { clearSessionCookie } from "../lib/xstore-session";
+import { clearSessionCookie, readSessionToken } from "../lib/xstore-session";
+import {
+  buildGoogleAuthorizationUrl,
+  connectGoogleDrive,
+  createGoogleOAuthState,
+  disconnectGoogleDrive,
+  getAutoBackupStatus,
+  markAutoBackupFailure,
+  runPlatformBackupToGoogleDrive,
+  saveAutoBackupSettings,
+  verifyGoogleOAuthState,
+} from "../lib/platform-backup-google";
 import {
   createXStorePlatformBackup,
   getXStorePlatformBackupSummary,
@@ -191,5 +202,102 @@ router.post(
     }
   },
 );
+
+
+// Automatic platform backup + Google Drive integration.
+router.get("/xstore/platform-backup/auto-settings", async (req, res) => {
+  if (requirePlatformOwner(res)) return;
+  try {
+    res.json(await getAutoBackupStatus());
+  } catch (error) {
+    req.log.error({ error }, "Unable to read automatic platform backup settings");
+    res.status(500).json({ error: "تعذر قراءة إعدادات النسخ التلقائي." });
+  }
+});
+
+router.put("/xstore/platform-backup/auto-settings", express.json(), async (req, res) => {
+  if (requirePlatformOwner(res)) return;
+  try {
+    const enabled = req.body?.enabled === true;
+    const frequencyPerDay = Number(req.body?.frequencyPerDay);
+    if (enabled && !(await getAutoBackupStatus()).googleDriveConnected) {
+      return res.status(400).json({ error: "اربط Google Drive أولاً قبل تفعيل النسخ التلقائي." });
+    }
+    res.json(await saveAutoBackupSettings(enabled, frequencyPerDay));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "تعذر حفظ إعدادات النسخ التلقائي." });
+  }
+});
+
+router.get("/xstore/platform-backup/google/connect", async (req, res) => {
+  if (requirePlatformOwner(res)) return;
+  try {
+    const user = getXStoreUser(res);
+    const url = buildGoogleAuthorizationUrl(user.id, `${req.protocol}://${req.get("host")}`);
+    res.redirect(url);
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : "تعذر بدء اتصال Google Drive." });
+  }
+});
+
+router.get("/xstore/platform-backup/google/callback", async (req, res) => {
+  const session = readSessionToken(req);
+  if (!session) return res.redirect("/platform-backup?google=error");
+  try {
+    const [user] = await db.select({ id: xstoreUsers.id, role: xstoreUsers.role }).from(xstoreUsers).where(eq(xstoreUsers.id, session.userId)).limit(1);
+    if (!user || user.role !== "platform_admin") return res.redirect("/platform-backup?google=error");
+    const state = typeof req.query.state === "string" ? req.query.state : "";
+    if (!verifyGoogleOAuthState(state, user.id)) return res.redirect("/platform-backup?google=error");
+    const code = typeof req.query.code === "string" ? req.query.code : "";
+    if (!code) return res.redirect("/platform-backup?google=error");
+    await connectGoogleDrive(code, `${req.protocol}://${req.get("host")}`);
+    res.redirect("/platform-backup?google=connected");
+  } catch (error) {
+    req.log.error({ error }, "Unable to connect Google Drive");
+    res.redirect("/platform-backup?google=error");
+  }
+});
+
+router.post("/xstore/platform-backup/google/disconnect", async (req, res) => {
+  if (requirePlatformOwner(res)) return;
+  try {
+    await disconnectGoogleDrive();
+    res.json({ disconnected: true });
+  } catch (error) {
+    res.status(500).json({ error: "تعذر فصل Google Drive." });
+  }
+});
+
+router.post("/xstore/platform-backup/auto-run-now", async (req, res) => {
+  if (requirePlatformOwner(res)) return;
+  try {
+    const file = await runPlatformBackupToGoogleDrive();
+    res.json({ uploaded: true, file });
+  } catch (error) {
+    await markAutoBackupFailure(error);
+    res.status(400).json({ error: error instanceof Error ? error.message : "تعذر رفع النسخة إلى Google Drive." });
+  }
+});
+
+router.post("/xstore/platform-backup/auto-run", async (req, res) => {
+  const expected = process.env.CRON_SECRET;
+  const supplied = req.get("authorization")?.replace(/^Bearer\s+/i, "") || req.get("x-cron-secret");
+  if (!expected || supplied !== expected) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    const status = await getAutoBackupStatus();
+    if (!status.enabled || !status.googleDriveConnected) return res.json({ status: "disabled" });
+    if (status.nextRunAt && new Date(status.nextRunAt).getTime() > Date.now()) return res.json({ status: "not_due", nextRunAt: status.nextRunAt });
+
+    const frequency = status.frequencyPerDay;
+    await saveAutoBackupSettings(true, frequency);
+    const file = await runPlatformBackupToGoogleDrive();
+    const next = await saveAutoBackupSettings(true, frequency);
+    res.json({ status: "success", file, nextRunAt: next.nextRunAt });
+  } catch (error) {
+    await markAutoBackupFailure(error);
+    res.status(500).json({ status: "error", error: error instanceof Error ? error.message : "تعذر تنفيذ النسخة التلقائية." });
+  }
+});
 
 export default router;

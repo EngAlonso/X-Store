@@ -22,6 +22,10 @@ import {
   RefreshCw,
   ShieldCheck,
   Upload,
+  Cloud,
+  Link2,
+  Unlink,
+  Save,
 } from 'lucide-react';
 
 const CONFIRMATION_PHRASE = 'استعادة المنصة';
@@ -90,6 +94,83 @@ export default function PlatformBackupPage() {
   const [typedConfirmation, setTypedConfirmation] = useState('');
   const [restoreSuccess, setRestoreSuccess] = useState('');
   const restore = useRestoreXStorePlatformBackup();
+
+  const [autoBackup, setAutoBackup] = useState<{
+    enabled: boolean; frequencyPerDay: number; nextRunAt: string | null; lastRunAt: string | null;
+    lastStatus: string | null; lastError: string | null; googleDriveConnected: boolean;
+    googleDriveConnectedAt: string | null; googleDriveFolderName: string;
+  } | null>(null);
+  const [autoBackupLoading, setAutoBackupLoading] = useState(true);
+  const [autoBackupSaving, setAutoBackupSaving] = useState(false);
+  const [autoBackupMessage, setAutoBackupMessage] = useState('');
+  const [autoBackupError, setAutoBackupError] = useState('');
+  const [frequencyDraft, setFrequencyDraft] = useState(1);
+  const [autoRunPending, setAutoRunPending] = useState(false);
+
+  async function loadAutoBackup() {
+    setAutoBackupLoading(true);
+    try {
+      const response = await fetch('/api/xstore/platform-backup/auto-settings', { credentials: 'include' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'تعذر قراءة إعدادات النسخ التلقائي.');
+      setAutoBackup(data);
+      setFrequencyDraft(data.frequencyPerDay);
+    } catch (error) {
+      setAutoBackupError(error instanceof Error ? error.message : 'تعذر قراءة إعدادات النسخ التلقائي.');
+    } finally {
+      setAutoBackupLoading(false);
+    }
+  }
+  useEffect(() => { void loadAutoBackup(); }, []);
+
+  async function saveAutoBackup() {
+    setAutoBackupSaving(true); setAutoBackupError(''); setAutoBackupMessage('');
+    try {
+      const response = await fetch('/api/xstore/platform-backup/auto-settings', {
+        method: 'PUT', credentials: 'include', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ enabled: autoBackup?.enabled ?? false, frequencyPerDay: frequencyDraft }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'تعذر حفظ الإعدادات.');
+      setAutoBackup(data); setAutoBackupMessage('تم حفظ إعدادات النسخ التلقائي.');
+    } catch (error) {
+      setAutoBackupError(error instanceof Error ? error.message : 'تعذر حفظ الإعدادات.');
+    } finally { setAutoBackupSaving(false); }
+  }
+  async function toggleAutoBackup(enabled: boolean) {
+    setAutoBackupSaving(true); setAutoBackupError(''); setAutoBackupMessage('');
+    try {
+      const response = await fetch('/api/xstore/platform-backup/auto-settings', {
+        method: 'PUT', credentials: 'include', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ enabled, frequencyPerDay: frequencyDraft }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'تعذر تغيير حالة النسخ التلقائي.');
+      setAutoBackup(data); setAutoBackupMessage(enabled ? 'تم تفعيل النسخ التلقائي.' : 'تم إيقاف النسخ التلقائي.');
+    } catch (error) {
+      setAutoBackupError(error instanceof Error ? error.message : 'تعذر تغيير حالة النسخ التلقائي.');
+    } finally { setAutoBackupSaving(false); }
+  }
+  async function disconnectDrive() {
+    if (!window.confirm('سيتم فصل Google Drive وإيقاف النسخ التلقائي. هل تريد المتابعة؟')) return;
+    const response = await fetch('/api/xstore/platform-backup/google/disconnect', { method: 'POST', credentials: 'include' });
+    const data = await response.json();
+    if (!response.ok) { setAutoBackupError(data?.error || 'تعذر فصل Google Drive.'); return; }
+    await loadAutoBackup();
+    setAutoBackupMessage('تم فصل Google Drive.');
+  }
+  async function runAutoBackupNow() {
+    setAutoRunPending(true); setAutoBackupError(''); setAutoBackupMessage('');
+    try {
+      const response = await fetch('/api/xstore/platform-backup/auto-run-now', { method: 'POST', credentials: 'include' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || 'تعذر رفع النسخة.');
+      setAutoBackupMessage('تم رفع نسخة المنصة إلى Google Drive بنجاح.');
+      await loadAutoBackup();
+    } catch (error) {
+      setAutoBackupError(error instanceof Error ? error.message : 'تعذر رفع النسخة.');
+    } finally { setAutoRunPending(false); }
+  }
 
   useEffect(() => {
     if (
@@ -275,6 +356,57 @@ export default function PlatformBackupPage() {
         </div>}
       </section>
     </div>
+
+    <section className="panel" style={{marginTop:16,padding:20}} aria-labelledby="auto-backup-title">
+      <div className="section-head" style={{alignItems:'flex-start',gap:16}}>
+        <div>
+          <span className="backup-panel-kicker"><Cloud size={14} style={{verticalAlign:'middle',marginInlineEnd:5}}/> النسخ التلقائي خارج المنصة</span>
+          <h2 id="auto-backup-title">Google Drive</h2>
+          <p style={{margin:'6px 0 0',color:'#7b877f'}}>النسخ الكاملة للمنصة تُحفظ تلقائياً في مجلد مستقل داخل Google Drive، وهذا الإعداد متاح لمالك المنصة فقط.</p>
+        </div>
+        <span className="backup-included-badge">{autoBackup?.googleDriveConnected ? 'Google Drive متصل' : 'Google Drive غير متصل'}</span>
+      </div>
+
+      {autoBackupLoading ? <div className="backup-inline-success">جارٍ تحميل إعدادات النسخ التلقائي…</div> : <>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12,marginTop:16}}>
+          <div style={{border:'1px solid #e5ebe6',borderRadius:10,padding:14}}>
+            <div style={{fontSize:12,color:'#879289'}}>الحالة</div>
+            <b style={{display:'block',marginTop:5,color:'#2f4936'}}>{autoBackup?.enabled ? 'مفعّل' : 'متوقف'}</b>
+          </div>
+          <div style={{border:'1px solid #e5ebe6',borderRadius:10,padding:14}}>
+            <div style={{fontSize:12,color:'#879289'}}>عدد النسخ يومياً</div>
+            <select value={frequencyDraft} onChange={e=>setFrequencyDraft(Number(e.target.value))} style={{marginTop:6,height:36,padding:'0 8px',border:'1px solid #dfe6e0',borderRadius:7}}>
+              {Array.from({length:24},(_,i)=><option key={i+1} value={i+1}>{i+1} مرة</option>)}
+            </select>
+          </div>
+          <div style={{border:'1px solid #e5ebe6',borderRadius:10,padding:14}}>
+            <div style={{fontSize:12,color:'#879289'}}>آخر نسخة</div>
+            <b style={{display:'block',marginTop:5,color:'#2f4936'}}>{autoBackup?.lastRunAt ? dateLabel(autoBackup.lastRunAt) : 'لم تُنشأ بعد'}</b>
+          </div>
+          <div style={{border:'1px solid #e5ebe6',borderRadius:10,padding:14}}>
+            <div style={{fontSize:12,color:'#879289'}}>النسخة التالية</div>
+            <b style={{display:'block',marginTop:5,color:'#2f4936'}}>{autoBackup?.nextRunAt ? dateLabel(autoBackup.nextRunAt) : '—'}</b>
+          </div>
+        </div>
+
+        <div style={{display:'flex',flexWrap:'wrap',gap:9,marginTop:15}}>
+          {!autoBackup?.googleDriveConnected
+            ? <a className="button button-primary" href="/api/xstore/platform-backup/google/connect"><Cloud size={16}/> ربط Google Drive</a>
+            : <>
+              <button type="button" className="button button-primary" onClick={()=>void toggleAutoBackup(!autoBackup.enabled)} disabled={autoBackupSaving}>
+                {autoBackup.enabled ? 'إيقاف النسخ التلقائي' : 'تفعيل النسخ التلقائي'}
+              </button>
+              <button type="button" className="button button-quiet" onClick={()=>void saveAutoBackup()} disabled={autoBackupSaving}><Save size={15}/> حفظ عدد النسخ</button>
+              <button type="button" className="button button-quiet" onClick={()=>void runAutoBackupNow()} disabled={autoRunPending}><HardDriveDownload size={15}/> {autoRunPending ? 'جارٍ الرفع…' : 'نسخ الآن إلى Google Drive'}</button>
+              <button type="button" className="button button-quiet" onClick={()=>void disconnectDrive()} disabled={autoBackupSaving}><Unlink size={15}/> فصل Google Drive</button>
+            </>}
+        </div>
+        {autoBackup?.googleDriveConnected && <div style={{marginTop:10,fontSize:11,color:'#7a877e'}}>المجلد: {autoBackup.googleDriveFolderName} · صلاحية Google المستخدمة محدودة للملفات التي ينشئها التطبيق.</div>}
+        {autoBackupMessage && <div className="backup-inline-success" role="status" style={{marginTop:12}}><CheckCircle2 size={15}/>{autoBackupMessage}</div>}
+        {autoBackupError && <div className="backup-inline-error" role="alert" style={{marginTop:12}}>{autoBackupError}</div>}
+        {autoBackup?.lastStatus === 'error' && autoBackup.lastError && <div className="backup-inline-error" style={{marginTop:12}}>آخر فشل: {autoBackup.lastError}</div>}
+      </>}
+    </section>
 
     <section className="backup-restore-zone" aria-labelledby="backup-restore-title">
       <div className="backup-restore-heading">

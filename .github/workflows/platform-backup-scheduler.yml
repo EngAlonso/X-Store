@@ -1,0 +1,26 @@
+name: Automatic Platform Backup
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Trigger production backup scheduler
+        env:
+          XSTORE_PRODUCTION_URL: ${{ secrets.XSTORE_PRODUCTION_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -eu
+          if [ -z "${XSTORE_PRODUCTION_URL:-}" ] || [ -z "${CRON_SECRET:-}" ]; then
+            echo "XSTORE_PRODUCTION_URL and CRON_SECRET GitHub secrets are required." >&2
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error \
+            -X POST "${XSTORE_PRODUCTION_URL%/}/api/xstore/platform-backup/auto-run" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json"
