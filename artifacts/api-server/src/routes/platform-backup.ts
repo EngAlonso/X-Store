@@ -220,7 +220,8 @@ router.put("/xstore/platform-backup/auto-settings", express.json(), async (req, 
     const enabled = req.body?.enabled === true;
     const frequencyPerDay = Number(req.body?.frequencyPerDay);
     if (enabled && !(await getAutoBackupStatus()).googleDriveConnected) {
-      return res.status(400).json({ error: "اربط Google Drive أولاً قبل تفعيل النسخ التلقائي." });
+      res.status(400).json({ error: "اربط Google Drive أولاً قبل تفعيل النسخ التلقائي." });
+      return;
     }
     res.json(await saveAutoBackupSettings(enabled, frequencyPerDay));
   } catch (error) {
@@ -281,12 +282,21 @@ router.post("/xstore/platform-backup/auto-run-now", async (req, res) => {
 router.post("/xstore/platform-backup/auto-run", async (req, res) => {
   const expected = process.env.CRON_SECRET;
   const supplied = req.get("authorization")?.replace(/^Bearer\s+/i, "") || req.get("x-cron-secret");
-  if (!expected || supplied !== expected) return res.status(401).json({ error: "Unauthorized" });
+  if (!expected || supplied !== expected) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
 
   try {
     const status = await getAutoBackupStatus();
-    if (!status.enabled || !status.googleDriveConnected) return res.json({ status: "disabled" });
-    if (status.nextRunAt && new Date(status.nextRunAt).getTime() > Date.now()) return res.json({ status: "not_due", nextRunAt: status.nextRunAt });
+    if (!status.enabled || !status.googleDriveConnected) {
+      res.json({ status: "disabled" });
+      return;
+    }
+    if (status.nextRunAt && new Date(status.nextRunAt).getTime() > Date.now()) {
+      res.json({ status: "not_due", nextRunAt: status.nextRunAt });
+      return;
+    }
 
     const frequency = status.frequencyPerDay;
     await saveAutoBackupSettings(true, frequency);
