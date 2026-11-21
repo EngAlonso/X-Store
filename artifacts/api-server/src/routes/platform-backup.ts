@@ -12,7 +12,6 @@ import { clearSessionCookie, readSessionToken } from "../lib/xstore-session";
 import {
   buildGoogleAuthorizationUrl,
   connectGoogleDrive,
-  createGoogleOAuthState,
   disconnectGoogleDrive,
   getAutoBackupStatus,
   markAutoBackupFailure,

@@ -23,7 +23,6 @@ import {
   ShieldCheck,
   Upload,
   Cloud,
-  Link2,
   Unlink,
   Save,
 } from 'lucide-react';
