@@ -126,7 +126,7 @@ async function refreshAccessToken(refreshToken: string) {
   return data;
 }
 
-async function driveRequest(accessToken: string, input: RequestInfo | URL, init?: RequestInit) {
+async function driveRequest(accessToken: string, input: string | URL, init?: RequestInit) {
   const response = await fetch(input, {
     ...init,
     headers: { ...(init?.headers || {}), Authorization: `Bearer ${accessToken}` },
