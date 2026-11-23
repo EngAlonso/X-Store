@@ -77,7 +77,6 @@ export async function saveOfflineState(state: OfflineState): Promise<OfflineStat
     },
   };
   localStorage.setItem(STATE_KEY, JSON.stringify(saved));
-  localStorage.setItem(BACKUP_KEY, JSON.stringify(saved));
   return saved;
 }
 
