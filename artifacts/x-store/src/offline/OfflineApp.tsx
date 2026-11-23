@@ -493,11 +493,6 @@ export default function OfflineApp() {
     if (!active) throw new Error("الترخيص غير مفعّل. تواصل مع مالك المتجر.");
     assertOfflinePermission(activeMember, ["warehouse_manager"]);
     if (!window.confirm("هل تريد حذف هذا المنتج؟")) return;
-    if (currentState.sales.some((sale) => sale.items.some((item) => item.productId === id)) ||
-      currentState.heldSales.some((sale) => sale.items.some((item) => item.productId === id))) {
-      setSaveError("لا يمكن حذف منتج مرتبط بفاتورة سابقة. اجعل كميته صفرًا بدلًا من ذلك.");
-      return;
-    }
     const product = currentState.products.find((item) => item.id === id);
     await persist({
       ...currentState,
