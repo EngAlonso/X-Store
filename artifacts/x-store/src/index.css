@@ -7055,3 +7055,33 @@ input,select,textarea{max-width:100%;min-width:0;box-sizing:border-box}.panel,.c
   .product-variant-builder-actions .button{justify-content:center}
   .product-variants-table-wrap{margin-inline:-4px}
 }
+
+
+/* Multi-product builder improvements */
+.product-modal{width:min(1100px,calc(100vw - 48px));max-width:1100px}
+.multi-option-builder{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.multi-option-group{min-width:0;padding:14px;border:1px solid #dfe7e1;border-radius:14px;background:#fbfdfb}
+.multi-option-input{display:flex;gap:8px;align-items:stretch}
+.multi-option-input input{flex:1;min-width:0;height:40px}
+.multi-option-input .button{white-space:nowrap;padding-inline:14px}
+.multi-option-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;min-height:28px;align-items:center}
+.multi-option-chips small{color:#8a958d;font-size:calc(10px * var(--xstore-font-scale))}
+.multi-option-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border:1px solid #cddbd1;border-radius:999px;background:#f1f7f3;color:#28523b;font-size:calc(11px * var(--xstore-font-scale))}
+.multi-option-chip button{display:grid;place-items:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:transparent;color:#6f7e75;cursor:pointer}
+.multi-option-chip button:hover{background:#dfeae3;color:#9a3e3e}
+.multi-uniform-settings{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 14px;border:1px solid #dfe7e1;border-radius:14px;background:#f7faf8}
+.multi-uniform-toggle{display:flex;align-items:center;gap:7px;color:#405148;font-size:calc(11px * var(--xstore-font-scale));font-weight:800;white-space:nowrap}
+.multi-uniform-toggle input{width:16px;height:16px;accent-color:#24553b}
+.multi-uniform-input{width:150px;height:38px;padding:0 9px;border:1px solid #dce5df;border-radius:9px;background:#fff;outline:0}
+.multi-uniform-input:focus{border-color:#24553b;box-shadow:0 0 0 3px rgba(36,85,59,.08)}
+@media(max-width:900px){
+  .product-modal{width:min(900px,calc(100vw - 28px))}
+  .multi-option-builder{grid-template-columns:1fr}
+}
+@media(max-width:700px){
+  .product-modal{width:calc(100vw - 20px)}
+  .multi-option-input{flex-direction:column}
+  .multi-option-input .button{justify-content:center}
+  .multi-uniform-settings{align-items:stretch;flex-direction:column}
+  .multi-uniform-input{width:100%}
+}
