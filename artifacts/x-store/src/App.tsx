@@ -2546,7 +2546,8 @@ function InventoryPage() {
               <Field className="product-form-field field-wide" label="رقم القطعة / الموديل (اختياري)" name="partNumber" placeholder="اختياري، مثال: POLO-2026" defaultValue={edit?.partNumber || ''}/>
             </>}
           </>}
-        </>        {priceFormError&&<div className="form-error field-wide" role="alert">{priceFormError}</div>}
+        </>}
+        {priceFormError&&<div className="form-error field-wide" role="alert">{priceFormError}</div>}
         {(create.isError || update.isError) && <div className="form-error">تعذر حفظ المنتج. يرجى مراجعة البيانات.</div>}
         <div className="modal-actions">
           <button type="button" className="button button-quiet" onClick={() => { setDialog(false); setEdit(null); resetMultiProductForm(); }}>إلغاء</button>
