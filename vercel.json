@@ -1,11 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "crons": [
-    {
-      "path": "/api/xstore/platform-backup/auto-run",
-      "schedule": "0 * * * *"
-    }
-  ],
   "services": {
     "api-server": {
       "root": "artifacts/api-server",
