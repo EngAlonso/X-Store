@@ -291,11 +291,15 @@ function OfflineLicenseLockPage({
   state,
   hardwareStatus,
   clockStatus,
+  isOwner,
+  onLogout,
   onActivate,
 }: {
   state: OfflineState;
   hardwareStatus: OfflineLicenseDeviceStatus;
   clockStatus: { valid: boolean; rollbackDetected: boolean; message: string };
+  isOwner: boolean;
+  onLogout: () => void;
   onActivate: (license: OfflineLicense) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -350,7 +354,7 @@ function OfflineLicenseLockPage({
         <div><LockKeyhole size={15} /><span>إعادة تثبيت Windows لا تمنح تفعيلًا جديدًا تلقائيًا.</span></div>
       </div>
 
-      {activeMember.role === "tenant_admin" ? (
+      {isOwner ? (
         <label className="of-button of-button-primary of-license-import-button">
           <Upload size={16} />
           {busy ? "جارٍ التحقق من الترخيص..." : "استيراد الترخيص الجديد"}
@@ -367,8 +371,8 @@ function OfflineLicenseLockPage({
         <span>تواصل مع إدارة X-Store وأرسل طلب التفعيل من جهاز المتجر إذا طلب منك ذلك.</span>
       </div>
 
-      {activeMember.role !== "tenant_admin" && (
-        <button className="of-button of-button-secondary" onClick={() => setAuthenticatedMemberId(null)}>
+      {!isOwner && (
+        <button className="of-button of-button-secondary" onClick={onLogout}>
           <LogOut size={15} /> تسجيل الخروج
         </button>
       )}
@@ -520,6 +524,8 @@ export default function OfflineApp() {
       state={currentState}
       hardwareStatus={licenseDeviceStatus}
       clockStatus={clockStatus}
+      isOwner={activeMember.role === "tenant_admin"}
+      onLogout={() => setAuthenticatedMemberId(null)}
       onActivate={activateLicense}
     />;
   }
