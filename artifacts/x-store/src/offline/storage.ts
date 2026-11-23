@@ -12,6 +12,28 @@ const BACKUP_KEY = "x-store-offline-backup-v1";
 const AUTO_BACKUP_KEY = "x-store-offline-auto-backup-v1";
 const INSTALLATION_ID_KEY = "x-store-offline-installation-id-v1";
 
+function isLanClient(): boolean {
+  return !window.xStoreOffline && window.location.protocol === "http:" &&
+    window.location.pathname.endsWith("/offline.html") &&
+    window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+}
+
+function lanApiUrl(path: string): string {
+  const token = new URLSearchParams(window.location.search).get("token");
+  if (!token) throw new Error("رابط السيرفر المحلي غير صالح أو يفتقد رمز الوصول.");
+  return path + "?token=" + encodeURIComponent(token);
+}
+
+async function lanRequest(path: string, init?: RequestInit): Promise<any> {
+  const response = await fetch(lanApiUrl(path), {
+    ...init,
+    headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "تعذر الاتصال بسيرفر المتجر.");
+  return payload;
+}
+
 export async function getOfflineInstallationId(): Promise<string> {
   if (window.xStoreOffline) return window.xStoreOffline.getInstallationId();
   let installationId = localStorage.getItem(INSTALLATION_ID_KEY);
@@ -51,6 +73,13 @@ export async function loadOfflineState(): Promise<OfflineState> {
       : window.xStoreOffline.saveState(state);
   }
 
+  if (isLanClient()) {
+    const raw = await lanRequest("/api/offline/state");
+    const parsed = await validateStoredLicense(migrateOfflineState(raw));
+    if (!isOfflineState(parsed)) throw new Error("بيانات سيرفر المتجر غير صالحة.");
+    return parsed;
+  }
+
   const raw = localStorage.getItem(STATE_KEY);
   if (!raw) return createEmptyOfflineState();
   const original = JSON.parse(raw);
@@ -68,6 +97,7 @@ export async function saveOfflineState(state: OfflineState): Promise<OfflineStat
   const migrated = migrateOfflineState(state);
   if (!isOfflineState(migrated)) throw new Error("بيانات المتجر غير صالحة.");
   if (window.xStoreOffline) return window.xStoreOffline.saveState(migrated);
+  if (isLanClient()) return lanRequest("/api/offline/state", { method: "PUT", body: JSON.stringify(migrated) });
 
   const saved: OfflineState = {
     ...migrated,
@@ -89,6 +119,7 @@ export async function chooseOfflineBackupFolder(): Promise<string | null> {
 
 export async function createManualOfflineBackup(backupType: OfflineBackupType = "full"): Promise<OfflineState> {
   if (window.xStoreOffline) return window.xStoreOffline.createBackup(backupType);
+  if (isLanClient()) return lanRequest("/api/offline/backup&type=" + encodeURIComponent(backupType), { method: "POST" });
   const state = await loadOfflineState();
   const now = new Date().toISOString();
   const snapshot: OfflineState = backupType === "full"
@@ -162,6 +193,26 @@ export async function restoreOfflineBackup(
       backup: { ...current.backup, lastError: null, backupScope: scope },
     };
     return window.xStoreOffline.restoreState(merged);
+  }
+
+  if (isLanClient() && importedState) {
+    const migrated = await validateStoredLicense(migrateOfflineState(importedState));
+    if (!isOfflineState(migrated)) throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
+    const current = await loadOfflineState();
+    const scope = migrated.backup.backupScope ?? "full";
+    const restored: OfflineState = scope === "full"
+      ? { ...migrated, backup: { ...current.backup, ...migrated.backup, lastError: null, backupScope: "full" } }
+      : {
+        ...current,
+        ...(scope === "inventory" ? { products: migrated.products } : {
+          sales: migrated.sales,
+          heldSales: migrated.heldSales,
+          returns: migrated.returns,
+          exchanges: migrated.exchanges,
+        }),
+        backup: { ...current.backup, lastError: null, backupScope: scope },
+      };
+    return lanRequest("/api/offline/state", { method: "PUT", body: JSON.stringify(restored) });
   }
 
   const candidate = await validateStoredLicense(
