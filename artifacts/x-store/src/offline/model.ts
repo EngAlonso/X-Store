@@ -335,6 +335,7 @@ export function isOfflineState(value: unknown): value is OfflineState {
   if (!isRecord(value) || (value.schemaVersion !== 3 && value.schemaVersion !== 4)) return false;
   const state = value as unknown as OfflineState;
   if (state.schemaVersion === 3 && state.store) (state.store as any).invoiceSettings = { ...DEFAULT_OFFLINE_INVOICE_SETTINGS };
+  if (state.store && !isRecord((state as any).menu)) (state as any).menu = { ...DEFAULT_OFFLINE_MENU };
   if (
     typeof state.setupComplete !== "boolean" ||
     !Array.isArray(state.products) ||
@@ -551,6 +552,7 @@ export function migrateOfflineState(value: unknown): OfflineState | null {
     ...value,
     schemaVersion: 3,
     store,
+    menu: isRecord(value.menu) ? { ...DEFAULT_OFFLINE_MENU, ...value.menu, productIds: Array.isArray(value.menu.productIds) ? value.menu.productIds : [] } : { ...DEFAULT_OFFLINE_MENU },
     license: isOfflineLicense(value.license) ? value.license : null,
     products,
     sales,
