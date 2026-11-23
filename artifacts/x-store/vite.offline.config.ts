@@ -4,8 +4,14 @@ import { defineConfig } from "vite";
 import { offlineLicensePublicKeyDefine } from "./vite-license-key";
 
 const root = path.resolve(import.meta.dirname);
+const validOfflineStoreTypes = new Set(["clothing_shoes", "grocery_supermarket", "electronics_accessories", "perfume_beauty", "cafe", "restaurant"]);
+const configuredOfflineStoreType = String(process.env.VITE_OFFLINE_STORE_TYPE ?? "").trim();
 
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command }) => {
+  if (command === "build" && !validOfflineStoreTypes.has(configuredOfflineStoreType)) {
+    throw new Error("VITE_OFFLINE_STORE_TYPE must be set to exactly one supported store type before building the Windows edition.");
+  }
+  return ({
   base: "./",
   plugins: [react()],
   define: offlineLicensePublicKeyDefine({ required: true }),
@@ -37,4 +43,5 @@ export default defineConfig(({ command }) => ({
         }
       : {}),
   },
-}));
+});
+});
