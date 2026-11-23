@@ -664,3 +664,7 @@
   .of-menu-product { grid-template-columns:28px minmax(0,1fr) auto; }
   .of-menu-stock { display:none; }
 }
+
+
+.of-locked-store-type{min-height:44px;display:flex;align-items:center;gap:9px;padding:0 12px;border:1px solid var(--of-border,#dbe5e0);border-radius:10px;background:var(--of-soft,#f5f8f7);color:var(--of-text,#1f2b27)}
+.of-locked-store-type small{margin-inline-start:auto;color:var(--of-muted,#71807b);font-size:12px}
