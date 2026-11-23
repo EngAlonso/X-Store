@@ -287,6 +287,95 @@ function OfflineLogin({ state, onLogin }: {
   </main>;
 }
 
+function OfflineLicenseLockPage({
+  state,
+  hardwareStatus,
+  clockStatus,
+  onActivate,
+}: {
+  state: OfflineState;
+  hardwareStatus: OfflineLicenseDeviceStatus;
+  clockStatus: { valid: boolean; rollbackDetected: boolean; message: string };
+  onActivate: (license: OfflineLicense) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const hardwareChanged = hardwareStatus.changes.length > 0;
+  const expired = Boolean(state.license?.payload.expiresAt && !isLicenseActive(state.license));
+  const title = hardwareChanged
+    ? "تم تغيير مكونات الجهاز"
+    : clockStatus.rollbackDetected
+      ? "تم اكتشاف تغيير غير صحيح في الساعة"
+      : expired
+        ? "انتهى ترخيص X-Store"
+        : "البرنامج غير مفعّل";
+
+  const detail = hardwareChanged
+    ? "الترخيص الحالي مرتبط بالبوردة والهارد الداخلي وشرائح RAM ومعرّف الجهاز. بعد تغيير أي مكوّن منها لن يعمل البرنامج بهذا الترخيص."
+    : clockStatus.rollbackDetected
+      ? "تم اكتشاف إرجاع ساعة Windows للخلف. أعد الساعة للوقت الصحيح ثم استخدم ترخيصًا صالحًا من إدارة X-Store."
+      : expired
+        ? "انتهت مدة الترخيص. البرنامج متوقف بالكامل حتى يتم استيراد ملف ترخيص جديد صادر من إدارة X-Store."
+        : "لا يوجد ترخيص صالح لهذا الجهاز. يجب استيراد ملف التفعيل الصادر من إدارة X-Store.";
+
+  async function importNewLicense(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    try {
+      const currentDevice = await getOfflineHardwareSnapshot();
+      const license = await readAndVerifyOfflineLicense(file, currentDevice);
+      await onActivate(license);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر استيراد ملف الترخيص.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <main className="of-failure of-license-lock-page" dir="rtl">
+    <BrandMark />
+    <div className="of-failure-card of-license-lock-card">
+      <ShieldCheck size={34} />
+      <span className="of-kicker">X-Store Offline</span>
+      <h1>{title}</h1>
+      <p>{detail}</p>
+
+      <div className="of-license-lock-points">
+        <div><LockKeyhole size={15} /><span>النسخة الاحتياطية لا تعيد الترخيص ولا تمدد مدته.</span></div>
+        <div><LockKeyhole size={15} /><span>تغيير البوردة أو الهارد الداخلي أو الرامات يتطلب ترخيصًا جديدًا.</span></div>
+        <div><LockKeyhole size={15} /><span>إعادة تثبيت Windows لا تمنح تفعيلًا جديدًا تلقائيًا.</span></div>
+      </div>
+
+      {activeMember.role === "tenant_admin" ? (
+        <label className="of-button of-button-primary of-license-import-button">
+          <Upload size={16} />
+          {busy ? "جارٍ التحقق من الترخيص..." : "استيراد الترخيص الجديد"}
+          <input type="file" accept=".json,application/json" onChange={(event) => void importNewLicense(event)} disabled={busy} hidden />
+        </label>
+      ) : (
+        <div className="of-inline-hint">اطلب من مالك المتجر التواصل مع إدارة X-Store واستيراد ملف الترخيص الجديد.</div>
+      )}
+
+      {error && <div className="of-error"><CircleAlert size={15} />{error}</div>}
+
+      <div className="of-license-lock-contact">
+        <b>للحصول على ترخيص جديد</b>
+        <span>تواصل مع إدارة X-Store وأرسل طلب التفعيل من جهاز المتجر إذا طلب منك ذلك.</span>
+      </div>
+
+      {activeMember.role !== "tenant_admin" && (
+        <button className="of-button of-button-secondary" onClick={() => setAuthenticatedMemberId(null)}>
+          <LogOut size={15} /> تسجيل الخروج
+        </button>
+      )}
+    </div>
+  </main>;
+}
+
 export default function OfflineApp() {
   const [state, setState] = useState<OfflineState | null>(null);
   const [page, setPage] = useState<Page>("dashboard");
@@ -426,18 +515,15 @@ export default function OfflineApp() {
     clockStatus.valid &&
     !licenseDeviceStatus.inspectionError &&
     licenseDeviceStatus.changes.length === 0;
-  if (!active && activeMember.role !== "tenant_admin") {
-    return <main className="of-failure" dir="rtl">
-      <BrandMark />
-      <div className="of-failure-card">
-        <CircleAlert size={26} />
-        <h1>الترخيص يحتاج إعادة تفعيل</h1>
-        <p>تواصل مع مالك المتجر ليعيد التفعيل. بيانات المتجر والنسخ الاحتياطية محفوظة.</p>
-        <button className="of-button of-button-primary" onClick={() => setAuthenticatedMemberId(null)}>تسجيل الخروج</button>
-      </div>
-    </main>;
+  if (!active) {
+    return <OfflineLicenseLockPage
+      state={currentState}
+      hardwareStatus={licenseDeviceStatus}
+      clockStatus={clockStatus}
+      onActivate={activateLicense}
+    />;
   }
-  const pageToRender: Page = !active ? "settings" : page;
+  const pageToRender: Page = page;
   const currency = currentState.store!.currency;
   const wholesaleEnabled = currentState.store?.wholesaleEnabled ?? false;
   const canViewAllSales = activeMember.role === "tenant_admin" || activeMember.permissions.includes("accountant");
@@ -708,6 +794,7 @@ export default function OfflineApp() {
       ],
     });
     setLicenseDeviceStatus(await inspectLicenseDevice(license));
+    setPage("dashboard");
     setNotice(`تم تفعيل الترخيص ${planNames[license.payload.plan]}.`);
   }
   async function refreshHardwareReport() {
@@ -716,9 +803,8 @@ export default function OfflineApp() {
     return report;
   }
   function goToPage(nextPage: Page) {
-    if (!active && nextPage !== "settings" && nextPage !== "backup") {
-      setPage("settings");
-      setSaveError("البرنامج متوقف حتى تعيد إدارة X-Store تفعيل الترخيص.");
+    if (!active) {
+      setSaveError("البرنامج متوقف حتى يتم استيراد ترخيص جديد صادر من إدارة X-Store.");
       return;
     }
     if (!canAccessOfflinePage(activeMember, nextPage)) {
