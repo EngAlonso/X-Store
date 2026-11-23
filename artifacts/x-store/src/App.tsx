@@ -2466,7 +2466,7 @@ function InventoryPage() {
           </div>
           <span className="product-form-required-note"><i/> الحقول المطلوبة عليها علامة *</span>
         </div>
-        {!pricingOnlyEdit ? <>
+        {!pricingOnlyEdit && <>
           {!edit && <div className="product-mode-switch field-wide">
             <button type="button" className={productMode === 'single' ? 'is-active' : ''} onClick={() => { setProductMode('single'); setPriceFormError(''); }}>
               <Package size={18}/><span><b>قطعة عادية</b><small>منتج واحد بلون ومقاس واحد أو بدون متغيرات</small></span>
@@ -2481,7 +2481,8 @@ function InventoryPage() {
           </div>
           <Field className="product-form-field" label="اسم المنتج" name="name" required placeholder="مثال: تيشيرت قطني أسود" defaultValue={edit?.name}/>
           <Field className="product-form-field" label="الباركود (اختياري)" name="barcode" placeholder="اكتب الرقم أو امسح الكود" defaultValue={edit?.barcode || ''}/>
-        </> : <div className="role-hint field-wide"><ShieldCheck size={16}/><span>تعديل الأسعار والكمية للمنتج: {edit?.name}. لا يمكنك تغيير بياناته الأساسية.</span></div>}
+        </>}
+        {pricingOnlyEdit && <div className="role-hint field-wide"><ShieldCheck size={16}/><span>تعديل الأسعار والكمية للمنتج: {edit?.name}. لا يمكنك تغيير بياناته الأساسية.</span></div>}
         {productMode === 'multi' && !edit ? (
           <>
             <div className="product-form-section field-wide">
