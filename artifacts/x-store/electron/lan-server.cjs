@@ -197,8 +197,10 @@ async function startLanServer({ staticRoot, userDataPath, readState, saveState, 
         if (!authorized(req)) return json(res, 401, { error: "غير مصرح." });
 
         if (req.method === "GET" && url.pathname === "/api/offline/state") {
+          // State is readable so every LAN screen can render the same license-locked
+          // page when the host license expires or its hardware no longer matches.
+          // All writes and backups remain blocked by assertLicenseActive().
           const state = await readState();
-          await assertLicenseActive(state);
           return json(res, 200, state);
         }
 
