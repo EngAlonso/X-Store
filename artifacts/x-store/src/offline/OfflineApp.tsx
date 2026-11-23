@@ -128,7 +128,17 @@ function OfflineSetup({ onComplete }: { onComplete: (state: OfflineState) => Pro
       const credential = await createLocalPinCredential(ownerPin);
       const initial = createEmptyOfflineState();
       initial.setupComplete = true;
-      initial.store = { name: name.trim(), businessType: businessType.trim(), storeType, currency, vatRate: Number(vatRate) || 0, wholesaleEnabled: supportsWholesale && wholesaleEnabled, invoiceFormat: "wide" };
+      initial.store = {
+        name: name.trim(),
+        businessType: businessType.trim(),
+        storeType,
+        currency,
+        vatRate: Number(vatRate) || 0,
+        wholesaleEnabled: supportsWholesale && wholesaleEnabled,
+        invoiceFormat: "wide",
+        invoiceSettings: { ...DEFAULT_OFFLINE_INVOICE_SETTINGS },
+      };
+      initial.menu = { ...DEFAULT_OFFLINE_MENU };
       initial.license = null;
       initial.backup.backupFolder = folder;
       initial.teamMembers = [{
