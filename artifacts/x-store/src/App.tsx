@@ -2482,34 +2482,74 @@ function InventoryPage() {
           <Field className="product-form-field" label="اسم المنتج" name="name" required placeholder="مثال: تيشيرت قطني أسود" defaultValue={edit?.name}/>
           <Field className="product-form-field" label="الباركود (اختياري)" name="barcode" placeholder="اكتب الرقم أو امسح الكود" defaultValue={edit?.barcode || ''}/>
         </> : <div className="role-hint field-wide"><ShieldCheck size={16}/><span>تعديل الأسعار والكمية للمنتج: {edit?.name}. لا يمكنك تغيير بياناته الأساسية.</span></div>}
-        <div className="product-form-section field-wide">
-          <span className="product-form-section-number">02</span>
-          <div>
-            <b>أسعار البيع والمخزون</b>
-            <small>أدخل سعرًا واحدًا على الأقل؛ تكلفة المنتج اختيارية.</small>
-          </div>
-        </div>
-        <Field className="product-form-field" label="سعر القطاعي" name="price" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر الجملة" defaultValue={edit?.price===null?'':edit?String(edit.price):''}/>
-        {wholesaleEnabled&&<Field className="product-form-field" label="سعر الجملة" name="wholesalePrice" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر القطاعي" defaultValue={edit?.wholesalePrice===null?'':edit?String(edit.wholesalePrice):''}/>}
-        <Field className="product-form-field" label="سعر التكلفة (اختياري)" name="costPrice" type="number" min={0} step={0.01} placeholder="اتركه فارغًا لو غير متاح" defaultValue={edit ? String(edit.costPrice ?? 0) : ''}/>
-        <Field className={`product-form-field ${isWarehouseManager ? 'field-wide' : ''}`} label="الكمية" name="quantity" type="number" min={0} step={1} required placeholder="0" defaultValue={edit ? String(edit.quantity) : '0'}/>
-        {!pricingOnlyEdit&&<>
+        {productMode === 'multi' && !edit ? (
+          <>
+            <div className="product-form-section field-wide">
+              <span className="product-form-section-number">02</span>
+              <div><b>بناء القطعة المتعددة</b><small>اكتب الألوان والمقاسات ثم أنشئ التركيبات تلقائيًا.</small></div>
+            </div>
+            <label className="field product-form-field">
+              <span>الألوان</span>
+              <input value={multiColorInput} onChange={e => setMultiColorInput(e.target.value)} placeholder="أسود، أبيض، كحلي" />
+              <small className="field-hint">افصل بين الألوان بفاصلة.</small>
+            </label>
+            <label className="field product-form-field">
+              <span>المقاسات</span>
+              <input value={multiSizeInput} onChange={e => setMultiSizeInput(e.target.value)} placeholder="S، M، L، XL" />
+              <small className="field-hint">يمكن ترك المقاسات فارغة إذا كان المنتج يعتمد على اللون فقط.</small>
+            </label>
+            <div className="field-wide product-variant-builder-actions">
+              <button type="button" className="button button-quiet" onClick={generateMultiVariants}><Boxes size={16}/> إنشاء التركيبات</button>
+              {multiVariants.length > 0 && <span>{multiVariants.length} تركيبة جاهزة</span>}
+            </div>
+            {multiVariants.length > 0 && <div className="product-variants-table-wrap field-wide">
+              <div className="product-variants-table">
+                <div className="product-variants-head">
+                  <span>اللون</span><span>المقاس</span><span>الباركود</span><span>القطاعي</span>{wholesaleEnabled && <span>الجملة</span>}<span>التكلفة</span><span>الكمية</span>
+                </div>
+                {multiVariants.map((variant,index) => <div className="product-variant-row" key={variant.color + '-' + variant.size + '-' + index}>
+                  <b>{variant.color || '—'}</b>
+                  <b>{variant.size || '—'}</b>
+                  <input value={variant.barcode} onChange={e => updateMultiVariant(index,'barcode',e.target.value)} placeholder="اختياري" />
+                  <input type="number" min={0} step={0.01} value={variant.price} onChange={e => updateMultiVariant(index,'price',e.target.value)} placeholder="0" />
+                  {wholesaleEnabled && <input type="number" min={0} step={0.01} value={variant.wholesalePrice} onChange={e => updateMultiVariant(index,'wholesalePrice',e.target.value)} placeholder="0" />}
+                  <input type="number" min={0} step={0.01} value={variant.costPrice} onChange={e => updateMultiVariant(index,'costPrice',e.target.value)} placeholder="اختياري" />
+                  <input type="number" min={0} step={1} value={variant.quantity} onChange={e => updateMultiVariant(index,'quantity',e.target.value)} />
+                </div>)}
+              </div>
+            </div>
+            <Field className="product-form-field field-wide" label="رقم القطعة / الموديل (اختياري)" name="partNumber" placeholder="اختياري، مثال: POLO-2026" />
+            <div className="role-hint field-wide"><Boxes size={17}/><span>كل تركيبة تُحفظ بمخزون وباركود مستقلين. يمكنك بيع الأسود M بدون التأثير على الأبيض L.</span></div>
+          </>
+        ) : <>
           <div className="product-form-section field-wide">
-            <span className="product-form-section-number">03</span>
-            <div><b>تفاصيل إضافية</b><small>كل هذه المعلومات اختيارية.</small></div>
+            <span className="product-form-section-number">02</span>
+            <div>
+              <b>أسعار البيع والمخزون</b>
+              <small>أدخل سعرًا واحدًا على الأقل؛ تكلفة المنتج اختيارية.</small>
+            </div>
           </div>
-          {restaurantIngredientsEnabled ? (
-            <label className="field product-form-field field-wide"><span>مكونات المنتج (اختياري)</span><textarea name="ingredients" rows={3} maxLength={1000} defaultValue={edit?.ingredients || ''} placeholder="اكتب مكونات المنتج التي ستظهر للعميل في منيو QR" /></label>
-          ) : <>
-            <Field className="product-form-field" label="اللون (اختياري)" name="color" placeholder="مثال: أسود" defaultValue={edit?.color || ''}/>
-            <Field className="product-form-field" label="المقاس (اختياري)" name="size" placeholder="مثال: M أو 42" defaultValue={edit?.size || ''}/>
-            <Field className="product-form-field field-wide" label="رقم القطعة (اختياري)" name="partNumber" placeholder="رقم الموديل أو كود المورد" defaultValue={edit?.partNumber || ''}/>
+          <Field className="product-form-field" label="سعر القطاعي" name="price" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر الجملة" defaultValue={edit?.price===null?'':edit?String(edit.price):''}/>
+          {wholesaleEnabled&&<Field className="product-form-field" label="سعر الجملة" name="wholesalePrice" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر القطاعي" defaultValue={edit?.wholesalePrice===null?'':edit?String(edit.wholesalePrice):''}/>}
+          <Field className="product-form-field" label="سعر التكلفة (اختياري)" name="costPrice" type="number" min={0} step={0.01} placeholder="اتركه فارغًا لو غير متاح" defaultValue={edit ? String(edit.costPrice ?? 0) : ''}/>
+          <Field className={\`product-form-field \${isWarehouseManager ? 'field-wide' : ''}\`} label="الكمية" name="quantity" type="number" min={0} step={1} required placeholder="0" defaultValue={edit ? String(edit.quantity) : '0'}/>
+          {!pricingOnlyEdit&&<>
+            <div className="product-form-section field-wide">
+              <span className="product-form-section-number">03</span>
+              <div><b>تفاصيل إضافية</b><small>كل هذه المعلومات اختيارية.</small></div>
+            </div>
+            {restaurantIngredientsEnabled ? (
+              <label className="field product-form-field field-wide"><span>مكونات المنتج (اختياري)</span><textarea name="ingredients" rows={3} maxLength={1000} defaultValue={edit?.ingredients || ''} placeholder="اكتب مكونات المنتج التي ستظهر للعميل في منيو QR" /></label>
+            ) : <>
+              <Field className="product-form-field" label="اللون (اختياري)" name="color" placeholder="مثال: أسود" defaultValue={edit?.color || ''}/>
+              <Field className="product-form-field" label="المقاس (اختياري)" name="size" placeholder="مثال: M أو 42" defaultValue={edit?.size || ''}/>
+              <Field className="product-form-field field-wide" label="رقم القطعة / الموديل (اختياري)" name="partNumber" placeholder="اختياري، مثال: POLO-2026" defaultValue={edit?.partNumber || ''}/>
+            </>}
           </>}
-        </>}
-        {priceFormError&&<div className="form-error field-wide" role="alert">{priceFormError}</div>}
+        </>        {priceFormError&&<div className="form-error field-wide" role="alert">{priceFormError}</div>}
         {(create.isError || update.isError) && <div className="form-error">تعذر حفظ المنتج. يرجى مراجعة البيانات.</div>}
         <div className="modal-actions">
-          <button type="button" className="button button-quiet" onClick={() => { setDialog(false); setEdit(null); }}>إلغاء</button>
+          <button type="button" className="button button-quiet" onClick={() => { setDialog(false); setEdit(null); resetMultiProductForm(); }}>إلغاء</button>
           <button className="button button-primary" disabled={create.isPending || update.isPending}>{create.isPending || update.isPending ? 'جارٍ الحفظ…' : 'حفظ المنتج'}</button>
         </div>
       </form>
