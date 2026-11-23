@@ -237,6 +237,7 @@ export interface OfflineAuditLog {
 
 export interface OfflineBackupInfo {
   backupFolder: string | null;
+  backupScope?: "full" | "invoices" | "inventory";
   lastAutomaticBackupAt: string | null;
   lastManualBackupAt: string | null;
   lastError: string | null;
@@ -352,6 +353,7 @@ export function isOfflineState(value: unknown): value is OfflineState {
   const backup = state.backup;
   const backupIsValid =
     (backup.backupFolder === null || typeof backup.backupFolder === "string") &&
+    (backup.backupScope === undefined || ["full","invoices","inventory"].includes(backup.backupScope)) &&
     (backup.lastAutomaticBackupAt === null || isDate(backup.lastAutomaticBackupAt)) &&
     (backup.lastManualBackupAt === null || isDate(backup.lastManualBackupAt)) &&
     (backup.lastError === null || typeof backup.lastError === "string");
