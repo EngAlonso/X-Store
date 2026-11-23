@@ -30,6 +30,7 @@ import {
   chooseOfflineBackupFolder, createManualOfflineBackup, getOfflineClockStatus, getOfflineHardwareSnapshot, isDesktopEdition,
   loadOfflineState, restoreOfflineBackup, saveOfflineState, type OfflineBackupType,
 } from "./storage";
+import { getConfiguredOfflineStoreLabel, getConfiguredOfflineStoreType } from "./store-config";
 import "./offline.css";
 
 type Page = "dashboard" | "products" | "pos" | "sales" | "returns" | "team" | "reports" | "audit" | "backup" | "settings" | "display" | "menu";
@@ -102,7 +103,7 @@ function Field({ label, children, hint }: { label: string; children: React.React
 function OfflineSetup({ onComplete }: { onComplete: (state: OfflineState) => Promise<void> }) {
   const [name, setName] = useState("");
   const [businessType, setBusinessType] = useState("");
-  const [storeType, setStoreType] = useState<(typeof OFFLINE_STORE_TYPES)[number]["value"]>("clothing_shoes");
+  const [storeType] = useState<(typeof OFFLINE_STORE_TYPES)[number]["value"]>(getConfiguredOfflineStoreType());
   const [currency, setCurrency] = useState<(typeof OFFLINE_CURRENCIES)[number]["value"]>("EGP");
   const [vatRate, setVatRate] = useState("0");
   const [wholesaleEnabled, setWholesaleEnabled] = useState(false);
@@ -159,7 +160,7 @@ function OfflineSetup({ onComplete }: { onComplete: (state: OfflineState) => Pro
         <div className="of-form-grid">
           <Field label="اسم المتجر"><input required value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: متجر النخبة" /></Field>
           <Field label="النشاط التجاري"><input required value={businessType} onChange={(e) => setBusinessType(e.target.value)} placeholder="مثال: بيع بالتجزئة" /></Field>
-          <Field label="نوع المتجر"><select value={storeType} onChange={(e) => { setStoreType(e.target.value as typeof storeType); setWholesaleEnabled(false); }}>{OFFLINE_STORE_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field>
+          <Field label="نوع المتجر"><div className="of-locked-store-type"><Store size={15} /><b>{getConfiguredOfflineStoreLabel()}</b><small>هذا الإصدار مخصص لهذا النوع فقط</small></div></Field>
           <Field label="العملة"><select value={currency} onChange={(e) => setCurrency(e.target.value as typeof currency)}>{OFFLINE_CURRENCIES.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value})</option>)}</select></Field>
           <Field label="نسبة ضريبة القيمة المضافة" hint="اكتب 0 إذا لم تكن الضريبة مطبقة."><div className="of-input-suffix"><input type="number" min="0" max="100" step="0.01" value={vatRate} onChange={(e) => setVatRate(e.target.value)} /><b>%</b></div></Field>
           <div className="of-preview-note"><ShieldCheck size={15} /> بعد إعداد المتجر، صدّر طلب التفعيل وأرسله لإدارة X-Store لاستلام ملف الترخيص. لا يلزم اتصال المتجر بالإنترنت.</div>
@@ -344,6 +345,9 @@ export default function OfflineApp() {
     setLoadError("");
     try {
       const loaded = await loadOfflineState();
+      if (loaded.store && loaded.store.storeType !== getConfiguredOfflineStoreType()) {
+        throw new Error("نسخة البرنامج هذه مخصصة لنوع متجر مختلف. استخدم مثبت النوع الصحيح.");
+      }
       const deviceStatus = await inspectLicenseDevice(loaded.license);
       const currentClockStatus = await getOfflineClockStatus();
       setClockStatus(currentClockStatus);
@@ -675,7 +679,7 @@ export default function OfflineApp() {
     if (activeMember.role !== "tenant_admin") throw new Error("إعدادات المتجر متاحة لمالك المتجر فقط.");
     await persist({
       ...currentState,
-      store,
+      store: { ...store, storeType: getConfiguredOfflineStoreType() },
       auditLogs: [createAuditEntry("تحديث إعدادات المتجر", "إعدادات", store.name, "تحديث بيانات النشاط والضريبة والفواتير.", activeMember.name), ...currentState.auditLogs],
     });
     setNotice("تم حفظ إعدادات المتجر.");
@@ -1543,7 +1547,7 @@ function SettingsPage({ state, licenseActive, hardwareStatus, desktop, onRefresh
 }) {
   const [name, setName] = useState(state.store?.name ?? "");
   const [businessType, setBusinessType] = useState(state.store?.businessType ?? "");
-  const [storeType, setStoreType] = useState(state.store?.storeType ?? "clothing_shoes");
+  const [storeType] = useState(getConfiguredOfflineStoreType());
   const [currency, setCurrency] = useState(state.store?.currency ?? "EGP");
   const [vatRate, setVatRate] = useState(String(state.store?.vatRate ?? 0));
   const [wholesaleEnabled, setWholesaleEnabled] = useState(state.store?.wholesaleEnabled ?? false);
@@ -1567,7 +1571,7 @@ function SettingsPage({ state, licenseActive, hardwareStatus, desktop, onRefresh
     e.preventDefault();
     if (!name.trim() || !businessType.trim()) { setError("اسم المتجر والنشاط مطلوبان."); return; }
     setSaving(true); setError("");
-    try { await onSave({ name: name.trim(), businessType: businessType.trim(), storeType, currency, vatRate: Number(vatRate) || 0, wholesaleEnabled: supports && wholesaleEnabled, invoiceFormat, invoiceSettings }); }
+    try { await onSave({ name: name.trim(), businessType: businessType.trim(), storeType: getConfiguredOfflineStoreType(), currency, vatRate: Number(vatRate) || 0, wholesaleEnabled: supports && wholesaleEnabled, invoiceFormat, invoiceSettings }); }
     catch (err) { setError(err instanceof Error ? err.message : "تعذر حفظ الإعدادات."); } finally { setSaving(false); }
   }
   async function exportActivationRequest() {
@@ -1616,7 +1620,7 @@ function SettingsPage({ state, licenseActive, hardwareStatus, desktop, onRefresh
     lifetime: "مدى الحياة",
   } as const;
   return <section className="of-page"><PageHeading kicker="إدارة الحساب المحلي" title="الإعدادات والترخيص" description="تعديل بيانات النشاط ومراجعة حالة الترخيص على هذا الجهاز." />
-    <div className="of-settings-grid"><section className="of-panel of-settings-panel"><div className="of-panel-head"><div><h2>بيانات المتجر</h2><p>تُستخدم هذه البيانات في لوحة العمل والفواتير.</p></div><span className="of-settings-head-icon"><Store size={18} /></span></div><form onSubmit={submit}><div className="of-form-grid"><Field label="اسم المتجر"><input required value={name} onChange={(e) => setName(e.target.value)} /></Field><Field label="النشاط التجاري"><input required value={businessType} onChange={(e) => setBusinessType(e.target.value)} /></Field><Field label="نوع المتجر"><select value={storeType} onChange={(e) => { setStoreType(e.target.value as typeof storeType); setWholesaleEnabled(false); }}>{OFFLINE_STORE_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></Field><Field label="العملة"><select value={currency} onChange={(e) => setCurrency(e.target.value as typeof currency)}>{OFFLINE_CURRENCIES.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value})</option>)}</select></Field><Field label="ضريبة القيمة المضافة (%)"><input type="number" min="0" max="100" step="0.01" value={vatRate} onChange={(e) => setVatRate(e.target.value)} /></Field></div>
+    <div className="of-settings-grid"><section className="of-panel of-settings-panel"><div className="of-panel-head"><div><h2>بيانات المتجر</h2><p>تُستخدم هذه البيانات في لوحة العمل والفواتير.</p></div><span className="of-settings-head-icon"><Store size={18} /></span></div><form onSubmit={submit}><div className="of-form-grid"><Field label="اسم المتجر"><input required value={name} onChange={(e) => setName(e.target.value)} /></Field><Field label="النشاط التجاري"><input required value={businessType} onChange={(e) => setBusinessType(e.target.value)} /></Field><Field label="نوع المتجر"><div className="of-locked-store-type"><Store size={15} /><b>{getConfiguredOfflineStoreLabel()}</b><small>نوع المتجر مثبت في نسخة التثبيت</small></div></Field><Field label="العملة"><select value={currency} onChange={(e) => setCurrency(e.target.value as typeof currency)}>{OFFLINE_CURRENCIES.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value})</option>)}</select></Field><Field label="ضريبة القيمة المضافة (%)"><input type="number" min="0" max="100" step="0.01" value={vatRate} onChange={(e) => setVatRate(e.target.value)} /></Field></div>
       {supports && <label className="of-toggle-row"><span><b>البيع بالجملة</b><small>إظهار سعر الجملة أثناء إتمام البيع.</small></span><input type="checkbox" checked={wholesaleEnabled} onChange={(e) => setWholesaleEnabled(e.target.checked)} /><i /></label>}
       <fieldset className="of-invoice-format-picker"><legend>تنسيق الفاتورة</legend><p>يُطبق على الطباعة ويمكن تغييره لاحقًا دون تعديل الفواتير المحفوظة.</p><div>{([
         { value: "wide", title: "عريضة", detail: "ورقة مكتبية", icon: FileText },
