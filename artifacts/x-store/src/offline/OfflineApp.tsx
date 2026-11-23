@@ -711,7 +711,7 @@ export default function OfflineApp() {
     setSaleDetail(null);
     setSaveError("");
   }
-  return <div className="of-app" dir="rtl" style={{ "--xstore-font-scale": displayScale } as React.CSSProperties}>
+  return <div className="of-app" dir="rtl">
     <aside className="of-sidebar">
       <div className="of-sidebar-brand"><BrandMark /><span className="of-edition">نسخة مستقلة · Windows</span></div>
       <div className="of-shop-chip"><span className="of-shop-avatar"><Store size={18} /></span><span><b>{state.store.name}</b><small>{state.store.businessType}</small></span><ChevronDown size={15} /></div>
