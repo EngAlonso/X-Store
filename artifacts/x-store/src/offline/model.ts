@@ -31,6 +31,18 @@ export type OfflinePaymentMethod = "cash" | "card" | "wallet" | "instapay" | "tr
 export type OfflineSaleType = "retail" | "wholesale";
 export type OfflineOrderType = "internal" | "external";
 export type OfflineInvoiceFormat = (typeof OFFLINE_INVOICE_FORMATS)[number];
+export interface OfflineMenu {
+  title: string;
+  description: string;
+  isPublished: boolean;
+  productIds: string[];
+}
+export const DEFAULT_OFFLINE_MENU: OfflineMenu = {
+  title: "منيو المتجر",
+  description: "",
+  isPublished: true,
+  productIds: [],
+};
 export interface OfflineInvoiceSettings {
   showCustomer: boolean; showShop: boolean; showPhone: boolean; showCashier: boolean;
   showProduct: boolean; showQuantity: boolean; showUnitPrice: boolean; showTotal: boolean;
@@ -91,6 +103,7 @@ export interface OfflineStore {
   wholesaleEnabled: boolean;
   invoiceFormat: OfflineInvoiceFormat;
   invoiceSettings: OfflineInvoiceSettings;
+  menu: OfflineMenu;
 }
 
 export interface OfflineProduct {
