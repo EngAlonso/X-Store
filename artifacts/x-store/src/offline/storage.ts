@@ -89,8 +89,12 @@ export async function chooseOfflineBackupFolder(): Promise<string | null> {
 export async function createManualOfflineBackup(backupType: OfflineBackupType = "full"): Promise<OfflineState> {
   if (window.xStoreOffline) return window.xStoreOffline.createBackup(backupType);
   const state = await loadOfflineState();
+  const now = new Date().toISOString();
   const snapshot: OfflineState = backupType === "full"
-    ? state
+    ? {
+      ...state,
+      backup: { ...state.backup, backupScope: "full", lastAutomaticBackupAt: now, lastManualBackupAt: now, lastError: null },
+    }
     : {
       ...state,
       products: backupType === "inventory" ? state.products : [],
@@ -98,21 +102,19 @@ export async function createManualOfflineBackup(backupType: OfflineBackupType = 
       heldSales: backupType === "invoices" ? state.heldSales : [],
       returns: backupType === "invoices" ? state.returns : [],
       exchanges: backupType === "invoices" ? state.exchanges : [],
-      backup: { ...state.backup, backupScope: backupType },
+      backup: { ...state.backup, backupScope: backupType, lastAutomaticBackupAt: now, lastManualBackupAt: now, lastError: null },
     };
-  const saved: OfflineState = {
-    ...snapshot,
+  localStorage.setItem(BACKUP_KEY, JSON.stringify(snapshot));
+  return {
+    ...state,
     backup: {
-      ...snapshot.backup,
+      ...state.backup,
       backupScope: backupType,
-      lastAutomaticBackupAt: new Date().toISOString(),
-      lastManualBackupAt: new Date().toISOString(),
+      lastAutomaticBackupAt: now,
+      lastManualBackupAt: now,
       lastError: null,
     },
   };
-  localStorage.setItem(STATE_KEY, JSON.stringify(saved));
-  localStorage.setItem(BACKUP_KEY, JSON.stringify(saved));
-  return saved;
 }
 
 export async function restoreOfflineBackup(
