@@ -7085,3 +7085,18 @@ input,select,textarea{max-width:100%;min-width:0;box-sizing:border-box}.panel,.c
   .multi-uniform-settings{align-items:stretch;flex-direction:column}
   .multi-uniform-input{width:100%}
 }
+
+
+/* Prevent horizontal scrolling in multi-product form */
+.product-modal{box-sizing:border-box;overflow-x:hidden}
+.product-modal .modal-body{overflow-x:hidden}
+.product-modal .product-form{min-width:0;width:100%}
+.product-modal .field-wide{min-width:0}
+.product-modal .product-variants-table-wrap{width:100%;overflow-x:hidden}
+.product-modal .product-variants-table{min-width:0;width:100%}
+.product-modal .product-variants-head,.product-modal .product-variant-row{grid-template-columns:minmax(70px,1fr) minmax(70px,1fr) minmax(100px,1.35fr) repeat(4,minmax(78px,1fr));}
+@media(max-width:900px){
+  .product-modal{overflow-x:hidden}
+  .product-modal .product-variants-table-wrap{overflow-x:auto}
+  .product-modal .product-variants-table{min-width:760px}
+}
