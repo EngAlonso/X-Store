@@ -2466,9 +2466,7 @@ function InventoryPage() {
           </div>
           <span className="product-form-required-note"><i/> الحقول المطلوبة عليها علامة *</span>
         </div>
-        {!pricingOnlyEdit && (
-          <>
-          {!edit && <div className="product-mode-switch field-wide">
+          {!pricingOnlyEdit && !edit && <div className="product-mode-switch field-wide">
             <button type="button" className={productMode === 'single' ? 'is-active' : ''} onClick={() => { setProductMode('single'); setPriceFormError(''); }}>
               <Package size={18}/><span><b>قطعة عادية</b><small>منتج واحد بلون ومقاس واحد أو بدون متغيرات</small></span>
             </button>
@@ -2476,14 +2474,12 @@ function InventoryPage() {
               <Boxes size={18}/><span><b>قطعة متعددة</b><small>عدة ألوان ومقاسات مع مخزون مستقل لكل تركيبة</small></span>
             </button>
           </div>
-          <div className="product-form-section field-wide">
+        {!pricingOnlyEdit && <div className="product-form-section field-wide">}
             <span className="product-form-section-number">01</span>
             <div><b>بيانات المنتج</b><small>الاسم والباركود للتعرّف عليه بسهولة.</small></div>
           </div>
-          <Field className="product-form-field" label="اسم المنتج" name="name" required placeholder="مثال: تيشيرت قطني أسود" defaultValue={edit?.name}/>
-          <Field className="product-form-field" label="الباركود (اختياري)" name="barcode" placeholder="اكتب الرقم أو امسح الكود" defaultValue={edit?.barcode || ''}/>
-          </>
-        )}
+        {!pricingOnlyEdit && (<Field className="product-form-field" label="اسم المنتج" name="name" required placeholder="مثال: تيشيرت قطني أسود" defaultValue={edit?.name}/>)}
+        {!pricingOnlyEdit && (<Field className="product-form-field" label="الباركود (اختياري)" name="barcode" placeholder="اكتب الرقم أو امسح الكود" defaultValue={edit?.barcode || ''}/>)}
         {pricingOnlyEdit && <div className="role-hint field-wide"><ShieldCheck size={16}/><span>تعديل الأسعار والكمية للمنتج: {edit?.name}. لا يمكنك تغيير بياناته الأساسية.</span></div>}
         {productMode === 'multi' && !edit ? (
           <>
