@@ -2474,7 +2474,7 @@ function InventoryPage() {
             <button type="button" className={productMode === 'multi' ? 'is-active' : ''} onClick={() => { setProductMode('multi'); setPriceFormError(''); }}>
               <Boxes size={18}/><span><b>قطعة متعددة</b><small>عدة ألوان ومقاسات مع مخزون مستقل لكل تركيبة</small></span>
             </button>
-          </div>
+          </div>}
           <div className="product-form-section field-wide">
             <span className="product-form-section-number">01</span>
             <div><b>بيانات المنتج</b><small>الاسم والباركود للتعرّف عليه بسهولة.</small></div>
