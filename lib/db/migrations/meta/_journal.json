@@ -155,6 +155,13 @@
       "when": 1795500000001,
       "tag": "0021_platform_automatic_backup",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1795600000000,
+      "tag": "0022_product_delete_preserves_history",
+      "breakpoints": true
     }
   ]
 }
