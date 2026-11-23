@@ -437,9 +437,7 @@ export default function OfflineApp() {
       </div>
     </main>;
   }
-  const pageToRender: Page = !active && page !== "settings" && page !== "backup"
-    ? "settings"
-    : page;
+  const pageToRender: Page = !active ? "settings" : page;
   const currency = currentState.store!.currency;
   const wholesaleEnabled = currentState.store?.wholesaleEnabled ?? false;
   const canViewAllSales = activeMember.role === "tenant_admin" || activeMember.permissions.includes("accountant");
@@ -676,6 +674,7 @@ export default function OfflineApp() {
   }
   async function updateSettings(store: OfflineState["store"]) {
     if (!store) return;
+    if (!active) throw new Error("انتهى الترخيص. لا يمكن تعديل إعدادات المتجر حتى تتم إعادة التفعيل.");
     if (activeMember.role !== "tenant_admin") throw new Error("إعدادات المتجر متاحة لمالك المتجر فقط.");
     await persist({
       ...currentState,
@@ -734,7 +733,7 @@ export default function OfflineApp() {
     <aside className="of-sidebar">
       <div className="of-sidebar-brand"><BrandMark /><span className="of-edition">نسخة مستقلة · Windows</span></div>
       <div className="of-shop-chip"><span className="of-shop-avatar"><Store size={18} /></span><span><b>{state.store.name}</b><small>{state.store.businessType}</small></span><ChevronDown size={15} /></div>
-      <nav className="of-nav">{navItems.filter(({ id }) => canAccessOfflinePage(activeMember, id) && (active || id === "settings" || id === "backup")).map(({ id, label, icon: Icon }) => <button key={id} className={`of-nav-item ${pageToRender === id ? "selected" : ""}`} onClick={() => goToPage(id)}><Icon size={18} /><span>{label}</span>{id === "products" && lowStock.length > 0 && <i>{digits(lowStock.length)}</i>}</button>)}</nav>
+      <nav className="of-nav">{navItems.filter(({ id }) => canAccessOfflinePage(activeMember, id) && (active || id === "settings")).map(({ id, label, icon: Icon }) => <button key={id} className={`of-nav-item ${pageToRender === id ? "selected" : ""}`} onClick={() => goToPage(id)}><Icon size={18} /><span>{label}</span>{id === "products" && lowStock.length > 0 && <i>{digits(lowStock.length)}</i>}</button>)}</nav>
         <div className="of-sidebar-bottom"><div className={`of-license-chip ${state.license && !active ? "expired" : ""}`}><span className="of-license-status"><ShieldCheck size={16} /></span><span><b>{active ? "الترخيص نشط" : state.license ? licenseDeviceStatus.inspectionError || licenseDeviceStatus.changes.length > 0 ? "الترخيص يحتاج إعادة تفعيل" : "انتهى الترخيص" : "بانتظار التفعيل"}</b><small>{state.license?.payload.expiresAt ? `ينتهي ${state.license.payload.expiresAt}` : state.license ? "ترخيص مدى الحياة" : "صدّر طلب التفعيل من الإعدادات"}</small></span></div><div className="of-device-note"><LockKeyhole size={14} /> لا توجد مزامنة أو اتصال سحابي</div></div>
     </aside>
     <div className="of-main">
