@@ -2214,6 +2214,36 @@ function InventoryPage() {
   const canViewCost = hasAppRole(session.data, ['tenant_admin', 'warehouse_manager', 'accountant', 'platform_admin']);
   const pricingOnlyEdit = isWarehouseManager && Boolean(edit);
   const [priceFormError, setPriceFormError] = useState('');
+  const [productMode, setProductMode] = useState<'single' | 'multi'>('single');
+  const [multiColorInput, setMultiColorInput] = useState('');
+  const [multiSizeInput, setMultiSizeInput] = useState('');
+  const [multiVariants, setMultiVariants] = useState<Array<{color:string;size:string;barcode:string;price:string;wholesalePrice:string;costPrice:string;quantity:string}>>([]);
+
+  function resetMultiProductForm() {
+    setProductMode('single');
+    setMultiColorInput('');
+    setMultiSizeInput('');
+    setMultiVariants([]);
+  }
+  function generateMultiVariants() {
+    const colors = Array.from(new Set(multiColorInput.split(',').map(value => value.trim()).filter(Boolean)));
+    const sizes = Array.from(new Set(multiSizeInput.split(',').map(value => value.trim()).filter(Boolean)));
+    if (!colors.length && !sizes.length) {
+      setPriceFormError('أدخل لونًا أو مقاسًا واحدًا على الأقل لإنشاء القطعة المتعددة.');
+      return;
+    }
+    const next = (colors.length ? colors : ['']).flatMap(color =>
+      (sizes.length ? sizes : ['']).map(size => {
+        const existing = multiVariants.find(item => item.color === color && item.size === size);
+        return existing || { color, size, barcode:'', price:'', wholesalePrice:'', costPrice:'', quantity:'0' };
+      }),
+    );
+    setMultiVariants(next);
+    setPriceFormError('');
+  }
+  function updateMultiVariant(index:number, field:keyof typeof multiVariants[number], value:string) {
+    setMultiVariants(current => current.map((item,itemIndex) => itemIndex===index ? {...item,[field]:value} : item));
+  }
   const allProducts = q.data || [];
   const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))]
     .sort((a,b) => a.localeCompare(b,'ar'));
@@ -2228,9 +2258,49 @@ function InventoryPage() {
   const lowStockCount = allProducts.filter(p => p.quantity > 0 && p.quantity <= 5).length;
   const outOfStockCount = allProducts.filter(p => p.quantity <= 0).length;
 
-  function submit(e: FormEvent<HTMLFormElement>) {
+  async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+
+    if (!edit && productMode === 'multi') {
+      const name = String(f.get('name') || '').trim();
+      if (!name) { setPriceFormError('اسم المنتج مطلوب.'); return; }
+      if (!multiVariants.length) { setPriceFormError('أنشئ تركيبة واحدة على الأقل قبل الحفظ.'); return; }
+      const invalidPrice = multiVariants.some(item => {
+        const retail = item.price.trim() ? Number(item.price) : null;
+        const wholesale = wholesaleEnabled && item.wholesalePrice.trim() ? Number(item.wholesalePrice) : null;
+        return (retail === null && wholesale === null)
+          || (retail !== null && (!Number.isFinite(retail) || retail < 0))
+          || (wholesale !== null && (!Number.isFinite(wholesale) || wholesale < 0));
+      });
+      if (invalidPrice) { setPriceFormError('كل تركيبة يجب أن تحتوي على سعر قطاعي أو سعر جملة صحيح.'); return; }
+      setPriceFormError('');
+      try {
+        await Promise.all(multiVariants.map(item => create.mutateAsync({data:{
+          name,
+          sku:'XST-' + crypto.randomUUID().replaceAll('-','').slice(0,16).toUpperCase(),
+          barcode:item.barcode.trim() || null,
+          category:'عام',
+          quantity:Math.max(0,Number(item.quantity)||0),
+          color:item.color || null,
+          size:item.size || null,
+          partNumber:String(f.get('partNumber') || '').trim() || null,
+          price:item.price.trim() ? Number(item.price) : null,
+          wholesalePrice:wholesaleEnabled && item.wholesalePrice.trim() ? Number(item.wholesalePrice) : null,
+          ...(item.costPrice.trim() ? {costPrice:Number(item.costPrice)} : {}),
+          ingredients:null,
+          expiresAt:null,
+        }})));
+        qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});
+        qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});
+        setDialog(false); setEdit(null); resetMultiProductForm(); setPriceFormError('');
+        setNotice('تم حفظ ' + multiVariants.length + ' تركيبة للمنتج');
+      } catch {
+        setPriceFormError('تعذر حفظ القطعة المتعددة. راجع البيانات وحاول مرة أخرى.');
+      }
+      return;
+    }
+
     const retailPriceText = String(f.get('price') || '').trim();
     const wholesalePriceText = wholesaleEnabled
       ? String(f.get('wholesalePrice') || '').trim()
@@ -2320,7 +2390,7 @@ function InventoryPage() {
       title="المخزون"
       desc="تابع أرصدة المنتجات، ابحث بسرعة، وحدّث الكميات من مكان واحد."
       action={canManage
-        ? <button className="button button-primary" onClick={() => { setEdit(null); setDialog(true); }} data-testid="button-add-product"><Plus size={17}/> إضافة منتج</button>
+        ? <button className="button button-primary" onClick={() => { setEdit(null); resetMultiProductForm(); setDialog(true); }} data-testid="button-add-product"><Plus size={17}/> إضافة منتج</button>
         : null}
     />
     <div className="stat-grid inventory-stats">
@@ -2392,11 +2462,19 @@ function InventoryPage() {
           <span className="product-form-icon"><Package size={21}/></span>
           <div className="product-form-intro-copy">
             <strong>{edit ? 'حدّث بيانات المنتج' : 'أضف منتجًا إلى مخزونك'}</strong>
-            <span>رمز المنتج يُنشأ تلقائيًا، والتصنيف الافتراضي «عام».</span>
+            <span>اختر نوع القطعة ثم أدخل بياناتها في خطوات واضحة وسريعة.</span>
           </div>
           <span className="product-form-required-note"><i/> الحقول المطلوبة عليها علامة *</span>
         </div>
         {!pricingOnlyEdit ? <>
+          {!edit && <div className="product-mode-switch field-wide">
+            <button type="button" className={productMode === 'single' ? 'is-active' : ''} onClick={() => { setProductMode('single'); setPriceFormError(''); }}>
+              <Package size={18}/><span><b>قطعة عادية</b><small>منتج واحد بلون ومقاس واحد أو بدون متغيرات</small></span>
+            </button>
+            <button type="button" className={productMode === 'multi' ? 'is-active' : ''} onClick={() => { setProductMode('multi'); setPriceFormError(''); }}>
+              <Boxes size={18}/><span><b>قطعة متعددة</b><small>عدة ألوان ومقاسات مع مخزون مستقل لكل تركيبة</small></span>
+            </button>
+          </div>
           <div className="product-form-section field-wide">
             <span className="product-form-section-number">01</span>
             <div><b>بيانات المنتج</b><small>الاسم والباركود للتعرّف عليه بسهولة.</small></div>
