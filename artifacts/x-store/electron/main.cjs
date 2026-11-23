@@ -593,7 +593,10 @@ async function saveStateSafely(nextState) {
 }
 
 function makeBackupPayload(state, backupType) {
-  if (backupType === "full") return { ...state };
+  if (backupType === "full") {
+    const { license: _license, ...dataOnlyState } = state;
+    return dataOnlyState;
+  }
   if (backupType === "invoices") {
     return {
       schemaVersion: SCHEMA_VERSION,
@@ -699,6 +702,9 @@ async function restoreState(importedState) {
     }
     const restored = {
       ...structuredClone(normalizedImport),
+      // A backup is data-only. The active license is never restored from backup.
+      // Re-activation must always use a newly supplied, signed license file.
+      license: current.license,
       backup: {
         ...normalizedImport.backup,
         backupFolder:
