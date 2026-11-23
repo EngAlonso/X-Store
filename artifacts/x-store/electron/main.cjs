@@ -1,6 +1,7 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
+const { execFileSync } = require("node:child_process");
 const { app, BrowserWindow, dialog, ipcMain, session } = require("electron");
 const { getDeviceId, getHardwareFingerprint } = require("./device-id.cjs");
 const { startLanServer } = require("./lan-server.cjs");
@@ -379,6 +380,49 @@ async function atomicWrite(filePath, contents) {
   await fs.rename(temporaryPath, filePath);
 }
 
+function readRegistryClockGuard() {
+  if (process.platform !== "win32") return null;
+  try {
+    const output = execFileSync(
+      "reg.exe",
+      [
+        "query",
+        "HKCU\\Software\\X-Store Offline\\ClockGuard",
+        "/v",
+        "LastSeenAt",
+      ],
+      { encoding: "utf8", timeout: 3000, windowsHide: true, stdio: ["ignore", "pipe", "ignore"] },
+    );
+    const match = output.match(/LastSeenAt\\s+REG_QWORD\\s+(\\d+)/i);
+    return match ? Number(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeRegistryClockGuard(value) {
+  if (process.platform !== "win32") return;
+  try {
+    execFileSync(
+      "reg.exe",
+      [
+        "add",
+        "HKCU\\Software\\X-Store Offline\\ClockGuard",
+        "/v",
+        "LastSeenAt",
+        "/t",
+        "REG_QWORD",
+        "/d",
+        String(Math.max(0, Math.floor(value))),
+        "/f",
+      ],
+      { encoding: "utf8", timeout: 3000, windowsHide: true, stdio: ["ignore", "ignore", "ignore"] },
+    );
+  } catch {
+    // File guard remains the fallback if Windows Registry is unavailable.
+  }
+}
+
 async function getClockStatus() {
   const now = Date.now();
   let lastSeenAt = null;
@@ -389,11 +433,16 @@ async function getClockStatus() {
   } catch (error) {
     if (error && error.code !== "ENOENT") throw error;
   }
+  const registryLastSeenAt = readRegistryClockGuard();
+  if (Number.isFinite(registryLastSeenAt)) {
+    lastSeenAt = Math.max(lastSeenAt ?? 0, registryLastSeenAt);
+  }
 
   const rollbackDetected = lastSeenAt !== null && now + CLOCK_ROLLBACK_TOLERANCE_MS < lastSeenAt;
   if (!rollbackDetected) {
     const nextLastSeenAt = Math.max(lastSeenAt ?? 0, now);
     await atomicWrite(clockGuardPath, JSON.stringify({ version: 1, lastSeenAt: nextLastSeenAt }, null, 2) + "\n");
+    writeRegistryClockGuard(nextLastSeenAt);
     lastSeenAt = nextLastSeenAt;
   }
 
