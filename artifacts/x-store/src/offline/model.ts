@@ -103,7 +103,6 @@ export interface OfflineStore {
   wholesaleEnabled: boolean;
   invoiceFormat: OfflineInvoiceFormat;
   invoiceSettings: OfflineInvoiceSettings;
-  menu: OfflineMenu;
 }
 
 export interface OfflineProduct {
@@ -260,6 +259,7 @@ export interface OfflineState {
   schemaVersion: 4;
   setupComplete: boolean;
   store: OfflineStore | null;
+  menu: OfflineMenu;
   license: OfflineLicense | null;
   products: OfflineProduct[];
   sales: OfflineSale[];
@@ -276,6 +276,7 @@ export function createEmptyOfflineState(): OfflineState {
     schemaVersion: 4,
     setupComplete: false,
     store: null,
+    menu: { ...DEFAULT_OFFLINE_MENU },
     license: null,
     products: [],
     sales: [],
@@ -335,7 +336,7 @@ export function isOfflineState(value: unknown): value is OfflineState {
   if (!isRecord(value) || (value.schemaVersion !== 3 && value.schemaVersion !== 4)) return false;
   const state = value as unknown as OfflineState;
   if (state.schemaVersion === 3 && state.store) (state.store as any).invoiceSettings = { ...DEFAULT_OFFLINE_INVOICE_SETTINGS };
-  if (state.store && !isRecord((state as any).menu)) (state as any).menu = { ...DEFAULT_OFFLINE_MENU };
+  if (!isRecord((state as any).menu)) (state as any).menu = { ...DEFAULT_OFFLINE_MENU };
   if (
     typeof state.setupComplete !== "boolean" ||
     !Array.isArray(state.products) ||
@@ -363,12 +364,14 @@ export function isOfflineState(value: unknown): value is OfflineState {
   )) return false;
 
   if (state.license !== null && !isOfflineLicense(state.license)) return false;
-  if (!isRecord((state as any).menu) ||
-    typeof (state as any).menu.title !== "string" ||
-    typeof (state as any).menu.description !== "string" ||
-    typeof (state as any).menu.isPublished !== "boolean" ||
-    !Array.isArray((state as any).menu.productIds) ||
-    !(state as any).menu.productIds.every((id: unknown) => typeof id === "string")) return false;
+  if (
+    !isRecord(state.menu) ||
+    typeof state.menu.title !== "string" ||
+    typeof state.menu.description !== "string" ||
+    typeof state.menu.isPublished !== "boolean" ||
+    !Array.isArray(state.menu.productIds) ||
+    !state.menu.productIds.every((id: unknown) => typeof id === "string")
+  ) return false;
 
 
   const backup = state.backup;
@@ -557,7 +560,7 @@ export function migrateOfflineState(value: unknown): OfflineState | null {
   const normalized = {
     ...defaults,
     ...value,
-    schemaVersion: 3,
+    schemaVersion: 4,
     store,
     menu: isRecord(value.menu) ? { ...DEFAULT_OFFLINE_MENU, ...value.menu, productIds: Array.isArray(value.menu.productIds) ? value.menu.productIds : [] } : { ...DEFAULT_OFFLINE_MENU },
     license: isOfflineLicense(value.license) ? value.license : null,
