@@ -363,6 +363,13 @@ export function isOfflineState(value: unknown): value is OfflineState {
   )) return false;
 
   if (state.license !== null && !isOfflineLicense(state.license)) return false;
+  if (!isRecord((state as any).menu) ||
+    typeof (state as any).menu.title !== "string" ||
+    typeof (state as any).menu.description !== "string" ||
+    typeof (state as any).menu.isPublished !== "boolean" ||
+    !Array.isArray((state as any).menu.productIds) ||
+    !(state as any).menu.productIds.every((id: unknown) => typeof id === "string")) return false;
+
 
   const backup = state.backup;
   const backupIsValid =
