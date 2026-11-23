@@ -5,7 +5,7 @@ import {
   LayoutDashboard, LifeBuoy, LockKeyhole, LogOut, Package, Plus, Printer, Receipt,
   RefreshCw, Search, Settings, Settings2, ShieldCheck, ShoppingCart, Store, Trash2, Upload, Wallet,
   Users, RotateCcw, ClipboardList, ChartNoAxesCombined, Pause, Play,
-  ArrowLeftRight, Smartphone, Banknote, Minus, X, Bell,
+  ArrowLeftRight, Smartphone, Banknote, Minus, X, Bell, Utensils,
 } from "lucide-react";
 import {
   createEmptyOfflineState, DEFAULT_OFFLINE_INVOICE_SETTINGS,
