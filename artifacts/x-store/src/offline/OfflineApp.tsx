@@ -1472,12 +1472,14 @@ function InvoiceDialog({ sale, store, currency, onClose }: { sale: OfflineSale; 
         {s.showHeader && <div className="of-invoice-brand"><BrandMark compact /><div><b>{s.headerStoreName || store?.name}</b><b>{s.headerOwnerName || store?.businessType}</b>{s.headerMessage && <span>{s.headerMessage}</span>}{s.headerPhones && <span>{s.headerPhones}</span>}</div></div>}
         <div className="of-invoice-meta">
           <div><span>رقم الفاتورة</span><b dir="ltr">{sale.invoiceNumber}</b></div>
+          {s.showShop && <div><span>المحل</span><b>{s.headerStoreName || store?.name || "—"}</b></div>}
           {s.showDateTime && <div><span>التاريخ</span><b>{dateTime(sale.createdAt)}</b></div>}
           {s.showCustomer && <div><span>العميل</span><b>{sale.customerName || "عميل نقدي"}</b></div>}
           {sale.orderType && <div><span>نوع الطلب</span><b>{sale.orderType === "internal" ? "داخلي" : "خارجي"}</b></div>}
           {sale.tableNumber && <div><span>رقم الترابيزة</span><b>{sale.tableNumber}</b></div>}
           {s.showPhone && sale.customerPhone && <div><span>الهاتف</span><b dir="ltr">{sale.customerPhone}</b></div>}
           <div><span>نوع البيع</span><b>{sale.saleType === "wholesale" ? "جملة" : "قطاعي"}</b></div>
+          {s.showCashier && <div><span>الموظف</span><b>{sale.cashierName || "—"}</b></div>}
           <div><span>طريقة الدفع</span><b>{paymentLabel}</b></div>
           {sale.transferSender && <div><span>بيانات التحويل</span><b dir="ltr">{sale.transferSender}</b></div>}
           {sale.exchangeOfInvoiceNumber && <div><span>استبدال عن</span><b dir="ltr">{sale.exchangeOfInvoiceNumber}</b></div>}
