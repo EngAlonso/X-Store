@@ -2223,6 +2223,10 @@ function InventoryPage() {
   const [multiUniformPrice, setMultiUniformPrice] = useState('');
   const [multiUniformQuantityEnabled, setMultiUniformQuantityEnabled] = useState(false);
   const [multiUniformQuantity, setMultiUniformQuantity] = useState('0');
+  const [multiUniformWholesaleEnabled, setMultiUniformWholesaleEnabled] = useState(false);
+  const [multiUniformWholesalePrice, setMultiUniformWholesalePrice] = useState('');
+  const [multiUniformCostEnabled, setMultiUniformCostEnabled] = useState(false);
+  const [multiUniformCostPrice, setMultiUniformCostPrice] = useState('');
   const [multiVariants, setMultiVariants] = useState<Array<{color:string;size:string;barcode:string;price:string;wholesalePrice:string;costPrice:string;quantity:string}>>([]);
 
   function resetMultiProductForm() {
@@ -2235,6 +2239,10 @@ function InventoryPage() {
     setMultiUniformPrice('');
     setMultiUniformQuantityEnabled(false);
     setMultiUniformQuantity('0');
+    setMultiUniformWholesaleEnabled(false);
+    setMultiUniformWholesalePrice('');
+    setMultiUniformCostEnabled(false);
+    setMultiUniformCostPrice('');
     setMultiVariants([]);
   }
   function addMultiValue(type:'color'|'size') {
@@ -2252,7 +2260,7 @@ function InventoryPage() {
     if (type === 'color') setMultiColors(current => current.filter(item => item !== value));
     else setMultiSizes(current => current.filter(item => item !== value));
   }
-  function applyMultiUniformField(field:'price'|'quantity', value:string) {
+  function applyMultiUniformField(field:'price'|'wholesalePrice'|'costPrice'|'quantity', value:string) {
     setMultiVariants(current => current.map(item => ({...item, [field]:value})));
   }
   function generateMultiVariants() {
@@ -2270,8 +2278,8 @@ function InventoryPage() {
           size,
           barcode:'',
           price:multiUniformPriceEnabled ? multiUniformPrice : '',
-          wholesalePrice:'',
-          costPrice:'',
+          wholesalePrice:multiUniformWholesaleEnabled ? multiUniformWholesalePrice : '',
+          costPrice:multiUniformCostEnabled ? multiUniformCostPrice : '',
           quantity:multiUniformQuantityEnabled ? multiUniformQuantity : '0',
         };
       }),
@@ -2279,6 +2287,8 @@ function InventoryPage() {
     setMultiVariants(next.map(item => ({
       ...item,
       ...(multiUniformPriceEnabled ? {price:multiUniformPrice} : {}),
+      ...(multiUniformWholesaleEnabled ? {wholesalePrice:multiUniformWholesalePrice} : {}),
+      ...(multiUniformCostEnabled ? {costPrice:multiUniformCostPrice} : {}),
       ...(multiUniformQuantityEnabled ? {quantity:multiUniformQuantity} : {}),
     })));
     setPriceFormError('');
@@ -2586,6 +2596,32 @@ function InventoryPage() {
                 setMultiUniformQuantity(value);
                 applyMultiUniformField('quantity', value);
               }} placeholder="الكمية لكل تركيبة" />}
+              <label className="multi-uniform-toggle">
+                <input type="checkbox" checked={multiUniformWholesaleEnabled} onChange={e => {
+                  const enabled = e.target.checked;
+                  setMultiUniformWholesaleEnabled(enabled);
+                  if (enabled && multiUniformWholesalePrice.trim()) applyMultiUniformField('wholesalePrice', multiUniformWholesalePrice);
+                }} />
+                <span>توحيد سعر الجملة</span>
+              </label>
+              {multiUniformWholesaleEnabled && <input className="multi-uniform-input" type="number" min={0} step={0.01} value={multiUniformWholesalePrice} onChange={e => {
+                const value = e.target.value;
+                setMultiUniformWholesalePrice(value);
+                applyMultiUniformField('wholesalePrice', value);
+              }} placeholder="سعر الجملة لكل التركيبات" />}
+              <label className="multi-uniform-toggle">
+                <input type="checkbox" checked={multiUniformCostEnabled} onChange={e => {
+                  const enabled = e.target.checked;
+                  setMultiUniformCostEnabled(enabled);
+                  if (enabled && multiUniformCostPrice.trim()) applyMultiUniformField('costPrice', multiUniformCostPrice);
+                }} />
+                <span>توحيد التكلفة</span>
+              </label>
+              {multiUniformCostEnabled && <input className="multi-uniform-input" type="number" min={0} step={0.01} value={multiUniformCostPrice} onChange={e => {
+                const value = e.target.value;
+                setMultiUniformCostPrice(value);
+                applyMultiUniformField('costPrice', value);
+              }} placeholder="التكلفة لكل التركيبات" />}
             </div>
             <div className="field-wide product-variant-builder-actions">
               <button type="button" className="button button-primary" onClick={generateMultiVariants}><Boxes size={16}/> إنشاء التركيبات</button>
