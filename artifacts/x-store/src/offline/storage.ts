@@ -89,10 +89,22 @@ export async function chooseOfflineBackupFolder(): Promise<string | null> {
 export async function createManualOfflineBackup(backupType: OfflineBackupType = "full"): Promise<OfflineState> {
   if (window.xStoreOffline) return window.xStoreOffline.createBackup(backupType);
   const state = await loadOfflineState();
+  const snapshot: OfflineState = backupType === "full"
+    ? state
+    : {
+      ...state,
+      products: backupType === "inventory" ? state.products : [],
+      sales: backupType === "invoices" ? state.sales : [],
+      heldSales: backupType === "invoices" ? state.heldSales : [],
+      returns: backupType === "invoices" ? state.returns : [],
+      exchanges: backupType === "invoices" ? state.exchanges : [],
+      backup: { ...state.backup, backupScope: backupType },
+    };
   const saved: OfflineState = {
-    ...state,
+    ...snapshot,
     backup: {
-      ...state.backup,
+      ...snapshot.backup,
+      backupScope: backupType,
       lastAutomaticBackupAt: new Date().toISOString(),
       lastManualBackupAt: new Date().toISOString(),
       lastError: null,
@@ -132,13 +144,23 @@ export async function restoreOfflineBackup(
   if (!isOfflineState(candidate)) {
     throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
   }
-  const restored: OfflineState = {
-    ...candidate,
-    backup: {
-      ...candidate.backup,
-      lastError: null,
-    },
-  };
+  const current = await loadOfflineState();
+  const scope = candidate.backup.backupScope ?? "full";
+  const restored: OfflineState = scope === "full"
+    ? {
+      ...candidate,
+      backup: { ...current.backup, ...candidate.backup, lastError: null, backupScope: "full" },
+    }
+    : {
+      ...current,
+      ...(scope === "inventory" ? { products: candidate.products } : {
+        sales: candidate.sales,
+        heldSales: candidate.heldSales,
+        returns: candidate.returns,
+        exchanges: candidate.exchanges,
+      }),
+      backup: { ...current.backup, lastError: null, backupScope: scope },
+    };
   localStorage.setItem(STATE_KEY, JSON.stringify(restored));
   return restored;
 }
