@@ -1494,7 +1494,7 @@ function InvoiceDialog({ sale, store, currency, onClose }: { sale: OfflineSale; 
     <div className="of-invoice-thanks">شكرًا لزيارتكم</div></article></section></div>;
 }
 
-function BackupPage({ state, desktop, onChooseFolder, onBackup, onRestore }: { state: OfflineState; desktop: boolean; onChooseFolder: () => void; onBackup: (type: OfflineBackupType) => void; onRestore: () => void }) {
+function BackupPage({ state, desktop, onChooseFolder, onBackup, onRestore }: { state: OfflineState; desktop: boolean; onChooseFolder: () => void; onBackup: (type: OfflineBackupType) => void; onRestore: (mode: "full" | "invoices" | "inventory") => void }) {
   const [busyType, setBusyType] = useState<OfflineBackupType | null>(null);
   const runBackup = async (type: OfflineBackupType) => {
     setBusyType(type);
@@ -1508,7 +1508,11 @@ function BackupPage({ state, desktop, onChooseFolder, onBackup, onRestore }: { s
         <button className="of-button of-button-secondary" disabled={Boolean(busyType)} onClick={() => void runBackup("inventory")}><Package size={16} /> {busyType === "inventory" ? "جارٍ إنشاء النسخة..." : "نسخة المخزون فقط"}</button>
       </div><div className="of-backup-time"><Clock3 size={14} /><span>آخر نسخة يدوية</span><b>{state.backup.lastManualBackupAt ? dateTime(state.backup.lastManualBackupAt) : "لم يتم إنشاء نسخة بعد"}</b></div></section>
       <section className="of-panel of-backup-card"><span className="of-backup-symbol blue"><FolderOpen size={21} /></span><span className="of-kicker">مكان الحفظ</span><h2>مجلد النسخ</h2><p>{state.backup.backupFolder ?? (desktop ? "لم يتم اختيار مجلد بعد." : "نسخة معاينة داخل المتصفح — لا تمثل مجلد ويندوز.")}</p><button className="of-button of-button-secondary" onClick={onChooseFolder}><FolderOpen size={16} /> اختيار مجلد النسخ</button><div className="of-backup-time"><Clock3 size={14} /><span>آخر حفظ تلقائي</span><b>{state.backup.lastAutomaticBackupAt ? dateTime(state.backup.lastAutomaticBackupAt) : "لا يوجد سجل بعد"}</b></div></section></div>
-    <section className="of-panel of-restore-panel"><div className="of-restore-icon"><Upload size={20} /></div><div className="of-restore-copy"><h2>استعادة بيانات من ملف</h2><p>استورد ملف JSON احتياطيًا. سيتم التحقق من توافقه، وستحتاج إلى تأكيد استبدال بيانات المتجر الحالية.</p><div className="of-restore-note"><ShieldCheck size={14} /> لن يتم استبدال البيانات قبل موافقتك.</div></div><button className="of-button of-button-secondary" onClick={onRestore}><Upload size={16} /> اختيار ملف JSON</button></section>
+    <section className="of-panel of-restore-panel"><div className="of-restore-icon"><Upload size={20} /></div><div className="of-restore-copy"><h2>استعادة بيانات من ملف</h2><p>استورد ملف JSON احتياطيًا. سيتم التحقق من توافقه، وستحتاج إلى تأكيد استبدال بيانات المتجر الحالية.</p><div className="of-restore-note"><ShieldCheck size={14} /> لن يتم استبدال البيانات قبل موافقتك.</div></div><div className="of-restore-actions">
+        <button className="of-button of-button-secondary" onClick={() => onRestore("full")}><Upload size={16} /> استعادة كاملة</button>
+        <button className="of-button of-button-secondary" onClick={() => onRestore("invoices")}><Receipt size={16} /> استعادة الفواتير فقط</button>
+        <button className="of-button of-button-secondary" onClick={() => onRestore("inventory")}><Package size={16} /> استعادة المخزون فقط</button>
+      </div></section>
   </section>;
 }
 
