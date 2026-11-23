@@ -3666,6 +3666,12 @@ router.post("/xstore/returns", async (req, res): Promise<void> => {
           (1 - discountRate) *
           (1 + taxRate),
       );
+      if (!saleItem.productId) {
+        throw new DomainError(
+          "لا يمكن عمل مرتجع لهذا البند لأن المنتج تم حذفه من المخزون.",
+          409,
+        );
+      }
       const [product] = await tx
         .select()
         .from(xstoreProducts)
@@ -3733,7 +3739,7 @@ router.post("/xstore/returns", async (req, res): Promise<void> => {
       CreateXStoreReturnResponse.parse({
         id: result.id,
         invoiceNo: parsed.data.invoiceNo,
-        productId: result.productId,
+        productId: result.productId ?? "",
         quantity: result.quantity,
         refundAmount: toNumber(result.refundAmount),
         createdAt: iso(result.createdAt),
