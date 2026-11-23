@@ -2214,6 +2214,36 @@ function InventoryPage() {
   const canViewCost = hasAppRole(session.data, ['tenant_admin', 'warehouse_manager', 'accountant', 'platform_admin']);
   const pricingOnlyEdit = isWarehouseManager && Boolean(edit);
   const [priceFormError, setPriceFormError] = useState('');
+  const [productMode, setProductMode] = useState<'single' | 'multi'>('single');
+  const [multiColorInput, setMultiColorInput] = useState('');
+  const [multiSizeInput, setMultiSizeInput] = useState('');
+  const [multiVariants, setMultiVariants] = useState<Array<{color:string;size:string;barcode:string;price:string;wholesalePrice:string;costPrice:string;quantity:string}>>([]);
+
+  function resetMultiProductForm() {
+    setProductMode('single');
+    setMultiColorInput('');
+    setMultiSizeInput('');
+    setMultiVariants([]);
+  }
+  function generateMultiVariants() {
+    const colors = Array.from(new Set(multiColorInput.split(',').map(value => value.trim()).filter(Boolean)));
+    const sizes = Array.from(new Set(multiSizeInput.split(',').map(value => value.trim()).filter(Boolean)));
+    if (!colors.length && !sizes.length) {
+      setPriceFormError('أدخل لونًا أو مقاسًا واحدًا على الأقل لإنشاء القطعة المتعددة.');
+      return;
+    }
+    const next = (colors.length ? colors : ['']).flatMap(color =>
+      (sizes.length ? sizes : ['']).map(size => {
+        const existing = multiVariants.find(item => item.color === color && item.size === size);
+        return existing || { color, size, barcode:'', price:'', wholesalePrice:'', costPrice:'', quantity:'0' };
+      }),
+    );
+    setMultiVariants(next);
+    setPriceFormError('');
+  }
+  function updateMultiVariant(index:number, field:keyof typeof multiVariants[number], value:string) {
+    setMultiVariants(current => current.map((item,itemIndex) => itemIndex===index ? {...item,[field]:value} : item));
+  }
   const allProducts = q.data || [];
   const categories = [...new Set(allProducts.map(p => p.category).filter(Boolean))]
     .sort((a,b) => a.localeCompare(b,'ar'));
@@ -2228,9 +2258,49 @@ function InventoryPage() {
   const lowStockCount = allProducts.filter(p => p.quantity > 0 && p.quantity <= 5).length;
   const outOfStockCount = allProducts.filter(p => p.quantity <= 0).length;
 
-  function submit(e: FormEvent<HTMLFormElement>) {
+  async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
+
+    if (!edit && productMode === 'multi') {
+      const name = String(f.get('name') || '').trim();
+      if (!name) { setPriceFormError('اسم المنتج مطلوب.'); return; }
+      if (!multiVariants.length) { setPriceFormError('أنشئ تركيبة واحدة على الأقل قبل الحفظ.'); return; }
+      const invalidPrice = multiVariants.some(item => {
+        const retail = item.price.trim() ? Number(item.price) : null;
+        const wholesale = wholesaleEnabled && item.wholesalePrice.trim() ? Number(item.wholesalePrice) : null;
+        return (retail === null && wholesale === null)
+          || (retail !== null && (!Number.isFinite(retail) || retail < 0))
+          || (wholesale !== null && (!Number.isFinite(wholesale) || wholesale < 0));
+      });
+      if (invalidPrice) { setPriceFormError('كل تركيبة يجب أن تحتوي على سعر قطاعي أو سعر جملة صحيح.'); return; }
+      setPriceFormError('');
+      try {
+        await Promise.all(multiVariants.map(item => create.mutateAsync({data:{
+          name,
+          sku:'XST-' + crypto.randomUUID().replaceAll('-','').slice(0,16).toUpperCase(),
+          barcode:item.barcode.trim() || null,
+          category:'عام',
+          quantity:Math.max(0,Number(item.quantity)||0),
+          color:item.color || null,
+          size:item.size || null,
+          partNumber:String(f.get('partNumber') || '').trim() || null,
+          price:item.price.trim() ? Number(item.price) : null,
+          wholesalePrice:wholesaleEnabled && item.wholesalePrice.trim() ? Number(item.wholesalePrice) : null,
+          ...(item.costPrice.trim() ? {costPrice:Number(item.costPrice)} : {}),
+          ingredients:null,
+          expiresAt:null,
+        }})));
+        qc.invalidateQueries({queryKey:getListXStoreProductsQueryKey()});
+        qc.invalidateQueries({queryKey:getGetXStoreDashboardQueryKey()});
+        setDialog(false); setEdit(null); resetMultiProductForm(); setPriceFormError('');
+        setNotice('تم حفظ ' + multiVariants.length + ' تركيبة للمنتج');
+      } catch {
+        setPriceFormError('تعذر حفظ القطعة المتعددة. راجع البيانات وحاول مرة أخرى.');
+      }
+      return;
+    }
+
     const retailPriceText = String(f.get('price') || '').trim();
     const wholesalePriceText = wholesaleEnabled
       ? String(f.get('wholesalePrice') || '').trim()
@@ -2320,7 +2390,7 @@ function InventoryPage() {
       title="المخزون"
       desc="تابع أرصدة المنتجات، ابحث بسرعة، وحدّث الكميات من مكان واحد."
       action={canManage
-        ? <button className="button button-primary" onClick={() => { setEdit(null); setDialog(true); }} data-testid="button-add-product"><Plus size={17}/> إضافة منتج</button>
+        ? <button className="button button-primary" onClick={() => { setEdit(null); resetMultiProductForm(); setDialog(true); }} data-testid="button-add-product"><Plus size={17}/> إضافة منتج</button>
         : null}
     />
     <div className="stat-grid inventory-stats">
@@ -2392,11 +2462,19 @@ function InventoryPage() {
           <span className="product-form-icon"><Package size={21}/></span>
           <div className="product-form-intro-copy">
             <strong>{edit ? 'حدّث بيانات المنتج' : 'أضف منتجًا إلى مخزونك'}</strong>
-            <span>رمز المنتج يُنشأ تلقائيًا، والتصنيف الافتراضي «عام».</span>
+            <span>اختر نوع القطعة ثم أدخل بياناتها في خطوات واضحة وسريعة.</span>
           </div>
           <span className="product-form-required-note"><i/> الحقول المطلوبة عليها علامة *</span>
         </div>
         {!pricingOnlyEdit ? <>
+          {!edit && <div className="product-mode-switch field-wide">
+            <button type="button" className={productMode === 'single' ? 'is-active' : ''} onClick={() => { setProductMode('single'); setPriceFormError(''); }}>
+              <Package size={18}/><span><b>قطعة عادية</b><small>منتج واحد بلون ومقاس واحد أو بدون متغيرات</small></span>
+            </button>
+            <button type="button" className={productMode === 'multi' ? 'is-active' : ''} onClick={() => { setProductMode('multi'); setPriceFormError(''); }}>
+              <Boxes size={18}/><span><b>قطعة متعددة</b><small>عدة ألوان ومقاسات مع مخزون مستقل لكل تركيبة</small></span>
+            </button>
+          </div>
           <div className="product-form-section field-wide">
             <span className="product-form-section-number">01</span>
             <div><b>بيانات المنتج</b><small>الاسم والباركود للتعرّف عليه بسهولة.</small></div>
@@ -2404,34 +2482,74 @@ function InventoryPage() {
           <Field className="product-form-field" label="اسم المنتج" name="name" required placeholder="مثال: تيشيرت قطني أسود" defaultValue={edit?.name}/>
           <Field className="product-form-field" label="الباركود (اختياري)" name="barcode" placeholder="اكتب الرقم أو امسح الكود" defaultValue={edit?.barcode || ''}/>
         </> : <div className="role-hint field-wide"><ShieldCheck size={16}/><span>تعديل الأسعار والكمية للمنتج: {edit?.name}. لا يمكنك تغيير بياناته الأساسية.</span></div>}
-        <div className="product-form-section field-wide">
-          <span className="product-form-section-number">02</span>
-          <div>
-            <b>أسعار البيع والمخزون</b>
-            <small>أدخل سعرًا واحدًا على الأقل؛ تكلفة المنتج اختيارية.</small>
-          </div>
-        </div>
-        <Field className="product-form-field" label="سعر القطاعي" name="price" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر الجملة" defaultValue={edit?.price===null?'':edit?String(edit.price):''}/>
-        {wholesaleEnabled&&<Field className="product-form-field" label="سعر الجملة" name="wholesalePrice" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر القطاعي" defaultValue={edit?.wholesalePrice===null?'':edit?String(edit.wholesalePrice):''}/>}
-        <Field className="product-form-field" label="سعر التكلفة (اختياري)" name="costPrice" type="number" min={0} step={0.01} placeholder="اتركه فارغًا لو غير متاح" defaultValue={edit ? String(edit.costPrice ?? 0) : ''}/>
-        <Field className={`product-form-field ${isWarehouseManager ? 'field-wide' : ''}`} label="الكمية" name="quantity" type="number" min={0} step={1} required placeholder="0" defaultValue={edit ? String(edit.quantity) : '0'}/>
-        {!pricingOnlyEdit&&<>
+        {productMode === 'multi' && !edit ? (
+          <>
+            <div className="product-form-section field-wide">
+              <span className="product-form-section-number">02</span>
+              <div><b>بناء القطعة المتعددة</b><small>اكتب الألوان والمقاسات ثم أنشئ التركيبات تلقائيًا.</small></div>
+            </div>
+            <label className="field product-form-field">
+              <span>الألوان</span>
+              <input value={multiColorInput} onChange={e => setMultiColorInput(e.target.value)} placeholder="أسود، أبيض، كحلي" />
+              <small className="field-hint">افصل بين الألوان بفاصلة.</small>
+            </label>
+            <label className="field product-form-field">
+              <span>المقاسات</span>
+              <input value={multiSizeInput} onChange={e => setMultiSizeInput(e.target.value)} placeholder="S، M، L، XL" />
+              <small className="field-hint">يمكن ترك المقاسات فارغة إذا كان المنتج يعتمد على اللون فقط.</small>
+            </label>
+            <div className="field-wide product-variant-builder-actions">
+              <button type="button" className="button button-quiet" onClick={generateMultiVariants}><Boxes size={16}/> إنشاء التركيبات</button>
+              {multiVariants.length > 0 && <span>{multiVariants.length} تركيبة جاهزة</span>}
+            </div>
+            {multiVariants.length > 0 && <div className="product-variants-table-wrap field-wide">
+              <div className="product-variants-table">
+                <div className="product-variants-head">
+                  <span>اللون</span><span>المقاس</span><span>الباركود</span><span>القطاعي</span>{wholesaleEnabled && <span>الجملة</span>}<span>التكلفة</span><span>الكمية</span>
+                </div>
+                {multiVariants.map((variant,index) => <div className="product-variant-row" key={variant.color + '-' + variant.size + '-' + index}>
+                  <b>{variant.color || '—'}</b>
+                  <b>{variant.size || '—'}</b>
+                  <input value={variant.barcode} onChange={e => updateMultiVariant(index,'barcode',e.target.value)} placeholder="اختياري" />
+                  <input type="number" min={0} step={0.01} value={variant.price} onChange={e => updateMultiVariant(index,'price',e.target.value)} placeholder="0" />
+                  {wholesaleEnabled && <input type="number" min={0} step={0.01} value={variant.wholesalePrice} onChange={e => updateMultiVariant(index,'wholesalePrice',e.target.value)} placeholder="0" />}
+                  <input type="number" min={0} step={0.01} value={variant.costPrice} onChange={e => updateMultiVariant(index,'costPrice',e.target.value)} placeholder="اختياري" />
+                  <input type="number" min={0} step={1} value={variant.quantity} onChange={e => updateMultiVariant(index,'quantity',e.target.value)} />
+                </div>)}
+              </div>
+            </div>
+            <Field className="product-form-field field-wide" label="رقم القطعة / الموديل (اختياري)" name="partNumber" placeholder="اختياري، مثال: POLO-2026" />
+            <div className="role-hint field-wide"><Boxes size={17}/><span>كل تركيبة تُحفظ بمخزون وباركود مستقلين. يمكنك بيع الأسود M بدون التأثير على الأبيض L.</span></div>
+          </>
+        ) : <>
           <div className="product-form-section field-wide">
-            <span className="product-form-section-number">03</span>
-            <div><b>تفاصيل إضافية</b><small>كل هذه المعلومات اختيارية.</small></div>
+            <span className="product-form-section-number">02</span>
+            <div>
+              <b>أسعار البيع والمخزون</b>
+              <small>أدخل سعرًا واحدًا على الأقل؛ تكلفة المنتج اختيارية.</small>
+            </div>
           </div>
-          {restaurantIngredientsEnabled ? (
-            <label className="field product-form-field field-wide"><span>مكونات المنتج (اختياري)</span><textarea name="ingredients" rows={3} maxLength={1000} defaultValue={edit?.ingredients || ''} placeholder="اكتب مكونات المنتج التي ستظهر للعميل في منيو QR" /></label>
-          ) : <>
-            <Field className="product-form-field" label="اللون (اختياري)" name="color" placeholder="مثال: أسود" defaultValue={edit?.color || ''}/>
-            <Field className="product-form-field" label="المقاس (اختياري)" name="size" placeholder="مثال: M أو 42" defaultValue={edit?.size || ''}/>
-            <Field className="product-form-field field-wide" label="رقم القطعة (اختياري)" name="partNumber" placeholder="رقم الموديل أو كود المورد" defaultValue={edit?.partNumber || ''}/>
+          <Field className="product-form-field" label="سعر القطاعي" name="price" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر الجملة" defaultValue={edit?.price===null?'':edit?String(edit.price):''}/>
+          {wholesaleEnabled&&<Field className="product-form-field" label="سعر الجملة" name="wholesalePrice" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر القطاعي" defaultValue={edit?.wholesalePrice===null?'':edit?String(edit.wholesalePrice):''}/>}
+          <Field className="product-form-field" label="سعر التكلفة (اختياري)" name="costPrice" type="number" min={0} step={0.01} placeholder="اتركه فارغًا لو غير متاح" defaultValue={edit ? String(edit.costPrice ?? 0) : ''}/>
+          <Field className={\`product-form-field \${isWarehouseManager ? 'field-wide' : ''}\`} label="الكمية" name="quantity" type="number" min={0} step={1} required placeholder="0" defaultValue={edit ? String(edit.quantity) : '0'}/>
+          {!pricingOnlyEdit&&<>
+            <div className="product-form-section field-wide">
+              <span className="product-form-section-number">03</span>
+              <div><b>تفاصيل إضافية</b><small>كل هذه المعلومات اختيارية.</small></div>
+            </div>
+            {restaurantIngredientsEnabled ? (
+              <label className="field product-form-field field-wide"><span>مكونات المنتج (اختياري)</span><textarea name="ingredients" rows={3} maxLength={1000} defaultValue={edit?.ingredients || ''} placeholder="اكتب مكونات المنتج التي ستظهر للعميل في منيو QR" /></label>
+            ) : <>
+              <Field className="product-form-field" label="اللون (اختياري)" name="color" placeholder="مثال: أسود" defaultValue={edit?.color || ''}/>
+              <Field className="product-form-field" label="المقاس (اختياري)" name="size" placeholder="مثال: M أو 42" defaultValue={edit?.size || ''}/>
+              <Field className="product-form-field field-wide" label="رقم القطعة / الموديل (اختياري)" name="partNumber" placeholder="اختياري، مثال: POLO-2026" defaultValue={edit?.partNumber || ''}/>
+            </>}
           </>}
-        </>}
-        {priceFormError&&<div className="form-error field-wide" role="alert">{priceFormError}</div>}
+        </>        {priceFormError&&<div className="form-error field-wide" role="alert">{priceFormError}</div>}
         {(create.isError || update.isError) && <div className="form-error">تعذر حفظ المنتج. يرجى مراجعة البيانات.</div>}
         <div className="modal-actions">
-          <button type="button" className="button button-quiet" onClick={() => { setDialog(false); setEdit(null); }}>إلغاء</button>
+          <button type="button" className="button button-quiet" onClick={() => { setDialog(false); setEdit(null); resetMultiProductForm(); }}>إلغاء</button>
           <button className="button button-primary" disabled={create.isPending || update.isPending}>{create.isPending || update.isPending ? 'جارٍ الحفظ…' : 'حفظ المنتج'}</button>
         </div>
       </form>
