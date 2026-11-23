@@ -2523,7 +2523,7 @@ function InventoryPage() {
             <Field className="product-form-field field-wide" label="رقم القطعة / الموديل (اختياري)" name="partNumber" placeholder="اختياري، مثال: POLO-2026" />
             <div className="role-hint field-wide"><Boxes size={17}/><span>كل تركيبة تُحفظ بمخزون وباركود مستقلين. يمكنك بيع الأسود M بدون التأثير على الأبيض L.</span></div>
           </div>
-        )}
+        }
         {(productMode !== 'multi' || edit) && <>
           <div className="product-form-section field-wide">
             <span className="product-form-section-number">02</span>
