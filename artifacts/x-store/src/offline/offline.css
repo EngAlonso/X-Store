@@ -670,3 +670,14 @@
 .of-locked-store-type small{margin-inline-start:auto;color:var(--of-muted,#71807b);font-size:12px}
 
 .of-lan-access{margin-top:14px;padding:12px;border:1px solid var(--of-border,#dbe5e0);border-radius:12px;background:var(--of-soft,#f5f8f7);display:grid;gap:7px}.of-lan-access b{font-size:13px}.of-lan-access small{color:var(--of-muted,#71807b);line-height:1.5}.of-lan-access code{display:block;direction:ltr;text-align:left;overflow:auto;padding:7px 9px;border-radius:8px;background:#fff;border:1px solid var(--of-border,#dbe5e0);font-size:11px;user-select:all}
+
+
+.of-license-lock-card { max-width: 520px; }
+.of-license-lock-card > svg { color: #a64e46; }
+.of-license-lock-points { width: 100%; display: grid; gap: 8px; margin: 4px 0 6px; text-align: right; }
+.of-license-lock-points > div { display: flex; align-items: flex-start; gap: 8px; padding: 9px 10px; border: 1px solid #e3ebe4; border-radius: 8px; background: #fafcf9; color: #68756d; font-size: calc(10px * var(--xstore-font-scale,1)); line-height: 1.6; }
+.of-license-lock-points svg { flex: 0 0 auto; margin-top: 2px; color: #758b7a; }
+.of-license-import-button { display: inline-flex; align-items: center; justify-content: center; min-width: 220px; position: relative; }
+.of-license-lock-contact { width: 100%; box-sizing: border-box; display: grid; gap: 4px; padding: 12px 14px; border-radius: 8px; background: #f3f6f1; border: 1px solid #e3ebe4; }
+.of-license-lock-contact b { color: #354a3a; font-size: calc(10px * var(--xstore-font-scale,1)); }
+.of-license-lock-contact span { color: #879289; font-size: calc(9px * var(--xstore-font-scale,1)); line-height: 1.7; }
