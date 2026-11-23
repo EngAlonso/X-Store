@@ -160,6 +160,12 @@ async function verifyLicenseForThisMachine(license) {
   if (Date.parse(license.payload.issuedAt) > Date.now() + 5 * 60 * 1000) {
     throw new Error("تاريخ إصدار الترخيص لاحق لتاريخ هذا الجهاز.");
   }
+  if (license.payload.plan !== "lifetime") {
+    const expiresAt = Date.parse(String(license.payload.expiresAt || "") + "T23:59:59");
+    if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
+      throw new Error("ملف الترخيص منتهٍ. اطلب ترخيصًا جديدًا من إدارة X-Store.");
+    }
+  }
 }
 
 async function getInstallationId() {
