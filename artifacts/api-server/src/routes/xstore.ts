@@ -2807,23 +2807,13 @@ router.delete("/xstore/products/:productId", async (req, res): Promise<void> => 
     return;
   }
 
-  const [saleItem] = await db
-    .select({ id: xstoreSaleItems.id })
-    .from(xstoreSaleItems)
-    .where(eq(xstoreSaleItems.productId, product.id))
-    .limit(1);
-  const [returnItem] = await db
-    .select({ id: xstoreReturns.id })
-    .from(xstoreReturns)
-    .where(eq(xstoreReturns.productId, product.id))
-    .limit(1);
-
-  if (saleItem || returnItem) {
-    res.status(409).json({
-      error: "لا يمكن حذف منتج له فواتير أو مرتجعات مسجلة. يمكنك تصفير كميته بدلًا من حذفه.",
-    });
-    return;
-  }
+  // Preserve the historical invoice snapshot before removing the product master row.
+  await db
+    .update(xstoreSaleItems)
+    .set({
+      productName: sql`coalesce(${xstoreSaleItems.productName}, ${product.name})`,
+    })
+    .where(eq(xstoreSaleItems.productId, product.id));
 
   await db
     .delete(xstoreProducts)
@@ -2890,7 +2880,7 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
           returnedQuantity: xstoreSaleItems.returnedQuantity,
         })
         .from(xstoreSaleItems)
-        .innerJoin(
+        .leftJoin(
           xstoreProducts,
           eq(xstoreSaleItems.productId, xstoreProducts.id),
         )
@@ -2901,9 +2891,9 @@ router.get("/xstore/sales", async (req, res): Promise<void> => {
   for (const line of invoiceLines) {
     const items = invoiceLinesBySale.get(line.saleId) ?? [];
     items.push({
-      productId: line.productId,
+      productId: line.productId ?? "",
       name: line.name,
-      sku: line.sku,
+      sku: line.sku ?? "—",
       unitPrice: toNumber(line.unitPrice),
       quantity: line.quantity,
       returnedQuantity: line.returnedQuantity,
@@ -3060,14 +3050,14 @@ router.get(
     const items = await db
       .select({
         productId: xstoreSaleItems.productId,
-        name: sql<string>`coalesce(${xstoreSaleItems.productName}, ${xstoreProducts.name})`,
+        name: sql<string>`coalesce(${xstoreSaleItems.productName}, ${xstoreProducts.name}, 'منتج محذوف')`,
         sku: xstoreProducts.sku,
         unitPrice: xstoreSaleItems.unitPrice,
         quantity: xstoreSaleItems.quantity,
         returnedQuantity: xstoreSaleItems.returnedQuantity,
       })
       .from(xstoreSaleItems)
-      .innerJoin(
+      .leftJoin(
         xstoreProducts,
         eq(xstoreSaleItems.productId, xstoreProducts.id),
       )
@@ -3082,10 +3072,10 @@ router.get(
             toNumber(item.unitPrice) *
             (1 - discountRate) *
             (1 + taxRate),
-          returnableQuantity: Math.max(
-            0,
-            item.quantity - item.returnedQuantity,
-          ),
+          returnableQuantity:
+            item.productId === null
+              ? 0
+              : Math.max(0, item.quantity - item.returnedQuantity),
         })),
       ),
     );
