@@ -2208,6 +2208,7 @@ function InventoryPage() {
   const [dialog, setDialog] = useState(false);
   const [edit, setEdit] = useState<Product | null>(null);
   const [notice, setNotice] = useState('');
+  const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
   const isWarehouseManager = hasAppRole(session.data, ['warehouse_manager']);
   const canManage = session.data?.role === 'tenant_admin' || isWarehouseManager;
   const wholesaleEnabled = session.data?.wholesaleEnabled ?? false;
@@ -2432,6 +2433,28 @@ function InventoryPage() {
           qc.invalidateQueries({ queryKey: getListXStoreProductsQueryKey() }),
       },
     );
+  const deleteProduct = async (p: Product) => {
+    if (session.data?.role !== 'tenant_admin' || deletingProductId) return;
+    const confirmed = window.confirm(`هل أنت متأكد من حذف المنتج «${p.name}» من المخزون؟ لا يمكن التراجع عن هذا الإجراء.`);
+    if (!confirmed) return;
+    setDeletingProductId(p.id);
+    try {
+      const response = await fetch(`/api/xstore/products/${p.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const body = await response.json().catch(() => ({} as { error?: string }));
+      if (!response.ok) throw new Error(body?.error || 'تعذر حذف المنتج.');
+      await qc.invalidateQueries({ queryKey: getListXStoreProductsQueryKey() });
+      await qc.invalidateQueries({ queryKey: getGetXStoreDashboardQueryKey() });
+      setNotice('تم حذف المنتج من المخزون');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'تعذر حذف المنتج.');
+    } finally {
+      setDeletingProductId(null);
+    }
+  };
   const inventoryValue = (q.data || []).reduce(
     (total, product) => total + (product.price ?? 0) * product.quantity,
     0,
@@ -2488,6 +2511,7 @@ function InventoryPage() {
                       <button className="qty-control" aria-label={`تقليل كمية ${p.name}`} title="تقليل الكمية" disabled={p.quantity<=0} onClick={()=>changeQuantity(p,-1)} data-testid={`button-inventory-decrease-${p.id}`}><Minus size={16}/></button>
                       <button className="qty-control" aria-label={`زيادة كمية ${p.name}`} title="زيادة الكمية" onClick={()=>changeQuantity(p,1)} data-testid={`button-inventory-increase-${p.id}`}><Plus size={16}/></button>
                       <button className="inventory-edit-button" onClick={()=>{setPriceFormError('');setEdit(p);setDialog(true)}} data-testid={`button-edit-product-${p.id}`}>تعديل البيانات</button>
+                      {session.data?.role === 'tenant_admin' && <button className="inventory-delete-button" onClick={()=>void deleteProduct(p)} disabled={deletingProductId === p.id} data-testid={`button-delete-product-${p.id}`} title="حذف المنتج"><Trash2 size={15}/>{deletingProductId === p.id ? 'جارٍ الحذف…' : 'حذف'}</button>}
                     </div></td>}
                   </tr>})}</tbody>
                 </table></div>
@@ -2502,7 +2526,7 @@ function InventoryPage() {
                     <div className="inventory-mobile-variants"><small>اللون والمقاس</small><b>{[p.color,p.size].filter(Boolean).join(' · ')||'—'}</b></div>
                     {(p.partNumber||p.barcode)&&<div className="inventory-mobile-variants"><small>بيانات إضافية</small><b>{p.partNumber?`رقم القطعة: ${p.partNumber}`:`باركود: ${p.barcode}`}</b></div>}
                   </div>
-                  {canManage&&<div className="inventory-mobile-actions"><div><span>تحديث الكمية</span><button className="qty-control" aria-label={`تقليل كمية ${p.name}`} disabled={p.quantity<=0} onClick={()=>changeQuantity(p,-1)} data-testid={`button-inventory-mobile-decrease-${p.id}`}><Minus size={16}/></button><button className="qty-control" aria-label={`زيادة كمية ${p.name}`} onClick={()=>changeQuantity(p,1)} data-testid={`button-inventory-mobile-increase-${p.id}`}><Plus size={16}/></button></div><button className="inventory-edit-button" onClick={()=>{setPriceFormError('');setEdit(p);setDialog(true)}} data-testid={`button-edit-product-mobile-${p.id}`}>تعديل المنتج</button></div>}
+                  {canManage&&<div className="inventory-mobile-actions"><div><span>تحديث الكمية</span><button className="qty-control" aria-label={`تقليل كمية ${p.name}`} disabled={p.quantity<=0} onClick={()=>changeQuantity(p,-1)} data-testid={`button-inventory-mobile-decrease-${p.id}`}><Minus size={16}/></button><button className="qty-control" aria-label={`زيادة كمية ${p.name}`} onClick={()=>changeQuantity(p,1)} data-testid={`button-inventory-mobile-increase-${p.id}`}><Plus size={16}/></button></div><button className="inventory-edit-button" onClick={()=>{setPriceFormError('');setEdit(p);setDialog(true)}} data-testid={`button-edit-product-mobile-${p.id}`}>تعديل المنتج</button>{session.data?.role === 'tenant_admin' && <button className="inventory-delete-button" onClick={()=>void deleteProduct(p)} disabled={deletingProductId === p.id} data-testid={`button-delete-product-mobile-${p.id}`} title="حذف المنتج"><Trash2 size={15}/>{deletingProductId === p.id ? 'جارٍ الحذف…' : 'حذف المنتج'}</button>}</div>}
                 </article>})}
               </div>
             </>
