@@ -2485,8 +2485,7 @@ function InventoryPage() {
         {!pricingOnlyEdit && <Field className="product-form-field" label="اسم المنتج" name="name" required placeholder="مثال: تيشيرت قطني أسود" defaultValue={edit?.name}/>}
         {!pricingOnlyEdit && <Field className="product-form-field" label="الباركود (اختياري)" name="barcode" placeholder="اكتب الرقم أو امسح الكود" defaultValue={edit?.barcode || ''}/>}
         {pricingOnlyEdit && <div className="role-hint field-wide"><ShieldCheck size={16}/><span>تعديل الأسعار والكمية للمنتج: {edit?.name}. لا يمكنك تغيير بياناته الأساسية.</span></div>}
-        {productMode === 'multi' && !edit && (
-          <>
+        {productMode === 'multi' && !edit && <div className="field-wide">
             <div className="product-form-section field-wide">
               <span className="product-form-section-number">02</span>
               <div><b>بناء القطعة المتعددة</b><small>اكتب الألوان والمقاسات ثم أنشئ التركيبات تلقائيًا.</small></div>
@@ -2523,7 +2522,7 @@ function InventoryPage() {
             </div>
             <Field className="product-form-field field-wide" label="رقم القطعة / الموديل (اختياري)" name="partNumber" placeholder="اختياري، مثال: POLO-2026" />
             <div className="role-hint field-wide"><Boxes size={17}/><span>كل تركيبة تُحفظ بمخزون وباركود مستقلين. يمكنك بيع الأسود M بدون التأثير على الأبيض L.</span></div>
-          </>
+          </div>
         )}
         {(productMode !== 'multi' || edit) && <>
           <div className="product-form-section field-wide">
