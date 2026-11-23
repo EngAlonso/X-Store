@@ -841,7 +841,7 @@ function ProductsPage({ state, currency, canEditDetails, canDelete, onSave, onRe
       <StatCard label="التصنيفات" value={digits(categories.length)} caption={`${digits(outOfStockCount)} منتج نفد` } icon={Archive} tone="red" />
     </div>
     <div className="of-toolbar"><label className="of-search"><Search size={17} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ابحث بالعربي أو English أو بالكود والباركود..." /><kbd>بحث</kbd></label><select aria-label="التصنيف" value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}><option value="__all__">كل التصنيفات</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select><select aria-label="حالة المخزون" value={stockFilter} onChange={(event) => setStockFilter(event.target.value as typeof stockFilter)}><option value="all">كل الكميات</option><option value="low">قريب من النفاد</option><option value="out">نفد المخزون</option></select><span className="of-result-count">{digits(products.length)} من {digits(state.products.length)} منتج</span></div>
-    <section className="of-panel of-inventory-panel">{products.length ? <div className="of-table-scroll"><table className="of-table of-product-table"><thead><tr><th>المنتج</th><th>التصنيف</th><th>سعر القطاعي</th>{OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale && <th>سعر الجملة</th>}<th>سعر التكلفة</th><th>الكمية</th><th>الرمز</th><th /></tr></thead><tbody>{products.map((product) => <tr key={product.id}><td><b className="of-product-title">{product.name}</b><small>{product.barcode || "—"}</small></td><td>{product.category || "—"}</td><td className="of-number">{product.price === null ? "—" : money(product.price, currency)}</td>{OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale && <td className="of-number">{product.wholesalePrice === null ? "—" : money(product.wholesalePrice, currency)}</td>}<td className="of-number">{money(product.costPrice, currency)}</td><td><span className={`of-quantity ${product.quantity <= 5 ? "low" : ""}`}>{digits(product.quantity)}</span></td><td className="of-code">{product.sku || "—"}</td><td><div className="of-row-actions"><button title="تقليل الكمية" aria-label={`تقليل كمية ${product.name}`} disabled={product.quantity <= 0} onClick={() => adjustQuantity(product, -1)} data-testid={`button-offline-stock-decrease-${product.id}`}><Minus size={15} /></button><button title="زيادة الكمية" aria-label={`زيادة كمية ${product.name}`} onClick={() => adjustQuantity(product, 1)} data-testid={`button-offline-stock-increase-${product.id}`}><Plus size={15} /></button><button title="تعديل المنتج" aria-label={`تعديل ${product.name}`} onClick={() => setModal(product)}><Settings size={15} /></button>{canDelete && <button title="حذف المنتج" aria-label={`حذف ${product.name}`} onClick={() => void onRemove(product.id)}><Trash2 size={15} /></button>}</div></td></tr>)}</tbody></table></div> : <EmptyState icon={Package} title={query || categoryFilter !== "__all__" || stockFilter !== "all" ? "لا توجد نتائج" : "قائمة المنتجات فارغة"} copy={query || categoryFilter !== "__all__" || stockFilter !== "all" ? "عدّل البحث أو فلاتر المخزون والتصنيف." : "أضف منتجات متجرك لتبدأ متابعة المخزون وإتمام المبيعات."} action={!query && categoryFilter === "__all__" && stockFilter === "all" ? <button className="of-button of-button-primary" onClick={() => setModal("new")}><Plus size={16} /> إضافة أول منتج</button> : undefined} />}</section>
+    <section className="of-panel of-inventory-panel">{products.length ? <div className="of-table-scroll"><table className="of-table of-product-table"><thead><tr><th>المنتج</th><th>التصنيف</th><th>اللون / المقاس</th><th>سعر القطاعي</th>{OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale && <th>سعر الجملة</th>}<th>سعر التكلفة</th><th>الكمية</th><th>الرمز</th><th /></tr></thead><tbody>{products.map((product) => <tr key={product.id}><td><b className="of-product-title">{product.name}</b><small>{product.barcode || "—"}</small></td><td>{product.category || "—"}</td><td><div className="of-inventory-variants"><span><small>اللون</small><b>{product.color || "—"}</b></span><span><small>المقاس</small><b>{product.size || "—"}</b></span></div></td><td className="of-number">{product.price === null ? "—" : money(product.price, currency)}</td>{OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale && <td className="of-number">{product.wholesalePrice === null ? "—" : money(product.wholesalePrice, currency)}</td>}<td className="of-number">{money(product.costPrice, currency)}</td><td><span className={`of-quantity ${product.quantity <= 5 ? "low" : ""}`}>{digits(product.quantity)}</span></td><td className="of-code">{product.sku || "—"}</td><td><div className="of-row-actions"><button title="تقليل الكمية" aria-label={`تقليل كمية ${product.name}`} disabled={product.quantity <= 0} onClick={() => adjustQuantity(product, -1)} data-testid={`button-offline-stock-decrease-${product.id}`}><Minus size={15} /></button><button title="زيادة الكمية" aria-label={`زيادة كمية ${product.name}`} onClick={() => adjustQuantity(product, 1)} data-testid={`button-offline-stock-increase-${product.id}`}><Plus size={15} /></button><button title="تعديل المنتج" aria-label={`تعديل ${product.name}`} onClick={() => setModal(product)}><Settings size={15} /></button>{canDelete && <button title="حذف المنتج" aria-label={`حذف ${product.name}`} onClick={() => void onRemove(product.id)}><Trash2 size={15} /></button>}</div></td></tr>)}</tbody></table></div> : <EmptyState icon={Package} title={query || categoryFilter !== "__all__" || stockFilter !== "all" ? "لا توجد نتائج" : "قائمة المنتجات فارغة"} copy={query || categoryFilter !== "__all__" || stockFilter !== "all" ? "عدّل البحث أو فلاتر المخزون والتصنيف." : "أضف منتجات متجرك لتبدأ متابعة المخزون وإتمام المبيعات."} action={!query && categoryFilter === "__all__" && stockFilter === "all" ? <button className="of-button of-button-primary" onClick={() => setModal("new")}><Plus size={16} /> إضافة أول منتج</button> : undefined} />}</section>
     {modal && <ProductDialog initial={modal === "new" ? null : modal} wholesale={OFFLINE_STORE_TYPES.find((item) => item.value === state.store?.storeType)?.supportsWholesale ?? false} canEditDetails={canEditDetails || modal === "new"} currency={currency} ingredientsEnabled={state.store?.storeType === "cafe" || state.store?.storeType === "restaurant"} onClose={() => setModal(null)} onSave={async (p) => { await onSave(p, modal === "new" ? undefined : modal.id); setModal(null); }} />}
   </section>;
 }
@@ -860,31 +860,236 @@ function ProductDialog({ initial, wholesale, canEditDetails, currency, ingredien
   const [partNumber, setPartNumber] = useState(initial?.partNumber ?? "");
   const [ingredients, setIngredients] = useState(initial?.ingredients ?? "");
   const [expiresAt, setExpiresAt] = useState(initial?.expiresAt ?? "");
+  const [productMode, setProductMode] = useState<"single" | "multi">("single");
+  const [multiColorInput, setMultiColorInput] = useState("");
+  const [multiSizeInput, setMultiSizeInput] = useState("");
+  const [multiColors, setMultiColors] = useState<string[]>([]);
+  const [multiSizes, setMultiSizes] = useState<string[]>([]);
+  const [multiUniformPriceEnabled, setMultiUniformPriceEnabled] = useState(false);
+  const [multiUniformPrice, setMultiUniformPrice] = useState("");
+  const [multiUniformQuantityEnabled, setMultiUniformQuantityEnabled] = useState(false);
+  const [multiUniformQuantity, setMultiUniformQuantity] = useState("0");
+  const [multiUniformWholesaleEnabled, setMultiUniformWholesaleEnabled] = useState(false);
+  const [multiUniformWholesalePrice, setMultiUniformWholesalePrice] = useState("");
+  const [multiUniformCostEnabled, setMultiUniformCostEnabled] = useState(false);
+  const [multiUniformCostPrice, setMultiUniformCostPrice] = useState("");
+  const [multiVariants, setMultiVariants] = useState<Array<{color:string;size:string;barcode:string;price:string;wholesalePrice:string;costPrice:string;quantity:string}>>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  function addMultiValue(type: "color" | "size") {
+    const value = (type === "color" ? multiColorInput : multiSizeInput).trim();
+    if (!value) return;
+    if (type === "color") {
+      setMultiColors(current => current.includes(value) ? current : [...current, value]);
+      setMultiColorInput("");
+    } else {
+      setMultiSizes(current => current.includes(value) ? current : [...current, value]);
+      setMultiSizeInput("");
+    }
+  }
+  function removeMultiValue(type: "color" | "size", value: string) {
+    if (type === "color") setMultiColors(current => current.filter(item => item !== value));
+    else setMultiSizes(current => current.filter(item => item !== value));
+  }
+  function applyMultiUniformField(field: "price" | "wholesalePrice" | "costPrice" | "quantity", value: string) {
+    setMultiVariants(current => current.map(item => ({ ...item, [field]: value })));
+  }
+  function generateMultiVariants() {
+    if (!multiColors.length && !multiSizes.length) {
+      setError("أدخل لونًا أو مقاسًا واحدًا على الأقل لإنشاء القطعة المتعددة.");
+      return;
+    }
+    const next = (multiColors.length ? multiColors : [""]).flatMap(color =>
+      (multiSizes.length ? multiSizes : [""]).map(size => {
+        const existing = multiVariants.find(item => item.color === color && item.size === size);
+        return existing || {
+          color,
+          size,
+          barcode: "",
+          price: multiUniformPriceEnabled ? multiUniformPrice : "",
+          wholesalePrice: multiUniformWholesaleEnabled ? multiUniformWholesalePrice : "",
+          costPrice: multiUniformCostEnabled ? multiUniformCostPrice : "",
+          quantity: multiUniformQuantityEnabled ? multiUniformQuantity : "0",
+        };
+      }),
+    );
+    setMultiVariants(next.map(item => ({
+      ...item,
+      ...(multiUniformPriceEnabled ? { price: multiUniformPrice } : {}),
+      ...(multiUniformWholesaleEnabled ? { wholesalePrice: multiUniformWholesalePrice } : {}),
+      ...(multiUniformCostEnabled ? { costPrice: multiUniformCostPrice } : {}),
+      ...(multiUniformQuantityEnabled ? { quantity: multiUniformQuantity } : {}),
+    })));
+    setError("");
+  }
+  function updateMultiVariant(index: number, field: keyof typeof multiVariants[number], value: string) {
+    setMultiVariants(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item));
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const retailPrice = price.trim() === "" ? null : Number(price);
-    const bulkPrice = wholesale && wholesalePrice.trim() !== "" ? Number(wholesalePrice) : null;
-    if (!name.trim() || (retailPrice === null && bulkPrice === null) || (retailPrice !== null && (!Number.isFinite(retailPrice) || retailPrice < 0)) || !Number.isFinite(Number(cost)) || Number(cost) < 0 || !Number.isInteger(Number(quantity)) || Number(quantity) < 0 || (bulkPrice !== null && (!Number.isFinite(bulkPrice) || bulkPrice < 0))) { setError("أدخل سعرًا قطاعيًا أو سعر جملة واحدًا على الأقل، وتحقق من الكمية والتكلفة."); return; }
-    setSaving(true); setError("");
-    try { await onSave({ id: initial?.id ?? makeId(), name: name.trim(), sku: sku.trim(), barcode: barcode.trim(), category: category.trim(), costPrice: Number(cost) || 0, price: retailPrice, wholesalePrice: bulkPrice, quantity: Number(quantity) || 0, color: color.trim(), size: size.trim(), partNumber: partNumber.trim(), ingredients: ingredients.trim(), expiresAt: expiresAt || null, createdAt: initial?.createdAt ?? new Date().toISOString() }); }
-    catch (err) { setError(err instanceof Error ? err.message : "تعذر حفظ المنتج."); } finally { setSaving(false); }
-  }
-  return <div className="of-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}><section className="of-dialog" role="dialog" aria-modal="true" aria-labelledby="product-dialog-title"><header className="of-dialog-head"><div><span className="of-kicker">بيانات المخزون</span><h2 id="product-dialog-title">{initial ? "تعديل المنتج" : "إضافة منتج جديد"}</h2></div><button onClick={onClose} aria-label="إغلاق"><X size={18} /></button></header><form onSubmit={submit}><div className="of-form-grid">
-    {canEditDetails && <>
-      <Field label="اسم المنتج"><input autoFocus required value={name} onChange={(e) => setName(e.target.value)} placeholder="اسم المنتج" /></Field><Field label="التصنيف"><input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="مثال: إكسسوارات" /></Field>
-      <Field label="رمز المنتج (SKU)"><input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="اختياري" /></Field><Field label="الباركود"><input value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="اختياري" /></Field>
-      {ingredientsEnabled ? <Field label="مكونات المنتج (اختياري)"><textarea value={ingredients} onChange={(e) => setIngredients(e.target.value)} maxLength={1000} rows={3} placeholder="اكتب مكونات المنتج التي ستظهر للعميل في منيو QR" /></Field> : <>
-        <Field label="اللون"><input value={color} onChange={(e) => setColor(e.target.value)} placeholder="اختياري" /></Field><Field label="المقاس"><input value={size} onChange={(e) => setSize(e.target.value)} placeholder="اختياري" /></Field>
-        <Field label="رقم القطعة"><input value={partNumber} onChange={(e) => setPartNumber(e.target.value)} placeholder="اختياري" /></Field>
-      </>}<Field label="تاريخ انتهاء الصلاحية"><input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} /></Field>
-    </>}
-     <Field label={`سعر القطاعي (${currency})`} hint="يمكن تركه فارغًا إذا كان المنتج يباع بالجملة فقط."><input type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} /></Field><Field label={`سعر التكلفة (${currency})`}><input type="number" min="0" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} /></Field>
-     {wholesale && <Field label={`سعر الجملة (${currency})`} hint="يمكن تركه فارغًا إذا لم يكن للمنتج سعر جملة."><input type="number" min="0" step="0.01" value={wholesalePrice} onChange={(e) => setWholesalePrice(e.target.value)} placeholder="اختياري" /></Field>}<Field label="الكمية المتاحة"><input required type="number" min="0" step="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></Field>
-    </div>{error && <div className="of-error"><CircleAlert size={15} />{error}</div>}<div className="of-dialog-actions"><button type="button" className="of-button of-button-secondary" onClick={onClose}>إلغاء</button><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ المنتج"}</button></div></form></section></div>;
-}
+    if (!canEditDetails && !initial) return;
+    setSaving(true);
+    setError("");
+    try {
+      if (!initial && productMode === "multi") {
+        if (!name.trim()) throw new Error("اسم المنتج مطلوب.");
+        if (!multiVariants.length) throw new Error("أنشئ تركيبة واحدة على الأقل قبل الحفظ.");
+        const invalid = multiVariants.some(item => {
+          const retail = item.price.trim() ? Number(item.price) : null;
+          const bulk = wholesale && item.wholesalePrice.trim() ? Number(item.wholesalePrice) : null;
+          const itemCost = item.costPrice.trim() ? Number(item.costPrice) : 0;
+          return (retail === null && bulk === null)
+            || (retail !== null && (!Number.isFinite(retail) || retail < 0))
+            || (bulk !== null && (!Number.isFinite(bulk) || bulk < 0))
+            || !Number.isFinite(itemCost) || itemCost < 0
+            || !Number.isInteger(Number(item.quantity)) || Number(item.quantity) < 0;
+        });
+        if (invalid) throw new Error("كل تركيبة يجب أن تحتوي على سعر صحيح وكمية صحيحة، والتكلفة اختيارية.");
+        for (const variant of multiVariants) {
+          await onSave({
+            id: makeId(),
+            name: name.trim(),
+            sku: "XST-" + makeId().replaceAll("-", "").slice(0, 12).toUpperCase(),
+            barcode: variant.barcode.trim(),
+            category: "عام",
+            costPrice: variant.costPrice.trim() ? Number(variant.costPrice) : 0,
+            price: variant.price.trim() ? Number(variant.price) : null,
+            wholesalePrice: wholesale && variant.wholesalePrice.trim() ? Number(variant.wholesalePrice) : null,
+            quantity: Math.max(0, Number(variant.quantity) || 0),
+            color: variant.color.trim(),
+            size: variant.size.trim(),
+            partNumber: partNumber.trim(),
+            ingredients: "",
+            expiresAt: null,
+            createdAt: new Date().toISOString(),
+          });
+        }
+        onClose();
+        return;
+      }
 
+      const retailPrice = price.trim() === "" ? null : Number(price);
+      const bulkPrice = wholesale && wholesalePrice.trim() !== "" ? Number(wholesalePrice) : null;
+      const numericCost = Number(cost);
+      const numericQuantity = Number(quantity);
+      if (!name.trim() || (retailPrice === null && bulkPrice === null) ||
+          (retailPrice !== null && (!Number.isFinite(retailPrice) || retailPrice < 0)) ||
+          (bulkPrice !== null && (!Number.isFinite(bulkPrice) || bulkPrice < 0)) ||
+          !Number.isFinite(numericCost) || numericCost < 0 ||
+          !Number.isInteger(numericQuantity) || numericQuantity < 0) {
+        throw new Error("أدخل سعرًا قطاعيًا أو سعر جملة واحدًا على الأقل، وتحقق من الكمية والتكلفة.");
+      }
+      await onSave({
+        id: initial?.id ?? makeId(),
+        name: name.trim(),
+        sku: sku.trim(),
+        barcode: barcode.trim(),
+        category: category.trim(),
+        costPrice: numericCost || 0,
+        price: retailPrice,
+        wholesalePrice: bulkPrice,
+        quantity: numericQuantity || 0,
+        color: color.trim(),
+        size: size.trim(),
+        partNumber: partNumber.trim(),
+        ingredients: ingredients.trim(),
+        expiresAt: expiresAt || null,
+        createdAt: initial?.createdAt ?? new Date().toISOString(),
+      });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "تعذر حفظ المنتج.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return <div className="of-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <section className="of-dialog of-product-dialog" role="dialog" aria-modal="true" aria-labelledby="product-dialog-title">
+      <header className="of-dialog-head">
+        <div><span className="of-kicker">بيانات المخزون</span><h2 id="product-dialog-title">{initial ? "تعديل المنتج" : "إضافة منتج جديد"}</h2></div>
+        <button onClick={onClose} aria-label="إغلاق"><X size={18} /></button>
+      </header>
+      <form onSubmit={submit}>
+        {!initial && <div className="of-product-mode-switch">
+          <button type="button" className={productMode === "single" ? "chosen" : ""} onClick={() => { setProductMode("single"); setError(""); }}>
+            <Package size={18} /><span><b>قطعة عادية</b><small>منتج واحد بلون ومقاس واحد أو بدون متغيرات</small></span>
+          </button>
+          <button type="button" className={productMode === "multi" ? "chosen" : ""} onClick={() => { setProductMode("multi"); setError(""); }}>
+            <Boxes size={18} /><span><b>قطعة متعددة</b><small>عدة ألوان ومقاسات مع مخزون مستقل لكل تركيبة</small></span>
+          </button>
+        </div>}
+
+        {productMode === "multi" && !initial ? <>
+          <div className="of-product-section"><b>بيانات المنتج</b><small>اسم المنتج ورقم القطعة اختياري.</small></div>
+          <div className="of-form-grid">
+            <Field label="اسم المنتج"><input autoFocus required value={name} onChange={e => setName(e.target.value)} placeholder="مثال: تيشيرت قطني" /></Field>
+            <Field label="الباركود العام (اختياري)"><input value={barcode} onChange={e => setBarcode(e.target.value)} placeholder="اختياري" /></Field>
+            <Field label="رقم القطعة / الموديل (اختياري)"><input value={partNumber} onChange={e => setPartNumber(e.target.value)} placeholder="اختياري" /></Field>
+          </div>
+          <div className="of-product-section"><b>بناء القطعة المتعددة</b><small>أضف الألوان والمقاسات ثم أنشئ التركيبات تلقائيًا.</small></div>
+          <div className="of-multi-option-builder">
+            <div className="of-multi-option-group">
+              <Field label="الألوان"><div className="of-multi-option-input"><input value={multiColorInput} onChange={e => setMultiColorInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addMultiValue("color"); } }} placeholder="اكتب اللون واضغط Enter" /><button type="button" className="of-button of-button-secondary" onClick={() => addMultiValue("color")}>إضافة</button></div></Field>
+              <div className="of-multi-chips">{multiColors.map(color => <span key={color}><b>{color}</b><button type="button" onClick={() => removeMultiValue("color", color)} aria-label="حذف اللون"><X size={13} /></button></span>)}{!multiColors.length && <small>لم تتم إضافة ألوان بعد.</small>}</div>
+            </div>
+            <div className="of-multi-option-group">
+              <Field label="المقاسات"><div className="of-multi-option-input"><input value={multiSizeInput} onChange={e => setMultiSizeInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addMultiValue("size"); } }} placeholder="اكتب المقاس واضغط Enter" /><button type="button" className="of-button of-button-secondary" onClick={() => addMultiValue("size")}>إضافة</button></div></Field>
+              <div className="of-multi-chips">{multiSizes.map(size => <span key={size}><b>{size}</b><button type="button" onClick={() => removeMultiValue("size", size)} aria-label="حذف المقاس"><X size={13} /></button></span>)}{!multiSizes.length && <small>لم تتم إضافة مقاسات بعد.</small>}</div>
+            </div>
+          </div>
+          <div className="of-multi-uniform">
+            <label><input type="checkbox" checked={multiUniformPriceEnabled} onChange={e => { const enabled=e.target.checked; setMultiUniformPriceEnabled(enabled); if (enabled && multiUniformPrice.trim()) applyMultiUniformField("price", multiUniformPrice); }} /><span>توحيد السعر القطاعي</span></label>
+            {multiUniformPriceEnabled && <input type="number" min={0} step={0.01} value={multiUniformPrice} onChange={e => { const v=e.target.value; setMultiUniformPrice(v); applyMultiUniformField("price", v); }} placeholder="السعر لكل التركيبات" />}
+            <label><input type="checkbox" checked={multiUniformQuantityEnabled} onChange={e => { const enabled=e.target.checked; setMultiUniformQuantityEnabled(enabled); if (enabled) applyMultiUniformField("quantity", multiUniformQuantity); }} /><span>توحيد الكمية</span></label>
+            {multiUniformQuantityEnabled && <input type="number" min={0} step={1} value={multiUniformQuantity} onChange={e => { const v=e.target.value; setMultiUniformQuantity(v); applyMultiUniformField("quantity", v); }} placeholder="الكمية لكل تركيبة" />}
+            {wholesale && <><label><input type="checkbox" checked={multiUniformWholesaleEnabled} onChange={e => { const enabled=e.target.checked; setMultiUniformWholesaleEnabled(enabled); if (enabled && multiUniformWholesalePrice.trim()) applyMultiUniformField("wholesalePrice", multiUniformWholesalePrice); }} /><span>توحيد سعر الجملة</span></label>
+            {multiUniformWholesaleEnabled && <input type="number" min={0} step={0.01} value={multiUniformWholesalePrice} onChange={e => { const v=e.target.value; setMultiUniformWholesalePrice(v); applyMultiUniformField("wholesalePrice", v); }} placeholder="سعر الجملة لكل التركيبات" />}</>}
+            <label><input type="checkbox" checked={multiUniformCostEnabled} onChange={e => { const enabled=e.target.checked; setMultiUniformCostEnabled(enabled); if (enabled && multiUniformCostPrice.trim()) applyMultiUniformField("costPrice", multiUniformCostPrice); }} /><span>توحيد التكلفة</span></label>
+            {multiUniformCostEnabled && <input type="number" min={0} step={0.01} value={multiUniformCostPrice} onChange={e => { const v=e.target.value; setMultiUniformCostPrice(v); applyMultiUniformField("costPrice", v); }} placeholder="التكلفة لكل التركيبات" />}
+          </div>
+          <div className="of-multi-actions"><button type="button" className="of-button of-button-primary" onClick={generateMultiVariants}><Boxes size={16} /> إنشاء التركيبات</button>{multiVariants.length > 0 && <span>{multiVariants.length} تركيبة جاهزة</span>}</div>
+          {multiVariants.length > 0 && <div className="of-variants-table-wrap"><div className="of-variants-table">
+            <div className="of-variants-head"><span>اللون</span><span>المقاس</span><span>الباركود</span><span>القطاعي</span>{wholesale && <span>الجملة</span>}<span>التكلفة</span><span>الكمية</span><span>حذف</span></div>
+            {multiVariants.map((variant, index) => <div className="of-variant-row" key={variant.color + "-" + variant.size + "-" + index}>
+              <b>{variant.color || "—"}</b><b>{variant.size || "—"}</b>
+              <input value={variant.barcode} onChange={e => updateMultiVariant(index, "barcode", e.target.value)} placeholder="اختياري" />
+              <input type="number" min={0} step={0.01} value={variant.price} onChange={e => updateMultiVariant(index, "price", e.target.value)} placeholder="0" />
+              {wholesale && <input type="number" min={0} step={0.01} value={variant.wholesalePrice} onChange={e => updateMultiVariant(index, "wholesalePrice", e.target.value)} placeholder="0" />}
+              <input type="number" min={0} step={0.01} value={variant.costPrice} onChange={e => updateMultiVariant(index, "costPrice", e.target.value)} placeholder="اختياري" />
+              <input type="number" min={0} step={1} value={variant.quantity} onChange={e => updateMultiVariant(index, "quantity", e.target.value)} />
+              <button type="button" className="of-variant-remove" onClick={() => setMultiVariants(current => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="حذف التركيبة" title="حذف التركيبة"><X size={16} /></button>
+            </div>)}
+          </div></div>}
+          <div className="of-role-hint"><Boxes size={17} /><span>كل تركيبة تُحفظ كمنتج مستقل بمخزون وباركود مستقلين، ويمكن بيع الأسود M بدون التأثير على الأبيض L.</span></div>
+        </> : <>
+          <div className="of-form-grid">
+            {canEditDetails && <>
+              <Field label="اسم المنتج"><input autoFocus required value={name} onChange={e => setName(e.target.value)} placeholder="اسم المنتج" /></Field>
+              <Field label="التصنيف"><input value={category} onChange={e => setCategory(e.target.value)} placeholder="مثال: إكسسوارات" /></Field>
+              <Field label="رمز المنتج (SKU)"><input value={sku} onChange={e => setSku(e.target.value)} placeholder="اختياري" /></Field>
+              <Field label="الباركود"><input value={barcode} onChange={e => setBarcode(e.target.value)} placeholder="اختياري" /></Field>
+              {ingredientsEnabled ? <Field label="مكونات المنتج (اختياري)"><textarea value={ingredients} onChange={e => setIngredients(e.target.value)} maxLength={1000} rows={3} placeholder="اكتب مكونات المنتج التي ستظهر للعميل في منيو QR" /></Field> : <>
+                <Field label="اللون"><input value={color} onChange={e => setColor(e.target.value)} placeholder="اختياري" /></Field><Field label="المقاس"><input value={size} onChange={e => setSize(e.target.value)} placeholder="اختياري" /></Field>
+                <Field label="رقم القطعة"><input value={partNumber} onChange={e => setPartNumber(e.target.value)} placeholder="اختياري" /></Field>
+              </>}
+              <Field label="تاريخ انتهاء الصلاحية"><input type="date" value={expiresAt} onChange={e => setExpiresAt(e.target.value)} /></Field>
+            </>}
+            <Field label={`سعر القطاعي (${currency})`} hint="يمكن تركه فارغًا إذا كان المنتج يباع بالجملة فقط."><input type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)} /></Field>
+            <Field label={`سعر التكلفة (${currency})`}><input type="number" min="0" step="0.01" value={cost} onChange={e => setCost(e.target.value)} /></Field>
+            {wholesale && <Field label={`سعر الجملة (${currency})`} hint="يمكن تركه فارغًا إذا لم يكن للمنتج سعر جملة."><input type="number" min="0" step="0.01" value={wholesalePrice} onChange={e => setWholesalePrice(e.target.value)} placeholder="اختياري" /></Field>}
+            <Field label="الكمية المتاحة"><input required type="number" min="0" step="1" value={quantity} onChange={e => setQuantity(e.target.value)} /></Field>
+          </div>
+        </>}
+
+        {error && <div className="of-error"><CircleAlert size={15} />{error}</div>}
+        <div className="of-dialog-actions"><button type="button" className="of-button of-button-secondary" onClick={onClose}>إلغاء</button><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ المنتج"}</button></div>
+      </form>
+    </section>
+  </div>;
+}
 function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashierName, onComplete, onHold, onRelease, onReturns }: {
   state: OfflineState;
   licenseActive: boolean;
@@ -1154,7 +1359,7 @@ function PosPage({ state, licenseActive, canSellRetail, canSellWholesale, cashie
       <div className="of-pos-toolbar"><label className="of-search"><Search size={17} /><input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && query.trim()) addScannedProduct(query); }} placeholder="ابحث باسم المنتج أو الكود أو امسح الباركود..." /></label>
         {wholesaleEnabled && (canSellRetail || canSellWholesale) && <div className={`of-sale-tabs ${canSellRetail && canSellWholesale ? "" : "of-sale-tabs-single"}`} role="group" aria-label="نوع البيع">{canSellRetail && <button className={saleType === "retail" ? "chosen" : ""} aria-pressed={saleType === "retail"} onClick={() => switchSaleType("retail")}>القطاعي</button>}{canSellWholesale && <button className={saleType === "wholesale" ? "chosen" : ""} aria-pressed={saleType === "wholesale"} onClick={() => switchSaleType("wholesale")}>الجملة</button>}</div>}
       </div>
-      {visibleProducts.length ? <div className="of-pos-grid">{visibleProducts.map((product) => <button key={product.id} className="of-pos-product" onClick={() => add(product)}><span className="of-pos-product-icon"><Package size={19} /></span><b>{product.name}</b><small>{product.sku || product.category || "منتج"}</small><strong>{money(priceFor(product) ?? 0, currency)}</strong><i>متاح {digits(product.quantity)}</i><span className="of-pos-add"><Plus size={15} /></span></button>)}</div> : <EmptyState icon={Package} title={query ? "لا توجد منتجات مطابقة" : "لا توجد منتجات جاهزة للبيع"} copy={query ? "جرّب البحث باسم المنتج أو رمزه." : saleType === "wholesale" ? "لا توجد منتجات متاحة بسعر الجملة. أضف أسعار الجملة من المخزون." : "أضف منتجات بسعر قطاعي إلى المخزون لتظهر هنا."} />}
+      {visibleProducts.length ? <div className="of-pos-grid">{visibleProducts.map((product) => <button key={product.id} className="of-pos-product" onClick={() => add(product)}><span className="of-pos-product-icon"><Package size={19} /></span><b>{product.name}</b>{(product.color || product.size) && <span className="of-pos-variants">{product.color && <span><small>اللون</small><strong>{product.color}</strong></span>}{product.size && <span><small>المقاس</small><strong>{product.size}</strong></span>}</span>}<small>{product.sku || product.category || "منتج"}</small><strong>{money(priceFor(product) ?? 0, currency)}</strong><i>متاح {digits(product.quantity)}</i><span className="of-pos-add"><Plus size={15} /></span></button>)}</div> : <EmptyState icon={Package} title={query ? "لا توجد منتجات مطابقة" : "لا توجد منتجات جاهزة للبيع"} copy={query ? "جرّب البحث باسم المنتج أو رمزه." : saleType === "wholesale" ? "لا توجد منتجات متاحة بسعر الجملة. أضف أسعار الجملة من المخزون." : "أضف منتجات بسعر قطاعي إلى المخزون لتظهر هنا."} />}
     </section>
       <aside className="of-panel of-cart-panel"><header className="of-cart-head"><div><h2>الطلب الحالي</h2><p>{digits(cartLines.reduce((sum, row) => sum + row.quantity, 0))} وحدة · {saleType === "retail" ? "قطاعي" : "جملة"}</p></div><button className="of-clear-cart" onClick={resetSale} disabled={!cartLines.length}>تفريغ</button></header>
         <div className="of-invoice-reference"><span>رقم الفاتورة</span><b dir="ltr">{invoiceReference}</b></div>
