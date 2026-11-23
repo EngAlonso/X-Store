@@ -71,6 +71,51 @@ function contentType(filePath) {
   }
 }
 
+function serializeLicensePayload(payload) {
+  return JSON.stringify({
+    version: payload.version,
+    licenseId: payload.licenseId,
+    installationId: payload.installationId,
+    ...(payload.version === 2 && payload.deviceFingerprint
+      ? { deviceFingerprint: {
+          version: 1,
+          windowsMachineGuid: payload.deviceFingerprint.windowsMachineGuid,
+          motherboard: payload.deviceFingerprint.motherboard,
+          internalDisks: [...payload.deviceFingerprint.internalDisks].sort(),
+          memoryModules: [...payload.deviceFingerprint.memoryModules].sort(),
+        } }
+      : {}),
+    storeName: payload.storeName,
+    plan: payload.plan,
+    issuedAt: payload.issuedAt,
+    expiresAt: payload.expiresAt,
+  });
+}
+
+function verifyLicenseSignature(license, publicKeyBase64) {
+  if (!license || !license.payload || typeof publicKeyBase64 !== "string" || !publicKeyBase64) {
+    throw new Error("تعذر التحقق من توقيع الترخيص.");
+  }
+  let publicKey;
+  try {
+    publicKey = crypto.createPublicKey({
+      key: Buffer.from(publicKeyBase64, "base64"),
+      format: "der",
+      type: "spki",
+    });
+  } catch {
+    throw new Error("مفتاح التحقق من الترخيص غير صالح.");
+  }
+  const signature = Buffer.from(String(license.signature || ""), "base64");
+  const valid = crypto.verify(
+    null,
+    Buffer.from(serializeLicensePayload(license.payload), "utf8"),
+    publicKey,
+    signature,
+  );
+  if (!valid) throw new Error("الترخيص غير موثوق أو تم تعديله.");
+}
+
 function getLanAddresses(port, token) {
   const addresses = [];
   for (const interfaces of Object.values(os.networkInterfaces())) {
@@ -86,7 +131,7 @@ function getLanAddresses(port, token) {
   return [...new Set(addresses)];
 }
 
-async function startLanServer({ staticRoot, userDataPath, readState, saveState }) {
+async function startLanServer({ staticRoot, userDataPath, readState, saveState, getClockStatus, getHardwareFingerprint, licensePublicKey }) {
   const tokenPath = path.join(userDataPath, "lan-server-token.txt");
   let token;
   try {
@@ -99,9 +144,30 @@ async function startLanServer({ staticRoot, userDataPath, readState, saveState }
 
   const authorized = (req) => getToken(req) === token;
 
-  function assertLicenseActive(state) {
+  async function assertLicenseActive(state) {
     const license = state && state.license;
     if (!license || !license.payload) throw new Error("الترخيص غير مفعّل.");
+    verifyLicenseSignature(license, licensePublicKey);
+    if (license.payload.version !== 2 || !license.payload.deviceFingerprint) {
+      throw new Error("هذا الترخيص قديم وغير صالح للنسخة المثبتة.");
+    }
+    if (typeof getHardwareFingerprint === "function") {
+      const current = await getHardwareFingerprint();
+      const expected = license.payload.deviceFingerprint;
+      const same = expected.windowsMachineGuid === current.deviceFingerprint.windowsMachineGuid &&
+        expected.motherboard === current.deviceFingerprint.motherboard &&
+        [...expected.internalDisks].sort().join("|") === [...current.deviceFingerprint.internalDisks].sort().join("|") &&
+        [...expected.memoryModules].sort().join("|") === [...current.deviceFingerprint.memoryModules].sort().join("|") &&
+        license.payload.installationId === current.installationId;
+      if (!same) throw new Error("الترخيص مرتبط بجهاز آخر.");
+    }
+    if (Date.parse(license.payload.issuedAt) > Date.now() + 5 * 60 * 1000) {
+      throw new Error("تاريخ إصدار الترخيص لاحق لتاريخ هذا الجهاز.");
+    }
+    if (typeof getClockStatus === "function") {
+      const clock = await getClockStatus();
+      if (!clock.valid) throw new Error(clock.message || "تم اكتشاف رجوع ساعة Windows للخلف.");
+    }
     if (license.payload.plan !== "lifetime") {
       const expiresAt = Date.parse(String(license.payload.expiresAt || "") + "T23:59:59");
       if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
@@ -112,7 +178,7 @@ async function startLanServer({ staticRoot, userDataPath, readState, saveState }
 
   async function saveClientState(nextState) {
     const current = await readState();
-    assertLicenseActive(current);
+    await assertLicenseActive(current);
     const protectedState = {
       ...nextState,
       license: current.license,
@@ -132,7 +198,7 @@ async function startLanServer({ staticRoot, userDataPath, readState, saveState }
 
         if (req.method === "GET" && url.pathname === "/api/offline/state") {
           const state = await readState();
-          assertLicenseActive(state);
+          await assertLicenseActive(state);
           return json(res, 200, state);
         }
 
@@ -148,7 +214,7 @@ async function startLanServer({ staticRoot, userDataPath, readState, saveState }
             return json(res, 400, { error: "نوع النسخة الاحتياطية غير مدعوم." });
           }
           const state = await readState();
-          assertLicenseActive(state);
+          await assertLicenseActive(state);
           const now = new Date().toISOString();
           const snapshot = backupType === "full"
             ? {
