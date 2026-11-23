@@ -668,3 +668,5 @@
 
 .of-locked-store-type{min-height:44px;display:flex;align-items:center;gap:9px;padding:0 12px;border:1px solid var(--of-border,#dbe5e0);border-radius:10px;background:var(--of-soft,#f5f8f7);color:var(--of-text,#1f2b27)}
 .of-locked-store-type small{margin-inline-start:auto;color:var(--of-muted,#71807b);font-size:12px}
+
+.of-lan-access{margin-top:14px;padding:12px;border:1px solid var(--of-border,#dbe5e0);border-radius:12px;background:var(--of-soft,#f5f8f7);display:grid;gap:7px}.of-lan-access b{font-size:13px}.of-lan-access small{color:var(--of-muted,#71807b);line-height:1.5}.of-lan-access code{display:block;direction:ltr;text-align:left;overflow:auto;padding:7px 9px;border-radius:8px;background:#fff;border:1px solid var(--of-border,#dbe5e0);font-size:11px;user-select:all}
