@@ -116,6 +116,12 @@ export async function verifyOfflineLicenseSignature(license: OfflineLicense): Pr
   if (Date.parse(license.payload.issuedAt) > Date.now() + 5 * 60 * 1000) {
     throw new Error("تاريخ إصدار ملف التفعيل لاحق لتاريخ هذا الجهاز.");
   }
+  if (license.payload.plan !== "lifetime") {
+    const expiresAt = Date.parse(String(license.payload.expiresAt || "") + "T23:59:59");
+    if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
+      throw new Error("ملف التفعيل منتهٍ. اطلب ملف ترخيص جديد من إدارة X-Store.");
+    }
+  }
 }
 
 export function getOfflineLicenseDeviceChanges(
