@@ -1498,6 +1498,7 @@ function SettingsPage({ state, licenseActive, hardwareStatus, desktop, onRefresh
   const [vatRate, setVatRate] = useState(String(state.store?.vatRate ?? 0));
   const [wholesaleEnabled, setWholesaleEnabled] = useState(state.store?.wholesaleEnabled ?? false);
   const [invoiceFormat, setInvoiceFormat] = useState<NonNullable<OfflineState["store"]>["invoiceFormat"]>(state.store?.invoiceFormat ?? "wide");
+  const [invoiceSettings, setInvoiceSettings] = useState({ ...DEFAULT_OFFLINE_INVOICE_SETTINGS, ...(state.store?.invoiceSettings ?? {}) });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [activationError, setActivationError] = useState("");
@@ -1507,11 +1508,16 @@ function SettingsPage({ state, licenseActive, hardwareStatus, desktop, onRefresh
   const active = licenseActive;
   const licenseNeedsReactivation = Boolean(hardwareStatus.inspectionError || hardwareStatus.changes.length > 0);
   const supports = OFFLINE_STORE_TYPES.find((item) => item.value === storeType)?.supportsWholesale ?? false;
+  const invoiceOptions = [
+    ["showCustomer","الاسم"],["showShop","المحل"],["showPhone","هاتف العميل"],["showCashier","الموظف"],
+    ["showProduct","الصنف"],["showQuantity","الكمية"],["showUnitPrice","سعر الوحدة"],["showTotal","إجمالي البيع"],
+    ["showPaid","المدفوع"],["showBalance","الباقي"],["showDateTime","التاريخ والوقت"],
+  ] as const;
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim() || !businessType.trim()) { setError("اسم المتجر والنشاط مطلوبان."); return; }
     setSaving(true); setError("");
-    try { await onSave({ name: name.trim(), businessType: businessType.trim(), storeType, currency, vatRate: Number(vatRate) || 0, wholesaleEnabled: supports && wholesaleEnabled, invoiceFormat }); }
+    try { await onSave({ name: name.trim(), businessType: businessType.trim(), storeType, currency, vatRate: Number(vatRate) || 0, wholesaleEnabled: supports && wholesaleEnabled, invoiceFormat, invoiceSettings }); }
     catch (err) { setError(err instanceof Error ? err.message : "تعذر حفظ الإعدادات."); } finally { setSaving(false); }
   }
   async function exportActivationRequest() {
@@ -1567,7 +1573,17 @@ function SettingsPage({ state, licenseActive, hardwareStatus, desktop, onRefresh
         { value: "thermal_80mm", title: "حراري 80 مم", detail: "طابعة نقاط بيع", icon: Receipt },
         { value: "thermal_58mm", title: "حراري 58 مم", detail: "طابعة صغيرة", icon: Printer },
       ] as const).map(({ value, title, detail, icon: Icon }) => <button key={value} type="button" className={invoiceFormat === value ? "chosen" : ""} onClick={() => setInvoiceFormat(value)}><Icon size={18} /><b>{title}</b><small>{detail}</small></button>)}</div></fieldset>
-      {error && <div className="of-error"><CircleAlert size={15} />{error}</div>}<div className="of-settings-save"><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ التغييرات"}</button></div>
+      <fieldset className="of-invoice-settings-picker"><legend>بيانات الفاتورة</legend><p>اختار البيانات التي تظهر عند الطباعة والتصدير.</p>
+        <label className="of-invoice-header-toggle"><input type="checkbox" checked={invoiceSettings.showHeader} onChange={e=>setInvoiceSettings(v=>({...v,showHeader:e.target.checked}))}/><span>إظهار رأس الفاتورة</span></label>
+        <div className="of-invoice-settings-grid">{invoiceOptions.map(([key,label])=><label key={key}><input type="checkbox" checked={Boolean(invoiceSettings[key])} onChange={e=>setInvoiceSettings(v=>({...v,[key]:e.target.checked}))}/><span>{label}</span></label>)}</div>
+        <div className="of-form-grid">
+          <Field label="اسم المحل — السطر الأول"><input maxLength={120} value={invoiceSettings.headerStoreName} onChange={e=>setInvoiceSettings(v=>({...v,headerStoreName:e.target.value}))}/></Field>
+          <Field label="اسم صاحب المحل — السطر الثاني"><input maxLength={120} value={invoiceSettings.headerOwnerName} onChange={e=>setInvoiceSettings(v=>({...v,headerOwnerName:e.target.value}))}/></Field>
+          <Field label="الجملة — السطر الثالث"><input maxLength={240} value={invoiceSettings.headerMessage} onChange={e=>setInvoiceSettings(v=>({...v,headerMessage:e.target.value}))}/></Field>
+          <Field label="أرقام التليفونات — السطر الرابع"><input maxLength={160} value={invoiceSettings.headerPhones} onChange={e=>setInvoiceSettings(v=>({...v,headerPhones:e.target.value}))}/></Field>
+        </div>
+      </fieldset>
+            {error && <div className="of-error"><CircleAlert size={15} />{error}</div>}<div className="of-settings-save"><button className="of-button of-button-primary" disabled={saving}>{saving ? "جارٍ الحفظ..." : "حفظ التغييرات"}</button></div>
      </form></section>
        <aside className="of-panel of-license-panel"><span className={`of-license-large-icon ${state.license && !active ? "expired" : ""}`}><ShieldCheck size={22} /></span><span className="of-kicker">حالة الترخيص</span><h2>{active ? "ترخيصك نشط" : state.license ? licenseNeedsReactivation ? "الترخيص يحتاج إعادة تفعيل" : "الترخيص منتهٍ" : "بانتظار ملف التفعيل"}</h2>{!active && <div className="of-error"><CircleAlert size={15} />البرنامج متوقف حتى إعادة التفعيل. بيانات المتجر والنسخ الاحتياطية محفوظة.</div>}<p>الترخيص مربوط بالبوردة والهارد الداخلي وكل شريحة RAM. تغيير أيٍّ منها أو إعادة تثبيت Windows يتطلب تفعيلًا جديدًا منك. فلاشة النسخ الاحتياطي لا تؤثر على التفعيل.</p><div className="of-license-details"><div><span>اسم المتجر</span><b>{state.store?.name ?? "—"}</b></div><div><span>الخطة</span><b>{state.license ? licensePlanNames[state.license.payload.plan] : "غير مفعّل"}</b></div><div><span>تاريخ الإصدار</span><b>{state.license?.payload.issuedAt.slice(0, 10) ?? "—"}</b></div><div><span>تاريخ الانتهاء</span><b>{state.license ? state.license.payload.expiresAt ?? "دائم" : "—"}</b></div></div><div className="of-license-actions"><button type="button" className="of-button of-button-secondary" onClick={() => void exportActivationRequest()}><ArrowDownToLine size={15} /> تنزيل طلب التفعيل</button><Field label="استيراد ملف التفعيل"><input type="file" accept=".json,application/json" onChange={(event) => void importActivationFile(event)} disabled={activationBusy} /></Field></div>{activationError && <div className="of-error"><CircleAlert size={15} />{activationError}</div>}{activationNotice && <div className="of-inline-hint">{activationNotice}</div>}<div className="of-license-caption"><LockKeyhole size={14} /> عند توقف الترخيص يتوقف البيع، وتبقى بيانات المتجر والنسخ الاحتياطية متاحة.</div></aside></div>
      <HardwareReport state={state} status={hardwareStatus} desktop={desktop} checking={hardwareChecking} onRefresh={() => void refreshHardware()} />
