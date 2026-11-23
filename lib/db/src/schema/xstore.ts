@@ -335,9 +335,9 @@ export const xstoreSaleItems = pgTable(
     saleId: uuid("sale_id")
       .notNull()
       .references(() => xstoreSales.id, { onDelete: "cascade" }),
-    productId: uuid("product_id")
-      .notNull()
-      .references(() => xstoreProducts.id),
+    productId: uuid("product_id").references(() => xstoreProducts.id, {
+      onDelete: "set null",
+    }),
     productName: text("product_name"),
     quantity: integer("quantity").notNull(),
     unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull(),
@@ -399,9 +399,9 @@ export const xstoreReturns = pgTable(
     saleId: uuid("sale_id")
       .notNull()
       .references(() => xstoreSales.id),
-    productId: uuid("product_id")
-      .notNull()
-      .references(() => xstoreProducts.id),
+    productId: uuid("product_id").references(() => xstoreProducts.id, {
+      onDelete: "set null",
+    }),
     quantity: integer("quantity").notNull(),
     refundAmount: numeric("refund_amount", {
       precision: 12,
