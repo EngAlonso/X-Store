@@ -543,6 +543,12 @@ router.delete(
             [tenantUser.id],
           );
         }
+        // Audit logs are historical records. Remove this tenant's audit rows as well
+        // so deleting a store releases all of its database space.
+        await client.query(
+          `DELETE FROM ${qualifiedTable("xstore_audit_logs")} WHERE tenant_id::text = $1`,
+          [row.id],
+        );
         auditTenantId = null;
       } else if (table.name === "xstore_users") {
         if (
