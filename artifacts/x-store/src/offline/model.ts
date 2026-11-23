@@ -31,6 +31,17 @@ export type OfflinePaymentMethod = "cash" | "card" | "wallet" | "instapay" | "tr
 export type OfflineSaleType = "retail" | "wholesale";
 export type OfflineOrderType = "internal" | "external";
 export type OfflineInvoiceFormat = (typeof OFFLINE_INVOICE_FORMATS)[number];
+export interface OfflineInvoiceSettings {
+  showCustomer: boolean; showShop: boolean; showPhone: boolean; showCashier: boolean;
+  showProduct: boolean; showQuantity: boolean; showUnitPrice: boolean; showTotal: boolean;
+  showPaid: boolean; showBalance: boolean; showDateTime: boolean; showHeader: boolean;
+  headerStoreName: string; headerOwnerName: string; headerMessage: string; headerPhones: string;
+}
+export const DEFAULT_OFFLINE_INVOICE_SETTINGS: OfflineInvoiceSettings = {
+  showCustomer:true, showShop:true, showPhone:true, showCashier:true, showProduct:true,
+  showQuantity:true, showUnitPrice:true, showTotal:true, showPaid:true, showBalance:true,
+  showDateTime:true, showHeader:true, headerStoreName:"", headerOwnerName:"", headerMessage:"", headerPhones:"",
+};
 export type OfflineTeamPermission = (typeof OFFLINE_TEAM_PERMISSIONS)[number];
 export type OfflineLicensePlan = (typeof OFFLINE_LICENSE_PLANS)[number];
 
@@ -79,6 +90,7 @@ export interface OfflineStore {
   vatRate: number;
   wholesaleEnabled: boolean;
   invoiceFormat: OfflineInvoiceFormat;
+  invoiceSettings: OfflineInvoiceSettings;
 }
 
 export interface OfflineProduct {
@@ -231,7 +243,7 @@ export interface OfflineBackupInfo {
 }
 
 export interface OfflineState {
-  schemaVersion: 3;
+  schemaVersion: 4;
   setupComplete: boolean;
   store: OfflineStore | null;
   license: OfflineLicense | null;
@@ -306,8 +318,9 @@ export function calculateSaleItemReturn(
 }
 
 export function isOfflineState(value: unknown): value is OfflineState {
-  if (!isRecord(value) || value.schemaVersion !== 3) return false;
+  if (!isRecord(value) || (value.schemaVersion !== 3 && value.schemaVersion !== 4)) return false;
   const state = value as unknown as OfflineState;
+  if (state.schemaVersion === 3 && state.store) (state.store as any).invoiceSettings = { ...DEFAULT_OFFLINE_INVOICE_SETTINGS };
   if (
     typeof state.setupComplete !== "boolean" ||
     !Array.isArray(state.products) ||
@@ -330,7 +343,8 @@ export function isOfflineState(value: unknown): value is OfflineState {
     !Number.isFinite(state.store.vatRate) ||
     state.store.vatRate < 0 ||
     state.store.vatRate > 100 ||
-    typeof state.store.wholesaleEnabled !== "boolean"
+    typeof state.store.wholesaleEnabled !== "boolean" ||
+    !isRecord(state.store.invoiceSettings)
   )) return false;
 
   if (state.license !== null && !isOfflineLicense(state.license)) return false;
