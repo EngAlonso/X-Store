@@ -21,7 +21,7 @@ function isLanClient(): boolean {
 function lanApiUrl(path: string): string {
   const token = new URLSearchParams(window.location.search).get("token");
   if (!token) throw new Error("رابط السيرفر المحلي غير صالح أو يفتقد رمز الوصول.");
-  return path + "?token=" + encodeURIComponent(token);
+  return path + (path.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(token);
 }
 
 async function lanRequest(path: string, init?: RequestInit): Promise<any> {
@@ -119,7 +119,7 @@ export async function chooseOfflineBackupFolder(): Promise<string | null> {
 
 export async function createManualOfflineBackup(backupType: OfflineBackupType = "full"): Promise<OfflineState> {
   if (window.xStoreOffline) return window.xStoreOffline.createBackup(backupType);
-  if (isLanClient()) return lanRequest("/api/offline/backup&type=" + encodeURIComponent(backupType), { method: "POST" });
+  if (isLanClient()) return lanRequest("/api/offline/backup?type=" + encodeURIComponent(backupType), { method: "POST" });
   const state = await loadOfflineState();
   const now = new Date().toISOString();
   const snapshot: OfflineState = backupType === "full"
