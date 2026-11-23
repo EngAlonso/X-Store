@@ -1018,6 +1018,11 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 .product-tile:hover:not(:disabled) { transform:translateY(-2px);border-color:#b8cdbd;box-shadow:0 7px 20px #183b210e; }
 .product-tile>b { width:100%;margin-top:6px;color:#334239;font-size:calc(11px * var(--xstore-font-scale));white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .product-tile>small { margin-top:4px;color:#929d95;font-size:calc(9px * var(--xstore-font-scale)); }
+.product-tile .tile-variants { width:100%;display:flex;align-items:center;gap:5px;margin-top:5px;min-width:0; }
+.product-tile .tile-variants>span { min-width:0;display:flex;align-items:center;gap:4px;padding:3px 6px;border:1px solid #dfe8df;border-radius:6px;background:#f7faf7; }
+.product-tile .tile-variants small { color:#748178;font-size:calc(8px * var(--xstore-font-scale));font-weight:700; }
+.product-tile .tile-variants strong { color:#263b2c;font-size:calc(10px * var(--xstore-font-scale));font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+
 .tile-category { position:absolute;top:12px;left:11px;color:#87948a;font-size:calc(8px * var(--xstore-font-scale)); }
 .product-art { position:relative;width:51px;height:51px;display:grid;place-items:center;border-radius:11px;background:#edf4ef;color:#4d825b; }
 .product-symbol { position:relative;display:block;font-family:system-ui,"Apple Color Emoji","Segoe UI Emoji",sans-serif;font-size:calc(23px * var(--xstore-font-scale));line-height:1; }
