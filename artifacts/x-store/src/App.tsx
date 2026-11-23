@@ -2217,17 +2217,47 @@ function InventoryPage() {
   const [productMode, setProductMode] = useState<'single' | 'multi'>('single');
   const [multiColorInput, setMultiColorInput] = useState('');
   const [multiSizeInput, setMultiSizeInput] = useState('');
+  const [multiColors, setMultiColors] = useState<string[]>([]);
+  const [multiSizes, setMultiSizes] = useState<string[]>([]);
+  const [multiUniformPriceEnabled, setMultiUniformPriceEnabled] = useState(false);
+  const [multiUniformPrice, setMultiUniformPrice] = useState('');
+  const [multiUniformQuantityEnabled, setMultiUniformQuantityEnabled] = useState(false);
+  const [multiUniformQuantity, setMultiUniformQuantity] = useState('0');
   const [multiVariants, setMultiVariants] = useState<Array<{color:string;size:string;barcode:string;price:string;wholesalePrice:string;costPrice:string;quantity:string}>>([]);
 
   function resetMultiProductForm() {
     setProductMode('single');
     setMultiColorInput('');
     setMultiSizeInput('');
+    setMultiColors([]);
+    setMultiSizes([]);
+    setMultiUniformPriceEnabled(false);
+    setMultiUniformPrice('');
+    setMultiUniformQuantityEnabled(false);
+    setMultiUniformQuantity('0');
     setMultiVariants([]);
   }
+  function addMultiValue(type:'color'|'size') {
+    const value = (type === 'color' ? multiColorInput : multiSizeInput).trim();
+    if (!value) return;
+    if (type === 'color') {
+      setMultiColors(current => current.includes(value) ? current : [...current, value]);
+      setMultiColorInput('');
+    } else {
+      setMultiSizes(current => current.includes(value) ? current : [...current, value]);
+      setMultiSizeInput('');
+    }
+  }
+  function removeMultiValue(type:'color'|'size', value:string) {
+    if (type === 'color') setMultiColors(current => current.filter(item => item !== value));
+    else setMultiSizes(current => current.filter(item => item !== value));
+  }
+  function applyMultiUniformField(field:'price'|'quantity', value:string) {
+    setMultiVariants(current => current.map(item => ({...item, [field]:value})));
+  }
   function generateMultiVariants() {
-    const colors = Array.from(new Set(multiColorInput.split(',').map(value => value.trim()).filter(Boolean)));
-    const sizes = Array.from(new Set(multiSizeInput.split(',').map(value => value.trim()).filter(Boolean)));
+    const colors = multiColors;
+    const sizes = multiSizes;
     if (!colors.length && !sizes.length) {
       setPriceFormError('أدخل لونًا أو مقاسًا واحدًا على الأقل لإنشاء القطعة المتعددة.');
       return;
@@ -2235,10 +2265,22 @@ function InventoryPage() {
     const next = (colors.length ? colors : ['']).flatMap(color =>
       (sizes.length ? sizes : ['']).map(size => {
         const existing = multiVariants.find(item => item.color === color && item.size === size);
-        return existing || { color, size, barcode:'', price:'', wholesalePrice:'', costPrice:'', quantity:'0' };
+        return existing || {
+          color,
+          size,
+          barcode:'',
+          price:multiUniformPriceEnabled ? multiUniformPrice : '',
+          wholesalePrice:'',
+          costPrice:'',
+          quantity:multiUniformQuantityEnabled ? multiUniformQuantity : '0',
+        };
       }),
     );
-    setMultiVariants(next);
+    setMultiVariants(next.map(item => ({
+      ...item,
+      ...(multiUniformPriceEnabled ? {price:multiUniformPrice} : {}),
+      ...(multiUniformQuantityEnabled ? {quantity:multiUniformQuantity} : {}),
+    })));
     setPriceFormError('');
   }
   function updateMultiVariant(index:number, field:keyof typeof multiVariants[number], value:string) {
@@ -2489,18 +2531,64 @@ function InventoryPage() {
               <span className="product-form-section-number">02</span>
               <div><b>بناء القطعة المتعددة</b><small>اكتب الألوان والمقاسات ثم أنشئ التركيبات تلقائيًا.</small></div>
             </div>
-            <label className="field product-form-field">
-              <span>الألوان</span>
-              <input value={multiColorInput} onChange={e => setMultiColorInput(e.target.value)} placeholder="أسود، أبيض، كحلي" />
-              <small className="field-hint">افصل بين الألوان بفاصلة.</small>
-            </label>
-            <label className="field product-form-field">
-              <span>المقاسات</span>
-              <input value={multiSizeInput} onChange={e => setMultiSizeInput(e.target.value)} placeholder="S، M، L، XL" />
-              <small className="field-hint">يمكن ترك المقاسات فارغة إذا كان المنتج يعتمد على اللون فقط.</small>
-            </label>
+            <div className="multi-option-builder field-wide">
+              <div className="multi-option-group">
+                <label className="field">
+                  <span>الألوان</span>
+                  <div className="multi-option-input">
+                    <input value={multiColorInput} onChange={e => setMultiColorInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMultiValue('color'); } }} placeholder="اكتب اللون واضغط Enter" />
+                    <button type="button" className="button button-quiet" onClick={() => addMultiValue('color')}>إضافة</button>
+                  </div>
+                </label>
+                <div className="multi-option-chips">
+                  {multiColors.map(color => <span className="multi-option-chip" key={color}><b>{color}</b><button type="button" onClick={() => removeMultiValue('color', color)} aria-label="حذف اللون"><X size={13}/></button></span>)}
+                  {!multiColors.length && <small>لم تتم إضافة ألوان بعد.</small>}
+                </div>
+              </div>
+              <div className="multi-option-group">
+                <label className="field">
+                  <span>المقاسات</span>
+                  <div className="multi-option-input">
+                    <input value={multiSizeInput} onChange={e => setMultiSizeInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addMultiValue('size'); } }} placeholder="اكتب المقاس واضغط Enter" />
+                    <button type="button" className="button button-quiet" onClick={() => addMultiValue('size')}>إضافة</button>
+                  </div>
+                </label>
+                <div className="multi-option-chips">
+                  {multiSizes.map(size => <span className="multi-option-chip" key={size}><b>{size}</b><button type="button" onClick={() => removeMultiValue('size', size)} aria-label="حذف المقاس"><X size={13}/></button></span>)}
+                  {!multiSizes.length && <small>لم تتم إضافة مقاسات بعد.</small>}
+                </div>
+              </div>
+            </div>
+            <div className="multi-uniform-settings field-wide">
+              <label className="multi-uniform-toggle">
+                <input type="checkbox" checked={multiUniformPriceEnabled} onChange={e => {
+                  const enabled = e.target.checked;
+                  setMultiUniformPriceEnabled(enabled);
+                  if (enabled && multiUniformPrice.trim()) applyMultiUniformField('price', multiUniformPrice);
+                }} />
+                <span>توحيد السعر القطاعي</span>
+              </label>
+              {multiUniformPriceEnabled && <input className="multi-uniform-input" type="number" min={0} step={0.01} value={multiUniformPrice} onChange={e => {
+                const value = e.target.value;
+                setMultiUniformPrice(value);
+                applyMultiUniformField('price', value);
+              }} placeholder="السعر لكل التركيبات" />}
+              <label className="multi-uniform-toggle">
+                <input type="checkbox" checked={multiUniformQuantityEnabled} onChange={e => {
+                  const enabled = e.target.checked;
+                  setMultiUniformQuantityEnabled(enabled);
+                  if (enabled) applyMultiUniformField('quantity', multiUniformQuantity);
+                }} />
+                <span>توحيد الكمية</span>
+              </label>
+              {multiUniformQuantityEnabled && <input className="multi-uniform-input" type="number" min={0} step={1} value={multiUniformQuantity} onChange={e => {
+                const value = e.target.value;
+                setMultiUniformQuantity(value);
+                applyMultiUniformField('quantity', value);
+              }} placeholder="الكمية لكل تركيبة" />}
+            </div>
             <div className="field-wide product-variant-builder-actions">
-              <button type="button" className="button button-quiet" onClick={generateMultiVariants}><Boxes size={16}/> إنشاء التركيبات</button>
+              <button type="button" className="button button-primary" onClick={generateMultiVariants}><Boxes size={16}/> إنشاء التركيبات</button>
               {multiVariants.length > 0 && <span>{multiVariants.length} تركيبة جاهزة</span>}
             </div>
             {multiVariants.length > 0 && <div className="product-variants-table-wrap field-wide">
