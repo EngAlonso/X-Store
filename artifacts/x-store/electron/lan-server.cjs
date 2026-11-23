@@ -1,0 +1,220 @@
+const http = require("node:http");
+const fs = require("node:fs");
+const fsp = require("node:fs/promises");
+const path = require("node:path");
+const crypto = require("node:crypto");
+const os = require("node:os");
+
+const DEFAULT_PORT = 4175;
+const MAX_BODY_BYTES = 20 * 1024 * 1024;
+
+function json(res, status, payload) {
+  const body = JSON.stringify(payload);
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+  });
+  res.end(body);
+}
+
+function getToken(req) {
+  const url = new URL(req.url, "http://localhost");
+  return url.searchParams.get("token") || req.headers["x-xstore-server-token"] || "";
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        reject(new Error("الطلب كبير جدًا."));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
+function safeStaticPath(root, requestPath) {
+  let pathname;
+  try {
+    pathname = decodeURIComponent(requestPath.split("?")[0]);
+  } catch {
+    return null;
+  }
+  if (pathname === "/") pathname = "/offline.html";
+  const candidate = path.resolve(root, "." + pathname);
+  const relative = path.relative(root, candidate);
+  if (relative.startsWith(".." + path.sep) || relative === ".." || path.isAbsolute(relative)) return null;
+  return candidate;
+}
+
+function contentType(filePath) {
+  switch (path.extname(filePath).toLowerCase()) {
+    case ".html": return "text/html; charset=utf-8";
+    case ".js": return "text/javascript; charset=utf-8";
+    case ".css": return "text/css; charset=utf-8";
+    case ".json": return "application/json; charset=utf-8";
+    case ".png": return "image/png";
+    case ".jpg":
+    case ".jpeg": return "image/jpeg";
+    case ".svg": return "image/svg+xml";
+    case ".ico": return "image/x-icon";
+    case ".woff":
+    case ".woff2": return "font/woff2";
+    default: return "application/octet-stream";
+  }
+}
+
+function getLanAddresses(port, token) {
+  const addresses = [];
+  for (const interfaces of Object.values(os.networkInterfaces())) {
+    for (const item of interfaces || []) {
+      if (item.family === "IPv4" && !item.internal) {
+        addresses.push(
+          "http://" + item.address + ":" + port + "/offline.html?token=" +
+          encodeURIComponent(token),
+        );
+      }
+    }
+  }
+  return [...new Set(addresses)];
+}
+
+async function startLanServer({ staticRoot, userDataPath, readState, saveState }) {
+  const tokenPath = path.join(userDataPath, "lan-server-token.txt");
+  let token;
+  try {
+    token = (await fsp.readFile(tokenPath, "utf8")).trim();
+  } catch {
+    token = crypto.randomBytes(32).toString("hex");
+    await fsp.mkdir(userDataPath, { recursive: true });
+    await fsp.writeFile(tokenPath, token, { encoding: "utf8", mode: 0o600 });
+  }
+
+  const authorized = (req) => getToken(req) === token;
+
+  const server = http.createServer(async (req, res) => {
+    try {
+      const url = new URL(req.url, "http://localhost");
+
+      if (url.pathname.startsWith("/api/offline/")) {
+        if (!authorized(req)) return json(res, 401, { error: "غير مصرح." });
+
+        if (req.method === "GET" && url.pathname === "/api/offline/state") {
+          return json(res, 200, await readState());
+        }
+
+        if (req.method === "PUT" && url.pathname === "/api/offline/state") {
+          const raw = await readBody(req);
+          const state = JSON.parse(raw);
+          return json(res, 200, await saveState(state));
+        }
+
+        if (req.method === "POST" && url.pathname === "/api/offline/backup") {
+          const backupType = url.searchParams.get("type") || "full";
+          if (!["full", "invoices", "inventory"].includes(backupType)) {
+            return json(res, 400, { error: "نوع النسخة الاحتياطية غير مدعوم." });
+          }
+          const state = await readState();
+          const now = new Date().toISOString();
+          const snapshot = backupType === "full"
+            ? {
+                ...state,
+                backup: {
+                  ...state.backup,
+                  backupScope: "full",
+                  lastManualBackupAt: now,
+                  lastError: null,
+                },
+              }
+            : {
+                ...state,
+                products: backupType === "inventory" ? state.products : [],
+                sales: backupType === "invoices" ? state.sales : [],
+                heldSales: backupType === "invoices" ? state.heldSales : [],
+                returns: backupType === "invoices" ? state.returns : [],
+                exchanges: backupType === "invoices" ? state.exchanges : [],
+                backup: {
+                  ...state.backup,
+                  backupScope: backupType,
+                  lastManualBackupAt: now,
+                  lastError: null,
+                },
+              };
+          return json(res, 200, snapshot);
+        }
+
+        return json(res, 404, { error: "المسار غير موجود." });
+      }
+
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        return json(res, 405, { error: "طريقة الطلب غير مدعومة." });
+      }
+
+      const filePath = safeStaticPath(staticRoot, url.pathname);
+      if (!filePath) return json(res, 400, { error: "مسار غير صالح." });
+
+      let stat;
+      try {
+        stat = await fsp.stat(filePath);
+      } catch {
+        return json(res, 404, { error: "الملف غير موجود." });
+      }
+
+      if (!stat.isFile()) return json(res, 404, { error: "الملف غير موجود." });
+
+      res.writeHead(200, {
+        "Content-Type": contentType(filePath),
+        "Cache-Control": "no-store",
+      });
+
+      if (req.method === "HEAD") return res.end();
+      fs.createReadStream(filePath).pipe(res);
+    } catch (error) {
+      console.error("Offline LAN server request failed:", error);
+      if (!res.headersSent) json(res, 500, { error: "تعذر تنفيذ الطلب." });
+      else res.destroy();
+    }
+  });
+
+  let port = DEFAULT_PORT;
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    try {
+      await new Promise((resolve, reject) => {
+        const onError = (error) => {
+          server.off("listening", onListening);
+          reject(error);
+        };
+        const onListening = () => {
+          server.off("error", onError);
+          resolve();
+        };
+        server.once("error", onError);
+        server.once("listening", onListening);
+        server.listen(port, "0.0.0.0");
+      });
+      break;
+    } catch (error) {
+      if (error && error.code === "EADDRINUSE" && attempt < 9) {
+        port += 1;
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  return {
+    server,
+    port,
+    token,
+    urls: getLanAddresses(port, token),
+  };
+}
+
+module.exports = { startLanServer };
