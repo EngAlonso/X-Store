@@ -99,6 +99,30 @@ async function startLanServer({ staticRoot, userDataPath, readState, saveState }
 
   const authorized = (req) => getToken(req) === token;
 
+  function assertLicenseActive(state) {
+    const license = state && state.license;
+    if (!license || !license.payload) throw new Error("الترخيص غير مفعّل.");
+    if (license.payload.plan !== "lifetime") {
+      const expiresAt = Date.parse(String(license.payload.expiresAt || "") + "T23:59:59");
+      if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
+        throw new Error("انتهى ترخيص هذا المتجر. يجب إعادة التفعيل.");
+      }
+    }
+  }
+
+  async function saveClientState(nextState) {
+    const current = await readState();
+    assertLicenseActive(current);
+    const protectedState = {
+      ...nextState,
+      license: current.license,
+      store: nextState && nextState.store
+        ? { ...nextState.store, storeType: current.store?.storeType }
+        : current.store,
+    };
+    return saveState(protectedState);
+  }
+
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url, "http://localhost");
@@ -107,13 +131,15 @@ async function startLanServer({ staticRoot, userDataPath, readState, saveState }
         if (!authorized(req)) return json(res, 401, { error: "غير مصرح." });
 
         if (req.method === "GET" && url.pathname === "/api/offline/state") {
-          return json(res, 200, await readState());
+          const state = await readState();
+          assertLicenseActive(state);
+          return json(res, 200, state);
         }
 
         if (req.method === "PUT" && url.pathname === "/api/offline/state") {
           const raw = await readBody(req);
           const state = JSON.parse(raw);
-          return json(res, 200, await saveState(state));
+          return json(res, 200, await saveClientState(state));
         }
 
         if (req.method === "POST" && url.pathname === "/api/offline/backup") {
@@ -122,6 +148,7 @@ async function startLanServer({ staticRoot, userDataPath, readState, saveState }
             return json(res, 400, { error: "نوع النسخة الاحتياطية غير مدعوم." });
           }
           const state = await readState();
+          assertLicenseActive(state);
           const now = new Date().toISOString();
           const snapshot = backupType === "full"
             ? {
