@@ -2926,7 +2926,12 @@ function PosPage() {
               : visible.length
                 ? <div className="product-grid">{visible.map(p=>{const {symbol,tone,kind}=getProductIcon(p);return <button key={p.id} onClick={()=>add(p)} disabled={!p.quantity} aria-label={`إضافة ${p.name} إلى الفاتورة`} className={`product-tile ${!p.quantity?'tile-disabled':''}`} data-testid={`button-pos-product-${p.id}`}>
                     <span className={`product-art art-${tone}`} data-product-icon={kind}><ProductIconSymbol symbol={symbol} kind={kind}/>{cart[p.id]?<i>{cart[p.id]}</i>:null}</span>
-                    <span className="tile-category">{p.category}</span><b>{p.name}</b><small className="ltr-id">{p.sku}</small>
+                    <span className="tile-category">{p.category}</span><b>{p.name}</b>
+                    {(p.color || p.size) && <span className="tile-variants">
+                      {p.color && <span><small>اللون</small><strong>{p.color}</strong></span>}
+                      {p.size && <span><small>المقاس</small><strong>{p.size}</strong></span>}
+                    </span>}
+                    <small className="ltr-id">{p.sku}</small>
                     <span className="tile-bottom"><strong>{money(salePriceForProduct(p,saleType)??0)}</strong><span>متاح {fmt(p.quantity)}</span></span>
                   </button>})}</div>
                 : <div className="state-box"><div className="empty-symbol"><Package/></div><b>{term?'لا توجد نتائج':'لا توجد منتجات'}</b><span>{term?'جرّب البحث بكلمة مختلفة.':'أضف المنتجات إلى المخزون لتبدأ البيع.'}</span></div>
