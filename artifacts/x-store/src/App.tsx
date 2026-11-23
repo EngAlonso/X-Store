@@ -978,6 +978,7 @@ function AppShell({ children, user, refetch }: { children: ReactNode; user: Sess
       ]
     : nav.filter(n =>
         (n.href !== '/restaurant-menu' || restaurantMenuEnabled) &&
+        (n.href !== '/poultry-farm' || isPoultryStore) &&
         (n.roles.includes('all') || hasAppRole(user, n.roles))
       );
   const canSeeSalesNotifications = !isPoultryStore && (hasAppRole(user,['platform_admin','tenant_admin','cashier','accountant']) || (user.role==='custom' && Boolean(user.permissions?.some(p=>p==='retail_sales'||p==='wholesale_sales'))));
