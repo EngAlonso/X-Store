@@ -2630,7 +2630,7 @@ function InventoryPage() {
             {multiVariants.length > 0 && <div className="product-variants-table-wrap field-wide">
               <div className="product-variants-table">
                 <div className="product-variants-head">
-                  <span>اللون</span><span>المقاس</span><span>الباركود</span><span>القطاعي</span>{wholesaleEnabled && <span>الجملة</span>}<span>التكلفة</span><span>الكمية</span>
+                  <span>اللون</span><span>المقاس</span><span>الباركود</span><span>القطاعي</span>{wholesaleEnabled && <span>الجملة</span>}<span>التكلفة</span><span>الكمية</span><span>حذف</span>
                 </div>
                 {multiVariants.map((variant,index) => <div className="product-variant-row" key={variant.color + '-' + variant.size + '-' + index}>
                   <b>{variant.color || '—'}</b>
@@ -2640,6 +2640,7 @@ function InventoryPage() {
                   {wholesaleEnabled && <input type="number" min={0} step={0.01} value={variant.wholesalePrice} onChange={e => updateMultiVariant(index,'wholesalePrice',e.target.value)} placeholder="0" />}
                   <input type="number" min={0} step={0.01} value={variant.costPrice} onChange={e => updateMultiVariant(index,'costPrice',e.target.value)} placeholder="اختياري" />
                   <input type="number" min={0} step={1} value={variant.quantity} onChange={e => updateMultiVariant(index,'quantity',e.target.value)} />
+                  <button type="button" className="multi-variant-remove" onClick={() => setMultiVariants(current => current.filter((_, itemIndex) => itemIndex !== index))} aria-label="حذف التركيبة" title="حذف التركيبة"><X size={16}/></button>
                 </div>)}
               </div>
             </div>}
