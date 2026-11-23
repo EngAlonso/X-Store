@@ -2518,7 +2518,7 @@ function InventoryPage() {
                   <input type="number" min={0} step={1} value={variant.quantity} onChange={e => updateMultiVariant(index,'quantity',e.target.value)} />
                 </div>)}
               </div>
-            </div>
+            </div>}
             <div className="role-hint field-wide"><Boxes size={17}/><span>كل تركيبة تُحفظ بمخزون وباركود مستقلين. يمكنك بيع الأسود M بدون التأثير على الأبيض L.</span></div>
           </>
         ) : <>
