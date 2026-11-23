@@ -627,3 +627,13 @@
 .of-display-scale-top strong { color:#36553d; font-size:calc(18px * var(--xstore-font-scale,1)); }
 .of-display-scale-slider { width:100%; margin:22px 0 10px; accent-color:#6f9475; }
 .of-display-scale-labels { display:flex; justify-content:space-between; color:#8c968f; font-size:calc(9px * var(--xstore-font-scale,1)); }
+
+.of-invoice-settings-picker { margin:14px 0 0; padding:14px; border:1px solid #e1e9e1; border-radius:10px; background:#fbfcfa; }
+.of-invoice-settings-picker legend { padding:0 6px; color:#405544; font-weight:800; font-size:calc(10px * var(--xstore-font-scale,1)); }
+.of-invoice-settings-picker>p { margin:0 0 10px; color:#8a958d; font-size:calc(9px * var(--xstore-font-scale,1)); }
+.of-invoice-header-toggle { display:flex; align-items:center; gap:8px; margin-bottom:10px; color:#4d5d51; font-size:calc(9px * var(--xstore-font-scale,1)); font-weight:700; }
+.of-invoice-settings-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+.of-invoice-settings-grid label { display:flex; align-items:center; gap:6px; padding:7px 8px; border:1px solid #e4eae4; border-radius:7px; background:#fff; color:#56645a; font-size:calc(8px * var(--xstore-font-scale,1)); }
+.of-invoice-settings-grid input,.of-invoice-header-toggle input { accent-color:#668b6c; }
+.of-restore-actions { display:flex; flex-wrap:wrap; gap:8px; }
+@media (max-width:760px) { .of-invoice-settings-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
