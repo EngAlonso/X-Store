@@ -259,7 +259,7 @@ export interface OfflineState {
 
 export function createEmptyOfflineState(): OfflineState {
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     setupComplete: false,
     store: null,
     license: null,
@@ -498,10 +498,10 @@ function isDate(value: unknown): value is string {
 }
 
 export function migrateOfflineState(value: unknown): OfflineState | null {
-  if (!isRecord(value) || ![1, 2, 3].includes(value.schemaVersion)) return null;
+  if (!isRecord(value) || ![1, 2, 3, 4].includes(value.schemaVersion)) return null;
   const defaults = createEmptyOfflineState();
   const store = value.store && isRecord(value.store)
-    ? { ...value.store, invoiceFormat: value.store.invoiceFormat ?? "wide" }
+    ? { ...value.store, invoiceFormat: value.store.invoiceFormat ?? "wide", invoiceSettings: isRecord(value.store.invoiceSettings) ? value.store.invoiceSettings : { ...DEFAULT_OFFLINE_INVOICE_SETTINGS } }
     : value.store;
   const products = Array.isArray(value.products)
     ? value.products.map((product) => isRecord(product) ? {
