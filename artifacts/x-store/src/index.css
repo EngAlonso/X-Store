@@ -7027,3 +7027,30 @@ input,select,textarea{max-width:100%;min-width:0;box-sizing:border-box}.panel,.c
     min-width:0!important;
   }
 }
+
+/* Professional clothing multi-piece product form */
+.product-mode-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:4px}
+.product-mode-switch button{display:flex;align-items:center;gap:13px;text-align:right;padding:15px 16px;border:1px solid #dfe7e1;border-radius:16px;background:#fff;color:#314039;cursor:pointer;transition:.18s ease}
+.product-mode-switch button:hover{border-color:#b9cbbf;transform:translateY(-1px)}
+.product-mode-switch button.is-active{border-color:#24553b;background:#f3f8f4;box-shadow:0 0 0 3px rgba(36,85,59,.08)}
+.product-mode-switch button>svg{flex:none;color:#24553b}
+.product-mode-switch button span{display:flex;flex-direction:column;gap:4px}
+.product-mode-switch button b{font-size:calc(13px * var(--xstore-font-scale))}
+.product-mode-switch button small{color:#7a867f;font-size:calc(10px * var(--xstore-font-scale));line-height:1.5}
+.product-variant-builder-actions{display:flex;align-items:center;gap:12px}
+.product-variant-builder-actions>span{font-size:calc(11px * var(--xstore-font-scale));font-weight:700;color:#54705f}
+.product-variants-table-wrap{overflow:auto;border:1px solid #dfe7e1;border-radius:16px;background:#fbfdfb}
+.product-variants-table{min-width:760px}
+.product-variants-head,.product-variant-row{display:grid;grid-template-columns:1fr 1fr 1.35fr 1fr 1fr 1fr 1fr;gap:8px;align-items:center;padding:10px 12px}
+.product-variants-head{background:#f2f6f3;border-bottom:1px solid #dfe7e1;color:#6d7972;font-size:calc(10px * var(--xstore-font-scale));font-weight:800}
+.product-variant-row{border-bottom:1px solid #edf1ee}
+.product-variant-row:last-child{border-bottom:0}
+.product-variant-row b{font-size:calc(11px * var(--xstore-font-scale));color:#2f3f36;white-space:nowrap}
+.product-variant-row input{width:100%;min-width:0;height:38px;padding:0 9px;border:1px solid #dce5df;border-radius:9px;background:#fff;outline:0;font-size:calc(11px * var(--xstore-font-scale))}
+.product-variant-row input:focus{border-color:#24553b;box-shadow:0 0 0 3px rgba(36,85,59,.08)}
+@media(max-width:700px){
+  .product-mode-switch{grid-template-columns:1fr}
+  .product-variant-builder-actions{align-items:stretch;flex-direction:column}
+  .product-variant-builder-actions .button{justify-content:center}
+  .product-variants-table-wrap{margin-inline:-4px}
+}
