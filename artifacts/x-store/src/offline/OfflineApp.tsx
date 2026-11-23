@@ -8,7 +8,7 @@ import {
   ArrowLeftRight, Smartphone, Banknote, Minus, X, Bell, Utensils,
 } from "lucide-react";
 import {
-  createEmptyOfflineState, DEFAULT_OFFLINE_INVOICE_SETTINGS,
+  createEmptyOfflineState, DEFAULT_OFFLINE_INVOICE_SETTINGS, DEFAULT_OFFLINE_MENU,
   isLicenseActive, isOfflineState, migrateOfflineState,
   OFFLINE_CURRENCIES, OFFLINE_STORE_TYPES, OFFLINE_TEAM_PERMISSIONS,
   type OfflineHardwareChange, type OfflineHardwareSnapshot, type OfflineHeldSale, type OfflineLicense, type OfflineProduct,
