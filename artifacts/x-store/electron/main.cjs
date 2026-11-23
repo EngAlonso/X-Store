@@ -657,6 +657,7 @@ function registerIpc() {
   ipcMain.handle("offline:choose-backup-folder", () => chooseBackupFolder());
   ipcMain.handle("offline:create-backup", (_event, backupType = "full") => createBackup(true, backupType));
   ipcMain.handle("offline:get-clock-status", () => getClockStatus());
+  ipcMain.handle("offline:get-lan-server-info", () => ({ port: lanServer?.port ?? 0, urls: lanServer?.urls ?? [] }));
   ipcMain.handle("offline:restore-backup", () => restoreBackupFromFile());
   ipcMain.handle("offline:restore-state", (_event, state) => restoreState(state));
 }
