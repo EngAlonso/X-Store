@@ -2779,6 +2779,72 @@ router.patch("/xstore/products/:productId", async (req, res): Promise<void> => {
   );
 });
 
+router.delete("/xstore/products/:productId", async (req, res): Promise<void> => {
+  const actor = getXStoreUser(res);
+  if (actor.role !== "tenant_admin" || !actor.tenantId) {
+    res.status(403).json({ error: "Only the store administrator can delete products." });
+    return;
+  }
+  const params = UpdateXStoreProductParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [product] = await db
+    .select()
+    .from(xstoreProducts)
+    .where(
+      and(
+        eq(xstoreProducts.id, params.data.productId),
+        eq(xstoreProducts.tenantId, actor.tenantId),
+      ),
+    )
+    .limit(1);
+
+  if (!product) {
+    res.status(404).json({ error: "Product not found." });
+    return;
+  }
+
+  const [saleItem] = await db
+    .select({ id: xstoreSaleItems.id })
+    .from(xstoreSaleItems)
+    .where(eq(xstoreSaleItems.productId, product.id))
+    .limit(1);
+  const [returnItem] = await db
+    .select({ id: xstoreReturns.id })
+    .from(xstoreReturns)
+    .where(eq(xstoreReturns.productId, product.id))
+    .limit(1);
+
+  if (saleItem || returnItem) {
+    res.status(409).json({
+      error: "لا يمكن حذف منتج له فواتير أو مرتجعات مسجلة. يمكنك تصفير كميته بدلًا من حذفه.",
+    });
+    return;
+  }
+
+  await db
+    .delete(xstoreProducts)
+    .where(
+      and(
+        eq(xstoreProducts.id, product.id),
+        eq(xstoreProducts.tenantId, actor.tenantId),
+      ),
+    );
+
+  await audit(
+    actor,
+    "inventory.product_deleted",
+    product.tenantId,
+    "product",
+    product.id,
+    `Deleted ${product.name}`,
+  );
+  res.status(204).send();
+});
+
 router.get("/xstore/sales", async (req, res): Promise<void> => {
   const user = getXStoreUser(res);
   const hasAllSalesHistory = hasRole(user, saleHistoryRoles);
