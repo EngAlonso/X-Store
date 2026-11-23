@@ -32,7 +32,7 @@ import {
 } from "./storage";
 import "./offline.css";
 
-type Page = "dashboard" | "products" | "pos" | "sales" | "returns" | "team" | "reports" | "audit" | "backup" | "settings" | "display";
+type Page = "dashboard" | "products" | "pos" | "sales" | "returns" | "team" | "reports" | "audit" | "backup" | "settings" | "display" | "menu";
 const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "الرئيسية", icon: LayoutDashboard },
   { id: "products", label: "المنتجات والمخزون", icon: Package },
@@ -45,6 +45,7 @@ const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "backup", label: "النسخ الاحتياطي", icon: Archive },
   { id: "settings", label: "الإعدادات والترخيص", icon: Settings },
   { id: "display", label: "إعداد العرض", icon: Settings2 },
+  { id: "menu", label: "إدارة المنيو", icon: Utensils },
 ];
 const salesPermissions: OfflineTeamPermission[] = ["retail_sales", "wholesale_sales"];
 type OfflineLicenseDeviceStatus = {
@@ -66,6 +67,7 @@ function canAccessOfflinePage(member: OfflineTeamMember, page: Page) {
   }
   if (page === "reports" || page === "audit") return member.permissions.includes("accountant");
   if (page === "display") return true;
+  if (page === "menu") return member.role === "tenant_admin";
   return false;
 }
 function assertOfflinePermission(member: OfflineTeamMember, permissions: OfflineTeamPermission[]) {
@@ -460,7 +462,8 @@ export default function OfflineApp() {
   const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
   const lowStock = currentState.products.filter((product) => product.quantity <= 5);
   const canViewInventoryCosts = activeMember.role === "tenant_admin" || activeMember.permissions.includes("accountant") || activeMember.permissions.includes("warehouse_manager");
-  const title = navItems.find((item) => item.id === pageToRender)?.label ?? "الرئيسية";
+  const visibleNavItems = navItems.filter((item) => item.id !== "menu" || currentState.store?.storeType === "cafe" || currentState.store?.storeType === "restaurant");
+  const title = visibleNavItems.find((item) => item.id === pageToRender)?.label ?? "الرئيسية";
 
   async function updateProduct(product: OfflineProduct, editingId?: string) {
     if (!active) throw new Error("الترخيص غير مفعّل. تواصل مع مالك المتجر.");
@@ -738,6 +741,7 @@ export default function OfflineApp() {
           (window as any).__xstoreOfflineRestoreMode = mode;
           fileInput.current?.click();
         }} />}
+        {pageToRender === "menu" && <OfflineMenuPage state={state} onSave={async (menu) => { await persist({ ...currentState, menu, auditLogs: [createAuditEntry("تحديث المنيو", "منيو", state.store?.name ?? "", "تحديث إعدادات المنيو المحلية.", activeMember.name), ...currentState.auditLogs] }); setNotice("تم حفظ المنيو."); }} />}
         {pageToRender === "display" && <DisplaySettingsPage scale={displayScale} onChangeScale={setDisplayScale} />}
         {pageToRender === "settings" && <SettingsPage state={state} licenseActive={active} hardwareStatus={licenseDeviceStatus} desktop={desktop} onRefreshHardware={refreshHardwareReport} onSave={updateSettings} onActivate={activateLicense} />}
       </main>
@@ -1627,6 +1631,39 @@ function SettingsPage({ state, licenseActive, hardwareStatus, desktop, onRefresh
   </section>;
 }
 
+function OfflineMenuPage({ state, onSave }: { state: OfflineState; onSave: (menu: OfflineState["menu"]) => Promise<void> }) {
+  const [title, setTitle] = useState(state.menu?.title ?? "منيو المتجر");
+  const [description, setDescription] = useState(state.menu?.description ?? "");
+  const [published, setPublished] = useState(state.menu?.isPublished ?? true);
+  const [selected, setSelected] = useState<string[]>(state.menu?.productIds ?? []);
+  const [query, setQuery] = useState("");
+  const [saving, setSaving] = useState(false);
+  const products = state.products.filter(p => !query.trim() || [p.name,p.category,p.sku,p.barcode,p.color,p.size].join(" ").toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  async function save() { setSaving(true); try { await onSave({ title: title.trim() || "منيو المتجر", description: description.trim(), isPublished: published, productIds: selected }); } finally { setSaving(false); } }
+  function toggle(id: string) { setSelected(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id]); }
+  return <section className="of-page">
+    <PageHeading kicker="المطاعم والكافيهات" title="إدارة المنيو" description="اختار منتجات المنيو من نفس منتجات المخزون. السعر الحالي والمخزون يظلان مرتبطين بالمنتج المحلي." action={<button className="of-button of-button-primary" disabled={saving} onClick={() => void save()}><Check size={16}/>{saving ? "جارٍ الحفظ..." : "حفظ المنيو"}</button>} />
+    <div className="of-menu-grid">
+      <section className="of-panel"><div className="of-panel-head"><div><h2>بيانات المنيو</h2><p>العنوان والوصف وحالة النشر على الجهاز.</p></div><Utensils size={20}/></div>
+        <div className="of-form-grid"><Field label="اسم المنيو"><input value={title} onChange={e=>setTitle(e.target.value)} maxLength={120}/></Field><Field label="وصف المنيو"><textarea rows={4} maxLength={500} value={description} onChange={e=>setDescription(e.target.value)} /></Field></div>
+        <label className="of-toggle-row"><span><b>{published ? "المنيو مفعّلة" : "المنيو مخفية"}</b><small>{published ? "الأصناف المختارة تظهر في المعاينة المحلية." : "لن تظهر أصناف المنيو في المعاينة."}</small></span><input type="checkbox" checked={published} onChange={e=>setPublished(e.target.checked)} /><i /></label>
+      </section>
+      <section className="of-panel"><div className="of-panel-head"><div><h2>منتجات المنيو</h2><p>اختار المنتجات التي تريد عرضها.</p></div><strong>{selected.length} منتج مختار</strong></div>
+        <label className="of-search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="ابحث باسم المنتج أو القسم أو SKU..." /></label>
+        <div className="of-menu-products">{products.length ? products.map(product => {
+          const checked = selected.includes(product.id);
+          const variant = product.color || product.size ? " · " + (product.color || "") + (product.color && product.size ? " / " : "") + (product.size || "") : "";
+          return <button type="button" key={product.id} className={"of-menu-product " + (checked ? "selected" : "")} onClick={() => toggle(product.id)}>
+            <span className="of-menu-check">{checked ? <Check size={15}/> : null}</span><span className="of-menu-main"><b>{product.name}</b><small>{(product.category || "—") + " · " + (product.sku || "بدون SKU") + variant}</small></span><span className="of-menu-price">{product.price == null ? "بدون سعر" : money(product.price, state.store?.currency ?? "EGP")}</span><span className={"of-menu-stock " + (product.quantity ? "" : "empty")}>{product.quantity ? "متاح " + digits(product.quantity) : "نفد المخزون"}</span>
+          </button>;
+        }) : <EmptyState title="لا توجد منتجات مطابقة" detail="أضف منتجات إلى المخزون أولًا." />}</div>
+      </section>
+    </div>
+    <section className="of-panel of-menu-preview"><div className="of-panel-head"><div><h2>معاينة المنيو</h2><p>المعاينة تعمل بالكامل بدون إنترنت على هذا الجهاز.</p></div><Utensils size={20}/></div>
+      {!published ? <div className="of-menu-hidden">المنيو مخفية حاليًا.</div> : <div className="of-menu-preview-card"><h3>{title || "منيو المتجر"}</h3>{description && <p>{description}</p>}<div>{selected.map(id => state.products.find(p=>p.id===id)).filter(Boolean).map(product => <article key={product!.id}><b>{product!.name}</b><span>{product!.price == null ? "بدون سعر" : money(product!.price, state.store?.currency ?? "EGP")}</span></article>)}</div></div>}
+    </section>
+  </section>;
+}
 function DisplaySettingsPage({ scale, onChangeScale }: { scale: number; onChangeScale: (value: number) => void }) {
   return <section className="of-page">
     <PageHeading kicker="تخصيص الواجهة" title="إعداد العرض" description="تحكم في حجم عرض الواجهة على هذا الجهاز والحساب المحلي." />
