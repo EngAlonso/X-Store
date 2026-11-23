@@ -28,4 +28,5 @@ const run = (command, args) => {
 };
 
 run(process.platform === "win32" ? "pnpm.cmd" : "pnpm", ["run", "desktop:build"]);
+run(process.platform === "win32" ? "node.exe" : "node", ["scripts/prepare-windows-icon.cjs"]);
 run(process.platform === "win32" ? "pnpm.cmd" : "pnpm", ["exec", "electron-builder", "--win", mode === "portable" ? "portable" : "nsis", "--x64"]);
