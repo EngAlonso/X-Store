@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("xStoreOffline", {
     ipcRenderer.invoke("offline:choose-backup-folder"),
   createBackup: (backupType = "full") => ipcRenderer.invoke("offline:create-backup", backupType),
   getClockStatus: () => ipcRenderer.invoke("offline:get-clock-status"),
+  getLanServerInfo: () => ipcRenderer.invoke("offline:get-lan-server-info"),
   restoreBackup: () => ipcRenderer.invoke("offline:restore-backup"),
   restoreState: (state) => ipcRenderer.invoke("offline:restore-state", state),
 });
