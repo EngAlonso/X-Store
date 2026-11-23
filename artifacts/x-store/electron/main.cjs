@@ -4,7 +4,7 @@ const crypto = require("node:crypto");
 const { app, BrowserWindow, dialog, ipcMain, session } = require("electron");
 const { getDeviceId, getHardwareFingerprint } = require("./device-id.cjs");
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const BACKUP_PREFIX = "x-store-automatic-";
 const MAX_DAILY_BACKUPS = 30;
 const BACKUP_FORMAT = "x-store-offline-backup";
@@ -255,7 +255,7 @@ function isValidState(value) {
 }
 
 function normalizeState(value) {
-  if (!isPlainObject(value) || ![1, 2, 3].includes(value.schemaVersion)) return null;
+  if (!isPlainObject(value) || ![1, 2, 3, 4].includes(value.schemaVersion)) return null;
   const normalized = {
     ...structuredClone(EMPTY_STATE),
     ...value,
