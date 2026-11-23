@@ -279,7 +279,7 @@ router.post("/xstore/platform-backup/auto-run-now", async (req, res) => {
   }
 });
 
-router.post("/xstore/platform-backup/auto-run", async (req, res) => {
+async function handleAutoBackupRun(req: Request, res: Response): Promise<void> {
   const expected = process.env.CRON_SECRET;
   const supplied = req.get("authorization")?.replace(/^Bearer\s+/i, "") || req.get("x-cron-secret");
   if (!expected || supplied !== expected) {
@@ -307,6 +307,10 @@ router.post("/xstore/platform-backup/auto-run", async (req, res) => {
     await markAutoBackupFailure(error);
     res.status(500).json({ status: "error", error: error instanceof Error ? error.message : "تعذر تنفيذ النسخة التلقائية." });
   }
-});
+}
+
+// Vercel Cron sends GET requests. Keep POST available for manual/internal triggering.
+router.get("/xstore/platform-backup/auto-run", handleAutoBackupRun);
+router.post("/xstore/platform-backup/auto-run", handleAutoBackupRun);
 
 export default router;
