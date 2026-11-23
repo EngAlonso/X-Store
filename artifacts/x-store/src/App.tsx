@@ -2504,7 +2504,10 @@ function InventoryPage() {
                     <td><div className="inventory-product"><span className={`inventory-product-icon art-${tone}`} data-product-icon={kind}><ProductIconSymbol symbol={symbol} kind={kind}/></span><span className="inventory-product-copy"><b>{p.name}</b><small>{p.partNumber?`رقم القطعة: ${p.partNumber}`:p.barcode?`باركود: ${p.barcode}`:'—'}</small></span></div></td>
                     <td className="ltr-id inventory-sku">{p.sku}</td>
                     <td><span className="inventory-category-chip">{p.category}</span></td>
-                    <td><div className="inventory-variants">{p.color&&<span>{p.color}</span>}{p.size&&<span>{p.size}</span>}{!p.color&&!p.size&&<small>—</small>}</div></td>
+                    <td><div className="inventory-variants inventory-variants--clear">
+  <span className="inventory-variant-badge"><small>اللون</small><b>{p.color || '—'}</b></span>
+  <span className="inventory-variant-badge"><small>المقاس</small><b>{p.size || '—'}</b></span>
+</div></td>
                     <td className="inventory-price"><div>قطاعي: {p.price===null?'—':money(p.price)}</div>{wholesaleEnabled&&<div>جملة: {p.wholesalePrice===null?'—':money(p.wholesalePrice)}</div>}{canViewCost&&<small>التكلفة: {p.costPrice===null?'—':money(p.costPrice)}</small>}</td>
                     <td><div className="inventory-quantity"><b className={`quantity ${p.quantity<=5?'quantity-low':''}`}>{fmt(p.quantity)}</b><span className={`inventory-stock-status ${p.quantity<=0?'is-out':p.quantity<=5?'is-low':'is-available'}`}>{p.quantity<=0?'نفد':p.quantity<=5?'منخفض':'متاح'}</span></div></td>
                     {canManage&&<td><div className="inventory-row-actions">
@@ -2523,7 +2526,10 @@ function InventoryPage() {
                     <div><small>التصنيف</small><b>{p.category}</b></div>
                     <div className="inventory-mobile-prices"><small>الأسعار</small><b>قطاعي: {p.price===null?'—':money(p.price)}</b>{wholesaleEnabled&&<b>جملة: {p.wholesalePrice===null?'—':money(p.wholesalePrice)}</b>}{canViewCost&&<b>التكلفة: {p.costPrice===null?'—':money(p.costPrice)}</b>}</div>
                     <div><small>الكمية المتاحة</small><b className={p.quantity<=5?'quantity-low':''}>{fmt(p.quantity)} وحدة</b></div>
-                    <div className="inventory-mobile-variants"><small>اللون والمقاس</small><b>{[p.color,p.size].filter(Boolean).join(' · ')||'—'}</b></div>
+                    <div className="inventory-mobile-variants inventory-mobile-variants--clear">
+  <div><small>اللون</small><b>{p.color || '—'}</b></div>
+  <div><small>المقاس</small><b>{p.size || '—'}</b></div>
+</div>
                     {(p.partNumber||p.barcode)&&<div className="inventory-mobile-variants"><small>بيانات إضافية</small><b>{p.partNumber?`رقم القطعة: ${p.partNumber}`:`باركود: ${p.barcode}`}</b></div>}
                   </div>
                   {canManage&&<div className="inventory-mobile-actions"><div><span>تحديث الكمية</span><button className="qty-control" aria-label={`تقليل كمية ${p.name}`} disabled={p.quantity<=0} onClick={()=>changeQuantity(p,-1)} data-testid={`button-inventory-mobile-decrease-${p.id}`}><Minus size={16}/></button><button className="qty-control" aria-label={`زيادة كمية ${p.name}`} onClick={()=>changeQuantity(p,1)} data-testid={`button-inventory-mobile-increase-${p.id}`}><Plus size={16}/></button></div><button className="inventory-edit-button" onClick={()=>{setPriceFormError('');setEdit(p);setDialog(true)}} data-testid={`button-edit-product-mobile-${p.id}`}>تعديل المنتج</button>{session.data?.role === 'tenant_admin' && <button className="inventory-delete-button" onClick={()=>void deleteProduct(p)} disabled={deletingProductId === p.id} data-testid={`button-delete-product-mobile-${p.id}`} title="حذف المنتج"><Trash2 size={15}/>{deletingProductId === p.id ? 'جارٍ الحذف…' : 'حذف المنتج'}</button>}</div>}
