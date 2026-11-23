@@ -27,7 +27,7 @@ function lanApiUrl(path: string): string {
 async function lanRequest(path: string, init?: RequestInit): Promise<any> {
   const response = await fetch(lanApiUrl(path), {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+    headers: { "Content-Type": "application/json" },
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.error || "تعذر الاتصال بسيرفر المتجر.");
