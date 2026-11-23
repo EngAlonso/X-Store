@@ -3,7 +3,7 @@ import {
   Activity, Archive, ArrowDownToLine, ArrowLeft, ArrowUpRight, BarChart3, Check,
   ChevronDown, CircleAlert, Clock3, CreditCard, FileText, FolderOpen,
   LayoutDashboard, LifeBuoy, LockKeyhole, LogOut, Package, Plus, Printer, Receipt,
-  RefreshCw, Search, Settings, ShieldCheck, ShoppingCart, Store, Trash2, Upload, Wallet,
+  RefreshCw, Search, Settings, Settings2, ShieldCheck, ShoppingCart, Store, Trash2, Upload, Wallet,
   Users, RotateCcw, ClipboardList, ChartNoAxesCombined, Pause, Play,
   ArrowLeftRight, Smartphone, Banknote, Minus, X, Bell,
 } from "lucide-react";
@@ -32,7 +32,7 @@ import {
 } from "./storage";
 import "./offline.css";
 
-type Page = "dashboard" | "products" | "pos" | "sales" | "returns" | "team" | "reports" | "audit" | "backup" | "settings";
+type Page = "dashboard" | "products" | "pos" | "sales" | "returns" | "team" | "reports" | "audit" | "backup" | "settings" | "display";
 const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "الرئيسية", icon: LayoutDashboard },
   { id: "products", label: "المنتجات والمخزون", icon: Package },
@@ -44,6 +44,7 @@ const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "audit", label: "سجل النشاط", icon: ClipboardList },
   { id: "backup", label: "النسخ الاحتياطي", icon: Archive },
   { id: "settings", label: "الإعدادات والترخيص", icon: Settings },
+  { id: "display", label: "إعداد العرض", icon: Settings2 },
 ];
 const salesPermissions: OfflineTeamPermission[] = ["retail_sales", "wholesale_sales"];
 type OfflineLicenseDeviceStatus = {
@@ -64,6 +65,7 @@ function canAccessOfflinePage(member: OfflineTeamMember, page: Page) {
     return salesPermissions.some((permission) => member.permissions.includes(permission));
   }
   if (page === "reports" || page === "audit") return member.permissions.includes("accountant");
+  if (page === "display") return true;
   return false;
 }
 function assertOfflinePermission(member: OfflineTeamMember, permissions: OfflineTeamPermission[]) {
@@ -282,6 +284,7 @@ export default function OfflineApp() {
   const [notice, setNotice] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [readNotificationIds, setReadNotificationIds] = useState<string[]>([]);
+  const [displayScale, setDisplayScale] = useState(() => { try { const saved = Number(localStorage.getItem("xstore-offline-display-scale")); return Number.isFinite(saved) && saved >= 0.5 && saved <= 2 ? saved : 1; } catch { return 1; } });
   useEffect(() => { if (!authenticatedMemberId) { setReadNotificationIds([]); return; } try { setReadNotificationIds(JSON.parse(localStorage.getItem(`xstore-offline-notifications:${authenticatedMemberId}`) || "[]") as string[]); } catch { setReadNotificationIds([]); } }, [authenticatedMemberId]);
   const [clockStatus, setClockStatus] = useState<{ valid: boolean; rollbackDetected: boolean; message: string }>({ valid: true, rollbackDetected: false, message: "" });
   const [licenseDeviceStatus, setLicenseDeviceStatus] = useState<OfflineLicenseDeviceStatus>({
@@ -357,6 +360,7 @@ export default function OfflineApp() {
     return () => { disposed = true; window.clearInterval(timer); };
   }, [desktop]);
   useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(""), 3500); return () => window.clearTimeout(timer); }, [notice]);
+  useEffect(() => { document.documentElement.style.setProperty("--xstore-font-scale", String(displayScale)); try { localStorage.setItem("xstore-offline-display-scale", String(displayScale)); } catch {} return () => { document.documentElement.style.removeProperty("--xstore-font-scale"); }; }, [displayScale]);
 
   async function persist(next: OfflineState) {
     setSaveError("");
@@ -707,7 +711,7 @@ export default function OfflineApp() {
     setSaleDetail(null);
     setSaveError("");
   }
-  return <div className="of-app" dir="rtl">
+  return <div className="of-app" dir="rtl" style={{ "--xstore-font-scale": displayScale } as React.CSSProperties}>
     <aside className="of-sidebar">
       <div className="of-sidebar-brand"><BrandMark /><span className="of-edition">نسخة مستقلة · Windows</span></div>
       <div className="of-shop-chip"><span className="of-shop-avatar"><Store size={18} /></span><span><b>{state.store.name}</b><small>{state.store.businessType}</small></span><ChevronDown size={15} /></div>
@@ -729,6 +733,7 @@ export default function OfflineApp() {
         {pageToRender === "reports" && <OfflineReportsPage state={state} currency={currency} />}
         {pageToRender === "audit" && <OfflineAuditPage state={state} />}
         {pageToRender === "backup" && <BackupPage state={state} desktop={desktop} onChooseFolder={chooseFolder} onBackup={manualBackup} onRestore={() => fileInput.current?.click()} />}
+        {pageToRender === "display" && <DisplaySettingsPage scale={displayScale} onChangeScale={setDisplayScale} />}
         {pageToRender === "settings" && <SettingsPage state={state} licenseActive={active} hardwareStatus={licenseDeviceStatus} desktop={desktop} onRefreshHardware={refreshHardwareReport} onSave={updateSettings} onActivate={activateLicense} />}
       </main>
       <footer className="of-footer"><span><ShieldCheck size={14} /> بيانات المتجر محفوظة محليًا على هذا الجهاز</span><span> X-Store Offline <b>·</b> إصدار مستقل</span></footer>
@@ -1570,6 +1575,18 @@ function SettingsPage({ state, licenseActive, hardwareStatus, desktop, onRefresh
   </section>;
 }
 
+function DisplaySettingsPage({ scale, onChangeScale }: { scale: number; onChangeScale: (value: number) => void }) {
+  return <section className="of-page">
+    <PageHeading kicker="تخصيص الواجهة" title="إعداد العرض" description="تحكم في حجم عرض الواجهة على هذا الجهاز والحساب المحلي." />
+    <section className="of-panel of-display-settings">
+      <div className="of-panel-head"><div><h2>حجم العرض</h2><p>كبّر أو صغّر الواجهة من 50% إلى 200% بدون تغيير بيانات المتجر.</p></div><span className="of-settings-head-icon"><Settings2 size={18} /></span></div>
+      <div className="of-display-scale-top"><span>50%</span><strong>{Math.round(scale * 100)}%</strong><span>200%</span></div>
+      <input className="of-display-scale-slider" type="range" min="0.5" max="2" step="0.05" value={scale} onChange={event => onChangeScale(Number(event.target.value))} aria-label="حجم العرض" />
+      <div className="of-display-scale-labels"><span>أصغر</span><span>عادي 100%</span><span>أكبر</span></div>
+      <div className="of-settings-device"><span><Settings2 size={17} /></span><div><b>الإعداد محفوظ محليًا</b><small>هذا الإعداد خاص بنسخة X-Store Offline على هذا الجهاز ولا يؤثر على بيانات المتجر.</small></div></div>
+    </section>
+  </section>;
+}
 function HardwareReport({ state, status, desktop, checking, onRefresh }: {
   state: OfflineState;
   status: OfflineLicenseDeviceStatus;
