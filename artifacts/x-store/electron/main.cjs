@@ -3,6 +3,7 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { app, BrowserWindow, dialog, ipcMain, session } = require("electron");
 const { getDeviceId, getHardwareFingerprint } = require("./device-id.cjs");
+const { startLanServer } = require("./lan-server.cjs");
 
 const SCHEMA_VERSION = 4;
 const BACKUP_PREFIX = "x-store-automatic-";
@@ -596,6 +597,7 @@ async function restoreBackupFromFile() {
 
 let mainWindow;
 let dailyBackupTimer;
+let lanServer;
 
 function installNetworkBlock() {
   session.defaultSession.webRequest.onBeforeRequest((details, callback) => {
@@ -606,7 +608,7 @@ function installNetworkBlock() {
         allowedDevRequest =
           url.protocol === "http:" &&
           url.hostname === "127.0.0.1" &&
-          url.port === "4174";
+          (url.port === "4174" || url.port === String(lanServer?.port || 4175));
       } catch {
         allowedDevRequest = false;
       }
@@ -640,10 +642,8 @@ function createWindow() {
     if (!isDevOrigin && !isPackagedFile) event.preventDefault();
   });
 
-  if (app.isPackaged) {
-    void mainWindow.loadFile(
-      path.join(__dirname, "..", "dist", "offline", "offline.html"),
-    );
+  if (app.isPackaged && lanServer) {
+    void mainWindow.loadURL("http://127.0.0.1:" + lanServer.port + "/offline.html?token=" + encodeURIComponent(lanServer.token));
   } else {
     void mainWindow.loadURL("http://127.0.0.1:4174/offline.html");
   }
@@ -666,6 +666,15 @@ app.whenReady().then(async () => {
   clockGuardPath = path.join(app.getPath("userData"), "offline-clock-guard.json");
   installNetworkBlock();
   registerIpc();
+  const staticRoot = path.join(__dirname, "..", "dist", "offline");
+  if (app.isPackaged) {
+    lanServer = await startLanServer({
+      staticRoot,
+      userDataPath: app.getPath("userData"),
+      readState,
+      saveState: saveStateSafely,
+    });
+  }
   createWindow();
   dailyBackupTimer = setInterval(() => {
     void enqueueWrite(async () => {
