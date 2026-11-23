@@ -455,7 +455,6 @@ export default function OfflineApp() {
 
   useEffect(() => { void reloadState(); }, []);
   useEffect(() => {
-    if (!desktop) return;
     let disposed = false;
     const check = async () => {
       try {
@@ -465,9 +464,10 @@ export default function OfflineApp() {
         // Keep the last known clock status if the local guard cannot be read.
       }
     };
+    void check();
     const timer = window.setInterval(() => { void check(); }, 60_000);
     return () => { disposed = true; window.clearInterval(timer); };
-  }, [desktop]);
+  }, []);
   useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(""), 3500); return () => window.clearTimeout(timer); }, [notice]);
   useEffect(() => { document.documentElement.style.setProperty("--xstore-font-scale", String(displayScale)); try { localStorage.setItem("xstore-offline-display-scale", String(displayScale)); } catch {} return () => { document.documentElement.style.removeProperty("--xstore-font-scale"); }; }, [displayScale]);
 
