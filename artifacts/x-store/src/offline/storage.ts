@@ -9,6 +9,7 @@ import { verifyOfflineLicenseSignature } from "./licensing";
 
 const STATE_KEY = "x-store-offline-state-v1";
 const BACKUP_KEY = "x-store-offline-backup-v1";
+const AUTO_BACKUP_KEY = "x-store-offline-auto-backup-v1";
 const INSTALLATION_ID_KEY = "x-store-offline-installation-id-v1";
 
 export async function getOfflineInstallationId(): Promise<string> {
@@ -77,6 +78,7 @@ export async function saveOfflineState(state: OfflineState): Promise<OfflineStat
     },
   };
   localStorage.setItem(STATE_KEY, JSON.stringify(saved));
+  localStorage.setItem(AUTO_BACKUP_KEY, JSON.stringify(saved));
   return saved;
 }
 
