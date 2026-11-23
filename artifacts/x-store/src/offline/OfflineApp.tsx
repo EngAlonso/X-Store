@@ -633,7 +633,7 @@ export default function OfflineApp() {
     }
     catch (e) { setSaveError(e instanceof Error ? e.message : "تعذر إنشاء النسخة الاحتياطية."); }
   }
-  async function restoreFile(event: React.ChangeEvent<HTMLInputElement>) {
+  async function restoreFile(event: React.ChangeEvent<HTMLInputElement>, restoreMode: "full" | "invoices" | "inventory" = "full") {
     if (activeMember.role !== "tenant_admin") { setSaveError("استعادة النسخة الاحتياطية متاحة لمالك المتجر فقط."); return; }
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -642,8 +642,15 @@ export default function OfflineApp() {
       const raw: unknown = JSON.parse(await file.text());
       const parsed = migrateOfflineState(raw);
       if (!parsed || !isOfflineState(parsed)) { setSaveError("ملف غير صالح أو غير متوافق مع X-Store Offline."); return; }
-      if (!window.confirm("سيتم استبدال بيانات المتجر الحالية بمحتوى الملف. هل تريد المتابعة؟")) return;
-      const restored = await restoreOfflineBackup(parsed);
+      if (!window.confirm(
+        restoreMode === "full"
+          ? "سيتم استبدال بيانات المتجر الحالية بمحتوى الملف. هل تريد المتابعة؟"
+          : restoreMode === "invoices"
+            ? "سيتم استبدال الفواتير والمرتجعات والاستبدالات الحالية فقط، ولن يتغير المخزون أو إعدادات المتجر. هل تريد المتابعة؟"
+            : "سيتم استبدال المخزون الحالي فقط، ولن تتغير الفواتير أو إعدادات المتجر. هل تريد المتابعة؟"
+      )) return;
+      const scoped = restoreMode === "full" ? parsed : { ...parsed, backup: { ...parsed.backup, backupScope: restoreMode } };
+      const restored = await restoreOfflineBackup(scoped);
       setState(restored);
       setLicenseDeviceStatus(await inspectLicenseDevice(restored.license));
       setAuthenticatedMemberId(null);
@@ -727,13 +734,20 @@ export default function OfflineApp() {
         {pageToRender === "team" && <OfflineTeamPage state={state} onSave={saveTeamMember} onRemove={removeTeamMember} />}
         {pageToRender === "reports" && <OfflineReportsPage state={state} currency={currency} />}
         {pageToRender === "audit" && <OfflineAuditPage state={state} />}
-        {pageToRender === "backup" && <BackupPage state={state} desktop={desktop} onChooseFolder={chooseFolder} onBackup={manualBackup} onRestore={() => fileInput.current?.click()} />}
+        {pageToRender === "backup" && <BackupPage state={state} desktop={desktop} onChooseFolder={chooseFolder} onBackup={manualBackup} onRestore={(mode) => {
+          (window as any).__xstoreOfflineRestoreMode = mode;
+          fileInput.current?.click();
+        }} />}
         {pageToRender === "display" && <DisplaySettingsPage scale={displayScale} onChangeScale={setDisplayScale} />}
         {pageToRender === "settings" && <SettingsPage state={state} licenseActive={active} hardwareStatus={licenseDeviceStatus} desktop={desktop} onRefreshHardware={refreshHardwareReport} onSave={updateSettings} onActivate={activateLicense} />}
       </main>
       <footer className="of-footer"><span><ShieldCheck size={14} /> بيانات المتجر محفوظة محليًا على هذا الجهاز</span><span> X-Store Offline <b>·</b> إصدار مستقل</span></footer>
     </div>
-    <input ref={fileInput} type="file" accept="application/json,.json" className="of-hidden-file" onChange={restoreFile} />
+    <input ref={fileInput} type="file" accept="application/json,.json" className="of-hidden-file" onChange={(event) => {
+      const mode = ((window as any).__xstoreOfflineRestoreMode || "full") as "full" | "invoices" | "inventory";
+      (window as any).__xstoreOfflineRestoreMode = "full";
+      void restoreFile(event, mode);
+    }} />
     {notice && <div role="status" className="of-toast"><Check size={16} />{notice}</div>}
     {saleDetail && <InvoiceDialog sale={saleDetail} store={state.store} currency={currency} onClose={() => setSaleDetail(null)} />}
   </div>;
