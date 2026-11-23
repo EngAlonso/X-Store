@@ -2536,7 +2536,7 @@ function InventoryPage() {
           <Field className="product-form-field" label="سعر القطاعي" name="price" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر الجملة" defaultValue={edit?.price===null?'':edit?String(edit.price):''}/>
           {wholesaleEnabled&&<Field className="product-form-field" label="سعر الجملة" name="wholesalePrice" type="number" min={0} step={0.01} placeholder="اختياري إذا أدخلت سعر القطاعي" defaultValue={edit?.wholesalePrice===null?'':edit?String(edit.wholesalePrice):''}/>}
           <Field className="product-form-field" label="سعر التكلفة (اختياري)" name="costPrice" type="number" min={0} step={0.01} placeholder="اتركه فارغًا لو غير متاح" defaultValue={edit ? String(edit.costPrice ?? 0) : ''}/>
-          <Field className={\`product-form-field \${isWarehouseManager ? 'field-wide' : ''}\`} label="الكمية" name="quantity" type="number" min={0} step={1} required placeholder="0" defaultValue={edit ? String(edit.quantity) : '0'}/>
+          <Field className={`product-form-field ${isWarehouseManager ? 'field-wide' : ''}`} label="الكمية" name="quantity" type="number" min={0} step={1} required placeholder="0" defaultValue={edit ? String(edit.quantity) : '0'}/>
           {!pricingOnlyEdit&&<>
             <div className="product-form-section field-wide">
               <span className="product-form-section-number">03</span>
