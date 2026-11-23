@@ -1457,10 +1457,31 @@ function InvoiceDialog({ sale, store, currency, onClose }: { sale: OfflineSale; 
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return <div className="of-overlay of-invoice-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className={`of-dialog of-invoice-dialog of-invoice-${format}`} role="dialog" aria-modal="true" aria-labelledby="invoice-title"><header className="of-dialog-head of-invoice-actions"><div><span className="of-kicker">تفاصيل المعاملة</span><h2 id="invoice-title">{sale.invoiceNumber}</h2></div><div><button className="of-button of-button-secondary" onClick={exportText}><ArrowDownToLine size={15} /> تصدير TXT</button><button className="of-button of-button-secondary" onClick={() => window.print()}><Printer size={15} /> طباعة الفاتورة</button><button className="of-icon-button" onClick={onClose} aria-label="إغلاق"><X size={18} /></button></div></header><div className="of-inline-hint of-invoice-offline-note">إرسال الفاتورة عبر واتساب غير متاح في النسخة التي تعمل دون إنترنت؛ استخدم الطباعة أو تصدير TXT.</div><article className="of-print-invoice">
-    <div className="of-invoice-brand"><BrandMark compact /><div><b>{store?.name}</b><small>{store?.businessType}</small></div></div>
-    <div className="of-invoice-meta"><div><span>رقم الفاتورة</span><b dir="ltr">{sale.invoiceNumber}</b></div><div><span>التاريخ</span><b>{dateTime(sale.createdAt)}</b></div><div><span>العميل</span><b>{sale.customerName || "عميل نقدي"}</b></div>{sale.orderType && <div><span>نوع الطلب</span><b>{sale.orderType === "internal" ? "داخلي" : "خارجي"}</b></div>}{sale.tableNumber && <div><span>رقم الترابيزة</span><b>{sale.tableNumber}</b></div>}{sale.customerPhone && <div><span>الهاتف</span><b dir="ltr">{sale.customerPhone}</b></div>}<div><span>نوع البيع</span><b>{sale.saleType === "wholesale" ? "جملة" : "قطاعي"}</b></div><div><span>طريقة الدفع</span><b>{paymentLabel}</b></div>{sale.transferSender && <div><span>بيانات التحويل</span><b dir="ltr">{sale.transferSender}</b></div>}{sale.exchangeOfInvoiceNumber && <div><span>استبدال عن</span><b dir="ltr">{sale.exchangeOfInvoiceNumber}</b></div>}</div>
-    <div className="of-table-scroll"><table className="of-table"><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={`${item.productId}-${index}`}><td><b>{item.name}</b>{item.sku && <small>{item.sku}</small>}</td><td>{digits(item.quantity)}</td><td className="of-number">{money(item.unitPrice, currency)}</td><td className="of-number">{money(item.lineTotal, currency)}</td></tr>)}</tbody></table></div>
-    <div className="of-invoice-totals"><div><span>المجموع الفرعي</span><b>{money(sale.subtotal, currency)}</b></div><div><span>الخصم</span><b>− {money(sale.discountAmount, currency)}</b></div><div><span>ضريبة القيمة المضافة</span><b>{money(sale.taxAmount, currency)}</b></div><div className="of-invoice-final"><span>الإجمالي المستحق</span><b>{money(sale.total, currency)}</b></div><div><span>المبلغ المستلم</span><b>{money(sale.amountReceived, currency)}</b></div><div><span>الباقي</span><b>{money(sale.changeAmount, currency)}</b></div></div>
+    {(() => {
+      const s = { ...DEFAULT_OFFLINE_INVOICE_SETTINGS, ...(store?.invoiceSettings ?? {}) };
+      return <>
+        {s.showHeader && <div className="of-invoice-brand"><BrandMark compact /><div><b>{s.headerStoreName || store?.name}</b><b>{s.headerOwnerName || store?.businessType}</b>{s.headerMessage && <span>{s.headerMessage}</span>}{s.headerPhones && <span>{s.headerPhones}</span>}</div></div>}
+        <div className="of-invoice-meta">
+          <div><span>رقم الفاتورة</span><b dir="ltr">{sale.invoiceNumber}</b></div>
+          {s.showDateTime && <div><span>التاريخ</span><b>{dateTime(sale.createdAt)}</b></div>}
+          {s.showCustomer && <div><span>العميل</span><b>{sale.customerName || "عميل نقدي"}</b></div>}
+          {sale.orderType && <div><span>نوع الطلب</span><b>{sale.orderType === "internal" ? "داخلي" : "خارجي"}</b></div>}
+          {sale.tableNumber && <div><span>رقم الترابيزة</span><b>{sale.tableNumber}</b></div>}
+          {s.showPhone && sale.customerPhone && <div><span>الهاتف</span><b dir="ltr">{sale.customerPhone}</b></div>}
+          <div><span>نوع البيع</span><b>{sale.saleType === "wholesale" ? "جملة" : "قطاعي"}</b></div>
+          <div><span>طريقة الدفع</span><b>{paymentLabel}</b></div>
+          {sale.transferSender && <div><span>بيانات التحويل</span><b dir="ltr">{sale.transferSender}</b></div>}
+          {sale.exchangeOfInvoiceNumber && <div><span>استبدال عن</span><b dir="ltr">{sale.exchangeOfInvoiceNumber}</b></div>}
+        </div>
+        <div className="of-table-scroll"><table className="of-table"><thead><tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>{sale.items.map((item, index) => <tr key={item.productId + "-" + index}><td>{s.showProduct && <><b>{item.name}</b>{item.sku && <small>{item.sku}</small>}</>}</td>{s.showQuantity && <td>{digits(item.quantity)}</td>}{s.showUnitPrice && <td className="of-number">{money(item.unitPrice, currency)}</td>}{s.showTotal && <td className="of-number">{money(item.lineTotal, currency)}</td>}</tr>)}</tbody></table></div>
+        <div className="of-invoice-totals">
+          <div><span>المجموع الفرعي</span><b>{money(sale.subtotal, currency)}</b></div>
+          <div><span>الخصم</span><b>− {money(sale.discountAmount, currency)}</b></div>
+          <div><span>ضريبة القيمة المضافة</span><b>{money(sale.taxAmount, currency)}</b></div>
+          <div className="of-invoice-final"><span>الإجمالي المستحق</span><b>{money(sale.total, currency)}</b></div>
+          {s.showPaid && <div><span>المبلغ المستلم</span><b>{money(sale.amountReceived, currency)}</b></div>}
+          {s.showBalance && <div><span>الباقي</span><b>{money(sale.changeAmount, currency)}</b></div>}
+        </div>
     <div className="of-invoice-thanks">شكرًا لزيارتكم</div></article></section></div>;
 }
 
