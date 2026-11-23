@@ -124,14 +124,41 @@ export async function restoreOfflineBackup(
       if (!isOfflineState(migrated)) {
         throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
       }
-      return window.xStoreOffline.restoreState(migrated);
+      const current = await loadOfflineState();
+      const scope = migrated.backup.backupScope ?? "full";
+      const merged: OfflineState = scope === "full"
+        ? { ...migrated, backup: { ...current.backup, ...migrated.backup, lastError: null, backupScope: "full" } }
+        : {
+          ...current,
+          ...(scope === "inventory" ? { products: migrated.products } : {
+            sales: migrated.sales,
+            heldSales: migrated.heldSales,
+            returns: migrated.returns,
+            exchanges: migrated.exchanges,
+          }),
+          backup: { ...current.backup, lastError: null, backupScope: scope },
+        };
+      return window.xStoreOffline.restoreState(merged);
     }
     const restored = await window.xStoreOffline.restoreBackup();
     const validated = await validateStoredLicense(migrateOfflineState(restored));
     if (!isOfflineState(validated)) throw new Error("ملف النسخة الاحتياطية غير صالح أو غير متوافق.");
-    return restored.license && !validated.license
-      ? window.xStoreOffline.saveState(validated)
-      : validated;
+    const current = await loadOfflineState();
+    const scope = validated.backup.backupScope ?? "full";
+    if (scope === "full") {
+      return restored.license && !validated.license ? window.xStoreOffline.saveState(validated) : validated;
+    }
+    const merged: OfflineState = {
+      ...current,
+      ...(scope === "inventory" ? { products: validated.products } : {
+        sales: validated.sales,
+        heldSales: validated.heldSales,
+        returns: validated.returns,
+        exchanges: validated.exchanges,
+      }),
+      backup: { ...current.backup, lastError: null, backupScope: scope },
+    };
+    return window.xStoreOffline.restoreState(merged);
   }
 
   const candidate = await validateStoredLicense(
