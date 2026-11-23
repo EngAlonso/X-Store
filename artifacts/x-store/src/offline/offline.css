@@ -621,3 +621,9 @@
 @media (max-width: 520px) {
   .of-multi-uniform { grid-template-columns:1fr; }
 }
+
+.of-display-settings { max-width: 760px; }
+.of-display-scale-top { display:flex; justify-content:space-between; align-items:center; color:#89958c; font-size:calc(10px * var(--xstore-font-scale,1)); }
+.of-display-scale-top strong { color:#36553d; font-size:calc(18px * var(--xstore-font-scale,1)); }
+.of-display-scale-slider { width:100%; margin:22px 0 10px; accent-color:#6f9475; }
+.of-display-scale-labels { display:flex; justify-content:space-between; color:#8c968f; font-size:calc(9px * var(--xstore-font-scale,1)); }
