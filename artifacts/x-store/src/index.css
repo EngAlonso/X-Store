@@ -2058,6 +2058,9 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
 .inventory-page .qty-control:disabled { opacity:.45; }
 .inventory-page .inventory-edit-button { min-height:38px;padding:0 11px;border:1px solid #dfe8df;border-radius:9px;background:#fff;color:#45634b;font-size:calc(12px * var(--xstore-font-scale));font-weight:650;white-space:nowrap; }
 .inventory-page .inventory-edit-button:hover { border-color:#b9cdbb;background:#f5f8f3; }
+.inventory-page .inventory-delete-button { min-height:38px;padding:0 10px;border:1px solid #ead0d0;border-radius:9px;background:#fff;color:#a34a4f;font-size:calc(12px * var(--xstore-font-scale));font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px;cursor:pointer; }
+.inventory-page .inventory-delete-button:hover:not(:disabled) { border-color:#d9aaaa;background:#fff5f5;color:#963d42; }
+.inventory-page .inventory-delete-button:disabled { opacity:.55;cursor:wait; }
 .inventory-page .inventory-mobile-list { display:none; }
 .inventory-page .inventory-empty { min-height:270px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;padding:30px 18px;text-align:center;color:#76847a; }
 .inventory-page .inventory-empty-icon { width:58px;height:58px;display:grid;place-items:center;border-radius:18px;background:#edf4ec;color:#54785b; }
@@ -2116,6 +2119,7 @@ select { min-height:31px;padding:0 8px;border:1px solid #e1e7e2;border-radius:7p
   .inventory-page .inventory-mobile-actions>div>span { margin-inline-end:3px;color:#617168;font-size:calc(12px * var(--xstore-font-scale));font-weight:600; }
   .inventory-page .inventory-mobile-actions .qty-control { width:40px;height:40px; }
   .inventory-page .inventory-mobile-actions .inventory-edit-button { min-height:40px;font-size:calc(12px * var(--xstore-font-scale)); }
+  .inventory-page .inventory-mobile-actions .inventory-delete-button { min-height:40px;font-size:calc(12px * var(--xstore-font-scale)); }
   .inventory-page .inventory-empty { min-height:230px;padding:25px 12px; }
   .inventory-page .inventory-empty>b { font-size:calc(16px * var(--xstore-font-scale)); }
   .inventory-page .inventory-empty>span { font-size:calc(13px * var(--xstore-font-scale)); }
