@@ -1,0 +1,6 @@
+name = "x-store-backup-scheduler"
+main = "src/index.ts"
+compatibility_date = "2026-11-24"
+
+[triggers]
+crons = ["7,22,37,52 * * * *"]
