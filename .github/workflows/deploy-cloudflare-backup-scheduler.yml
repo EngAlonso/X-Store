@@ -1,0 +1,27 @@
+name: Deploy Cloudflare Backup Scheduler
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cloudflare/backup-scheduler/**"
+      - ".github/workflows/deploy-cloudflare-backup-scheduler.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloudflare/backup-scheduler
+          command: deploy
+        env:
+          XSTORE_PRODUCTION_URL: ${{ secrets.XSTORE_PRODUCTION_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
