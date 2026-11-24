@@ -36,6 +36,39 @@ const backupTextParser = express.text({
   limit: MAX_RESTORE_REQUEST_BYTES,
 });
 
+async function handleAutoBackupRun(req: Request, res: Response): Promise<void> {
+  const expected = process.env.CRON_SECRET;
+  const supplied = req.get("authorization")?.replace(/^Bearer\s+/i, "") || req.get("x-cron-secret");
+  if (!expected || supplied !== expected) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const status = await getAutoBackupStatus();
+    if (!status.enabled || !status.googleDriveConnected) {
+      res.json({ status: "disabled" });
+      return;
+    }
+    if (status.nextRunAt && new Date(status.nextRunAt).getTime() > Date.now()) {
+      res.json({ status: "not_due", nextRunAt: status.nextRunAt });
+      return;
+    }
+
+    const frequency = status.frequencyPerDay;
+    const file = await runPlatformBackupToGoogleDrive();
+    const next = await saveAutoBackupSettings(true, frequency);
+    res.json({ status: "success", file, nextRunAt: next.nextRunAt });
+  } catch (error) {
+    await markAutoBackupFailure(error);
+    res.status(500).json({ status: "error", error: error instanceof Error ? error.message : "تعذر تنفيذ النسخة التلقائية." });
+  }
+}
+
+// Vercel Cron sends GET requests. Keep POST available for manual/internal triggering.
+router.get("/xstore/platform-backup/auto-run", handleAutoBackupRun);
+router.post("/xstore/platform-backup/auto-run", handleAutoBackupRun);
+
 router.use("/xstore/platform-backup", requireXStoreUser);
 
 function parseBackupText(req: Request, res: Response, next: NextFunction): void {
@@ -279,37 +312,6 @@ router.post("/xstore/platform-backup/auto-run-now", async (req, res) => {
   }
 });
 
-async function handleAutoBackupRun(req: Request, res: Response): Promise<void> {
-  const expected = process.env.CRON_SECRET;
-  const supplied = req.get("authorization")?.replace(/^Bearer\s+/i, "") || req.get("x-cron-secret");
-  if (!expected || supplied !== expected) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
 
-  try {
-    const status = await getAutoBackupStatus();
-    if (!status.enabled || !status.googleDriveConnected) {
-      res.json({ status: "disabled" });
-      return;
-    }
-    if (status.nextRunAt && new Date(status.nextRunAt).getTime() > Date.now()) {
-      res.json({ status: "not_due", nextRunAt: status.nextRunAt });
-      return;
-    }
-
-    const frequency = status.frequencyPerDay;
-    const file = await runPlatformBackupToGoogleDrive();
-    const next = await saveAutoBackupSettings(true, frequency);
-    res.json({ status: "success", file, nextRunAt: next.nextRunAt });
-  } catch (error) {
-    await markAutoBackupFailure(error);
-    res.status(500).json({ status: "error", error: error instanceof Error ? error.message : "تعذر تنفيذ النسخة التلقائية." });
-  }
-}
-
-// Vercel Cron sends GET requests. Keep POST available for manual/internal triggering.
-router.get("/xstore/platform-backup/auto-run", handleAutoBackupRun);
-router.post("/xstore/platform-backup/auto-run", handleAutoBackupRun);
 
 export default router;
