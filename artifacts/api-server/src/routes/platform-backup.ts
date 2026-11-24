@@ -299,7 +299,6 @@ async function handleAutoBackupRun(req: Request, res: Response): Promise<void> {
     }
 
     const frequency = status.frequencyPerDay;
-    await saveAutoBackupSettings(true, frequency);
     const file = await runPlatformBackupToGoogleDrive();
     const next = await saveAutoBackupSettings(true, frequency);
     res.json({ status: "success", file, nextRunAt: next.nextRunAt });
